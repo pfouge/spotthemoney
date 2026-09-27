@@ -1,20 +1,24 @@
 # Scheduled data refresh, then redeploy so the static site reflects the new data.
-# I-Bond rates change only on May 1 / Nov 1, so daily is ample for the rates hub; the
-# per-source cadence in `sources.cadence` decides what each job actually fetches on a run.
-# Higher-frequency sources (prices) move to Cloudflare Cron Triggers later (docs/01 §5).
 #
-# `ingest_runs` in the database is the diagnostic of record — when a run looks wrong,
-# query it rather than reading these logs.
+# Shape (2026-09-27): migrate once, then the sources run as PARALLEL groups so the daily
+# batch stays inside the job budget as sources are added (sec_form4 alone is ~30 min cold).
+# Each group runs `npm run ingest -- <sources…>` in order; a group's failure does not stop
+# the others, and the retry job re-runs only the failed groups on a fresh runner (new IP).
+# The deploy runs when at least one group succeeded, so a single bad source never blocks
+# fresh data from the rest. `ingest_runs` in the database is the diagnostic of record.
+#
+# Not in the daily batch (run by their own workflows or by hand): x_daily (x-daily.yml),
+# citation_count / search_console_weekly (measure.yml), archive_backfill (dispatch here).
 
 name: ingest
 
 on:
   schedule:
-    - cron: "0 9 * * *" # daily 09:00 UTC
+    - cron: "0 9 * * *" # daily 09:00 UTC (congress-ptr runs separately at 13:00, see its workflow)
   workflow_dispatch:
     inputs:
       source:
-        description: "Source to run (blank = all registered sources)"
+        description: "Source(s) to run, space-separated (blank = the daily groups)"
         required: false
         default: ""
 
@@ -22,60 +26,101 @@ concurrency:
   group: ingest
   cancel-in-progress: false
 
+env:
+  ASTRO_TELEMETRY_DISABLED: "1"
+
 jobs:
-  ingest:
+  migrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
     env:
-      # Supabase SESSION pooler string (port 5432) — see SETUP.md §2.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      # Job keys — each job is a safe no-op (or runs keyless) when its key is absent.
-      FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
-      TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
-      LDA_API_KEY: ${{ secrets.LDA_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: npm
-      - name: Install
-        run: |
+      - run: |
           set -o pipefail
           npm ci --no-audit --no-fund
       - name: Apply migrations
         run: node db/migrate.mjs
-      - name: Run ingest
-        run: npm run ingest -- ${{ github.event.inputs.source }}
 
-  # Fresh runner (new IP) if a government source blocked the first attempt.
-  ingest-retry:
-    needs: ingest
-    if: always() && needs.ingest.result == 'failure'
+  ingest:
+    needs: migrate
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - name: rates
+            sources: universe ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
+          - name: filings
+            sources: sec_form4
+          - name: money
+            sources: senate_lda usaspending fec_committees fec_schedule_a
+          - name: prices
+            sources: twelvedata_eod
+    name: ingest (${{ matrix.group.name }})
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
       TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
       LDA_API_KEY: ${{ secrets.LDA_API_KEY }}
+      BLS_API_KEY: ${{ secrets.BLS_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: npm
-      - name: Install
-        run: |
+      - run: |
           set -o pipefail
           npm ci --no-audit --no-fund
-      - name: Run ingest (retry)
+      - name: Run ingest
+        run: |
+          set -o pipefail
+          if [ -n "${{ github.event.inputs.source }}" ]; then
+            # Manual run: only the "rates" matrix slot executes the requested source(s).
+            if [ "${{ matrix.group.name }}" = "rates" ]; then npm run ingest -- ${{ github.event.inputs.source }}; else echo "skipped (manual run)"; fi
+          else
+            npm run ingest -- ${{ matrix.group.sources }}
+          fi
+
+  # Fresh runner (new IP) if a government source blocked the first attempt.
+  ingest-retry:
+    needs: ingest
+    if: always() && contains(needs.ingest.result, 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
+      TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
+      LDA_API_KEY: ${{ secrets.LDA_API_KEY }}
+      BLS_API_KEY: ${{ secrets.BLS_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Run ingest (retry, all daily sources — already-ingested rows are skipped)
         run: npm run ingest -- ${{ github.event.inputs.source }}
 
   # Rebuild + deploy from the refreshed database (same pipeline as a push to main).
   deploy:
     needs: [ingest, ingest-retry]
-    if: always() && (needs.ingest.result == 'success' || needs.ingest-retry.result == 'success')
+    if: always() && (contains(needs.ingest.result, 'success') || needs.ingest-retry.result == 'success')
     uses: ./.github/workflows/deploy.yml
     secrets:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}

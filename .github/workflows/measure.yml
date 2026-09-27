@@ -1,0 +1,88 @@
+# Measurement jobs (roadmap B.7): are we actually visible where our readers look?
+#
+#   - citation-count: monthly — asks the fixed 200-question set (scripts/citation-questions.json)
+#     of every AI answer engine whose API key is present and records whether spotthemoney.com
+#     was cited. See docs/reference/citation-count-procedure.md for cost + the manual Google
+#     AI Overviews subsample this can't reach via API.
+#   - search-console: weekly — pulls the prior full Monday–Sunday week of Search Console
+#     data and aggregates it by page type.
+#
+# Both jobs are safe no-ops (dry runs, per `docs/reference/citation-count-procedure.md`) when
+# their secrets are absent, same convention as ingest.yml.
+
+name: measure
+
+on:
+  schedule:
+    - cron: "0 10 2 * *"  # monthly, the 2nd at 10:00 UTC — citation count
+    - cron: "0 10 * * 2"  # weekly, Tuesdays at 10:00 UTC — search console export
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which measurement job to run"
+        required: true
+        type: choice
+        options:
+          - citation_count
+          - search_console_weekly
+
+concurrency:
+  group: measure
+  cancel-in-progress: false
+
+jobs:
+  citation-count:
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 10 2 * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'citation_count')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: node db/migrate.mjs
+      - name: Run citation_count
+        run: |
+          set -o pipefail
+          npm run ingest -- citation_count
+
+  search-console:
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 10 * * 2') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'search_console_weekly')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+      GSC_SITE_URL: ${{ vars.GSC_SITE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: node db/migrate.mjs
+      - name: Run search_console_weekly
+        run: |
+          set -o pipefail
+          npm run ingest -- search_console_weekly

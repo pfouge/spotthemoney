@@ -1,56 +1,76 @@
 # congress-ptr ingestion — Python job, per IIF↔spotthemoney integration contract §1.
-# congress-ptr is NOT ported to TypeScript (House-PDF/Senate-eFD parsing is hard-won:
-# multi-era registry, partial-sale fixes, Akamai TLS impersonation). This workflow runs
-# ingest/py/congress_ptr_job.py, which imports IIF's parser and writes to DATABASE_URL.
+# Runs ingest/py/congress_ptr_job.py against the vendored IIF parser
+# (ingest/py/vendor/congress_ptr/, decision #17 → pinned vendored copy, 2026-09-27) and
+# writes to DATABASE_URL. HOUSE filings only: the Senate eFD path needs a residential IP
+# and browser-TLS impersonation (docs/04 #21).
 #
-# SCAFFOLDED BUT BLOCKED: this job cannot succeed yet. load_iif_connector() in
-# congress_ptr_job.py raises NotImplementedError until Peter decides how CI gets the IIF
-# code (private repo checkout vs. pinned vendored copy — see ingest/py/README.md "Open
-# decision"). workflow_dispatch only until that decision is made AND Peter has approved
-# a sample of the job's output. See ingest/py/README.md for full context.
+# Scheduled daily at 13:00 UTC (House Clerk posts filings during the US business day; the
+# 09:00 UTC ingest.yml run covers everything else). Filings land unpublished
+# (is_published=false) until Peter approves the sample — see ingest/py/README.md.
+# The deploy at the end rebuilds the site so the congress pages pick up new rows.
 
 name: Ingest — Congressional PTR (Python)
 
 on:
+  schedule:
+    - cron: "0 13 * * *"
   workflow_dispatch:
     inputs:
       window_days:
         description: "Days back to pull filings for"
         required: false
         default: "7"
+      extra_args:
+        description: "Extra flags (e.g. --dry-run, --limit 5, --reprocess)"
+        required: false
+        default: ""
 
-  # TODO: enable after the IIF-code decision + Peter's sample approval.
-  # schedule:
-  #   - cron: "0 13 * * *"  # daily, matches cadence in sources.cadence for congress_ptr
+concurrency:
+  group: ingest-congress-ptr
+  cancel-in-progress: false
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - name: Checkout spotthemoney.com
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # TODO(peter): checkout the IIF repo here once the code-availability decision is
-      # made (ingest/py/README.md "Open decision", option 1 — private repo + checkout).
-      # If option 2 (pinned vendored copy) is chosen instead, this step is not needed —
-      # the vendored code ships committed under ingest/py/vendor/ instead.
-      # - name: Checkout Investing Intelligence Foundation (congress-ptr plugin)
-      #   uses: actions/checkout@v4
-      #   with:
-      #     repository: <org>/investing-intelligence-foundation
-      #     ssh-key: ${{ secrets.IIF_DEPLOY_KEY }}
-      #     path: iif
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install "psycopg[binary]" curl_cffi pdfplumber
+        run: pip install "psycopg[binary]" pdfplumber requests
 
-      - name: Run congress-ptr ingestion
+      - name: Parser unit tests (vendored IIF modules)
+        working-directory: ingest/py/vendor/congress_ptr
+        run: pip install pytest && python -m pytest -q tests
+
+      - name: Run congress-ptr ingestion (House)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          python ingest/py/congress_ptr_job.py --window-days "${{ github.event.inputs.window_days || '7' }}"
+          set -o pipefail
+          python ingest/py/congress_ptr_job.py \
+            --window-days "${{ github.event.inputs.window_days || '7' }}" \
+            ${{ github.event.inputs.extra_args }} 2>&1 | tee congress-ptr.log
+
+      - name: Upload run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: congress-ptr-log
+          path: congress-ptr.log
+          retention-days: 14
+
+  deploy:
+    needs: ingest
+    if: needs.ingest.result == 'success'
+    uses: ./.github/workflows/deploy.yml
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

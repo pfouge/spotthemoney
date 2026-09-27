@@ -24,6 +24,8 @@ on:
       - "db/**"
       - "package.json"
       - "package-lock.json"
+      - "scripts/verify-live.mjs"
+      - "scripts/indexnow-ping.mjs"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
   workflow_call:
@@ -42,7 +44,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PUBLIC_SITE_URL: https://spotthemoney.com
@@ -89,3 +91,16 @@ jobs:
           else
             echo "✗ live check failed for $url"; exit 1
           fi
+
+      # Discovery plumbing must be live and valid after every deploy (roadmap B.2): sitemap
+      # index + children, robots.txt AI allow lines, llms.txt, JSON-LD on a sample of pages,
+      # no empty tables, no "Soon" tags. Fails the run if anything regresses.
+      - name: Verify sitemaps, robots, llms.txt and JSON-LD
+        run: |
+          set -o pipefail
+          sleep 120   # prerendered HTML carries s-maxage=120; wait one edge TTL so we test the new build
+          node scripts/verify-live.mjs "$PUBLIC_SITE_URL" --sample 5
+
+      # Tell IndexNow engines which pages changed (lastmod within 2 days). Best-effort.
+      - name: IndexNow ping
+        run: node scripts/indexnow-ping.mjs

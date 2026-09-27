@@ -1,0 +1,62 @@
+# Daily X (Twitter) thread of notable published filings (roadmap B.4).
+# Runs after the morning ingest + deploy so entity links resolve. Without the four X secrets
+# the job dry-runs: it writes the thread to ingest/out/ (uploaded as an artifact) and records
+# it in social_posts with status 'dry_run'. Nothing is posted until the secrets exist AND the
+# filings involved are is_published=true (the sample-approval gate).
+#
+# Secrets: X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET (OAuth 1.0a user context
+# for the @spotthemoney account; app needs Read and Write permission).
+
+name: x-daily
+
+on:
+  schedule:
+    - cron: "30 15 * * *"   # 15:30 UTC = 11:30 ET, after the 13:00 UTC congress run
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Backfill window start (YYYY-MM-DD); blank = last 24h"
+        required: false
+        default: ""
+
+concurrency:
+  group: x-daily
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      X_API_KEY: ${{ secrets.X_API_KEY }}
+      X_API_SECRET: ${{ secrets.X_API_SECRET }}
+      X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+      X_ACCESS_SECRET: ${{ secrets.X_ACCESS_SECRET }}
+      X_SINCE: ${{ github.event.inputs.since }}
+      PUBLIC_SITE_URL: https://spotthemoney.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: node db/migrate.mjs
+      - name: Compose and post (or dry-run)
+        run: |
+          set -o pipefail
+          npm run ingest -- x_daily 2>&1 | tee x-daily.log
+      - name: Upload dry-run thread
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-thread
+          path: |
+            ingest/out/*.md
+            x-daily.log
+          if-no-files-found: ignore
+          retention-days: 30
