@@ -1,0 +1,77 @@
+---
+// /rates/tips/ — TIPS real yields from Treasury's daily real yield curve (no FRED key needed;
+// resolves open decision #4). Breakeven inflation = nominal par yield − real yield per tenor.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import Answer from "../../components/Answer.astro";
+import { getYieldCurve, getSeriesYearToDate } from "../../lib/db";
+import { trendSvg } from "../../lib/charts";
+import { formatDate } from "../../lib/format";
+import { datasetLd, SOURCES } from "../../lib/seo";
+
+const real = await getYieldCurve("UST_REAL");
+const nominal = await getYieldCurve("UST_PAR");
+const ten = await getSeriesYearToDate("UST_REAL_10Y");
+const hasData = !!real && real.tenors.length > 0;
+const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(2)}%`);
+const bp = (n: number | null) => (n == null ? "—" : `${n > 0 ? "+" : ""}${n} bp`);
+const chg = (now: number | null, then: number | null) => (now == null || then == null ? null : Math.round((now - then) * 100));
+const nominalFor = (label: string) => nominal?.tenors.find((t) => t.label === label)?.latest ?? null;
+const t10 = real?.tenors.find((t) => t.label === "10Y");
+const t5 = real?.tenors.find((t) => t.label === "5Y");
+const be10 = t10?.latest != null && nominalFor("10Y") != null ? nominalFor("10Y")! - t10.latest : null;
+const be5 = t5?.latest != null && nominalFor("5Y") != null ? nominalFor("5Y")! - t5.latest : null;
+const trend = ten.length > 1 ? trendSvg(ten, { title: "10-year TIPS real yield, year to date" }) : "";
+const answer = hasData
+  ? `The 10-year TIPS real yield is ${pct(t10?.latest)} and the 5-year ${pct(t5?.latest)} as of ${formatDate(real!.latestDate)}, per the U.S. Treasury's daily real yield curve. Against nominal Treasuries that implies breakeven inflation of ${pct(be10)} over 10 years and ${pct(be5)} over 5.`
+  : "TIPS real yields are published by the U.S. Treasury each business day for the 5-, 7-, 10-, 20- and 30-year maturities; figures appear here once the real-yield job has run.";
+const description = hasData
+  ? `TIPS real yields as of ${formatDate(real!.latestDate)}: 5-year ${pct(t5?.latest)}, 10-year ${pct(t10?.latest)}${be10 != null ? `; 10-year breakeven inflation ${pct(be10)}` : ""}. Every TIPS maturity, daily, from the U.S. Treasury's real yield curve.`
+  : "TIPS real yields for every maturity and the implied breakeven inflation rate, from the U.S. Treasury's daily real yield curve.";
+---
+<BaseLayout title="TIPS real yields today — every maturity + breakeven inflation | Spot the Money" description={description} section="Rates · TIPS">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }, { name: "TIPS", path: "/rates/tips/" }]} />
+  <p class="eyebrow">Rates Hub <span class="x">/</span> TIPS</p>
+  <h1>TIPS real yields</h1>
+  <Answer text={answer} updated={real?.latestDate ?? null} sourceNote="Source: U.S. Treasury daily real yield curve" />
+  {hasData ? (
+    <p class="lede">Real (inflation-adjusted) yields for every TIPS maturity as of <strong>{formatDate(real!.latestDate)}</strong>, from the U.S. Treasury's daily real yield curve. Updated each business day.</p>
+  ) : (
+    <p class="lede">Real (inflation-adjusted) yields for every TIPS maturity, from the U.S. Treasury's daily real yield curve.</p>
+  )}
+
+  {hasData ? (
+    <>
+      <section class="datastrip">
+        <div class="cell"><div class="k">10-year real yield</div><div class="v">{pct(t10?.latest)}</div><div class="delta">{bp(chg(t10?.latest ?? null, t10?.prev ?? null))} vs prior day</div></div>
+        <div class="cell"><div class="k">5-year real yield</div><div class="v">{pct(t5?.latest)}</div><div class="delta">{bp(chg(t5?.latest ?? null, t5?.prev ?? null))} vs prior day</div></div>
+        <div class="cell"><div class="k">10-year breakeven</div><div class="v">{pct(be10)}</div><div class="delta">nominal − real</div></div>
+        <div class="cell"><div class="k">5-year breakeven</div><div class="v">{pct(be5)}</div><div class="delta">nominal − real</div></div>
+      </section>
+
+      <h2>Every maturity</h2>
+      <div class="tablewrap">
+        <table class="data">
+          <thead><tr><th>Maturity</th><th class="num">Real yield</th><th class="num">1d</th><th class="num">1m</th><th class="num">YTD</th><th class="num">Nominal</th><th class="num">Breakeven</th></tr></thead>
+          <tbody>
+            {real!.tenors.map((t) => { const n = nominalFor(t.label); return (
+              <tr><th scope="row">{t.label}</th><td class="num strong">{pct(t.latest)}</td><td class="num">{bp(chg(t.latest, t.prev))}</td><td class="num">{bp(chg(t.latest, t.monthAgo))}</td><td class="num">{bp(chg(t.latest, t.yearStart))}</td><td class="num">{pct(n)}</td><td class="num">{n != null && t.latest != null ? pct(n - t.latest) : "—"}</td></tr>
+            ); })}
+          </tbody>
+        </table>
+      </div>
+      {trend && <section class="panel chartpanel"><div class="chart-head"><h2>10-year TIPS real yield, year to date</h2></div><div class="chartwrap" set:html={trend}></div></section>}
+    </>
+  ) : (
+    <section class="panel"><div class="bignum pending">data pending</div><p class="disclaimer">The <code>treasury_real_yield_curve</code> job has not run yet. Once it has, this page fills with the live Treasury real yield curve.</p></section>
+  )}
+
+  <AdSlot label="Advertisement" />
+
+  <h2>How to read TIPS yields</h2>
+  <p>A TIPS real yield is what the bond pays <em>on top of</em> inflation: the principal is adjusted with CPI-U and the coupon is paid on the adjusted principal. The <strong>breakeven inflation rate</strong> is the nominal Treasury yield of the same maturity minus the real yield — roughly the average inflation at which a TIPS and a regular Treasury would return the same. Treasury publishes these par real yields each business day for the 5-, 7-, 10-, 20- and 30-year points.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Official U.S. Treasury data, shown as published.</p>
+  <JsonLd data={datasetLd({ name: "TIPS real yield curve (daily)", path: "/rates/tips/", description, dateModified: real?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["TIPS", "real yield", "breakeven inflation", "Treasury"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
+</BaseLayout>

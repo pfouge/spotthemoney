@@ -1,0 +1,35 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { dataCatalogLd } from "../../lib/seo";
+---
+<BaseLayout
+  section="Rates"
+  title="Rates Hub — I-Bonds, TIPS, Treasury yields | Spot the Money"
+  description="The cleanest, fastest read on safe yield: I-Bonds, TIPS, Treasury yields and the yield curve, from official U.S. Treasury and FRED data."
+>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }]} />
+  <p class="eyebrow">Rates Hub</p>
+  <h1>Safe yield, every day</h1>
+  <p class="lede">Official safe-yield data, rendered clearly and updated on every reset.</p>
+
+  <div class="grid">
+    <a class="card" href="/rates/i-bonds/">
+      <h3>I-Bonds →</h3>
+      <p>Current composite rate + value calculator. Live.</p>
+    </a>
+    <a class="card" href="/rates/tips/">
+      <h3>TIPS →</h3>
+      <p>Real yields for every TIPS maturity and the breakeven inflation rate, daily from the Treasury.</p>
+    </a>
+    <a class="card" href="/rates/treasury-yields/">
+      <h3>Treasury Yield Curve →</h3>
+      <p>Every maturity, 1 month to 30 years, updated each business day. Live.</p>
+    </a>
+  </div>
+
+  <AdSlot label="Advertisement" />
+  <JsonLd data={dataCatalogLd({ path: "/rates/", name: "Rates Hub", description: "Official U.S. safe-yield data: I-Bond rates, TIPS real yields, and the Treasury yield curve, updated daily.", datasets: [{ name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "TIPS real yield curve", path: "/rates/tips/" }, { name: "U.S. Treasury par yield curve", path: "/rates/treasury-yields/" }] })} />
+</BaseLayout>

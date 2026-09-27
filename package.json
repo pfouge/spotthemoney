@@ -1,0 +1,23 @@
+{
+  "name": "spotthemoney.com",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "See where the money really moves — markets and Washington, rendered clearly and free.",
+  "workspaces": [
+    "shared",
+    "ingest",
+    "web"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "npm run dev -w @stm/web",
+    "build": "npm run build -w @stm/web",
+    "preview": "npm run preview -w @stm/web",
+    "ingest": "npm run start -w @stm/ingest --",
+    "migrate": "node db/migrate.mjs",
+    "typecheck": "tsc -b --pretty"
+  }
+}

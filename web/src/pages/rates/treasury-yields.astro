@@ -1,0 +1,192 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import { getYieldCurve, getSeriesYearToDate } from "../../lib/db";
+import { yieldCurveSvg, trendSvg, SERIES } from "../../lib/charts";
+import { formatDate } from "../../lib/format";
+import Crumbs from "../../components/Crumbs.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { datasetLd, SOURCES } from "../../lib/seo";
+
+// Built from the database at build time (daily ingest → redeploy). No DB reads at request time.
+const curve = await getYieldCurve();
+const tenYear = await getSeriesYearToDate("UST_PAR_10Y");
+const hasData = !!curve && curve.tenors.length > 0;
+
+const find = (label: string) => curve?.tenors.find((t) => t.label === label);
+const t10 = find("10Y"), t2 = find("2Y"), t3m = find("3M"), t30 = find("30Y");
+const spread = (a?: { latest: number | null }, b?: { latest: number | null }) =>
+  a?.latest != null && b?.latest != null ? Math.round((a.latest - b.latest) * 100) : null;
+const s10v2 = spread(t10, t2);
+const s10v3m = spread(t10, t3m);
+const bp = (n: number | null) => (n == null ? "—" : `${n > 0 ? "+" : ""}${n} bp`);
+const tenorName = (label: string) => {
+  const n = Number(label.slice(0, -1));
+  const unit = label.endsWith("Y") ? "year" : "month";
+  return `${label.slice(0, -1)} ${unit}${n === 1 ? "" : "s"}`;
+};
+const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(2)}%`);
+const chg = (now: number | null, then: number | null) =>
+  now == null || then == null ? null : Math.round((now - then) * 100);
+
+const curveSvg = hasData
+  ? yieldCurveSvg([
+      { name: `Today (${formatDate(curve!.latestDate)})`, cls: SERIES.primary, points: curve!.tenors.map((t) => ({ label: t.label, months: t.months, value: t.latest })) },
+      ...(curve!.monthAgoDate
+        ? [{ name: `One month ago (${formatDate(curve!.monthAgoDate)})`, cls: SERIES.compare, points: curve!.tenors.map((t) => ({ label: t.label, months: t.months, value: t.monthAgo })) }]
+        : []),
+    ])
+  : "";
+const trend = tenYear.length > 1 ? trendSvg(tenYear, { title: "10-year Treasury yield, year to date" }) : "";
+
+const description = hasData
+  ? `The U.S. Treasury yield curve as of ${formatDate(curve!.latestDate)}: 3-month ${pct(t3m?.latest)}, 2-year ${pct(t2?.latest)}, 10-year ${pct(t10?.latest)}, 30-year ${pct(t30?.latest)}. Every maturity, daily, from official Treasury par yields.`
+  : "The U.S. Treasury yield curve — every maturity, updated daily from official Treasury par yields.";
+---
+<BaseLayout title="Treasury Yield Curve Today — Every Maturity, Daily | Spot the Money" description={description} section="Rates · Yield curve">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }, { name: "Treasury yields", path: "/rates/treasury-yields/" }]} />
+  <p class="eyebrow">Rates Hub <span class="x">/</span> Treasury yields</p>
+  <h1>Treasury Yield Curve</h1>
+  {hasData ? (
+    <p class="lede">Par yields for every maturity as of <strong>{formatDate(curve!.latestDate)}</strong>, from the U.S. Treasury's daily curve. Updated each business day.</p>
+  ) : (
+    <p class="lede">Par yields for every maturity, from the U.S. Treasury's daily curve.</p>
+  )}
+
+  {hasData ? (
+    <>
+      <section class="datastrip">
+        <div class="cell"><div class="k">10-year</div><div class="v">{pct(t10?.latest)}</div><div class="delta">{bp(chg(t10?.latest ?? null, t10?.prev ?? null))} vs prior day</div></div>
+        <div class="cell"><div class="k">2-year</div><div class="v">{pct(t2?.latest)}</div><div class="delta">{bp(chg(t2?.latest ?? null, t2?.prev ?? null))} vs prior day</div></div>
+        <div class="cell"><div class="k">10Y − 2Y spread</div><div class={`v ${s10v2 != null && s10v2 < 0 ? "neg" : ""}`}>{bp(s10v2)}</div><div class="delta">{s10v2 != null && s10v2 < 0 ? "inverted" : "normal slope"}</div></div>
+        <div class="cell"><div class="k">10Y − 3M spread</div><div class={`v ${s10v3m != null && s10v3m < 0 ? "neg" : ""}`}>{bp(s10v3m)}</div><div class="delta">{s10v3m != null && s10v3m < 0 ? "inverted" : "normal slope"}</div></div>
+      </section>
+
+      <section class="panel chartpanel">
+        <div class="chart-head">
+          <h2>The curve today</h2>
+          <div class="legend" aria-hidden="true">
+            <span class="item"><span class="sw s-primary"></span> Today ({formatDate(curve!.latestDate)})</span>
+            {curve!.monthAgoDate && (<span class="item"><span class="sw s-compare"></span> One month ago ({formatDate(curve!.monthAgoDate)})</span>)}
+          </div>
+        </div>
+        <div class="chartwrap" data-series={JSON.stringify([`Today`, ...(curve!.monthAgoDate ? ["One month ago"] : [])])}>
+          <Fragment set:html={curveSvg} />
+          <div class="tip" hidden></div>
+        </div>
+        <p class="disclaimer">Maturity is on a log scale so short and long tenors both read clearly. Hover or tap a maturity for exact values.</p>
+      </section>
+
+      <AdSlot label="Advertisement" />
+
+      <h2>Every maturity</h2>
+      <div class="tablewrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Maturity</th>
+              <th class="num">Yield</th>
+              <th class="num">1 day</th>
+              <th class="num">1 month</th>
+              <th class="num">Year to date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {curve!.tenors.map((t) => {
+              const d1 = chg(t.latest, t.prev), d30 = chg(t.latest, t.monthAgo), dy = chg(t.latest, t.yearStart);
+              return (
+                <tr>
+                  <th scope="row">{tenorName(t.label)}</th>
+                  <td class="num strong">{pct(t.latest)}</td>
+                  <td class="num">{bp(d1)}</td>
+                  <td class="num">{bp(d30)}</td>
+                  <td class="num">{bp(dy)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p class="disclaimer">Changes in basis points (1 bp = 0.01%). "1 month" compares with {curve!.monthAgoDate ? formatDate(curve!.monthAgoDate) : "—"}; "year to date" with {curve!.yearStartDate ? formatDate(curve!.yearStartDate) : "—"}.</p>
+
+      {trend && (
+        <section class="panel chartpanel">
+          <div class="chart-head"><h2>10-year yield, year to date</h2></div>
+          <div class="chartwrap" data-series={JSON.stringify(["10-year"])}>
+            <Fragment set:html={trend} />
+            <div class="tip" hidden></div>
+          </div>
+        </section>
+      )}
+    </>
+  ) : (
+    <section class="panel">
+      <div class="bignum pending">data pending</div>
+      <p class="disclaimer">Run <code>npm run ingest -- treasury_yield_curve</code> with <code>DATABASE_URL</code> set and this page fills with the live curve.</p>
+    </section>
+  )}
+
+  <h2>How to read the yield curve</h2>
+  <p>
+    The yield curve plots what the U.S. government pays to borrow for different lengths of time, from one
+    month to thirty years. Normally it slopes upward — lenders want more to lock money up longer. When
+    short-term yields rise above long-term ones the curve <strong>inverts</strong>, which has preceded most
+    U.S. recessions, though with long and variable lags. The <strong>10Y − 2Y</strong> and
+    <strong>10Y − 3M</strong> spreads above are the two most-watched summaries of that shape.
+  </p>
+  <p>
+    Figures are the Treasury's <strong>par yield curve rates</strong>, published each business day after
+    market close and derived from secondary-market bid prices. They are indicative, not tradeable quotes.
+    Source: U.S. Department of the Treasury, Daily Treasury Par Yield Curve Rates.
+  </p>
+
+  <AdSlot label="Advertisement" />
+  <JsonLd data={datasetLd({ name: "U.S. Treasury par yield curve (daily)", path: "/rates/treasury-yields/", description, dateModified: curve?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["Treasury yields", "yield curve", "10-year Treasury", "2s10s spread"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
+</BaseLayout>
+
+
+<script>
+  // Hover/tap readout for the build-time SVG charts. Values come from data-* attributes the
+  // chart emitted; the DOM is updated with textContent only.
+  for (const wrap of document.querySelectorAll<HTMLElement>(".chartwrap")) {
+    const svg = wrap.querySelector<SVGSVGElement>("svg.chart");
+    const tip = wrap.querySelector<HTMLElement>(".tip");
+    const cross = svg?.querySelector<SVGLineElement>(".crosshair");
+    if (!svg || !tip || !cross) continue;
+    const names: string[] = JSON.parse(wrap.dataset.series ?? "[]");
+    const vb = svg.viewBox.baseVal;
+
+    const show = (hit: SVGRectElement) => {
+      const x = Number(hit.dataset.x);
+      const values: (number | null)[] = JSON.parse(hit.dataset.values ?? "[]");
+      cross.setAttribute("x1", String(x));
+      cross.setAttribute("x2", String(x));
+      cross.setAttribute("visibility", "visible");
+      tip.replaceChildren();
+      const head = document.createElement("div");
+      head.textContent = hit.dataset.label ?? "";
+      tip.append(head);
+      values.forEach((v, i) => {
+        const row = document.createElement("div");
+        row.className = "t-row";
+        row.textContent = `${names[i] ?? ""}: `;
+        const b = document.createElement("b");
+        b.textContent = v == null ? "—" : `${v.toFixed(2)}%`;
+        row.append(b);
+        tip.append(row);
+      });
+      const rect = svg.getBoundingClientRect();
+      const px = (x / vb.width) * rect.width;
+      tip.style.left = `${px}px`;
+      tip.style.top = `${(Number(svg.dataset.padt ?? 14) / vb.height) * rect.height + 8}px`;
+      tip.hidden = false;
+    };
+    const hide = () => { cross.setAttribute("visibility", "hidden"); tip.hidden = true; };
+
+    for (const hit of svg.querySelectorAll<SVGRectElement>(".hit")) {
+      hit.addEventListener("pointerenter", () => show(hit));
+      hit.addEventListener("pointermove", () => show(hit));
+    }
+    svg.addEventListener("pointerleave", hide);
+  }
+</script>

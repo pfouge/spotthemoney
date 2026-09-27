@@ -1,0 +1,20 @@
+{
+  "name": "@stm/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "ibonds": "tsx src/sources/ibonds.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stm/shared": "*",
+    "postgres": "^3.4.4"
+  },
+  "devDependencies": {
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  }
+}

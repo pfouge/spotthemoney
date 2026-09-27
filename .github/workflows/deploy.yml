@@ -1,0 +1,91 @@
+# Build the Astro site from the database and deploy it to Cloudflare Workers (static assets).
+#
+# One deploy path only (decided 2026-09-06): this workflow. Cloudflare's git-connected
+# Workers Builds is deliberately NOT enabled for this repo, so nothing races it.
+# Runs on: push to main, manual dispatch, and as the last stage of ingest.yml (workflow_call)
+# so fresh data goes live in the same run that fetched it.
+#
+# Lessons baked in (docs/reference/learnings-nsnexplorer.md):
+#   - `set -o pipefail` before any piped step — a masked build failure once shipped a broken
+#     site for weeks on a sibling project.
+#   - Migrations run before the build so the schema always exists when pages read it.
+#   - DATABASE_URL is the Supabase SESSION pooler string (port 5432), never the Transaction
+#     pooler (6543) — db/migrate.mjs refuses the latter.
+#   - The deploy is verified by fetching the live site, not by wrangler's exit code.
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "shared/**"
+      - "db/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+  workflow_call:
+    secrets:
+      DATABASE_URL:
+        required: true
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PUBLIC_SITE_URL: https://spotthemoney.com
+      PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
+      PUBLIC_AD_CLIENT: ${{ vars.PUBLIC_AD_CLIENT }}
+      ASTRO_TELEMETRY_DISABLED: "1"
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+
+      - name: Apply migrations
+        run: node db/migrate.mjs
+
+      - name: Build site from the database
+        run: |
+          set -o pipefail
+          npm run build --workspace=@stm/web 2>&1 | tee build.log
+          test -f web/dist/client/wrangler.json
+
+      - name: Deploy to Cloudflare Workers
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config dist/client/wrangler.json
+
+      - name: Verify the live site
+        run: |
+          set -o pipefail
+          sleep 15
+          url="${PUBLIC_SITE_URL}/rates/i-bonds/?v=${GITHUB_SHA}"
+          if curl -fsSL "$url" | grep -q "I-Bond Rate Today"; then
+            echo "✓ live: $url"
+          else
+            echo "✗ live check failed for $url"; exit 1
+          fi

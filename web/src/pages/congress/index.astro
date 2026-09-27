@@ -1,0 +1,93 @@
+---
+// Congress hub: newest STOCK Act disclosures, most active members, late filers, most-traded tickers.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import ReviewNote from "../../components/ReviewNote.astro";
+import TxnTable from "../../components/TxnTable.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, withinDays, num, plural, personPath, securityPath, roleLabel, avg, isLate, CONGRESS_DEADLINE_DAYS } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+
+const model = await getFlagship();
+const all = model.txns.filter((t) => t.source !== "sec_form4");
+const members = [...model.people.values()].filter((p) => p.isCongress);
+const withRows = members.filter((p) => p.txns.length > 0);
+const month = all.filter((t) => withinDays(t.disclosedAt, 30));
+const year = new Date().getUTCFullYear();
+const mostActive = [...withRows].sort((a, b) => b.txns.filter((t) => withinDays(t.disclosedAt, 365)).length - a.txns.filter((t) => withinDays(t.disclosedAt, 365)).length).slice(0, 25);
+const lateBoard = withRows.map((p) => ({ p, late: p.txns.filter(isLate).length, avgLag: avg(p.txns.map((t) => t.lagDays)) })).filter((x) => x.late > 0).sort((a, b) => b.late - a.late).slice(0, 25);
+const tickerCounts = new Map<number, { buys: number; sells: number; members: Set<number | null> }>();
+for (const t of all.filter((x) => x.securityId != null && withinDays(x.disclosedAt, 365))) {
+  const e = tickerCounts.get(t.securityId!) ?? { buys: 0, sells: 0, members: new Set() };
+  if (t.side === "buy") e.buys++; if (t.side === "sell") e.sells++; e.members.add(t.personId); tickerCounts.set(t.securityId!, e);
+}
+const mostTraded = [...tickerCounts.entries()].map(([sid, e]) => ({ s: model.securities.get(sid)!, ...e })).sort((a, b) => b.members.size - a.members.size || (b.buys + b.sells) - (a.buys + a.sells)).slice(0, 25);
+const underReview = all.some((t) => !t.isPublished);
+const lastUpdated = all[0]?.filedAt ?? model.builtAt;
+const pendingOcr = [...model.filings.values()].filter((f) => f.source !== "sec_form4" && f.txnCount === 0).length;
+const avgLagAll = avg(all.map((t) => t.lagDays));
+const answer = all.length === 0
+  ? `No congressional trades have met the publishing bar yet. House periodic transaction reports are parsed daily from the Clerk's disclosures; Senate reports are pending a separate decision. ${plural(members.length, "member")} and ${plural(model.filings.size - model.txns.filter((t) => t.source === "sec_form4").length, "filing")} are on record so far.`
+  : `${plural(withRows.length, "member")} of Congress have ${plural(all.length, "disclosed trade")} on record, ${num(month.length)} of them disclosed in the last 30 days. The average filing came ${avgLagAll == null ? "—" : Math.round(avgLagAll)} days after the trade against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline, and ${plural(all.filter(isLate).length, "trade was", "trades were")} filed late. House filings only until the Senate feed is live.`;
+const description = "Newest STOCK Act stock trade disclosures by members of Congress, the most active traders, late filers against the 45-day deadline, and the most-traded tickers — with a link to every filing.";
+const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act PTRs)", path: "/congress/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["congress stock trades", "STOCK Act", "periodic transaction report", "late filers"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
+---
+<BaseLayout title={`Congress stock trades ${year} — newest STOCK Act disclosures, late filers | Spot the Money`} description={description} section="Congress">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }]} />
+  <p class="eyebrow">Follow the Money <span class="x">/</span> Congress</p>
+  <h1>Congressional stock trades</h1>
+  <p class="lede">Periodic transaction reports as filed, with the days-to-report on every row and a link to the original document.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote="Source: House Clerk PTRs (Senate pending)" />
+  <ReviewNote show={underReview} what="Congressional rows" />
+  {pendingOcr > 0 && <p class="note">{plural(pendingOcr, "filing is", "filings are")} scanned PDFs awaiting human review and show no rows yet.</p>}
+
+  <nav class="feeds" aria-label="Sections">
+    <a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
+  </nav>
+
+  <h2 id="newest">Newest disclosures</h2>
+  <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet — the daily congress-ptr job fills this table." />
+
+  <AdSlot label="Advertisement" />
+
+  <h2 id="most-active">Most active traders (12 months)</h2>
+  {mostActive.length === 0 ? <p class="empty-reason">No member has approved trades in the last 12 months yet.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Member</th><th>Seat</th><th class="num">Trades (12m)</th><th class="num">Avg. days to report</th><th>Last filed</th></tr></thead><tbody>
+      {mostActive.map((p) => { const pp = personPath(p); const y = p.txns.filter((t) => withinDays(t.disclosedAt, 365)); return (
+        <tr><td>{pp ? <a href={pp}>{p.name}</a> : p.name}</td><td>{roleLabel(p, model.companies)}</td><td class="num">{num(y.length)}</td><td class="num">{avg(y.map((t) => t.lagDays))?.toFixed(0) ?? "—"}</td><td class="mono">{formatDate(p.lastFiledAt)}</td></tr>
+      ); })}
+    </tbody></table></div>
+  )}
+
+  <h2 id="late-filers">Late filers</h2>
+  {lateBoard.length === 0 ? <p class="empty-reason">No trade on record was disclosed more than {CONGRESS_DEADLINE_DAYS} days after the transaction.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Member</th><th>Seat</th><th class="num">Late trades</th><th class="num">Avg. days to report</th></tr></thead><tbody>
+      {lateBoard.map(({ p, late, avgLag }) => { const pp = personPath(p); return (
+        <tr><td>{pp ? <a href={pp}>{p.name}</a> : p.name}</td><td>{roleLabel(p, model.companies)}</td><td class="num neg">{num(late)}</td><td class="num">{avgLag?.toFixed(0) ?? "—"}</td></tr>
+      ); })}
+    </tbody></table></div>
+  )}
+
+  <h2 id="most-traded">Most-traded tickers (12 months)</h2>
+  {mostTraded.length === 0 ? <p class="empty-reason">No ticker-bearing trades in the last 12 months yet.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Ticker</th><th class="num">Members</th><th class="num">Buys</th><th class="num">Sales</th></tr></thead><tbody>
+      {mostTraded.map((r) => <tr><td class="mono"><a href={securityPath(r.s)}>{r.s.ticker}</a></td><td class="num">{r.members.size}</td><td class="num pos">{r.buys}</td><td class="num neg">{r.sells}</td></tr>)}
+    </tbody></table></div>
+  )}
+
+  <h2 id="members">All members on record</h2>
+  {members.length === 0 ? <p class="empty-reason">No members on record yet.</p> : (
+    <ul class="cols">
+      {members.sort((a, b) => a.name.localeCompare(b.name)).map((p) => { const pp = personPath(p); return <li>{pp ? <a href={pp}>{p.name}</a> : p.name} <span class="soft">{plural(p.txns.length, "trade")}</span></li>; })}
+    </ul>
+  )}
+
+  <h2>How to read this</h2>
+  <p>Members report ranges, not amounts, and have {CONGRESS_DEADLINE_DAYS} days to file after a trade. "Late" means the notification date on the filing is more than {CONGRESS_DEADLINE_DAYS} days after the transaction date. Owner shows whether a holding is the member's own, a spouse's, a dependent's, or joint. See <a href="/methodology/">methodology</a>.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

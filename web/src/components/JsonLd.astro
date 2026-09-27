@@ -1,0 +1,8 @@
+---
+// Emits one JSON-LD block. `data` may be a single object or an array of objects.
+// Rendered in the body (valid for JSON-LD); "<" is escaped so a value can never close the tag.
+interface Props { data: unknown }
+const { data } = Astro.props;
+const json = JSON.stringify(data).replace(/</g, "\\u003c");
+---
+<script type="application/ld+json" set:html={json}></script>

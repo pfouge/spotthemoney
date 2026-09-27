@@ -1,0 +1,68 @@
+---
+// /lobbying/ — Senate LDA filings: top clients and registrants this year, newest filings.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, num, plural, money, sum, normalizeOrgName, companyPath } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+
+const model = await getFlagship();
+const year = new Date().getUTCFullYear();
+const ytd = model.lobbying.filter((l) => l.year === year);
+const agg = (key: (l: (typeof ytd)[number]) => string | null) => {
+  const m = new Map<string, { name: string; total: number; count: number }>();
+  for (const l of ytd) { const k = key(l); if (!k) continue; const e = m.get(k) ?? { name: k, total: 0, count: 0 }; e.total += l.amount ?? 0; e.count++; m.set(k, e); }
+  return [...m.values()].sort((a, b) => b.total - a.total);
+};
+const topClients = agg((l) => l.client).slice(0, 50);
+const topRegistrants = agg((l) => l.registrant).slice(0, 50);
+const byName = new Map([...model.companies.values()].map((c) => [normalizeOrgName(c.name), c]));
+const total = sum(ytd.map((l) => l.amount));
+const answer = model.lobbying.length === 0
+  ? "No lobbying filings are on record yet; the daily senate_lda job loads the last two years of Senate LDA filings."
+  : `${plural(ytd.length, "lobbying filing")} in ${year} report ${money(total)} in lobbying income across ${plural(topClients.length >= 50 ? agg((l) => l.client).length : topClients.length, "client")}. The biggest client so far is ${topClients[0]?.name ?? "—"} (${money(topClients[0]?.total ?? 0)}); the biggest registrant is ${topRegistrants[0]?.name ?? "—"} (${money(topRegistrants[0]?.total ?? 0)}).`;
+const description = `Senate Lobbying Disclosure Act filings for ${year}: the biggest clients and lobbying firms by reported income, and the newest filings, each linked to the Senate record.`;
+const ld = datasetLd({ name: "Federal lobbying filings (Senate LDA)", path: "/lobbying/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["lobbying", "LDA", "Senate", "registrants", "clients"], sources: [SOURCES.lda], parentCatalogPath: "/washington/" });
+---
+<BaseLayout title={`Lobbying ${year} — top clients, registrants and newest LDA filings | Spot the Money`} description={description} section="Washington · Lobbying">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Lobbying", path: "/lobbying/" }]} />
+  <p class="eyebrow">Washington <span class="x">/</span> Lobbying</p>
+  <h1>Federal lobbying</h1>
+  <p class="lede">Quarterly LDA filings as submitted to the Senate: who paid, who was paid, and for what.</p>
+  <Answer text={answer} updated={model.lobbying[0]?.createdAt ?? model.builtAt} sourceNote="Source: Senate Office of Public Records (LDA)" />
+
+  <div class="two-col">
+    <div>
+      <h2>Top clients ({year})</h2>
+      {topClients.length === 0 ? <p class="empty-reason">No {year} filings on record yet.</p> : (
+        <div class="tablewrap"><table class="data"><thead><tr><th>Client</th><th class="num">Reported</th><th class="num">Filings</th></tr></thead><tbody>
+          {topClients.map((r) => { const c = byName.get(normalizeOrgName(r.name)); const cp = c ? companyPath(c) : null; return <tr><td>{cp ? <a href={cp}>{r.name}</a> : r.name}</td><td class="num">{money(r.total)}</td><td class="num">{num(r.count)}</td></tr>; })}
+        </tbody></table></div>
+      )}
+    </div>
+    <div>
+      <h2>Top registrants ({year})</h2>
+      {topRegistrants.length === 0 ? <p class="empty-reason">No {year} filings on record yet.</p> : (
+        <div class="tablewrap"><table class="data"><thead><tr><th>Registrant</th><th class="num">Reported</th><th class="num">Filings</th></tr></thead><tbody>
+          {topRegistrants.map((r) => <tr><td>{r.name}</td><td class="num">{money(r.total)}</td><td class="num">{num(r.count)}</td></tr>)}
+        </tbody></table></div>
+      )}
+    </div>
+  </div>
+
+  <AdSlot label="Advertisement" />
+
+  <h2>Newest filings</h2>
+  {model.lobbying.length === 0 ? <p class="empty-reason">No filings on record yet.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Period</th><th>Type</th><th>Registrant</th><th>Client</th><th>Primary issue</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
+      {[...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100).map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? "—"}</td><td>{l.registrant ?? "—"}</td><td>{l.client ?? "—"}</td><td>{l.issueArea ?? "—"}</td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>)}
+    </tbody></table></div>
+  )}
+
+  <h2>How to read this</h2>
+  <p>Amounts are the income (or, for in-house lobbyists, expenses) a registrant reports for the quarter, rounded as filed; "primary issue" is the first issue code on the filing and the full list is on the Senate record. See <a href="/methodology/">methodology</a>.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

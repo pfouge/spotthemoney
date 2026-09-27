@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FinancialDisclosure>
+  <Member>
+    <Prefix>Hon.</Prefix>
+    <Last>Green</Last>
+    <First>Mark</First>
+    <Suffix />
+    <FilingType>P</FilingType>
+    <StateDst>TN07</StateDst>
+    <Year>2021</Year>
+    <FilingDate>4/15/2021</FilingDate>
+    <DocID>20018586</DocID>
+  </Member>
+  <Member>
+    <Prefix>Hon.</Prefix>
+    <Last>Pelosi</Last>
+    <First>Nancy</First>
+    <Suffix />
+    <FilingType>P</FilingType>
+    <StateDst>CA11</StateDst>
+    <Year>2021</Year>
+    <FilingDate>5/24/2021</FilingDate>
+    <DocID>20020106</DocID>
+  </Member>
+  <Member>
+    <Prefix>Hon.</Prefix>
+    <Last>Doe</Last>
+    <First>John</First>
+    <Suffix>Jr.</Suffix>
+    <FilingType>O</FilingType>
+    <StateDst>NY01</StateDst>
+    <Year>2021</Year>
+    <FilingDate>5/15/2021</FilingDate>
+    <DocID>10041234</DocID>
+  </Member>
+</FinancialDisclosure>

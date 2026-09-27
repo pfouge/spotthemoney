@@ -1,0 +1,41 @@
+---
+// /washington/ — hub for the money-in-politics sources: donations (FEC), lobbying (LDA),
+// federal contracts (USAspending). Each has its own collection page.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, num, plural, money, sum } from "../../lib/flagship";
+import { dataCatalogLd } from "../../lib/seo";
+
+const model = await getFlagship();
+const contracts180 = sum(model.contracts.map((c) => c.amount));
+const year = new Date().getUTCFullYear();
+const lobbyingYtd = sum(model.lobbying.filter((l) => l.year === year).map((l) => l.amount));
+const donations90 = sum(model.committees.map((c) => c.total));
+const answer = `Three official feeds, one place: ${plural(model.contracts.length, "federal award action")} worth ${money(contracts180)} in the last 180 days (USAspending), ${plural(model.lobbying.filter((l) => l.year === year).length, "lobbying filing")} reporting ${money(lobbyingYtd)} in ${year} (Senate LDA), and ${money(donations90)} in itemized contributions to ${plural(model.committees.filter((c) => c.count > 0).length, "tracked committee")} in the last 90 days (FEC).`;
+const description = "Money in Washington from official sources: FEC campaign donations, Senate lobbying disclosures and USAspending federal contracts, cross-linked to the companies and people in the market data.";
+const cards = [
+  { path: "/donations/", title: "Donations", body: "Itemized contributions to the campaign committees of every member of Congress and the 200 largest PACs, aggregated by committee, employer and state.", n: model.counts.committees ?? 0, unit: "committees with receipts (90d)" },
+  { path: "/lobbying/", title: "Lobbying", body: "Every Senate LDA filing for the last two years: registrants, clients, issues and reported income.", n: model.lobbying.length, unit: "filings on record" },
+  { path: "/contracts/", title: "Federal contracts", body: "Award actions from USAspending in the last 180 days: recipient, agency, amount, NAICS, with a link to each award.", n: model.contracts.length, unit: "award actions (180d)" },
+];
+---
+<BaseLayout title="Washington — donations, lobbying and federal contracts | Spot the Money" description={description} section="Washington">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }]} />
+  <p class="eyebrow">Follow the Money <span class="x">/</span> Washington</p>
+  <h1>Money in Washington</h1>
+  <p class="lede">Who gives, who lobbies, who gets paid — as filed with the FEC, the Senate and Treasury.</p>
+  <Answer text={answer} updated={model.builtAt} sourceNote="Sources: FEC; Senate LDA; USAspending" />
+  <div class="grid">
+    {cards.map((c) => (
+      <a class="card" href={c.path}>
+        <h3>{c.title} →</h3>
+        <p>{c.body}</p>
+        <p class="mono soft">{num(c.n)} {c.unit}</p>
+      </a>
+    ))}
+  </div>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no inference of wrongdoing is made or implied by any figure on these pages.</p>
+  <JsonLd data={dataCatalogLd({ path: "/washington/", name: "Money in Washington", description, datasets: cards.map((c) => ({ name: c.title, path: c.path })) })} />
+</BaseLayout>

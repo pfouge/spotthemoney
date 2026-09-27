@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.astro/
+.output/
+.wrangler/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+coverage/
+.vercel/
+.cloudflare/
+# Office/OneDrive lock files
+~$*
+__pycache__/
+*.pyc
+ingest/out/
+
+# Private docs repo lives nested at docs/ (own .git); the public site repo never tracks it.
+/docs/
+/*-prompt.md

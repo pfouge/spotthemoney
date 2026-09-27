@@ -1,0 +1,62 @@
+---
+// /donations/ — FEC Schedule A, aggregated. Individual donor names are withheld at launch
+// (roadmap C.4: pending counsel's review of what the regulator publishes); the page shows
+// committee totals and employer / state aggregates only. Draft — needs review.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, num, plural, money, sum } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+
+const model = await getFlagship();
+const committees = model.committees.filter((c) => c.count > 0);
+const total = sum(committees.map((c) => c.total));
+const answer = committees.length === 0
+  ? `No itemized contributions are on record yet. The committee universe (every member of Congress's principal committee plus the 200 largest PACs, about 735 committees) is seeded weekly and contributions for the last ${model.donationWindowDays} days follow on the daily run.`
+  : `${money(total)} in itemized contributions reached ${plural(committees.length, "tracked committee")} in the last ${model.donationWindowDays} days (${plural(sum(committees.map((c) => c.count)), "receipt")}). The largest recipient was ${committees[0]!.name} with ${money(committees[0]!.total)}. Donor names are withheld here; every figure links to the committee's own FEC page.`;
+const description = "Campaign contributions to the committees of every member of Congress and the largest PACs, aggregated by committee, employer and state from FEC filings.";
+const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC Schedule A)", path: "/donations/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["FEC", "campaign finance", "donations", "PAC"], sources: [SOURCES.fec], parentCatalogPath: "/washington/" });
+---
+<BaseLayout title="Campaign donations — FEC contributions by committee, employer and state | Spot the Money" description={description} section="Washington · Donations">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Donations", path: "/donations/" }]} />
+  <p class="eyebrow">Washington <span class="x">/</span> Donations</p>
+  <h1>Campaign donations</h1>
+  <p class="lede">Itemized receipts as reported to the FEC, aggregated. Draft presentation — donor names withheld pending review.</p>
+  <Answer text={answer} updated={committees[0]?.latest ?? model.builtAt} sourceNote="Source: FEC Schedule A (OpenFEC)" />
+
+  <h2>Committees by receipts ({model.donationWindowDays} days)</h2>
+  {committees.length === 0 ? <p class="empty-reason">No receipts in the window yet — needs the FEC_API_KEY secret and the first fec_committees + fec_schedule_a runs.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Committee</th><th>Type</th><th>Party</th><th class="num">Receipts</th><th class="num">Count</th><th>Latest</th><th>Source</th></tr></thead><tbody>
+      {committees.slice(0, 200).map((c) => <tr><td>{c.name}</td><td class="mono">{c.type ?? "—"}</td><td class="mono">{c.party ?? "—"}</td><td class="num strong">{money(c.total)}</td><td class="num">{num(c.count)}</td><td class="mono">{formatDate(c.latest)}</td><td>{c.fecId ? <a href={`https://www.fec.gov/data/committee/${c.fecId}/`} rel="noopener nofollow" target="_blank">FEC ↗</a> : "—"}</td></tr>)}
+    </tbody></table></div>
+  )}
+
+  <AdSlot label="Advertisement" />
+
+  <div class="two-col">
+    <div>
+      <h2>By donor employer</h2>
+      {model.donationsByEmployer.length === 0 ? <p class="empty-reason">No receipts in the window yet.</p> : (
+        <div class="tablewrap"><table class="data"><thead><tr><th>Employer (as stated by the donor)</th><th class="num">Total</th><th class="num">Receipts</th></tr></thead><tbody>
+          {model.donationsByEmployer.slice(0, 50).map((r) => <tr><td>{r.key}</td><td class="num">{money(r.total)}</td><td class="num">{num(r.count)}</td></tr>)}
+        </tbody></table></div>
+      )}
+    </div>
+    <div>
+      <h2>By donor state</h2>
+      {model.donationsByState.length === 0 ? <p class="empty-reason">No receipts in the window yet.</p> : (
+        <div class="tablewrap"><table class="data"><thead><tr><th>State</th><th class="num">Total</th><th class="num">Receipts</th></tr></thead><tbody>
+          {model.donationsByState.slice(0, 60).map((r) => <tr><td class="mono">{r.key}</td><td class="num">{money(r.total)}</td><td class="num">{num(r.count)}</td></tr>)}
+        </tbody></table></div>
+      )}
+    </div>
+  </div>
+
+  <h2>How to read this</h2>
+  <p>Only itemized contributions (those the committee must report individually, generally over $200 in a cycle) appear in Schedule A; small unitemized giving is not in the data. Employer and state are as the donor stated on the contribution. Names of individual donors are not shown on this site. See <a href="/methodology/">methodology</a>.</p>
+  <p class="disclaimer"><strong>Draft — needs review.</strong> Public FEC records shown as filed; no inference is made about any donor or committee.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

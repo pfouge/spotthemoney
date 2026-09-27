@@ -1,0 +1,55 @@
+---
+// /disclosures/ — the "newest disclosures" feed across every source (roadmap P1 step 5):
+// insider Form 4s, congressional PTRs, lobbying filings and contract awards, newest first.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import ReviewNote from "../../components/ReviewNote.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, num, plural, money, personPath, securityPath, sideLabel, amountLabel, withinDays } from "../../lib/flagship";
+import { datasetLd, edgarFilingUrl, SOURCES } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+
+const model = await getFlagship();
+interface Item { at: string; kind: string; who: string; whoHref: string | null; what: string; whatHref: string | null; amount: string; href: string | null; review: boolean }
+const items: Item[] = [];
+for (const t of model.txns.slice(0, 400)) {
+  const p = t.personId != null ? model.people.get(t.personId) : undefined;
+  const s = t.securityId != null ? model.securities.get(t.securityId) : undefined;
+  items.push({ at: t.disclosedAt ?? t.filedAt ?? "", kind: t.source === "sec_form4" ? "Insider" : "Congress", who: p?.name ?? "—", whoHref: p ? personPath(p) : null,
+    what: `${sideLabel(t)}${s ? ` ${s.ticker}` : t.assetType ? ` (${t.assetType})` : ""}`, whatHref: s ? securityPath(s) : null, amount: amountLabel(t),
+    href: t.source === "sec_form4" ? edgarFilingUrl(t.sourceUrl) : t.sourceUrl, review: !t.isPublished });
+}
+for (const l of [...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 150)) {
+  items.push({ at: l.createdAt.slice(0, 10), kind: "Lobbying", who: l.registrant ?? "—", whoHref: null, what: `for ${l.client ?? "—"}${l.issueArea ? ` · ${l.issueArea}` : ""}`, whatHref: null, amount: money(l.amount), href: l.sourceRef, review: false });
+}
+for (const c of [...model.contracts].sort((a, b) => (b.actionDate ?? "").localeCompare(a.actionDate ?? "")).slice(0, 150)) {
+  items.push({ at: c.actionDate ?? c.createdAt.slice(0, 10), kind: "Contract", who: c.recipient ?? "—", whoHref: null, what: `from ${c.agency ?? "—"}`, whatHref: null, amount: money(c.amount), href: c.sourceRef ? `https://www.usaspending.gov/award/${c.sourceRef}` : null, review: false });
+}
+items.sort((a, b) => b.at.localeCompare(a.at));
+const feed = items.slice(0, 300);
+const today = feed.filter((i) => withinDays(i.at, 1)).length;
+const week = feed.filter((i) => withinDays(i.at, 7)).length;
+const answer = feed.length === 0
+  ? "Nothing to show yet: the feed fills as the daily ingest jobs run (insiders, Congress, lobbying, contracts)."
+  : `${plural(week, "disclosure")} landed in the last 7 days across insiders, Congress, lobbying and contracts (${plural(today, "in the last day")}). The newest is a ${feed[0]!.kind.toLowerCase()} record from ${formatDate(feed[0]!.at)}.`;
+const description = "The newest public disclosures in one feed: insider Form 4 trades, congressional STOCK Act trades, lobbying filings and federal contract awards, updated daily with a link to each record.";
+const ld = datasetLd({ name: "Newest disclosures feed", path: "/disclosures/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["disclosures", "Form 4", "STOCK Act", "lobbying", "contracts"], sources: [SOURCES.edgar, SOURCES.house, SOURCES.lda, SOURCES.usaspending], parentCatalogPath: "/" });
+---
+<BaseLayout title="Newest disclosures — insiders, Congress, lobbying, contracts | Spot the Money" description={description} section="Newest">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Newest disclosures", path: "/disclosures/" }]} />
+  <p class="eyebrow">Follow the Money <span class="x">/</span> Newest</p>
+  <h1>Newest disclosures</h1>
+  <p class="lede">One stream, four official sources, newest first. Updated daily after each ingest run.</p>
+  <Answer text={answer} updated={feed[0]?.at ?? model.builtAt} sourceNote="Sources: SEC EDGAR; House Clerk; Senate LDA; USAspending" />
+  <ReviewNote show={feed.some((i) => i.review)} what="Some insider and congressional rows" />
+  {feed.length === 0 ? <p class="empty-reason">The feed is empty until the first ingest runs complete.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Date</th><th>Kind</th><th>Who</th><th>What</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
+      {feed.map((i) => <tr class={i.review ? "review" : undefined}><td class="mono">{formatDate(i.at)}</td><td><span class={`kind ${i.kind.toLowerCase()}`}>{i.kind}</span></td><td>{i.whoHref ? <a href={i.whoHref}>{i.who}</a> : i.who}</td><td>{i.whatHref ? <a href={i.whatHref}>{i.what}</a> : i.what}</td><td class="num">{i.amount}</td><td>{i.href ? <a href={i.href} rel="noopener nofollow" target="_blank">record ↗</a> : "—"}</td></tr>)}
+    </tbody></table></div>
+  )}
+  <AdSlot label="Advertisement" />
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; disclosures lag the underlying event and may be amended.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

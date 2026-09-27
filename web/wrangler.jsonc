@@ -1,0 +1,18 @@
+// Cloudflare Workers deployment for the Astro site (static assets + any on-demand routes).
+// @astrojs/cloudflare 14 reads this file and writes the final, build-specific config to
+// dist/client/wrangler.json (assets directory, plus the Worker entrypoint once any route
+// opts out of prerendering) — deploy with:
+//   npx wrangler deploy --config dist/client/wrangler.json      (from web/)
+// as .github/workflows/deploy.yml does. Runtime secrets (none while the site is fully static)
+// go in via `wrangler secret put`, never in this file. Docs: docs/01-architecture.md §3.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "spotthemoney",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "routes": [
+    { "pattern": "spotthemoney.com", "custom_domain": true },
+    { "pattern": "www.spotthemoney.com", "custom_domain": true }
+  ]
+}

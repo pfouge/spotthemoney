@@ -1,0 +1,14 @@
+---
+// The answer-first block (roadmap B.3): two plain-language sentences an answer engine can
+// quote, then the "last updated" stamp. Rendered ABOVE every table on entity pages.
+import { formatDate } from "../lib/format";
+interface Props { text: string; updated: string | null; sourceNote?: string }
+const { text, updated, sourceNote } = Astro.props;
+---
+<section class="answer" data-answer>
+  <p class="answer-text">{text}</p>
+  <p class="answer-meta">
+    <span>Last updated {updated ? formatDate(updated) : "—"}</span>
+    {sourceNote && <span> · {sourceNote}</span>}
+  </p>
+</section>

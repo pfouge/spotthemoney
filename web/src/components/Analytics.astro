@@ -1,0 +1,12 @@
+---
+// Cloudflare Web Analytics — privacy-friendly, no cookie banner needed.
+// Set PUBLIC_CF_ANALYTICS_TOKEN in the environment to enable; renders nothing otherwise.
+const token = import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN;
+---
+{token && (
+  <script
+    defer
+    src="https://static.cloudflareinsights.com/beacon.min.js"
+    data-cf-beacon={`{"token": "${token}"}`}
+  ></script>
+)}

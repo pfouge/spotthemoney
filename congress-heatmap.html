@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spot the Money — Congressional Trades Heatmap (prototype)</title>
+<meta name="theme-color" content="#0A0B0C" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root{
+    --bg:#0A0B0C; --surface:#101214; --surface-alt:#15181B;
+    --ink:#F4F4F2; --ink-soft:#A6ADB3;
+    --line:rgba(244,244,242,.1); --line-strong:rgba(244,244,242,.22);
+    --signal:#2FC8EA; --signal-ink:#04141B; --signal-deep:#0C5C76;
+    --green:#4ADE80; --red:#E5484D;
+    --glow-signal:0 0 10px rgba(47,200,234,.55);
+    --r-sm:2px; --r-md:4px;
+    --display:"Space Grotesk","Inter",system-ui,sans-serif;
+    --sans:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono","Courier New",monospace;
+  }
+  body.light{
+    --bg:#F2F1EC; --surface:#FFFFFF; --surface-alt:#F6F5F0;
+    --ink:#0C0D0E; --ink-soft:#5B5F63;
+    --line:rgba(12,13,14,.12); --line-strong:rgba(12,13,14,.22);
+    --signal:#0C5C76; --signal-ink:#FFFFFF; --green:#15824B; --red:#C0392B;
+    --glow-signal:none;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1360px;margin:0 auto;padding:0 clamp(16px,3vw,32px)}
+  .mono{font-family:var(--mono)}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;height:54px;border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .word{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:-.02em}
+  .brand .word em{font-style:normal;color:var(--green)}
+  .brand .sub{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);border-left:1px solid var(--line);padding-left:10px}
+  .hud{display:flex;align-items:center;gap:16px}
+  .status{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+  .status .dot{width:7px;height:7px;border-radius:50%;background:var(--signal);box-shadow:var(--glow-signal)}
+  .status .on{color:var(--signal)}
+  .toggle{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);background:transparent;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:6px 10px;cursor:pointer}
+  .toggle:hover{color:var(--ink);border-color:var(--signal)}
+
+  .controls{display:flex;flex-wrap:wrap;align-items:center;gap:18px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .ctl{display:flex;align-items:center;gap:9px}
+  .ctl .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+  select{font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:6px 8px;cursor:pointer}
+  select:focus{outline:none;border-color:var(--signal)}
+  .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:var(--r-sm);overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink-soft);background:transparent;border:0;border-left:1px solid var(--line-strong);padding:6px 12px;cursor:pointer}
+  .seg button:first-child{border-left:0}
+  .seg button.on{background:var(--signal);color:var(--signal-ink)}
+
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+  .summary .cell{padding:11px 16px;border-left:1px solid var(--line)}
+  .summary .cell:first-child{border-left:0;padding-left:0}
+  .summary .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+  .summary .v{font-family:var(--mono);font-size:20px;font-weight:600;margin-top:4px}
+
+  .main{display:grid;grid-template-columns:1fr 304px;gap:16px;padding:16px 0}
+  #map{position:relative;width:100%;height:564px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+  .tile{position:absolute;overflow:hidden;border:1px solid var(--bg);cursor:default;padding:5px 6px}
+  .tile:hover{outline:2px solid var(--signal);outline-offset:-2px;z-index:3}
+  .tile .tk{font-family:var(--mono);font-weight:600;line-height:1.1}
+  .tile .amt{font-family:var(--mono);font-weight:400;opacity:.82;line-height:1.25}
+
+  .side{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);overflow:hidden;height:564px;display:flex;flex-direction:column}
+  .side h3{margin:0;padding:11px 13px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--line);font-weight:500}
+  .rows{overflow:auto}
+  .row{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:8px 13px;border-bottom:1px solid var(--line);font-size:13px}
+  .row .rk{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+  .row .tkr{font-family:var(--mono);font-weight:600}
+  .row .nm{color:var(--ink-soft);font-size:11px}
+  .row .val{font-family:var(--mono);font-size:12px;text-align:right}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+
+  .legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 0 0;font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+  .legend .sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:6px}
+  .foot{padding:14px 0 30px;color:var(--ink-soft);font-size:11.5px;line-height:1.6;border-top:1px solid var(--line);margin-top:16px}
+  .foot strong{color:var(--ink)}
+
+  #tip{position:fixed;pointer-events:none;z-index:50;background:var(--surface-alt);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:9px 11px;font-size:12px;max-width:250px;opacity:0;transition:opacity .08s}
+  #tip .t-tk{font-family:var(--mono);font-weight:600;font-size:13px}
+  #tip .t-row{display:flex;justify-content:space-between;gap:14px;margin-top:3px;color:var(--ink-soft)}
+  #tip .t-row b{font-family:var(--mono);color:var(--ink);font-weight:500}
+
+  body.light .controls{padding:9px 0}
+  body.light .summary .cell{padding:7px 14px}
+  body.light .row{padding:5px 13px}
+  body.light .side h3{padding:8px 13px}
+
+  @media(max-width:820px){ .main{grid-template-columns:1fr} .side{height:auto;max-height:340px} .summary{grid-template-columns:repeat(2,1fr)} .summary .cell:nth-child(3){border-left:0} .hud .status{display:none} }
+</style>
+</head>
+<body class="">
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 48 48" fill="none" style="color:var(--ink)">
+        <circle cx="24" cy="24" r="19" stroke="currentColor" stroke-width="3"/>
+        <circle cx="24" cy="24" r="11.5" stroke="currentColor" stroke-width="1.5" opacity=".45"/>
+        <line x1="24" y1="1.5" x2="24" y2="9.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <line x1="24" y1="38.5" x2="24" y2="46.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <line x1="1.5" y1="24" x2="9.5" y2="24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <line x1="38.5" y1="24" x2="46.5" y2="24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="24" cy="24" r="5.5" fill="#4ADE80"/>
+      </svg>
+      <span class="word">Spot the <em>Money</em></span>
+      <span class="sub">Congress · Heatmap</span>
+    </div>
+    <div class="hud">
+      <span class="status"><span class="dot"></span> <span>Signal</span> <span class="on">Live</span></span>
+      <span class="status">Sources · STOCK Act / Form 4</span>
+      <button class="toggle" id="themeBtn">Light</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctl"><span class="lbl">Class</span>
+      <select id="fClass">
+        <option value="all_congress">All Congress</option>
+        <option value="house">House</option>
+        <option value="senate">Senate</option>
+        <option value="dem">Democrats</option>
+        <option value="rep">Republicans</option>
+        <option value="insider">Corporate insiders</option>
+      </select>
+    </div>
+    <div class="ctl"><span class="lbl">Window</span>
+      <div class="seg" id="fWindow">
+        <button data-v="7">7D</button>
+        <button data-v="30" class="on">30D</button>
+        <button data-v="90">90D</button>
+        <button data-v="365">1Y</button>
+      </div>
+    </div>
+    <div class="ctl"><span class="lbl">View</span>
+      <div class="seg" id="fSide">
+        <button data-v="net" class="on">Net</button>
+        <button data-v="buy">Buying</button>
+        <button data-v="sell">Selling</button>
+      </div>
+    </div>
+    <div class="ctl"><span class="lbl">Size</span><span class="mono" style="font-size:12px;color:var(--ink)">$ traded</span></div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="main">
+    <div id="map"></div>
+    <div class="side">
+      <h3 id="sideTitle">Top tickers</h3>
+      <div class="rows" id="sideRows"></div>
+    </div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="foot">
+    <strong>Prototype — sample data.</strong> Traders and trades shown here are fictional placeholders to
+    demonstrate the visualization. The live version reads disclosed congressional trades (STOCK Act filings)
+    and SEC Form 4 insider filings. Tile size = total dollars traded in the window; color = net buying (green)
+    vs. selling (red). <strong>Not investment advice;</strong> disclosures may lag actual trades.
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const rnd=mulberry32(42);
+const wpick=(arr,wkey)=>{const tot=arr.reduce((s,x)=>s+x[wkey],0);let r=rnd()*tot;for(const x of arr){r-=x[wkey];if(r<=0)return x;}return arr[arr.length-1];};
+const TICKERS=[['NVDA','NVIDIA','Tech',10],['AAPL','Apple','Tech',9],['MSFT','Microsoft','Tech',9],['TSLA','Tesla','Auto',8],['AMZN','Amazon','Tech',7],['META','Meta','Tech',6],['GOOGL','Alphabet','Tech',6],['AMD','AMD','Tech',6],['PLTR','Palantir','Defense',6],['JPM','JPMorgan','Financials',5],['XOM','Exxon Mobil','Energy',5],['LMT','Lockheed Martin','Defense',5],['BA','Boeing','Defense',4],['COIN','Coinbase','Financials',4],['PFE','Pfizer','Health',4],['NFLX','Netflix','Tech',4],['DIS','Disney','Media',4],['CVX','Chevron','Energy',4],['GE','GE Aerospace','Defense',3],['UNH','UnitedHealth','Health',3],['CRM','Salesforce','Tech',3],['WMT','Walmart','Retail',3],['COST','Costco','Retail',3],['INTC','Intel','Tech',3],['V','Visa','Financials',3],['NKE','Nike','Retail',2]].map(r=>({t:r[0],n:r[1],s:r[2],pop:+r[3]}));
+const PEOPLE=[{name:'Rep. Morgan Hale',cls:'house',party:'D',w:9,bias:.62},{name:'Sen. Dale Whitfield',cls:'senate',party:'R',w:8,bias:.7},{name:'Rep. Cassidy Boone',cls:'house',party:'R',w:8,bias:.55},{name:'Sen. Priya Nandakumar',cls:'senate',party:'D',w:7,bias:.6},{name:'Rep. Travis Ocampo',cls:'house',party:'R',w:6,bias:.5},{name:'Rep. Elaine Fenwick',cls:'house',party:'D',w:6,bias:.66},{name:'Sen. Curtis Abernathy',cls:'senate',party:'R',w:6,bias:.45},{name:'Rep. Yusuf Mendel',cls:'house',party:'D',w:5,bias:.58},{name:'Sen. Lorraine Pike',cls:'senate',party:'D',w:5,bias:.64},{name:'Rep. Hank Delgado',cls:'house',party:'R',w:5,bias:.4},{name:'Insider: NVDA officer',cls:'insider',party:'',w:6,bias:.3},{name:'Insider: TSLA director',cls:'insider',party:'',w:5,bias:.25},{name:'Insider: JPM officer',cls:'insider',party:'',w:4,bias:.5},{name:'Insider: XOM director',cls:'insider',party:'',w:4,bias:.45},{name:'Insider: PLTR officer',cls:'insider',party:'',w:4,bias:.2}];
+const RANGES=[[1001,15000,40],[15001,50000,30],[50001,100000,16],[100001,250000,9],[250001,500000,4],[500001,1000000,2],[1000001,5000000,1]];
+const TRADES=[];
+for(let i=0;i<320;i++){const p=wpick(PEOPLE,'w');const tk=wpick(TICKERS,'pop');const side=rnd()<p.bias?'buy':'sell';const rg=wpick(RANGES.map(r=>({lo:r[0],hi:r[1],w:r[2]})),'w');const amt=Math.round(rg.lo+rnd()*(rg.hi-rg.lo));const daysAgo=Math.min(365,Math.floor(-Math.log(1-rnd())*55)+Math.floor(rnd()*6));TRADES.push({ticker:tk.t,name:tk.n,sector:tk.s,person:p.name,cls:p.cls,party:p.party,side,amt,daysAgo});}
+
+const fmtUSD=v=>{const a=Math.abs(v);if(a>=1e6)return '$'+(v/1e6).toFixed(a>=1e7?0:1)+'M';if(a>=1e3)return '$'+Math.round(v/1e3)+'K';return '$'+Math.round(v);};
+const lerp=(a,b,t)=>d3.interpolateRgb(a,b)(Math.max(0,Math.min(1,t)));
+const loG='#163D2B',hiG='#4ADE80',loR='#3A1A1C',hiR='#F0564B';
+function lum(hex){const c=d3.color(hex).rgb();const f=x=>{x/=255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4);};return .2126*f(c.r)+.7152*f(c.g)+.0722*f(c.b);}
+const txtOn=hex=>lum(hex)>0.45?'#0A0B0C':'#F4F4F2';
+
+const state={cls:'all_congress',window:30,side:'net'};
+function classMatch(t){switch(state.cls){case 'all_congress':return t.cls==='house'||t.cls==='senate';case 'house':return t.cls==='house';case 'senate':return t.cls==='senate';case 'dem':return (t.cls==='house'||t.cls==='senate')&&t.party==='D';case 'rep':return (t.cls==='house'||t.cls==='senate')&&t.party==='R';case 'insider':return t.cls==='insider';}}
+function aggregate(){
+  const m=new Map();
+  for(const t of TRADES){
+    if(t.daysAgo>state.window) continue;
+    if(!classMatch(t)) continue;
+    let o=m.get(t.ticker); if(!o){o={ticker:t.ticker,name:t.name,sector:t.sector,buy:0,sell:0,trades:0,people:new Map()};m.set(t.ticker,o);}
+    o[t.side]+=t.amt; o.trades++;
+    o.people.set(t.person,(o.people.get(t.person)||0)+t.amt);
+  }
+  const nodes=[];
+  for(const o of m.values()){
+    const net=o.buy-o.sell, total=o.buy+o.sell;
+    let value = state.side==='buy'?o.buy : state.side==='sell'?o.sell : total;
+    if(value<=0) continue;
+    const top=[...o.people.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3);
+    nodes.push({...o,net,total,value,top});
+  }
+  return nodes;
+}
+let maxVal=1;
+function colorFor(d){
+  if(state.side==='buy') return lerp(loG,hiG,0.2+0.8*(d.value/maxVal));
+  if(state.side==='sell') return lerp(loR,hiR,0.2+0.8*(d.value/maxVal));
+  const ratio=d.total? d.net/d.total : 0; const t=0.28+0.72*Math.abs(ratio);
+  return ratio>=0? lerp(loG,hiG,t) : lerp(loR,hiR,t);
+}
+
+const mapEl=document.getElementById('map');
+const tip=document.getElementById('tip');
+function render(){
+  const nodes=aggregate();
+  maxVal=d3.max(nodes,d=>d.value)||1;
+  const W=mapEl.clientWidth, H=mapEl.clientHeight;
+  const root=d3.hierarchy({children:nodes}).sum(d=>d.value).sort((a,b)=>b.value-a.value);
+  d3.treemap().size([W,H]).paddingInner(2).round(true)(root);
+  mapEl.innerHTML='';
+  for(const leaf of root.leaves()){
+    const d=leaf.data, w=leaf.x1-leaf.x0, h=leaf.y1-leaf.y0;
+    if(w<2||h<2) continue;
+    const fill=colorFor(d), col=txtOn(fill);
+    const el=document.createElement('div');
+    el.className='tile';
+    el.style.cssText=`left:${leaf.x0}px;top:${leaf.y0}px;width:${w}px;height:${h}px;background:${fill};color:${col}`;
+    let html='';
+    if(w>34&&h>20){ const fs=Math.max(10,Math.min(18,Math.sqrt(w*h)/9)); html+=`<div class="tk" style="font-size:${fs}px">${d.ticker}</div>`; }
+    if(w>54&&h>42){ html+=`<div class="amt" style="font-size:${Math.max(9,Math.min(12,w/9))}px">${fmtUSD(d.value)}</div>`; }
+    el.innerHTML=html;
+    el.addEventListener('mousemove',e=>showTip(e,d));
+    el.addEventListener('mouseleave',()=>{tip.style.opacity=0;});
+    mapEl.appendChild(el);
+  }
+  renderSummary(nodes); renderSide(nodes); renderLegend();
+}
+function showTip(e,d){
+  const dir=d.net>=0?'pos':'neg', arrow=d.net>=0?'▲':'▼';
+  tip.innerHTML=`<div class="t-tk">${d.ticker} <span style="color:var(--ink-soft);font-weight:400">${d.name}</span></div>`+
+    `<div class="t-row"><span>Buys</span><b class="pos">${fmtUSD(d.buy)}</b></div>`+
+    `<div class="t-row"><span>Sells</span><b class="neg">${fmtUSD(d.sell)}</b></div>`+
+    `<div class="t-row"><span>Net</span><b class="${dir}">${arrow} ${fmtUSD(Math.abs(d.net))}</b></div>`+
+    `<div class="t-row"><span>Disclosures</span><b>${d.trades}</b></div>`+
+    `<div class="t-row" style="margin-top:5px;border-top:1px solid var(--line);padding-top:5px"><span>Top: ${d.top.map(t=>t[0].replace('Rep. ','').replace('Sen. ','')).slice(0,2).join(', ')}</span></div>`;
+  tip.style.opacity=1;
+  let x=e.clientX+14, y=e.clientY+14;
+  if(x+255>innerWidth) x=e.clientX-255; if(y+150>innerHeight) y=e.clientY-150;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function renderSummary(nodes){
+  const buy=d3.sum(nodes,d=>d.buy), sell=d3.sum(nodes,d=>d.sell), trades=d3.sum(nodes,d=>d.trades), net=buy-sell;
+  const cells=[['Total traded',fmtUSD(buy+sell)],['Disclosures',trades.toLocaleString()],['Tickers',nodes.length],['Net flow',(net>=0?'▲ ':'▼ ')+fmtUSD(Math.abs(net))]];
+  document.getElementById('summary').innerHTML=cells.map((c,i)=>`<div class="cell"><div class="k">${c[0]}</div><div class="v" style="${i===3?('color:'+(net>=0?'var(--green)':'var(--red)')):''}">${c[1]}</div></div>`).join('');
+}
+function renderSide(nodes){
+  const sorted=[...nodes].sort((a,b)=>b.value-a.value).slice(0,14);
+  document.getElementById('sideTitle').textContent = state.side==='buy'?'Most bought':state.side==='sell'?'Most sold':'Most traded';
+  document.getElementById('sideRows').innerHTML=sorted.map((d,i)=>{
+    const cls=d.net>=0?'pos':'neg', arrow=d.net>=0?'▲':'▼';
+    const right = state.side==='net' ? `<span class="${cls}">${arrow} ${fmtUSD(Math.abs(d.net))}</span>` : fmtUSD(d.value);
+    return `<div class="row"><span class="rk">${i+1}</span><span><span class="tkr">${d.ticker}</span> <span class="nm">${d.name}</span></span><span class="val">${right}</span></div>`;
+  }).join('');
+}
+function renderLegend(){
+  const el=document.getElementById('legend');
+  if(state.side==='net'){
+    el.innerHTML=`<span><span class="sw" style="background:${hiG}"></span>Net buying</span><span><span class="sw" style="background:${hiR}"></span>Net selling</span><span>Tile size = $ traded · color intensity = how one-sided</span>`;
+  }else{
+    const c=state.side==='buy'?hiG:hiR, w=state.side==='buy'?'buying':'selling';
+    el.innerHTML=`<span><span class="sw" style="background:${c}"></span>${w} volume</span><span>Tile size &amp; color intensity = $ ${w}</span>`;
+  }
+}
+document.getElementById('fClass').addEventListener('change',e=>{state.cls=e.target.value;render();});
+document.querySelectorAll('#fWindow button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#fWindow button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.window=+b.dataset.v;render();}));
+document.querySelectorAll('#fSide button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('#fSide button').forEach(x=>x.classList.remove('on'));b.classList.add('on');state.side=b.dataset.v;render();}));
+const themeBtn=document.getElementById('themeBtn');
+themeBtn.addEventListener('click',()=>{document.body.classList.toggle('light');themeBtn.textContent=document.body.classList.contains('light')?'Dark':'Light';render();});
+let rt; addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,120);});
+render();
+</script>
+</body>
+</html>

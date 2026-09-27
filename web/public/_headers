@@ -1,0 +1,23 @@
+# Cloudflare static-asset headers. Same syntax as Pages; applies ONLY to static-asset
+# responses. On-demand (prerender = false) routes get the same security headers from
+# src/middleware.ts — keep the two lists in sync when either changes.
+#
+# Cache policy (nsnexplorer lesson): HTML revalidates at the edge within 2 minutes of a deploy,
+# so no manual cache purge is ever needed; fingerprinted /_astro/* assets are immutable.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cache-Control: public, max-age=0, s-maxage=120, must-revalidate
+
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/favicon.svg
+  Cache-Control: public, max-age=86400
+
+/mark.svg
+  Cache-Control: public, max-age=86400

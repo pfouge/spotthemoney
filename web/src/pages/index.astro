@@ -1,0 +1,131 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { getLatestIBondRate, getYieldCurve } from "../lib/db";
+import { getFlagship, withinDays, num } from "../lib/flagship";
+import { formatPercent } from "../lib/format";
+import { dataCatalogLd, SITE_URL } from "../lib/seo";
+
+// Headline figures for the data strip — live if the DB is connected, else placeholders.
+const ibond = await getLatestIBondRate();
+const ibondRate = ibond?.compositeRate != null ? formatPercent(ibond.compositeRate) : "—";
+const curve = await getYieldCurve();
+const tenY = curve?.tenors.find((t) => t.label === "10Y")?.latest ?? null;
+const tenYRate = tenY != null ? formatPercent(tenY) : "—";
+const model = await getFlagship();
+const insiderWeek = model.txns.filter((t) => t.source === "sec_form4" && withinDays(t.disclosedAt, 7)).length;
+const congressWeek = model.txns.filter((t) => t.source !== "sec_form4" && withinDays(t.disclosedAt, 7)).length;
+// "Soon" is gone: a section is Live when it has rows, otherwise it is shown as Ingesting — the
+// page exists either way and explains its own empty state.
+const insidersLive = (model.counts.insiderTxns ?? 0) > 0;
+const congressLive = (model.counts.congressTxns ?? 0) > 0;
+const washingtonLive = (model.counts.lobbying ?? 0) + (model.counts.contracts ?? 0) + (model.counts.committees ?? 0) > 0;
+const tagClass = (live: boolean) => (live ? "tag live" : "tag");
+const tagText = (live: boolean) => (live ? "Live" : "Ingesting");
+const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", description: "Free public U.S. financial and political disclosure data: Treasury rates, insider trades, congressional stock trades, donations, lobbying, federal contracts.", datasets: [
+  { name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "Treasury par yield curve", path: "/rates/treasury-yields/" }, { name: "TIPS real yield curve", path: "/rates/tips/" },
+  { name: "Corporate insider transactions (SEC Form 4)", path: "/insiders/" }, { name: "Congressional stock trade disclosures", path: "/congress/" },
+  { name: "Campaign contributions to tracked committees", path: "/donations/" }, { name: "Federal lobbying filings", path: "/lobbying/" }, { name: "Federal contract award actions", path: "/contracts/" }, { name: "Newest disclosures feed", path: "/disclosures/" },
+] });
+const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "See where the money really moves — in the markets and in Washington. Rendered clearly, updated constantly, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
+---
+<BaseLayout title="Spot the Money — see where the money really moves">
+  <section class="hero">
+    <p class="eyebrow">Markets <span class="x">&times;</span> Washington</p>
+    <h1>See where the money really moves.</h1>
+    <p class="lede">
+      Free public data from the markets and from Washington — rendered clearly, updated
+      constantly, and built to come back to.
+    </p>
+    <div class="btns">
+      <a class="btn btn-primary" href="/rates/i-bonds/">See the I-Bond rate &rarr;</a>
+      <a class="btn btn-ghost" href="/insiders/">Insider trades</a>
+      <a class="btn btn-ghost" href="/congress/">Congress trades</a>
+    </div>
+  </section>
+
+  <div class="datastrip">
+    <div class="cell">
+      <div class="k">I-Bond composite</div>
+      <div class="v pos">{ibondRate}</div>
+    </div>
+    <div class="cell">
+      <div class="k">10-year Treasury</div>
+      <div class="v pos">{tenYRate}</div>
+    </div>
+    <div class="cell">
+      <div class="k">Insider trades (7d)</div>
+      <div class="v">{insidersLive ? num(insiderWeek) : "ingesting"}</div>
+    </div>
+    <div class="cell">
+      <div class="k">Congress trades (7d)</div>
+      <div class="v">{congressLive ? num(congressWeek) : "ingesting"}</div>
+    </div>
+  </div>
+
+  <section class="index-list" aria-label="Products">
+    <a class="index-row" href="/rates/i-bonds/">
+      <div class="num">01</div>
+      <div>
+        <h3>I-Bonds <span class="tag live">Live</span></h3>
+        <p>The current composite rate, what is already known about the next reset, a value calculator, and how the rate is set — straight from the U.S. Treasury.</p>
+      </div>
+      <div class="go">&rarr;</div>
+    </a>
+    <a class="index-row" href="/rates/">
+      <div class="num">02</div>
+      <div>
+        <h3>Rates Hub <span class="tag live">Live</span></h3>
+        <p>I-Bonds, TIPS real yields, Treasury yields and the yield curve — the cleanest, fastest read on safe yield.</p>
+      </div>
+      <div class="go">&rarr;</div>
+    </a>
+    <a class="index-row" href="/insiders/">
+      <div class="num">03</div>
+      <div>
+        <h3>Insider trades <span class={tagClass(insidersLive)}>{tagText(insidersLive)}</span></h3>
+        <p>Every SEC Form 4 in the tracked set the day after it lands: cluster buys, CEO purchases, officer sales, and one page per insider, company and ticker.</p>
+      </div>
+      <div class="go">&rarr;</div>
+    </a>
+    <a class="index-row" href="/congress/">
+      <div class="num">04</div>
+      <div>
+        <h3>Congress trades <span class={tagClass(congressLive)}>{tagText(congressLive)}</span></h3>
+        <p>STOCK Act disclosures with the days-to-report on every row, late filers, most active members, and a link to each filing.</p>
+      </div>
+      <div class="go">&rarr;</div>
+    </a>
+    <a class="index-row" href="/washington/">
+      <div class="num">05</div>
+      <div>
+        <h3>Washington <span class={tagClass(washingtonLive)}>{tagText(washingtonLive)}</span></h3>
+        <p>Donations, lobbying and federal contracts from the FEC, the Senate and USAspending — cross-linked to the companies and people above.</p>
+      </div>
+      <div class="go">&rarr;</div>
+    </a>
+    <a class="index-row" href="/disclosures/">
+      <div class="num">06</div>
+      <div>
+        <h3>Newest disclosures <span class={tagClass(insidersLive || congressLive || washingtonLive)}>{tagText(insidersLive || congressLive || washingtonLive)}</span></h3>
+        <p>One feed across every source, newest first. Scoreboard and alerts follow.</p>
+      </div>
+      <div class="go">&rarr;</div>
+    </a>
+  </section>
+
+  <section class="manifesto">
+    <p class="eyebrow">Why we built this</p>
+    <h2>The data is public. The presentation never was.</h2>
+    <p>
+      Rates, filings, donations and contracts are all free and open — but they live in slow,
+      ugly official sources nobody wants to revisit. We render the same facts clearly, fast, and
+      on a check-in basis. Transparency and the scoreboard, never a recommendation.
+      How every number is made: <a href="/methodology/">methodology</a>.
+    </p>
+  </section>
+
+  <AdSlot label="Advertisement" />
+  <JsonLd data={[website, catalog]} />
+</BaseLayout>

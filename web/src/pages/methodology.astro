@@ -1,0 +1,66 @@
+---
+// /methodology/ — how every figure on the site is produced. Linked from every entity page,
+// the flags, the X thread and llms.txt. Sections are stable anchors (#sources, #lag, …).
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { getFlagship, CONGRESS_DEADLINE_DAYS, num } from "../lib/flagship";
+import { SITE_URL, SOURCES } from "../lib/seo";
+import { formatDate } from "../lib/format";
+
+const model = await getFlagship();
+const description = "How Spot the Money collects, filters and presents public disclosures: sources, update cadence, the publishing bar, disclosure-lag and late-filer rules, cluster-buy and flag definitions, and what the site never does.";
+const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/methodology/#page`, name: "Methodology", url: `${SITE_URL}/methodology/`, description, dateModified: model.builtAt.slice(0, 10), isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
+---
+<BaseLayout title="Methodology — how the numbers are made | Spot the Money" description={description} section="Methodology">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Methodology", path: "/methodology/" }]} />
+  <p class="eyebrow">About <span class="x">/</span> Methodology</p>
+  <h1>How the numbers are made</h1>
+  <p class="lede">Every figure on this site is a public record, shown as filed, with the rule that produced it written down here. Site built {formatDate(model.builtAt)}.</p>
+
+  <h2 id="sources">Sources and cadence</h2>
+  <p>We read only official primary sources, once a day, with a client that identifies this site and its contact address on every request and never exceeds one request every 1.5 seconds per host:</p>
+  <ul>
+    <li><a href={SOURCES.edgar.url}>SEC EDGAR</a> — Form 4 ownership filings (XML) for a tracked set of about 70 large or frequently traded U.S. tickers plus every ticker that appears in a congressional filing. Amendments (Form 4/A) are not merged into the original.</li>
+    <li><a href={SOURCES.house.url}>U.S. House Clerk</a> — periodic transaction reports (PTRs) as PDFs, parsed daily. Scanned PDFs without a text layer are held for human review and show no rows until then.</li>
+    <li><a href={SOURCES.senate.url}>U.S. Senate eFD</a> — periodic transaction reports. Not yet ingested; the Senate site requires browser-style access this site's crawler does not perform. Senate rows appear once that route is settled.</li>
+    <li><a href={SOURCES.fec.url}>FEC (OpenFEC)</a> — itemized contributions (Schedule A) to the principal campaign committee of every current member of Congress and the 200 largest PACs by receipts in the current cycle, last 90 days.</li>
+    <li><a href={SOURCES.lda.url}>Senate Lobbying Disclosure Act filings</a> — quarterly registrations and reports, last two years.</li>
+    <li><a href={SOURCES.usaspending.url}>USAspending</a> — contract award actions, last 180 days.</li>
+    <li><a href={SOURCES.treasury.url}>U.S. Treasury</a> — the daily par yield curve and the daily real (TIPS) yield curve; <a href={SOURCES.fiscaldata.url}>Treasury Fiscal Data</a> — I-Bond rates; <a href={SOURCES.bls.url}>BLS</a> — CPI-U, the input to the I-Bond variable rate.</li>
+  </ul>
+
+  <h2 id="publishing-bar">The publishing bar</h2>
+  <p>A row is shown only if its filing parsed cleanly (review approved, confidence at least 0.9). Rows from a source whose first sample has not yet been checked by an editor are shown with an "under review" note on the page and are excluded from the data feed and from the daily social thread until the check is complete. Nothing is inferred, filled in or estimated: a blank cell means the filing did not state it.</p>
+
+  <h2 id="lag">Disclosure lag and late filings</h2>
+  <p>Lag is the disclosure date minus the trade date, in calendar days. Members of Congress must file within {CONGRESS_DEADLINE_DAYS} days of a trade (STOCK Act); a row is marked late when the notification date on the filing is later than that. Corporate insiders must file Form 4 within two business days; a row is marked late when the filing date is more than four calendar days after the trade (a conservative rule that never marks a weekend or holiday as late).</p>
+
+  <h2 id="values">Values</h2>
+  <p>For Form 4 rows, value is shares × the price reported on the filing (a weighted average when the filing says so); rows with no price, such as grants or option exercises at zero, show no value and never count as buys or sales. Congressional filings report ranges, so those rows show the range as filed and any total uses the top of the range. Contract amounts are federal obligations on the action, which can be negative. Lobbying amounts are the income or expense reported for the quarter.</p>
+
+  <h2 id="flags">Flags and feeds</h2>
+  <ul>
+    <li><strong>Open-market buy</strong> — Form 4 transaction code P. This is the only code counted as a "buy" in ratios and feeds.</li>
+    <li><strong>Cluster buy</strong> — three or more distinct insiders with code-P purchases of the same ticker within 30 days.</li>
+    <li><strong>10b5-1 plan</strong> — the filer ticked the Rule 10b5-1 box on the Form 4 (available since April 2023).</li>
+    <li><strong>Owner</strong> — on congressional rows: the member, spouse, dependent child or joint, as filed.</li>
+    <li><strong>Late</strong> — see above. <strong>First filing</strong> — the first filing by that person in our records, which start with the launch of each source.</li>
+  </ul>
+
+  <h2 id="matching">Matching people and companies</h2>
+  <p>Insiders are identified by their SEC CIK. Members of Congress are matched by normalized name and chamber (the House index gives no stable id); a state and district come from the filing. Company pages match federal contracts and lobbying clients by exact normalized name (corporate suffixes ignored), which deliberately misses subsidiaries and alternate spellings rather than guess.</p>
+
+  <h2 id="social">The daily thread</h2>
+  <p>Once a day a scripted thread lists notable published filings — the largest by value, late filings, first filings, cluster buys — with a link to the page and to the source document. It contains facts and links only.</p>
+
+  <h2 id="never">What this site never does</h2>
+  <p>No buy or sell recommendations, no forward-looking scores, no trade execution or copy-trading, no inference of motive or wrongdoing from any filing. Historical performance, when shown, is computed only from disclosed trades against a stated benchmark and is not a prediction.</p>
+
+  <h2 id="corrections">Corrections</h2>
+  <p>Errors are fixed within five working days of a report; see <a href="/corrections/">the corrections page</a>.</p>
+
+  <h2 id="status">Data status</h2>
+  <p class="mono small">people {num(model.counts.people ?? 0)} · companies {num(model.counts.companies ?? 0)} · securities {num(model.counts.securities ?? 0)} · filings {num(model.counts.filings ?? 0)} · transactions {num(model.counts.txns ?? 0)} · lobbying {num(model.counts.lobbying ?? 0)} · contracts {num(model.counts.contracts ?? 0)} · built {model.builtAt}</p>
+  <JsonLd data={ld} />
+</BaseLayout>

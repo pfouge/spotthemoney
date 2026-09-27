@@ -1,0 +1,13 @@
+---
+// Shown on any page that renders rows from a source whose sample has not yet been
+// editorially approved (filings.is_published = false). Disappears automatically on the flip.
+interface Props { show: boolean; what?: string }
+const { show, what = "Some rows on this page" } = Astro.props;
+---
+{show && (
+  <p class="review-note" role="note">
+    <strong>Under review.</strong> {what} come from a source whose first sample is still being checked
+    by an editor. The figures are shown exactly as filed and may be corrected; see the
+    <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a> pages.
+  </p>
+)}

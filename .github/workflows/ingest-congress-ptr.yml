@@ -1,0 +1,56 @@
+# congress-ptr ingestion — Python job, per IIF↔spotthemoney integration contract §1.
+# congress-ptr is NOT ported to TypeScript (House-PDF/Senate-eFD parsing is hard-won:
+# multi-era registry, partial-sale fixes, Akamai TLS impersonation). This workflow runs
+# ingest/py/congress_ptr_job.py, which imports IIF's parser and writes to DATABASE_URL.
+#
+# SCAFFOLDED BUT BLOCKED: this job cannot succeed yet. load_iif_connector() in
+# congress_ptr_job.py raises NotImplementedError until Peter decides how CI gets the IIF
+# code (private repo checkout vs. pinned vendored copy — see ingest/py/README.md "Open
+# decision"). workflow_dispatch only until that decision is made AND Peter has approved
+# a sample of the job's output. See ingest/py/README.md for full context.
+
+name: Ingest — Congressional PTR (Python)
+
+on:
+  workflow_dispatch:
+    inputs:
+      window_days:
+        description: "Days back to pull filings for"
+        required: false
+        default: "7"
+
+  # TODO: enable after the IIF-code decision + Peter's sample approval.
+  # schedule:
+  #   - cron: "0 13 * * *"  # daily, matches cadence in sources.cadence for congress_ptr
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout spotthemoney.com
+        uses: actions/checkout@v4
+
+      # TODO(peter): checkout the IIF repo here once the code-availability decision is
+      # made (ingest/py/README.md "Open decision", option 1 — private repo + checkout).
+      # If option 2 (pinned vendored copy) is chosen instead, this step is not needed —
+      # the vendored code ships committed under ingest/py/vendor/ instead.
+      # - name: Checkout Investing Intelligence Foundation (congress-ptr plugin)
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: <org>/investing-intelligence-foundation
+      #     ssh-key: ${{ secrets.IIF_DEPLOY_KEY }}
+      #     path: iif
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install "psycopg[binary]" curl_cffi pdfplumber
+
+      - name: Run congress-ptr ingestion
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python ingest/py/congress_ptr_job.py --window-days "${{ github.event.inputs.window_days || '7' }}"

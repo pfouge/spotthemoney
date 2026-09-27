@@ -1,0 +1,10 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spot the Money mark">
+  <!-- Locator/coin: "spot the money" — a reticle finding a coin. Ring uses currentColor; center is money-green. -->
+  <circle cx="24" cy="24" r="19" stroke="currentColor" stroke-width="3"/>
+  <circle cx="24" cy="24" r="11.5" stroke="currentColor" stroke-width="1.5" opacity="0.45"/>
+  <line x1="24" y1="1.5" x2="24" y2="9.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <line x1="24" y1="38.5" x2="24" y2="46.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <line x1="1.5" y1="24" x2="9.5" y2="24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <line x1="38.5" y1="24" x2="46.5" y2="24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="24" cy="24" r="5.5" fill="#0E7C4D"/>
+</svg>

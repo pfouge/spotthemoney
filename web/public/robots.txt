@@ -1,0 +1,44 @@
+# spotthemoney.com — public data, meant to be read by people, search engines and AI crawlers.
+# Sitemap index below; site description for AI systems at /llms.txt.
+
+User-agent: *
+Allow: /
+
+# AI crawlers and answer engines: explicitly allowed (roadmap B.2).
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://spotthemoney.com/sitemap-index.xml

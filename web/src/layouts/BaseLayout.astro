@@ -1,0 +1,110 @@
+---
+import "../styles/global.css";
+import Analytics from "../components/Analytics.astro";
+import Mark from "../components/Mark.astro";
+
+interface Props { title: string; description?: string; section?: string; }
+const {
+  title,
+  description = "See where the money really moves — in the markets and in Washington. Rendered clearly, updated constantly, free.",
+  section,
+} = Astro.props;
+const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com";
+const canonical = new URL(Astro.url.pathname, siteUrl).toString();
+const year = new Date().getFullYear();
+const path = Astro.url.pathname;
+const current = (href: string) => (path === href ? "page" : undefined);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="Spot the Money" />
+    <meta name="theme-color" content="#F2F1EC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0A0B0C" media="(prefers-color-scheme: dark)" />
+    <script is:inline>
+      // Theme before first paint: remembered choice, else the system preference.
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        }
+        document.documentElement.classList.add(t);
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <Analytics />
+  </head>
+  <body>
+    <header class="site">
+      <div class="container">
+        <a class="brand" href="/" aria-label="Spot the Money home">
+          <Mark size={22} />
+          <span class="word">Spot the <em>Money</em></span>
+          {section && <span class="sub">{section}</span>}
+        </a>
+        <nav class="site" aria-label="Primary">
+          <a href="/rates/" aria-current={current("/rates/")}>Rates</a>
+          <a href="/rates/i-bonds/" aria-current={current("/rates/i-bonds/")}>I-Bonds</a>
+          <a href="/insiders/" aria-current={current("/insiders/")}>Insiders</a>
+          <a href="/congress/" aria-current={current("/congress/")}>Congress</a>
+          <a href="/washington/" aria-current={current("/washington/")}>Washington</a>
+          <a href="/disclosures/" aria-current={current("/disclosures/")}>Newest</a>
+        </nav>
+        <div class="hud">
+          <span class="status"><span class="dot"></span> <span>Data</span> <span class="on">Live</span></span>
+          <button class="toggle" id="themeBtn" type="button" aria-label="Switch color theme">
+            <span class="if-dark">Light</span><span class="if-light">Dark</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="container">
+        <slot />
+      </div>
+    </main>
+
+    <footer class="site">
+      <div class="container">
+        <div class="foot-top">
+          <Mark size={20} />
+          <span class="word">Spot the <em>Money</em></span>
+        </div>
+        <p class="disclaimer">
+          <strong>Not investment advice.</strong> Figures are based on public, official data and
+          disclosures that may lag actual events. Spot the Money provides transparency and historical
+          information only — no buy/sell recommendations, no trade execution.
+        </p>
+        <p>© {year} spotthemoney.com · Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, FEC, USAspending, Senate LDA · <a href="/methodology/">Methodology</a> · <a href="/corrections/">Corrections</a> · <a href="/llms.txt">llms.txt</a></p>
+      </div>
+    </footer>
+
+    <script>
+      const btn = document.getElementById("themeBtn");
+      btn?.addEventListener("click", () => {
+        const root = document.documentElement;
+        const next = root.classList.contains("dark") ? "light" : "dark";
+        root.classList.remove("dark", "light");
+        root.classList.add(next);
+        try { localStorage.setItem("theme", next); } catch {}
+      });
+    </script>
+  </body>
+</html>

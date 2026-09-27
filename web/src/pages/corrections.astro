@@ -1,0 +1,35 @@
+---
+// /corrections/ — the public corrections policy (roadmap C.4). DRAFT — needs review: this
+// page makes a commitment (five working days) and describes a legal posture; gate 3 of the
+// autonomous session says draft it, mark it, ship it marked.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { SITE_URL } from "../lib/seo";
+
+const description = "How to report an error on Spot the Money and what happens next: acknowledgement, a fix or an explanation within five working days, and a public log of material corrections.";
+const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/corrections/#page`, name: "Corrections", url: `${SITE_URL}/corrections/`, description, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
+---
+<BaseLayout title="Corrections — report an error | Spot the Money" description={description} section="Corrections">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Corrections", path: "/corrections/" }]} />
+  <p class="eyebrow">About <span class="x">/</span> Corrections</p>
+  <h1>Corrections</h1>
+  <p class="lede">If a figure here is wrong, we want to know, and we will say so in public when we fix it.</p>
+  <p class="note"><strong>Draft — needs review.</strong> This policy is published in draft while it is reviewed; the commitments below are already honoured.</p>
+
+  <h2>How to report</h2>
+  <p>Email <a href="mailto:corrections@spotthemoney.com">corrections@spotthemoney.com</a> with the page URL, the figure you believe is wrong, and — if you have it — the filing or record that shows the correct value. Reports from the person or organisation named on the page are handled first.</p>
+
+  <h2>What happens next</h2>
+  <p>We acknowledge every report, then within <strong>five working days</strong> either correct the page, or explain why the figure stands (usually: it matches the filing as submitted, and the filing itself has not been amended). Corrections that change a published number are listed below with the date; a filing that is later amended by its filer is not a correction by us, but the amended figure replaces the original on the next daily update.</p>
+
+  <h2>What we will not do</h2>
+  <p>We do not remove accurate public records on request. Because every row on this site is a document filed with a U.S. government body and linked to its source, the remedy for a wrong filing is an amended filing with the original authority; we then reflect it.</p>
+
+  <h2>Corrections log</h2>
+  <p class="empty-reason">No corrections yet.</p>
+
+  <h2>Use of this site</h2>
+  <p class="disclaimer"><strong>Draft — needs review.</strong> Everything on spotthemoney.com is information about public records and is provided for transparency and historical reference. Nothing here is investment, legal or tax advice, an offer or a recommendation to buy or sell any security, or a statement about any person's intent; disclosures can lag the events they describe and can be amended. You are responsible for verifying any figure against the linked source before relying on it. Reuse with attribution to spotthemoney.com is welcome.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

@@ -1,0 +1,82 @@
+---
+// Transactions table. Columns adapt to context: `showPerson` on ticker/company pages,
+// `showSecurity` on person pages. Every row links to the source document (EDGAR filing
+// index or House Clerk PDF) — the "direct link on every row" rule from docs/07 §8.
+import type { Flagship, Txn } from "../lib/flagship";
+import { amountLabel, sideLabel, isLate, personPath, securityPath, num, money } from "../lib/flagship";
+import { edgarFilingUrl } from "../lib/seo";
+import { formatDate } from "../lib/format";
+import Empty from "./Empty.astro";
+
+interface Props {
+  model: Flagship;
+  txns: Txn[];
+  showPerson?: boolean;
+  showSecurity?: boolean;
+  limit?: number;
+  emptyReason?: string;
+  caption?: string;
+}
+const { model, txns, showPerson = false, showSecurity = false, limit = 200, emptyReason = "No disclosed transactions in this set yet.", caption } = Astro.props;
+const rows = txns.slice(0, limit);
+const short = (iso: string | null) => (iso ? formatDate(iso).replace(/, (\d{4})$/, ", $1") : "—");
+const sourceLabel = (t: Txn) => (t.source === "sec_form4" ? "Form 4" : t.source === "house_ptr" ? "House PTR" : "Senate PTR");
+const sourceHref = (t: Txn) => (t.source === "sec_form4" ? edgarFilingUrl(t.sourceUrl) : t.sourceUrl);
+const flags = (t: Txn) => {
+  const f: string[] = [];
+  if (isLate(t)) f.push("late");
+  if (t.is10b51) f.push("10b5-1 plan");
+  if (t.ownerType && t.ownerType !== "self") f.push(t.ownerType);
+  if (t.isDerivative) f.push("derivative");
+  if (!t.isPublished) f.push("under review");
+  return f;
+};
+---
+{rows.length === 0 ? (
+  <Empty reason={emptyReason} />
+) : (
+  <div class="tablewrap">
+    <table class="data txns">
+      {caption && <caption>{caption}</caption>}
+      <thead>
+        <tr>
+          {showPerson && <th>Filer</th>}
+          {showSecurity && <th>Security</th>}
+          <th>Side</th>
+          <th>Trade date</th>
+          <th>Disclosed</th>
+          <th class="num">Lag</th>
+          <th class="num">Shares</th>
+          <th class="num">Price</th>
+          <th class="num">Value</th>
+          <th>Flags</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((t) => {
+          const p = t.personId != null ? model.people.get(t.personId) : undefined;
+          const s = t.securityId != null ? model.securities.get(t.securityId) : undefined;
+          const pp = p ? personPath(p) : null;
+          const href = sourceHref(t);
+          return (
+            <tr class={!t.isPublished ? "review" : undefined}>
+              {showPerson && <td>{p ? (pp ? <a href={pp}>{p.name}</a> : p.name) : "—"}</td>}
+              {showSecurity && <td class="mono">{s ? <a href={securityPath(s)}>{s.ticker}</a> : <span class="soft">{t.assetType ?? "no ticker"}</span>}</td>}
+              <td class={`side ${t.side}`}>{sideLabel(t)}{t.code && t.source === "sec_form4" ? <span class="code"> {t.code}</span> : null}</td>
+              <td class="mono">{short(t.txnDate)}</td>
+              <td class="mono">{short(t.disclosedAt)}</td>
+              <td class="num">{t.lagDays == null ? "—" : `${t.lagDays}d`}</td>
+              <td class="num">{t.shares != null ? num(t.shares) : "—"}</td>
+              <td class="num">{t.price != null && t.price > 0 ? money(t.price, { compact: false }) : "—"}</td>
+              <td class="num strong">{amountLabel(t)}</td>
+              <td class="flags">{flags(t).map((f) => <span class={`flag ${f.replace(/\W+/g, "-")}`}>{f}</span>)}</td>
+              <td>{href ? <a href={href} rel="noopener nofollow" target="_blank">{sourceLabel(t)} ↗</a> : sourceLabel(t)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+    {txns.length > rows.length && <p class="soft small">Showing the {rows.length} most recent of {num(txns.length)}.</p>}
+  </div>
+)}

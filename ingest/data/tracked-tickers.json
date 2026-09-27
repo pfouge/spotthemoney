@@ -1,0 +1,12 @@
+{
+  "_comment": "Phase-1 insider-tracking universe (contract §4.2: ticker-scoped until Requirement A). Sixty large, widely held or frequently Congress-traded names plus SPY and the sector ETFs the scoreboard benchmarks against. Kept small on purpose: sec_form4 walks ~21 polite requests per ticker on a cold run (1.5 s/host), so 60 tickers is ~30 minutes inside the 60-minute ingest job; steady state is one index fetch per ticker. Tickers the congress_ptr job discovers are added to `securities` automatically and join this universe on the next run. Edit freely; the universe job upserts, never deletes.",
+  "equities": [
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO", "BRK-B", "JPM",
+    "LLY", "V", "MA", "XOM", "UNH", "COST", "JNJ", "PG", "HD", "ABBV",
+    "WMT", "NFLX", "BAC", "CVX", "KO", "CRM", "ORCL", "AMD", "MRK", "PEP",
+    "CSCO", "ADBE", "TMO", "MCD", "ACN", "LIN", "ABT", "WFC", "GE", "DIS",
+    "INTC", "PLTR", "QCOM", "TXN", "AMGN", "CAT", "GS", "BA", "RTX", "LMT",
+    "PFE", "MU", "UBER", "COIN", "MSTR", "BLK", "GD", "NOC", "LHX", "F"
+  ],
+  "etfs": ["SPY", "QQQ", "IWM", "XLF", "XLK", "XLE", "XLV", "XLI", "GLD", "TLT"]
+}

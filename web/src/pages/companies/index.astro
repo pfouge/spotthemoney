@@ -1,0 +1,28 @@
+---
+// /companies/ — issuers with insiders on file.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, withinDays, num, plural, companyPath, money, sum } from "../../lib/flagship";
+import { dataCatalogLd } from "../../lib/seo";
+
+const model = await getFlagship();
+const rows = [...model.companies.values()].filter((c) => c.slug).map((c) => ({ c, y: c.txns.filter((t) => withinDays(t.disclosedAt, 365)), contracts: sum(c.contracts.map((r) => r.amount)), lobbying: sum(c.lobbying.filter((r) => r.year === new Date().getUTCFullYear()).map((r) => r.amount)) }))
+  .sort((a, b) => b.y.length - a.y.length || a.c.name.localeCompare(b.c.name));
+const answer = `${plural(rows.length, "company")} have corporate insiders on file. Each profile lists the insiders, their Form 4 transactions, and any federal contracts and lobbying filed under the same name.`;
+const description = "Companies with SEC insiders on file: insider transactions, federal contracts and lobbying under one name.";
+---
+<BaseLayout title="Companies — insiders, contracts and lobbying | Spot the Money" description={description} section="Companies">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }]} />
+  <p class="eyebrow">Follow the Money <span class="x">/</span> Companies</p>
+  <h1>By company</h1>
+  <Answer text={answer} updated={model.builtAt} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
+  {rows.length === 0 ? <p class="empty-reason">No issuers on file yet — companies are created from Form 4 filings by the daily sec_form4 job.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Company</th><th>Ticker</th><th class="num">Insiders</th><th class="num">Insider txns (12m)</th><th class="num">Contracts (180d)</th><th class="num">Lobbying (YTD)</th></tr></thead><tbody>
+      {rows.map((r) => <tr><td><a href={companyPath(r.c)!}>{r.c.name}</a></td><td class="mono">{r.c.primaryTicker ?? "—"}</td><td class="num">{num(r.c.insiders.length)}</td><td class="num">{num(r.y.length)}</td><td class="num">{r.contracts ? money(r.contracts) : "—"}</td><td class="num">{r.lobbying ? money(r.lobbying) : "—"}</td></tr>)}
+    </tbody></table></div>
+  )}
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={dataCatalogLd({ path: "/companies/", name: "Company profiles", description, datasets: rows.slice(0, 500).map((r) => ({ name: r.c.name, path: companyPath(r.c)! })) })} />
+</BaseLayout>

@@ -1,0 +1,96 @@
+---
+// Politician profile: /congress/<slug>/ — one page per member with STOCK Act PTR filings.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import ReviewNote from "../../components/ReviewNote.astro";
+import TxnTable from "../../components/TxnTable.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDays, CONGRESS_DEADLINE_DAYS, money, sum } from "../../lib/flagship";
+import { personLd } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+
+export async function getStaticPaths() {
+  const model = await getFlagship();
+  return [...model.people.values()]
+    .filter((p) => p.isCongress && p.slug)
+    .map((p) => ({ params: { slug: p.slug! }, props: { id: p.id } }));
+}
+
+const { id } = Astro.props as { id: number };
+const model = await getFlagship();
+const p = model.people.get(id)!;
+const path = personPath(p)!;
+const role = p.roles.find((r) => r.kind === "congress")!;
+const txns = p.txns;
+const year = new Date().getUTCFullYear();
+const thisYear = txns.filter((t) => (t.txnDate ?? "").startsWith(String(year)));
+const late = txns.filter(isLate);
+const avgLag = avg(txns.map((t) => t.lagDays));
+const tickers = [...new Set(txns.map((t) => t.securityId).filter((x): x is number => x != null))].map((sid) => model.securities.get(sid)!).filter(Boolean);
+const title = roleLabel(p, model.companies);
+const pendingOcr = p.filings.filter((f) => f.txnCount === 0).length;
+
+const answer = txns.length === 0
+  ? `${p.name} (${title}) has ${plural(p.filings.length, "periodic transaction report")} on record; ${pendingOcr ? `${num(pendingOcr)} could not be read automatically and are awaiting review` : "no transactions met the publishing bar yet"}. Source links are below.`
+  : `${p.name} (${title}) disclosed ${plural(thisYear.length, "trade")} in ${year} and ${plural(txns.length, "trade")} in total on record, filed on average ${avgLag == null ? "—" : Math.round(avgLag)} days after the trade; ${plural(late.length, "was late", "were late")} against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline. Disclosed ranges add up to between ${money(sum(txns.map((t) => t.amountLow)))} and ${money(sum(txns.map((t) => t.amountHigh)))}, most often in ${tickers.slice(0, 3).map((s) => s.ticker).join(", ") || "assets without a ticker"}.`;
+
+const description = `${p.name} (${title}): every STOCK Act stock trade disclosure, with trade and filing dates, days to report, amount ranges and a link to each filing.`;
+const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? "United States Senator" : "United States Representative", worksFor: { name: role.chamber === "senate" ? "United States Senate" : "United States House of Representatives" }, description,
+  sameAs: p.bioguideId ? [`https://bioguide.congress.gov/search/bio/${p.bioguideId}`] : [] });
+---
+<BaseLayout title={`${p.name} stock trades — STOCK Act disclosures | Spot the Money`} description={description} section="Congress">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: p.name, path }]} />
+  <p class="eyebrow">Congress <span class="x">/</span> {role.chamber === "senate" ? "Senate" : "House"}</p>
+  <h1>{p.name}</h1>
+  <p class="lede">{title}</p>
+
+  <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote={role.chamber === "senate" ? "Source: Senate eFD periodic transaction reports" : "Source: House Clerk periodic transaction reports"} />
+  <ReviewNote show={p.underReview} what="These congressional rows" />
+
+  <section class="datastrip">
+    <div class="cell"><div class="k">Trades on record</div><div class="v">{num(txns.length)}</div></div>
+    <div class="cell"><div class="k">Trades in {year}</div><div class="v">{num(thisYear.length)}</div></div>
+    <div class="cell"><div class="k">Avg. days to report</div><div class="v">{avgLag == null ? "—" : Math.round(avgLag)}</div></div>
+    <div class="cell"><div class="k">Late filings</div><div class={`v ${late.length ? "neg" : ""}`}>{num(late.length)}</div></div>
+  </section>
+
+  <h2>Disclosed trades</h2>
+  <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />
+
+  <AdSlot label="Advertisement" />
+
+  <h2>Filings</h2>
+  {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
+    <div class="tablewrap">
+      <table class="data">
+        <thead><tr><th>Filed</th><th>Report</th><th>Doc ID</th><th class="num">Rows</th><th>Status</th><th>Source</th></tr></thead>
+        <tbody>
+          {p.filings.slice(0, 100).map((f) => (
+            <tr>
+              <td class="mono">{formatDate(f.filedAt)}</td>
+              <td>{f.source === "senate_ptr" ? "Senate PTR" : "House PTR"}</td>
+              <td class="mono">{f.externalId}</td>
+              <td class="num">{f.txnCount}</td>
+              <td>{f.txnCount === 0 && f.confidence < 0.9 ? "needs review (scanned)" : f.isPublished ? "published" : "under review"}</td>
+              <td>{f.sourceUrl ? <a href={f.sourceUrl} rel="noopener nofollow" target="_blank">{f.source === "senate_ptr" ? "eFD ↗" : "PDF ↗"}</a> : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  <h2>Sources and method</h2>
+  <p>
+    Rows are parsed from the member's periodic transaction reports (House Clerk PDFs; Senate eFD reports when that feed is live).
+    Members report dollar ranges, not exact amounts, so "value" shows the range as filed. "Lag" is the notification date minus the
+    trade date; the STOCK Act requires filing within {CONGRESS_DEADLINE_DAYS} days. Owner shows whether the holding is the member's,
+    a spouse's, a dependent's or joint. Filings we could not read automatically are held for human review and shown with zero rows until then.
+    Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
+  </p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade by weeks and are sometimes amended. No inference about intent is made or implied.</p>
+  <JsonLd data={ld} />
+  {withinDays(p.lastFiledAt, 7) && <meta name="x-recent" content="1" />}
+</BaseLayout>

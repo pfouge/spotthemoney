@@ -1,0 +1,6 @@
+---
+// A table is never left blank without saying why (session verification rule).
+interface Props { reason: string }
+const { reason } = Astro.props;
+---
+<p class="empty-reason">{reason}</p>

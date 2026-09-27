@@ -1,0 +1,163 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import Answer from "../../components/Answer.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import { getLatestIBondRate, getCpiSeries } from "../../lib/db";
+import { formatPercent, formatDate } from "../../lib/format";
+import { resetOutlook, monthLabel } from "../../lib/ibond";
+import { datasetLd, SOURCES } from "../../lib/seo";
+
+// Built FROM the database at build time. Falls back gracefully if the DB isn't connected yet.
+const rate = await getLatestIBondRate();
+const cpi = await getCpiSeries(30);
+const outlook = resetOutlook(cpi, rate?.fixedRate ?? null);
+const resetDateLabel = formatDate(outlook.nextResetDate);
+const hasData = rate?.compositeRate != null;
+const answer = hasData
+  ? `The current I-Bond composite rate is ${formatPercent(rate!.compositeRate)} for bonds bought before the ${resetDateLabel} reset: a ${formatPercent(rate!.fixedRate)} fixed rate for the life of the bond plus a ${formatPercent(rate!.semiannualInflationRate)} semiannual inflation rate, set on ${formatDate(rate!.effectiveDate)}. The next reset is ${resetDateLabel}${outlook.impliedSemiannual != null ? `; with ${outlook.monthsKnown} of the 6 CPI months published, the inflation component is running at ${formatPercent(outlook.impliedSemiannual)} semiannual (${formatPercent(outlook.impliedSemiannual * 2)} annualised)` : ""}.`
+  : `The I-Bond composite rate is published by the U.S. Treasury each May 1 and November 1; the next reset is ${resetDateLabel}. Live figures appear here once the rates job has run.`;
+const rateForCalc = rate?.compositeRate ?? 4.0; // sensible default so the calculator works pre-DB
+const description = hasData
+  ? `The current U.S. I-Bond composite rate is ${formatPercent(rate!.compositeRate)} (effective ${formatDate(rate!.effectiveDate)}). Calculate your bond's value and see how the rate is set.`
+  : "The current U.S. I-Bond composite rate, a value calculator, and how the rate is set.";
+---
+<BaseLayout title="I-Bond Rate Today + Value Calculator | Spot the Money" description={description} section="Rates · I-Bonds">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }, { name: "I-Bonds", path: "/rates/i-bonds/" }]} />
+  <p class="eyebrow">Rates Hub <span class="x">/</span> I-Bonds</p>
+  <h1>I-Bond Composite Rate</h1>
+  <Answer text={answer} updated={rate?.effectiveDate ?? null} sourceNote="Sources: Treasury Fiscal Data; BLS CPI-U" />
+
+  {hasData ? (
+    <section class="panel">
+      <div class="bignum pos">{formatPercent(rate!.compositeRate)}</div>
+      <div class="stat-row">
+        <div class="stat"><div class="k">Effective</div><div class="v">{formatDate(rate!.effectiveDate)}</div></div>
+        <div class="stat"><div class="k">Fixed rate</div><div class="v">{formatPercent(rate!.fixedRate)}</div></div>
+        <div class="stat"><div class="k">Semiannual inflation</div><div class="v">{formatPercent(rate!.semiannualInflationRate)}</div></div>
+      </div>
+    </section>
+  ) : (
+    <section class="panel">
+      <div class="bignum pending">data pending</div>
+      <p class="disclaimer">
+        Run <code>npm run migrate</code> then <code>npm run ingest -- ibonds</code> with a
+        Supabase <code>DATABASE_URL</code> set, and this fills with the live Treasury rate.
+        The calculator below already works.
+      </p>
+    </section>
+  )}
+
+  <h2 id="next-reset">Next reset: {resetDateLabel}</h2>
+  <section class="panel reset" id="reset">
+    <p>
+      The Treasury announces the next I-Bond rate on <strong>{resetDateLabel}</strong>. The inflation half of that rate is
+      set mechanically from CPI-U between {monthLabel(outlook.startMonth)} and {monthLabel(outlook.endMonth)}; the fixed
+      half is announced on the day and cannot be known in advance.
+    </p>
+    {outlook.impliedSemiannual != null ? (
+      <div class="stat-row">
+        <div class="stat"><div class="k">CPI months in</div><div class="v">{outlook.monthsKnown} of {outlook.monthsTotal}</div></div>
+        <div class="stat"><div class="k">{outlook.isFinal ? "Semiannual inflation rate (final)" : "Inflation rate so far"}</div><div class="v">{formatPercent(outlook.impliedSemiannual)}</div></div>
+        <div class="stat"><div class="k">Annualised</div><div class="v">{formatPercent(outlook.impliedSemiannual * 2)}</div></div>
+        <div class="stat"><div class="k">{outlook.isFinal ? "Composite if the fixed rate stays" : "Composite if it ended today and the fixed rate stays"}</div><div class="v">{formatPercent(outlook.impliedComposite)}</div></div>
+      </div>
+    ) : (
+      <p class="empty-reason">CPI-U for {monthLabel(outlook.startMonth)} onward is not loaded yet, so the implied inflation component cannot be shown. It appears here after the first BLS CPI ingest.</p>
+    )}
+    <p class="disclaimer">
+      {outlook.latestMonth ? `Through ${monthLabel(outlook.latestMonth)} CPI (index ${outlook.latestValue?.toFixed(3)} vs ${outlook.startValue?.toFixed(3)} in ${monthLabel(outlook.startMonth)}). ` : ""}
+      {outlook.isFinal ? "All six CPI months are published, so the inflation component above is what Treasury will use; only the fixed rate is unknown." : "Until the final month's CPI is published (mid-month after it ends), this is a running figure, not a forecast."}
+      Bonds bought before the reset keep the current composite for their first six months.
+    </p>
+  </section>
+
+  <AdSlot label="Advertisement" />
+
+  <h2>I-Bond value calculator</h2>
+  <p class="lede">Estimate what a Series I bond is worth over time at the current rate.</p>
+
+  <section class="panel" id="calc" data-rate={rateForCalc}>
+    <div class="field">
+      <label for="amount">Purchase amount (USD)</label>
+      <input id="amount" type="number" min="25" step="25" value="10000" />
+    </div>
+    <div class="field">
+      <label for="months">Months held</label>
+      <input id="months" type="number" min="0" step="1" value="12" />
+    </div>
+    <div class="field">
+      <label for="rate">Composite rate (% annual)</label>
+      <input id="rate" type="number" min="0" step="0.01" value={rateForCalc} />
+    </div>
+    <p>Estimated value: <span class="result" id="out">—</span></p>
+    <p class="disclaimer" id="note"></p>
+  </section>
+
+  <h2>How the I-Bond rate works</h2>
+  <p>
+    A Series I savings bond earns a <strong>composite rate</strong> that combines a
+    <strong>fixed rate</strong> (set for the life of the bond at purchase) and a
+    <strong>semiannual inflation rate</strong> (reset twice a year based on CPI). The U.S. Treasury
+    publishes new rates on <strong>May 1</strong> and <strong>November 1</strong>. The composite formula is:
+  </p>
+  <p class="panel"><code>composite = fixed + (2 × semiannual inflation) + (fixed × semiannual inflation)</code></p>
+  <p>
+    Interest is added monthly and compounds semiannually. You must hold an I-Bond for at least
+    <strong>1 year</strong>. If you redeem before <strong>5 years</strong>, you forfeit the most recent
+    <strong>3 months</strong> of interest. Figures here are estimates that assume the current rate
+    persists; the actual rate your bond earns resets every six months.
+  </p>
+
+  <AdSlot label="Advertisement" />
+  <JsonLd data={datasetLd({ name: "Series I savings bond rates", path: "/rates/i-bonds/", description, dateModified: rate?.effectiveDate ?? new Date().toISOString().slice(0, 10), keywords: ["I-Bond", "I bond rate", "savings bonds", "inflation"], sources: [SOURCES.fiscaldata, SOURCES.bls], parentCatalogPath: "/rates/" })} />
+</BaseLayout>
+
+<script>
+  // I-Bond value estimator. Semiannual compounding, monthly accrual on the partial period,
+  // with the <5-year 3-month interest penalty applied. Estimate only.
+  const root = document.getElementById("calc");
+  const $amount = document.getElementById("amount") as HTMLInputElement | null;
+  const $months = document.getElementById("months") as HTMLInputElement | null;
+  const $rate = document.getElementById("rate") as HTMLInputElement | null;
+  const $out = document.getElementById("out");
+  const $note = document.getElementById("note");
+
+  function money(n: number): string {
+    return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  }
+
+  function recompute(): void {
+    if (!$amount || !$months || !$rate || !$out || !$note) return;
+    const principal = Math.max(0, Number($amount.value) || 0);
+    const months = Math.max(0, Math.floor(Number($months.value) || 0));
+    const ratePct = Math.max(0, Number($rate.value) || 0);
+
+    const semi = 1 + ratePct / 200; // semiannual growth factor
+    const fullPeriods = Math.floor(months / 6);
+    const remMonths = months % 6;
+
+    let value = principal * Math.pow(semi, fullPeriods);
+    value += value * (ratePct / 100) * (remMonths / 12); // accrue the partial 6-month period
+
+    let penaltyNote = "";
+    if (months > 0 && months < 60) {
+      const penalty = value * (ratePct / 100) * (3 / 12); // forfeit ~3 months interest
+      value -= penalty;
+      penaltyNote = " Includes the <5-year early-redemption penalty (last 3 months of interest forfeited).";
+    }
+
+    const interest = value - principal;
+    $out.textContent = money(value);
+    $note.textContent =
+      months < 12
+        ? "Note: I-Bonds can't be redeemed in the first 12 months." + penaltyNote
+        : `Estimated interest earned: ${money(interest)}.` + penaltyNote;
+  }
+
+  for (const el of [$amount, $months, $rate]) el?.addEventListener("input", recompute);
+  // Seed the rate input from the server-provided live rate, then compute.
+  if ($rate && root) $rate.value = root.getAttribute("data-rate") || $rate.value;
+  recompute();
+</script>

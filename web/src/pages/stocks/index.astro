@@ -1,0 +1,37 @@
+---
+// /stocks/ — every tracked ticker with its 12-month insider + congressional activity.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, withinDays, num, plural, securityPath, money, sum } from "../../lib/flagship";
+import { dataCatalogLd } from "../../lib/seo";
+
+const model = await getFlagship();
+const seen = new Set<string>();
+const rows = [...model.securities.values()]
+  .sort((a, b) => (a.type === "equity" ? -1 : 1) - (b.type === "equity" ? -1 : 1))
+  .filter((s) => { const k = s.ticker.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+  .map((s) => {
+    const sib = [...model.securities.values()].filter((x) => x.ticker.toLowerCase() === s.ticker.toLowerCase());
+    const y = sib.flatMap((x) => x.txns).filter((t) => withinDays(t.disclosedAt, 365));
+    return { s, name: (s.companyId != null ? model.companies.get(s.companyId)?.name : null) ?? s.name ?? "", ins: y.filter((t) => t.source === "sec_form4"), con: y.filter((t) => t.source !== "sec_form4"), value: sum(y.map((t) => t.value)) };
+  })
+  .sort((a, b) => (b.ins.length + b.con.length) - (a.ins.length + a.con.length) || a.s.ticker.localeCompare(b.s.ticker));
+const active = rows.filter((r) => r.ins.length + r.con.length > 0);
+const answer = `${plural(rows.length, "ticker")} are tracked; ${plural(active.length, "of them has", "of them have")} disclosed insider or congressional activity in the last 12 months. The tracked set is about 70 large or frequently traded names plus every ticker that appears in a congressional filing.`;
+const description = "Every tracked stock with its insider trades (SEC Form 4) and congressional trades (STOCK Act) over the last 12 months.";
+---
+<BaseLayout title="Stocks — insider and Congress trading by ticker | Spot the Money" description={description} section="Stocks">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }]} />
+  <p class="eyebrow">Follow the Money <span class="x">/</span> Stocks</p>
+  <h1>By ticker</h1>
+  <Answer text={answer} updated={model.builtAt} sourceNote="Sources: SEC EDGAR; House Clerk" />
+  {rows.length === 0 ? <p class="empty-reason">No securities tracked yet — the universe job seeds them on the first ingest run.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Ticker</th><th>Name</th><th class="num">Insider txns (12m)</th><th class="num">Congress trades (12m)</th><th class="num">Value at reported prices</th></tr></thead><tbody>
+      {rows.map((r) => <tr><td class="mono"><a href={securityPath(r.s)}>{r.s.ticker}</a></td><td>{r.name}</td><td class="num">{num(r.ins.length)}</td><td class="num">{num(r.con.length)}</td><td class="num">{money(r.value)}</td></tr>)}
+    </tbody></table></div>
+  )}
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public disclosures shown as filed.</p>
+  <JsonLd data={dataCatalogLd({ path: "/stocks/", name: "Insider and congressional activity by ticker", description, datasets: rows.slice(0, 500).map((r) => ({ name: `${r.s.ticker} insider and congressional transactions`, path: securityPath(r.s) })) })} />
+</BaseLayout>
