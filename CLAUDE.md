@@ -314,8 +314,7 @@ X thread posts nothing.
 ingest_runs rows for congress_ptr (2), x_daily (3, dry-run), citation_count (1, dry-run),
 search_console_weekly (2, dry-run). The live equivalent is the first item under Next.
 
-**Not done / needs Peter:** the two samples (#27); FEC_API_KEY (#28); Bing sign-in (#29);
-Senate route (#21); X account (#24); citation spend (#25); corrections@ mailbox (#26);
+**Not done / needs Peter:** the two samples (#27); FEC_API_KEY (#28); Senate route (#21); X account (#24); citation spend (#25); corrections@ mailbox (#26);
 archive old repo (#22); `congress-heatmap.html` at the root still not deleted.
 
 **Evening update (same day, connections fixed through Chrome + PowerShell):**
@@ -333,6 +332,8 @@ archive old repo (#22); `congress-heatmap.html` at the root still not deleted.
 - The one-shot live check in deploy.yml failed once 15 s after a good deploy → now retries 8×15 s
   and prints HTTP status.
 - Google Search Console: Domain property verified via Cloudflare TXT; sitemap-index submitted.
+  Bing Webmaster: site added + verified via CNAME (DNS only), sitemap-index submitted. deploy #4
+  (99e8319) green with the retrying live check.
 - Sandbox lessons: `gh`/api.github.com are not reachable from the sandbox for this repo (session
   repo allow-list) — Actions status is read through Chrome; Google/GitHub tabs freeze the Chrome
   renderer after a few actions — open a fresh tab rather than retrying.
@@ -345,8 +346,7 @@ again; 2026-11-01 reset-day measurement — the I-Bond page, CPI job and Web Ana
    SESSION STATE. Then samples + `--approve` for house_ptr and (after the retry/next daily run)
    sec_form4.
 2. FEC_API_KEY (#28), then re-run ingest; run `archive_backfill` once (SUPABASE keys are set).
-3. Bing Webmaster: sign in, import from GSC, submit sitemap-index (#29).
-4. Decide #21 (Senate) and #24 (X account); set the measurement keys when the spend is approved.
+3. Decide #21 (Senate) and #24 (X account); set the measurement keys when the spend is approved.
 5. Archive `pfouge/spotthemoney.com` after the first green scheduled run; bump actions to v5
    (node-20 deprecation warnings) in a quiet moment.
 6. Carry the contract edits (docs/06-ingestion-contract.md, 2026-09-27 section) into IIF.
