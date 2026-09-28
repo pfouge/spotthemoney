@@ -85,7 +85,7 @@ const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? 
   <h2>Sources and method</h2>
   <p>
     Rows are parsed from the member's periodic transaction reports (House Clerk PDFs; Senate eFD reports when that feed is live).
-    Members report dollar ranges, not exact amounts, so "value" shows the range as filed. "Lag" is the notification date minus the
+    Members report dollar ranges, not exact amounts, so "value" shows the range as filed. "Lag" is the filing date minus the
     trade date; the STOCK Act requires filing within {CONGRESS_DEADLINE_DAYS} days. Owner shows whether the holding is the member's,
     a spouse's, a dependent's or joint. Filings we could not read automatically are held for human review and shown with zero rows until then.
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.

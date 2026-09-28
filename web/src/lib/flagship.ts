@@ -329,6 +329,16 @@ export function roleLabel(p: Person, companies: Map<number, Company>): string {
 export function sideLabel(t: Txn): string {
   switch (t.side) { case "buy": return "Buy"; case "sell": return "Sell"; case "option": return "Option / conversion"; case "exchange": return "Exchange"; default: return "Other"; }
 }
+/** Human label for a PTR asset class when the row has no ticker (e.g. municipal bonds, LP interests). */
+export function assetLabel(assetType: string | null | undefined): string {
+  switch (assetType) {
+    case "stock": return "stock (no ticker)"; case "etf": return "ETF"; case "bond": return "bond";
+    case "fund": return "fund"; case "hedge_fund": return "hedge fund"; case "private_equity": return "private equity";
+    case "option": return "option"; case "crypto": return "crypto"; case "real_property": return "real property";
+    case "bank_account": return "bank account"; case "other": return "other asset";
+    default: return assetType ? assetType.replace(/_/g, " ") : "no ticker";
+  }
+}
 export function amountLabel(t: Txn): string {
   if (t.value != null && t.shares != null && t.price != null && t.price > 0) return money(t.value);
   if (t.amountLow != null || t.amountHigh != null) {

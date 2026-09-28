@@ -87,7 +87,7 @@ const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act P
   )}
 
   <h2>How to read this</h2>
-  <p>Members report ranges, not amounts, and have {CONGRESS_DEADLINE_DAYS} days to file after a trade. "Late" means the notification date on the filing is more than {CONGRESS_DEADLINE_DAYS} days after the transaction date. Owner shows whether a holding is the member's own, a spouse's, a dependent's, or joint. See <a href="/methodology/">methodology</a>.</p>
+  <p>Members report ranges, not amounts, and have {CONGRESS_DEADLINE_DAYS} days to file after a trade. "Late" means the report was filed more than {CONGRESS_DEADLINE_DAYS} days after the transaction date. Owner shows whether a holding is the member's own, a spouse's, a dependent's, or joint. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>

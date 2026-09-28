@@ -7,7 +7,7 @@ import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import JsonLd from "../../components/JsonLd.astro";
-import { getFlagship, num, plural, money, personPath, securityPath, sideLabel, amountLabel, withinDays } from "../../lib/flagship";
+import { getFlagship, num, plural, money, personPath, securityPath, sideLabel, amountLabel, assetLabel, withinDays } from "../../lib/flagship";
 import { datasetLd, edgarFilingUrl, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 
@@ -18,7 +18,7 @@ for (const t of model.txns.slice(0, 400)) {
   const p = t.personId != null ? model.people.get(t.personId) : undefined;
   const s = t.securityId != null ? model.securities.get(t.securityId) : undefined;
   items.push({ at: t.disclosedAt ?? t.filedAt ?? "", kind: t.source === "sec_form4" ? "Insider" : "Congress", who: p?.name ?? "—", whoHref: p ? personPath(p) : null,
-    what: `${sideLabel(t)}${s ? ` ${s.ticker}` : t.assetType ? ` (${t.assetType})` : ""}`, whatHref: s ? securityPath(s) : null, amount: amountLabel(t),
+    what: `${sideLabel(t)}${s ? ` ${s.ticker}` : t.assetType ? ` (${assetLabel(t.assetType)})` : ""}`, whatHref: s ? securityPath(s) : null, amount: amountLabel(t),
     href: t.source === "sec_form4" ? edgarFilingUrl(t.sourceUrl) : t.sourceUrl, review: !t.isPublished });
 }
 for (const l of [...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 150)) {
