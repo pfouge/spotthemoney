@@ -330,6 +330,22 @@ export function parseForm4Xml(xml: string): ParsedForm4 {
   };
 }
 
+/**
+ * Primary ticker from a Form 4 `issuerTradingSymbol`. Issuers with several classes list them all
+ * ("LEN, LEN.B", "BRK.A / BRK.B", "GOOGL GOOG") and some file "NONE"/"N/A"; `securities.ticker`
+ * and the /stocks/<ticker>/ URL need one clean symbol (2026-09-28 sample: "LEN, LEN.B" had
+ * become a security row). Returns null when nothing usable is present so callers fall back to
+ * the tracked ticker the filing was fetched for.
+ */
+export function primaryTicker(symbol: string | null | undefined): string | null {
+  if (!symbol) return null;
+  const whole = symbol.trim().toUpperCase();
+  if (!whole || ["NONE", "N/A", "NA", "NULL"].includes(whole)) return null;
+  const first = whole.split(/[,;\/\s]+/).map((s) => s.trim()).find((s) => s.length > 0) ?? "";
+  if (!first || !/^[A-Z][A-Z0-9.\-]{0,9}$/.test(first) || ["NONE", "NA"].includes(first)) return null;
+  return first;
+}
+
 /** Company profile slug: "NVIDIA CORP" → "nvidia-corp"; falls back to the CIK. */
 export function slugifyCompany(name: string | null, cik: string): string {
   const base = (name ?? "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -505,12 +521,17 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
 
           // companies: upsert on cik (0001 unique).
           const companyCik = clean.issuerCik ?? cik;
+          // One clean symbol for companies.primary_ticker / securities.ticker. When the filing is
+          // the tracked issuer's own (issuerCik === cik) the tracked ticker wins so multi-class
+          // issuers keep the symbol we track; otherwise (tracked company filing as a 10% owner of
+          // another issuer) the issuer's first listed symbol is used.
+          const secTicker = (companyCik === cik ? ticker : null) ?? primaryTicker(clean.issuerTradingSymbol) ?? ticker;
           // slug: set once (never regenerated — it is a public URL); a collision falls back
           // to the CIK-based slug so two differently-named issuers never share a URL.
           const companySlug = slugifyCompany(clean.issuerName, companyCik);
           const [company] = await sql`
             insert into companies (name, cik, primary_ticker, slug)
-            values (${clean.issuerName ?? ticker}, ${companyCik}, ${clean.issuerTradingSymbol},
+            values (${clean.issuerName ?? ticker}, ${companyCik}, ${secTicker},
                     case when exists (select 1 from companies c2 where c2.slug = ${companySlug} and c2.cik <> ${companyCik})
                          then ${`cik-${companyCik}`} else ${companySlug} end)
             on conflict (cik) do update
@@ -557,7 +578,6 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
           }
 
           // securities: upsert on (ticker, type='equity').
-          const secTicker = clean.issuerTradingSymbol ?? ticker;
           const [security] = await sql`
             insert into securities (ticker, type, company_id)
             values (${secTicker}, 'equity', ${companyId})

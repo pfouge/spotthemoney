@@ -351,10 +351,15 @@ contracts 1446 / committees 0 / donations 0 / raw_docs 505 all stored. FEC empty
 made — `disclosed_at` now = filing date (was the notification column; late check undercounted)
 and `[OL]` → other (was option). See docs/06-ingestion-contract.md "First live sample".
 
+**Publish gates (2026-09-28):** house_ptr approved after `--reprocess` (4 filings public;
+Congress pages live with 25 trades, late flags correct). sec_form4 sample reviewed against
+EDGAR: rows match; multi-class `issuerTradingSymbol` ("LEN, LEN.B") had become a security row →
+`primaryTicker` in sec_form4.ts + data migration 0007 (folds existing rows). Weighted-average
+price footnotes (price 0) and 10%-owner filings widening the universe noted in docs/06.
+
 **Next (in order):**
-1. Peter: push the job fix; run "Ingest — Congressional PTR" with extra_args `--reprocess`;
-   `node scripts/sample-source.mjs house_ptr` → review → `--approve`. Then
-   `node scripts/sample-source.mjs sec_form4` (501 filings ready) → review → `--approve`.
+1. Peter: push (0007 + sec_form4 fix), `node scripts/sample-source.mjs sec_form4 --approve`,
+   then confirm /insiders/ and /stocks/len/ render after the deploy.
 2. FEC_API_KEY (#28), then re-run ingest; run `archive_backfill` once (SUPABASE keys are set).
 3. Decide #21 (Senate) and #24 (X account); set the measurement keys when the spend is approved.
 4. Archive `pfouge/spotthemoney.com` after the first green scheduled run; bump actions to v5

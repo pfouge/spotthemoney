@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/sec_form4.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseForm4Xml, slugifyCompany } from "./sec_form4.js";
+import { parseForm4Xml, slugifyCompany, primaryTicker } from "./sec_form4.js";
 
 const XML = `<?xml version="1.0"?>
 <ownershipDocument>
@@ -88,4 +88,15 @@ test("company slug", () => {
   assert.equal(slugifyCompany("NVIDIA CORP", "0001045810"), "nvidia-corp");
   assert.equal(slugifyCompany("Berkshire Hathaway Inc.", "1"), "berkshire-hathaway-inc");
   assert.equal(slugifyCompany(null, "0000001"), "cik-0000001");
+});
+
+test("primaryTicker keeps one clean symbol from multi-class or junk issuerTradingSymbol values", () => {
+  assert.equal(primaryTicker("LEN, LEN.B"), "LEN");
+  assert.equal(primaryTicker("BRK.A / BRK.B"), "BRK.A");
+  assert.equal(primaryTicker("googl goog"), "GOOGL");
+  assert.equal(primaryTicker(" NVDA "), "NVDA");
+  assert.equal(primaryTicker("NONE"), null);
+  assert.equal(primaryTicker("N/A"), null);
+  assert.equal(primaryTicker(""), null);
+  assert.equal(primaryTicker(null), null);
 });
