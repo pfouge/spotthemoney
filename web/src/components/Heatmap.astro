@@ -7,37 +7,56 @@
 //               and 10b5-1 switches (defaults: open-market only, plans excluded)
 // Both: window 7D/30D/90D/1Y, view Net/Buying/Selling, ticker filter, ticker/filer side list.
 // `primary` makes the filter state live in the URL hash (one per page).
-interface Props { kind: "congress" | "insiders"; primary?: boolean; height?: number; id?: string; compact?: boolean; }
+interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; }
 const { kind, primary = false, height = 560, id = `hm-${kind}`, compact = false } = Astro.props as Props;
-const src = `/data/heatmap-${kind}.json`;
+const src = kind === "all" ? "/data/heatmap-congress.json,/data/heatmap-insiders.json" : `/data/heatmap-${kind}.json`;
+const hasInsiders = kind !== "congress";
 ---
-<section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} aria-label={kind === "congress" ? "Congressional trades heatmap" : "Corporate insider trades heatmap"}>
+<section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} aria-label={kind === "congress" ? "Congressional trades heatmap" : kind === "insiders" ? "Corporate insider trades heatmap" : "Congress and corporate insider trades heatmap"}>
   <div class="controls hm-controls">
-    <div class="ctl"><span class="lbl">{kind === "congress" ? "Who" : "Role"}</span>
-      {kind === "congress" ? (
-        <select data-ctl="scope" aria-label="Scope">
-          <option value="all">All Congress</option>
+    {kind === "all" && (
+      <div class="ctl"><span class="lbl">Who</span>
+        <select data-ctl="cls" aria-label="Class">
+          <option value="all">Everyone</option>
+          <option value="congress">Congress only</option>
+          <option value="insiders">Corporate insiders only</option>
+        </select>
+      </div>
+    )}
+    {kind !== "insiders" && (
+      <div class="ctl" data-only="congress"><span class="lbl">Chamber</span>
+        <select data-ctl="chamber" aria-label="Chamber">
+          <option value="all">Both</option>
           <option value="house">House</option>
           <option value="senate">Senate</option>
+        </select>
+        <select data-ctl="party" aria-label="Party">
+          <option value="all">Any party</option>
           <option value="dem">Democrats</option>
           <option value="rep">Republicans</option>
+          <option value="ind">Independents</option>
         </select>
-      ) : (
-        <select data-ctl="scope" aria-label="Role">
-          <option value="all">All insiders</option>
+      </div>
+    )}
+    {kind !== "congress" && (
+      <div class="ctl" data-only="insiders"><span class="lbl">Role</span>
+        <select data-ctl="role" aria-label="Insider role">
+          <option value="all">All roles</option>
           <option value="officer">Officers</option>
           <option value="director">Directors</option>
           <option value="owner">10% owners</option>
         </select>
-      )}
-      <select data-ctl="who" aria-label={kind === "congress" ? "Member" : "Filer"}><option value="">{kind === "congress" ? "All members" : "All filers"}</option></select>
+      </div>
+    )}
+    <div class="ctl"><span class="lbl">{kind === "congress" ? "Member" : kind === "insiders" ? "Filer" : "Person"}</span>
+      <select data-ctl="who" aria-label={kind === "congress" ? "Member" : kind === "insiders" ? "Filer" : "Person"}><option value="">{kind === "congress" ? "All members" : kind === "insiders" ? "All filers" : "Everyone"}</option></select>
     </div>
-    {kind === "insiders" && (
+    {hasInsiders && (
       <div class="ctl"><span class="lbl">Codes</span>
         <div class="seg" data-seg="codes"><button type="button" data-v="open" class="on">Open-market</button><button type="button" data-v="all">All codes</button></div>
       </div>
     )}
-    {kind === "insiders" && (
+    {hasInsiders && (
       <div class="ctl"><span class="lbl">10b5-1</span>
         <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">Exclude plans</button><button type="button" data-v="include">Include</button></div>
       </div>
@@ -59,7 +78,7 @@ const src = `/data/heatmap-${kind}.json`;
     <aside class="hm-side" style={`height:${height}px`}>
       <div class="hm-side-head">
         <h3 class="hm-side-title">Most traded</h3>
-        <div class="seg seg-sm" data-seg="side"><button type="button" data-v="tickers" class="on">Tickers</button><button type="button" data-v="filers">{kind === "congress" ? "Members" : "Filers"}</button></div>
+        <div class="seg seg-sm" data-seg="side"><button type="button" data-v="tickers" class="on">Tickers</button><button type="button" data-v="filers">{kind === "congress" ? "Members" : kind === "insiders" ? "Filers" : "People"}</button></div>
       </div>
       <div class="hm-side-rows"></div>
     </aside>

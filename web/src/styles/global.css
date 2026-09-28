@@ -320,3 +320,4 @@ h1 .soft { font-family: var(--font-sans); font-weight: 400; font-size: 0.55em; c
 .strip-compact .delta a { color: var(--ink-soft); text-decoration: none; }
 .strip-compact .delta a:hover { color: var(--signal); }
 .hm-h2 { margin-top: 1rem; }
+.ctl[hidden] { display: none; }

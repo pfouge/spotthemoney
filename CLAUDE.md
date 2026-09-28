@@ -410,7 +410,10 @@ blank table): https://spotthemoney.com/ · /insiders/ · /congress/ · /stocks/ 
 - **Heatmap:** `web/src/components/Heatmap.astro` + `web/src/scripts/heatmap.ts` (vanilla,
   squarified treemap, ~400 lines) over `web/src/lib/heatmap.ts` → `/data/heatmap-congress.json`
   and `/data/heatmap-insiders.json` (build-time, published rows, last 365 days). Home page = the
-  map with a Congress / Corporate insiders switch; `/congress/` and `/insiders/` open on their map.
+  map with an **All insiders / Congress / Corporate insiders** switch (the All map merges both
+  files; independent filters Who (everyone/congress/insiders) × Chamber × Party × Role, so
+  "House Democrats" is Chamber=House + Party=Democrats; tooltip shows the Congress vs insider
+  split); `/congress/` and `/insiders/` open on their own map.
   Nav order Congress · Insiders · Newest · Washington · Rates. Rules: congress tile $ = top of
   range; insiders = shares × price, open-market only + 10b5-1 excluded by default; filter state in
   the URL hash (`#scope=house&w=365&view=buy&side=filers`).

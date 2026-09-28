@@ -50,17 +50,19 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   <section class="hero hero-map">
     <p class="eyebrow">Congress <span class="x">&times;</span> Corporate insiders</p>
     <h1>Who's buying. Who's selling. As disclosed.</h1>
-    <p class="lede">Every STOCK Act trade and every Form 4 in the tracked set — sized by dollars, colored by direction, filterable, and linked to the filing.</p>
+    <p class="lede">Members of Congress and corporate insiders on one map — every STOCK Act trade and every Form 4 in the tracked set, sized by dollars, colored by direction, filterable, and linked to the filing.</p>
   </section>
 
   <div class="hm-switch" role="tablist" aria-label="Choose a heatmap">
     <div class="seg" id="hmSwitch">
-      <button type="button" class="on" data-pane="congress" role="tab" aria-selected="true">Congress</button>
+      <button type="button" class="on" data-pane="all" role="tab" aria-selected="true">All insiders</button>
+      <button type="button" data-pane="congress" role="tab" aria-selected="false">Congress</button>
       <button type="button" data-pane="insiders" role="tab" aria-selected="false">Corporate insiders</button>
     </div>
-    <a class="hm-more" id="hmMore" href="/congress/">Full Congress page: late filers, most active members, every filing &rarr;</a>
+    <a class="hm-more" id="hmMore" href="/congress/">Congress: late filers, most active members, every filing &rarr;</a>
   </div>
-  <div class="hm-pane" data-pane="congress"><Heatmap kind="congress" primary={true} /></div>
+  <div class="hm-pane" data-pane="all"><Heatmap kind="all" primary={true} /></div>
+  <div class="hm-pane" data-pane="congress" hidden><Heatmap kind="congress" id="hm-congress-home" /></div>
   <div class="hm-pane" data-pane="insiders" hidden><Heatmap kind="insiders" id="hm-insiders-home" /></div>
 
   <section class="answer" data-answer>
@@ -94,6 +96,7 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
     const sw = document.getElementById("hmSwitch");
     const more = document.getElementById("hmMore") as HTMLAnchorElement | null;
     const links: Record<string, [string, string]> = {
+      all: ["/congress/", "Congress: late filers, most active members, every filing →"],
       congress: ["/congress/", "Full Congress page: late filers, most active members, every filing →"],
       insiders: ["/insiders/", "Full Insiders page: cluster buys, CEO purchases, officer sales →"],
     };
