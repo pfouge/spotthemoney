@@ -80,6 +80,13 @@ def load_iif_connector():
     """Return the vendored IIF modules (house_client, normalize). Variant A of the old TODO."""
     import house_client  # type: ignore
     import normalize  # type: ignore
+    # Sample review 2026-09-28 (docs/reference/samples/house_ptr-2026-09-28.md): the vendored
+    # tag map reads [OL] as an option. On House forms [OL] is "Ownership Interest (Holding
+    # Investments)" — e.g. "H2O To Go Inc. [OL]" on FD 10041975 — and [OP] is the option code.
+    # Patch the module attribute here so the vendored file stays byte-identical (VENDORED.md).
+    # Carry this into IIF (docs/06-ingestion-contract.md).
+    if getattr(house_client, "_ASSET_TYPE", {}).get("OL") == "option":
+        house_client._ASSET_TYPE["OL"] = "other"
     return house_client, normalize
 
 
@@ -242,9 +249,18 @@ def lag_days(disclosed: Optional[str], txn: Optional[str]) -> Optional[int]:
 
 
 def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Optional[int],
-                           security_id: Optional[int], conf: dict[str, Any]) -> dict[str, Any]:
-    """One IIF TransactionRecord (dict) → one `transactions` row (contract §4.1)."""
+                           security_id: Optional[int], conf: dict[str, Any],
+                           filed_at: Optional[str] = None) -> dict[str, Any]:
+    """One IIF TransactionRecord (dict) → one `transactions` row (contract §4.1).
+
+    `disclosed_at` is the date the trade became public = the PTR's filing date (`filed_at`,
+    from the Clerk's index). The parser's `disclosure_date` is the form's *notification*
+    column (when the member learned of the trade), which is not disclosure and made the
+    STOCK Act late-filing check (lag > 45 days from the trade) undercount — caught in the
+    2026-09-28 sample. Fall back to the notification date only when the filing date is unknown.
+    """
     side, code = map_txn_side(record.get("transaction_type"))
+    disclosed = filed_at or record.get("disclosure_date")
     return {
         "filing_id": filing_id,
         "person_id": person_id,
@@ -253,10 +269,10 @@ def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Op
         "txn_code": code,
         "is_derivative": (record.get("asset_type") == "option") or None,
         "txn_date": record.get("transaction_date"),
-        "disclosed_at": record.get("disclosure_date"),
+        "disclosed_at": disclosed,
         "amount_low": record.get("amount_min"),
         "amount_high": record.get("amount_max"),
-        "disclosure_lag_days": lag_days(record.get("disclosure_date"), record.get("transaction_date")),
+        "disclosure_lag_days": lag_days(disclosed, record.get("transaction_date")),
         "confidence": conf["confidence"],
         "review": conf["review"],
         "owner_type": record.get("owner") or "self",
@@ -472,7 +488,8 @@ def process_house_filing(conn, Json, house, f, ctx: RunContext, *, dry_run: bool
         for r in records:
             d = r.to_dict()
             security_id = resolve_security(conn, d.get("ticker"), d.get("asset"), d.get("asset_type"))
-            rows.append(map_transaction_record(d, filing_id, person_id, security_id, conf))
+            rows.append(map_transaction_record(d, filing_id, person_id, security_id, conf,
+                                               filed_at=f.filing_date))
     written = reingest_transactions(conn, filing_id, rows)
     ctx.rows_changed += written + 1
     if conf["defer_transactions_to_ocr"]:

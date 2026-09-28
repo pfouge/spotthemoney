@@ -341,15 +341,25 @@ archive old repo (#22); `congress-heatmap.html` at the root still not deleted.
 **Review dates (roadmap G):** 2026-10-16 flagship public — achievable the day Actions runs
 again; 2026-11-01 reset-day measurement — the I-Bond page, CPI job and Web Analytics are in place.
 
+**Live db-check 2026-09-28 (Peter's machine):** migrations 0001–0006; all rate series loaded
+(CPI_U_NSA 31 obs to 2026-08, 15 UST_PAR + 5 UST_REAL tenors 185 obs to 2026-09-25, I-Bond
+57 obs, latest 4.26%); flagship people 378 / members 4 / companies 54 / securities 79 /
+filings 505 (house_ptr 4, sec_form4 501) / published 0 / txns 1507 / lobbying 500 /
+contracts 1446 / committees 0 / donations 0 / raw_docs 505 all stored. FEC empty (#28).
+
+**house_ptr sample review (2026-09-28):** values match the PDFs; two job-layer mapping fixes
+made — `disclosed_at` now = filing date (was the notification column; late check undercounted)
+and `[OL]` → other (was option). See docs/06-ingestion-contract.md "First live sample".
+
 **Next (in order):**
-1. Peter: `node scripts/db-check.mjs` from your machine; paste the output into the next
-   SESSION STATE. Then samples + `--approve` for house_ptr and (after the retry/next daily run)
-   sec_form4.
+1. Peter: push the job fix; run "Ingest — Congressional PTR" with extra_args `--reprocess`;
+   `node scripts/sample-source.mjs house_ptr` → review → `--approve`. Then
+   `node scripts/sample-source.mjs sec_form4` (501 filings ready) → review → `--approve`.
 2. FEC_API_KEY (#28), then re-run ingest; run `archive_backfill` once (SUPABASE keys are set).
 3. Decide #21 (Senate) and #24 (X account); set the measurement keys when the spend is approved.
-5. Archive `pfouge/spotthemoney.com` after the first green scheduled run; bump actions to v5
+4. Archive `pfouge/spotthemoney.com` after the first green scheduled run; bump actions to v5
    (node-20 deprecation warnings) in a quiet moment.
-6. Carry the contract edits (docs/06-ingestion-contract.md, 2026-09-27 section) into IIF.
+5. Carry the contract edits (docs/06-ingestion-contract.md, 2026-09-27 section) into IIF.
 
 **PowerShell — repo split (HISTORICAL, executed 2026-09-27; kept for the record).** The repos
 were created empty on github.com in Chrome and pushed with `git remote add origin` instead of
