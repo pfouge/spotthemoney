@@ -314,27 +314,46 @@ X thread posts nothing.
 ingest_runs rows for congress_ptr (2), x_daily (3, dry-run), citation_count (1, dry-run),
 search_console_weekly (2, dry-run). The live equivalent is the first item under Next.
 
-**Not done / needs Peter:** live deploy + `verify-live` against spotthemoney.com (blocked by
-#23); real-source ingest runs and the two samples; Search Console + Bing Webmaster submission
-(clicks; the local MCP connectors exist); Senate route (#21); X account (#24); citation spend
-(#25); corrections@ mailbox (#26); `congress-heatmap.html` at the root still not deleted.
+**Not done / needs Peter:** the two samples (#27); FEC_API_KEY (#28); Bing sign-in (#29);
+Senate route (#21); X account (#24); citation spend (#25); corrections@ mailbox (#26);
+archive old repo (#22); `congress-heatmap.html` at the root still not deleted.
+
+**Evening update (same day, connections fixed through Chrome + PowerShell):**
+- Repo split done: public `pfouge/spotthemoney` (c9767ab, eea31e1), private
+  `pfouge/spotthemoney-docs` (ebc2a34). `.github/workflows/*` cannot be written by the
+  sandbox's file bridge (protected path) — fixed workflows land in `_workflows-2026-09-27/` and
+  Peter copies them over; delete that folder once the copies are committed.
+- Secrets set via `gh secret set`: DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+  CLOUDFLARE_API_TOKEN (Workers template + Zone Cache Purge), CLOUDFLARE_ACCOUNT_ID; variable
+  PUBLIC_CF_ANALYTICS_TOKEN. GitHub secret scanning on the new repo: clean.
+- deploy #3 green; migration 0006 applied live; all new pages 200 with JSON-LD.
+- Congress PTR #1: 4 filings / 29 rows (unpublished). ingest #1: senate_lda 500, usaspending
+  1000, rates/prices ok; sec_form4 no-op'd (universe seeded in parallel — fixed: universe now
+  runs in the migrate job); fec_committees 403 (#28).
+- The one-shot live check in deploy.yml failed once 15 s after a good deploy → now retries 8×15 s
+  and prints HTTP status.
+- Google Search Console: Domain property verified via Cloudflare TXT; sitemap-index submitted.
+- Sandbox lessons: `gh`/api.github.com are not reachable from the sandbox for this repo (session
+  repo allow-list) — Actions status is read through Chrome; Google/GitHub tabs freeze the Chrome
+  renderer after a few actions — open a fresh tab rather than retrying.
 
 **Review dates (roadmap G):** 2026-10-16 flagship public — achievable the day Actions runs
 again; 2026-11-01 reset-day measurement — the I-Bond page, CPI job and Web Analytics are in place.
 
 **Next (in order):**
-1. Peter: unblock Actions (#23) and do the repo split + public flip (#22) with the block below.
-2. First push → `deploy.yml` (migrate 0006 → build → deploy → verify-live → IndexNow). Then
-   Actions → ingest → Run workflow (all groups), and ingest-congress-ptr → Run workflow.
-   `node scripts/db-check.mjs` from your machine; paste the output into the next SESSION STATE.
-3. Samples + `--approve` for sec_form4 and house_ptr; add SUPABASE_URL/KEY and run
-   `archive_backfill`; submit sitemaps to Search Console and Bing.
+1. Peter: `node scripts/db-check.mjs` from your machine; paste the output into the next
+   SESSION STATE. Then samples + `--approve` for house_ptr and (after the retry/next daily run)
+   sec_form4.
+2. FEC_API_KEY (#28), then re-run ingest; run `archive_backfill` once (SUPABASE keys are set).
+3. Bing Webmaster: sign in, import from GSC, submit sitemap-index (#29).
 4. Decide #21 (Senate) and #24 (X account); set the measurement keys when the spend is approved.
-5. Carry the contract edits (docs/06-ingestion-contract.md, 2026-09-27 section) into IIF.
+5. Archive `pfouge/spotthemoney.com` after the first green scheduled run; bump actions to v5
+   (node-20 deprecation warnings) in a quiet moment.
+6. Carry the contract edits (docs/06-ingestion-contract.md, 2026-09-27 section) into IIF.
 
-**PowerShell — repo split (nsnexplorer pattern) and first push.** Run from the project folder.
-Requires `gh` signed in; if you don't use `gh`, create the two repos on github.com first and
-replace the `gh repo create` lines with `git remote add origin <url>` + `git push -u origin main`.
+**PowerShell — repo split (HISTORICAL, executed 2026-09-27; kept for the record).** The repos
+were created empty on github.com in Chrome and pushed with `git remote add origin` instead of
+`gh repo create`.
 
 ```powershell
 cd "C:\Users\pfoug\OneDrive\Documents\Claude Code Personal\spotthemoney.com"

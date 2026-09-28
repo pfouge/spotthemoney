@@ -46,6 +46,13 @@ jobs:
           npm ci --no-audit --no-fund
       - name: Apply migrations
         run: node db/migrate.mjs
+      # The ticker universe must exist before the parallel groups start: sec_form4 and
+      # twelvedata_eod read it from `securities` and no-op when it is empty (ingest #1,
+      # 2026-09-27, ran sec_form4 before the rates group had seeded it).
+      - name: Seed the ticker universe
+        run: |
+          set -o pipefail
+          npm run ingest -- universe
 
   ingest:
     needs: migrate
@@ -56,7 +63,7 @@ jobs:
       matrix:
         group:
           - name: rates
-            sources: universe ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
+            sources: ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
           - name: filings
             sources: sec_form4
           - name: money

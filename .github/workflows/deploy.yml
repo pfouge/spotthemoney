@@ -82,15 +82,22 @@ jobs:
         run: npx wrangler deploy --config dist/client/wrangler.json
 
       - name: Verify the live site
+        # Edge propagation is not instant and a single fetch can catch a 5xx/challenge, so
+        # retry for up to ~2 minutes and print the HTTP status on every miss (2026-09-27:
+        # a one-shot check failed 15 s after a deploy that was in fact live).
         run: |
           set -o pipefail
-          sleep 15
           url="${PUBLIC_SITE_URL}/rates/i-bonds/?v=${GITHUB_SHA}"
-          if curl -fsSL "$url" | grep -q "I-Bond Rate Today"; then
-            echo "✓ live: $url"
-          else
-            echo "✗ live check failed for $url"; exit 1
-          fi
+          for attempt in 1 2 3 4 5 6 7 8; do
+            sleep 15
+            status=$(curl -sSL -A "spotthemoney-deploy-check (+https://spotthemoney.com)" \
+              -o body.html -w "%{http_code}" "$url" || echo "000")
+            if [ "$status" = "200" ] && grep -q "I-Bond Rate Today" body.html; then
+              echo "✓ live (attempt $attempt): $url"; exit 0
+            fi
+            echo "… attempt $attempt: HTTP $status, expected text not found yet"
+          done
+          echo "✗ live check failed for $url after 8 attempts"; head -c 600 body.html; exit 1
 
       # Discovery plumbing must be live and valid after every deploy (roadmap B.2): sitemap
       # index + children, robots.txt AI allow lines, llms.txt, JSON-LD on a sample of pages,
