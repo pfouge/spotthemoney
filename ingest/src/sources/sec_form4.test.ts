@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/sec_form4.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseForm4Xml, slugifyCompany, primaryTicker } from "./sec_form4.js";
+import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities } from "./sec_form4.js";
 
 const XML = `<?xml version="1.0"?>
 <ownershipDocument>
@@ -99,4 +99,10 @@ test("primaryTicker keeps one clean symbol from multi-class or junk issuerTradin
   assert.equal(primaryTicker("N/A"), null);
   assert.equal(primaryTicker(""), null);
   assert.equal(primaryTicker(null), null);
+});
+
+test("decodeXmlEntities restores issuer names filed with XML escapes", () => {
+  assert.equal(decodeXmlEntities("WELLS FARGO &amp; COMPANY/MN"), "WELLS FARGO & COMPANY/MN");
+  assert.equal(decodeXmlEntities("A &lt;B&gt; &quot;C&quot; &apos;D&apos; &#39;E&#39; &#x26;F"), "A <B> \"C\" 'D' 'E' &F");
+  assert.equal(decodeXmlEntities("plain"), "plain");
 });

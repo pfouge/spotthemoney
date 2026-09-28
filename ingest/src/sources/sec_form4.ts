@@ -197,7 +197,16 @@ interface ParsedForm4 {
 function tagText(xml: string, tag: string): string | null {
   const re = new RegExp(`<(?:\\w+:)?${tag}\\b[^>]*>([\\s\\S]*?)<\\/(?:\\w+:)?${tag}>`, "i");
   const m = xml.match(re);
-  return m ? m[1]!.trim() : null;
+  return m ? decodeXmlEntities(m[1]!.trim()) : null;
+}
+
+/** The five XML entities plus numeric refs — issuer names carry "&amp;" ("WELLS FARGO &amp; COMPANY"). */
+export function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
 }
 
 /**
