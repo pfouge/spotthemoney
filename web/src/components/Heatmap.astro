@@ -1,0 +1,78 @@
+---
+// The trades heatmap — the site's centerpiece (2026-09-28). Static markup + controls here; the
+// treemap, filtering and aggregation run in the browser (src/scripts/heatmap.ts) over the
+// build-time JSON at /data/heatmap-<kind>.json. Two kinds share one component:
+//   congress  — scope All / House / Senate / Democrats / Republicans, member picker
+//   insiders  — scope All / Officers / Directors / 10% owners, filer picker, open-market-only
+//               and 10b5-1 switches (defaults: open-market only, plans excluded)
+// Both: window 7D/30D/90D/1Y, view Net/Buying/Selling, ticker filter, ticker/filer side list.
+// `primary` makes the filter state live in the URL hash (one per page).
+interface Props { kind: "congress" | "insiders"; primary?: boolean; height?: number; id?: string; compact?: boolean; }
+const { kind, primary = false, height = 560, id = `hm-${kind}`, compact = false } = Astro.props as Props;
+const src = `/data/heatmap-${kind}.json`;
+---
+<section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} aria-label={kind === "congress" ? "Congressional trades heatmap" : "Corporate insider trades heatmap"}>
+  <div class="controls hm-controls">
+    <div class="ctl"><span class="lbl">{kind === "congress" ? "Who" : "Role"}</span>
+      {kind === "congress" ? (
+        <select data-ctl="scope" aria-label="Scope">
+          <option value="all">All Congress</option>
+          <option value="house">House</option>
+          <option value="senate">Senate</option>
+          <option value="dem">Democrats</option>
+          <option value="rep">Republicans</option>
+        </select>
+      ) : (
+        <select data-ctl="scope" aria-label="Role">
+          <option value="all">All insiders</option>
+          <option value="officer">Officers</option>
+          <option value="director">Directors</option>
+          <option value="owner">10% owners</option>
+        </select>
+      )}
+      <select data-ctl="who" aria-label={kind === "congress" ? "Member" : "Filer"}><option value="">{kind === "congress" ? "All members" : "All filers"}</option></select>
+    </div>
+    {kind === "insiders" && (
+      <div class="ctl"><span class="lbl">Codes</span>
+        <div class="seg" data-seg="codes"><button type="button" data-v="open" class="on">Open-market</button><button type="button" data-v="all">All codes</button></div>
+      </div>
+    )}
+    {kind === "insiders" && (
+      <div class="ctl"><span class="lbl">10b5-1</span>
+        <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">Exclude plans</button><button type="button" data-v="include">Include</button></div>
+      </div>
+    )}
+    <div class="ctl"><span class="lbl">Window</span>
+      <div class="seg" data-seg="window"><button type="button" data-v="7">7D</button><button type="button" data-v="30" class="on">30D</button><button type="button" data-v="90">90D</button><button type="button" data-v="365">1Y</button></div>
+    </div>
+    <div class="ctl"><span class="lbl">View</span>
+      <div class="seg" data-seg="view"><button type="button" data-v="net" class="on">Net</button><button type="button" data-v="buy">Buying</button><button type="button" data-v="sell">Selling</button></div>
+    </div>
+    <div class="ctl"><span class="lbl">Tickers</span><input class="hm-input mono" data-ctl="tickers" type="text" inputmode="text" placeholder="e.g. NVDA, AAPL" aria-label="Filter tickers" /></div>
+    <button type="button" class="hm-reset" data-ctl="reset">Reset</button>
+  </div>
+
+  <div class="summary hm-summary" aria-live="polite"></div>
+
+  <div class="hm-main">
+    <div class="hm-map" style={`height:${height}px`} role="img" aria-label="Treemap of tickers sized by dollars disclosed"></div>
+    <aside class="hm-side" style={`height:${height}px`}>
+      <div class="hm-side-head">
+        <h3 class="hm-side-title">Most traded</h3>
+        <div class="seg seg-sm" data-seg="side"><button type="button" data-v="tickers" class="on">Tickers</button><button type="button" data-v="filers">{kind === "congress" ? "Members" : "Filers"}</button></div>
+      </div>
+      <div class="hm-side-rows"></div>
+    </aside>
+  </div>
+
+  <div class="hm-foot">
+    <div class="hm-legend"></div>
+    <div class="hm-stamp mono"></div>
+  </div>
+  <div class="hm-tip" role="tooltip"></div>
+</section>
+
+<script>
+  import { initAllHeatmaps } from "../scripts/heatmap";
+  initAllHeatmaps();
+</script>

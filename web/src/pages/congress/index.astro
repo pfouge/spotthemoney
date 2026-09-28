@@ -7,6 +7,7 @@ import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
+import Heatmap from "../../components/Heatmap.astro";
 import { getFlagship, withinDays, num, plural, personPath, securityPath, roleLabel, avg, isLate, CONGRESS_DEADLINE_DAYS } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
@@ -45,8 +46,11 @@ const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act P
   <ReviewNote show={underReview} what="Congressional rows" />
   {pendingOcr > 0 && <p class="note">{plural(pendingOcr, "filing is", "filings are")} scanned PDFs awaiting human review and show no rows yet.</p>}
 
+  <h2 id="heatmap" class="hm-h2">Heatmap <span class="tag live">Live</span></h2>
+  <Heatmap kind="congress" primary={true} />
+
   <nav class="feeds" aria-label="Sections">
-    <a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
+    <a href="#heatmap">Heatmap</a><a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
   </nav>
 
   <h2 id="newest">Newest disclosures</h2>

@@ -9,6 +9,7 @@ import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
+import Heatmap from "../../components/Heatmap.astro";
 import { getFlagship, withinDays, num, plural, money, sum, personPath, securityPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
@@ -68,7 +69,11 @@ const feeds = [
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR Form 4" />
   <ReviewNote show={underReview} what="Form 4 rows" />
 
+  <h2 id="heatmap" class="hm-h2">Heatmap <span class="tag live">Live</span></h2>
+  <Heatmap kind="insiders" primary={true} />
+
   <nav class="feeds" aria-label="Preset feeds">
+    <a href="#heatmap">Heatmap</a>
     <a href="#newest">Newest</a>
     {feeds.map((f) => <a href={`#${f.id}`}>{f.title.replace(/ \(.*\)$/, "")}</a>)}
     <a href="/stocks/">By ticker</a>

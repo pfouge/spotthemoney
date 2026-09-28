@@ -63,7 +63,7 @@ jobs:
       matrix:
         group:
           - name: rates
-            sources: ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
+            sources: congress_roster ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
           - name: filings
             sources: sec_form4
           - name: money

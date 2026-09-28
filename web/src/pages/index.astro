@@ -1,131 +1,108 @@
 ---
+// Home = the heatmap (decided 2026-09-28): the two flagship features — congressional trades and
+// corporate insider trades — open the site on a live, fully filterable treemap. Rates and the
+// rest of the catalog sit in a compact strip below and in the nav.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import Heatmap from "../components/Heatmap.astro";
 import AdSlot from "../components/AdSlot.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { getLatestIBondRate, getYieldCurve } from "../lib/db";
-import { getFlagship, withinDays, num } from "../lib/flagship";
+import { getFlagship, withinDays, num, money, plural } from "../lib/flagship";
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
 
-// Headline figures for the data strip — live if the DB is connected, else placeholders.
+const model = await getFlagship();
+const pub = model.txns.filter((t) => t.isPublished);
+const c30 = pub.filter((t) => t.source !== "sec_form4" && withinDays(t.txnDate ?? t.disclosedAt, 30));
+const i30 = pub.filter((t) => t.source === "sec_form4" && withinDays(t.txnDate ?? t.disclosedAt, 30));
+const cMembers = new Set(c30.map((t) => t.personId)).size;
+const cDollars = c30.reduce((s, t) => s + (t.value ?? 0), 0);
+const iBuys = i30.filter((t) => t.code === "P" && !t.is10b51);
+const iSells = i30.filter((t) => t.code === "S" && !t.is10b51);
+const iTickers = new Set(i30.map((t) => t.securityId)).size;
+const congressLive = c30.length > 0 || (model.counts.congressTxns ?? 0) > 0;
+const insidersLive = i30.length > 0 || (model.counts.insiderTxns ?? 0) > 0;
+const lastDisclosed = pub.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
+const answer = [
+  congressLive
+    ? `In the last 30 days ${plural(cMembers, "member")} of Congress disclosed ${plural(c30.length, "trade")} worth up to ${money(cDollars, { compact: true })}.`
+    : "Congressional trade disclosures are being ingested; the map fills as filings are reviewed.",
+  insidersLive
+    ? `Corporate insiders at ${plural(iTickers, "tracked ticker")} made ${plural(iBuys.length, "open-market purchase")} against ${plural(iSells.length, "sale")} outside 10b5-1 plans.`
+    : "Insider filings are being ingested.",
+].join(" ");
+
 const ibond = await getLatestIBondRate();
 const ibondRate = ibond?.compositeRate != null ? formatPercent(ibond.compositeRate) : "—";
 const curve = await getYieldCurve();
 const tenY = curve?.tenors.find((t) => t.label === "10Y")?.latest ?? null;
 const tenYRate = tenY != null ? formatPercent(tenY) : "—";
-const model = await getFlagship();
-const insiderWeek = model.txns.filter((t) => t.source === "sec_form4" && withinDays(t.disclosedAt, 7)).length;
-const congressWeek = model.txns.filter((t) => t.source !== "sec_form4" && withinDays(t.disclosedAt, 7)).length;
-// "Soon" is gone: a section is Live when it has rows, otherwise it is shown as Ingesting — the
-// page exists either way and explains its own empty state.
-const insidersLive = (model.counts.insiderTxns ?? 0) > 0;
-const congressLive = (model.counts.congressTxns ?? 0) > 0;
 const washingtonLive = (model.counts.lobbying ?? 0) + (model.counts.contracts ?? 0) + (model.counts.committees ?? 0) > 0;
-const tagClass = (live: boolean) => (live ? "tag live" : "tag");
-const tagText = (live: boolean) => (live ? "Live" : "Ingesting");
-const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", description: "Free public U.S. financial and political disclosure data: Treasury rates, insider trades, congressional stock trades, donations, lobbying, federal contracts.", datasets: [
+
+const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", description: "Free public U.S. disclosure data: congressional stock trades, corporate insider trades, Treasury rates, donations, lobbying, federal contracts.", datasets: [
+  { name: "Congressional stock trade disclosures", path: "/congress/" }, { name: "Corporate insider transactions (SEC Form 4)", path: "/insiders/" },
   { name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "Treasury par yield curve", path: "/rates/treasury-yields/" }, { name: "TIPS real yield curve", path: "/rates/tips/" },
-  { name: "Corporate insider transactions (SEC Form 4)", path: "/insiders/" }, { name: "Congressional stock trade disclosures", path: "/congress/" },
   { name: "Campaign contributions to tracked committees", path: "/donations/" }, { name: "Federal lobbying filings", path: "/lobbying/" }, { name: "Federal contract award actions", path: "/contracts/" }, { name: "Newest disclosures feed", path: "/disclosures/" },
 ] });
-const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "See where the money really moves — in the markets and in Washington. Rendered clearly, updated constantly, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
+const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling — every disclosed trade on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
 ---
-<BaseLayout title="Spot the Money — see where the money really moves">
-  <section class="hero">
-    <p class="eyebrow">Markets <span class="x">&times;</span> Washington</p>
-    <h1>See where the money really moves.</h1>
-    <p class="lede">
-      Free public data from the markets and from Washington — rendered clearly, updated
-      constantly, and built to come back to.
-    </p>
-    <div class="btns">
-      <a class="btn btn-primary" href="/rates/i-bonds/">See the I-Bond rate &rarr;</a>
-      <a class="btn btn-ghost" href="/insiders/">Insider trades</a>
-      <a class="btn btn-ghost" href="/congress/">Congress trades</a>
-    </div>
+<BaseLayout title="Spot the Money — Congress and insider stock trades, on one heatmap" section="Heatmap">
+  <section class="hero hero-map">
+    <p class="eyebrow">Congress <span class="x">&times;</span> Corporate insiders</p>
+    <h1>Who's buying. Who's selling. As disclosed.</h1>
+    <p class="lede">Every STOCK Act trade and every Form 4 in the tracked set — sized by dollars, colored by direction, filterable, and linked to the filing.</p>
   </section>
 
-  <div class="datastrip">
-    <div class="cell">
-      <div class="k">I-Bond composite</div>
-      <div class="v pos">{ibondRate}</div>
+  <div class="hm-switch" role="tablist" aria-label="Choose a heatmap">
+    <div class="seg" id="hmSwitch">
+      <button type="button" class="on" data-pane="congress" role="tab" aria-selected="true">Congress</button>
+      <button type="button" data-pane="insiders" role="tab" aria-selected="false">Corporate insiders</button>
     </div>
-    <div class="cell">
-      <div class="k">10-year Treasury</div>
-      <div class="v pos">{tenYRate}</div>
-    </div>
-    <div class="cell">
-      <div class="k">Insider trades (7d)</div>
-      <div class="v">{insidersLive ? num(insiderWeek) : "ingesting"}</div>
-    </div>
-    <div class="cell">
-      <div class="k">Congress trades (7d)</div>
-      <div class="v">{congressLive ? num(congressWeek) : "ingesting"}</div>
-    </div>
+    <a class="hm-more" id="hmMore" href="/congress/">Full Congress page: late filers, most active members, every filing &rarr;</a>
+  </div>
+  <div class="hm-pane" data-pane="congress"><Heatmap kind="congress" primary={true} /></div>
+  <div class="hm-pane" data-pane="insiders" hidden><Heatmap kind="insiders" id="hm-insiders-home" /></div>
+
+  <section class="answer" data-answer>
+    <p class="answer-text">{answer}</p>
+    <p class="answer-meta"><span>Last updated {lastDisclosed ? new Date(lastDisclosed + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "—"}</span><span> · Sources: House Clerk PTRs; SEC EDGAR Form 4</span></p>
+  </section>
+
+  <div class="datastrip strip-compact">
+    <div class="cell"><div class="k">I-Bond composite</div><div class="v pos">{ibondRate}</div><div class="delta"><a href="/rates/i-bonds/">Next reset and calculator &rarr;</a></div></div>
+    <div class="cell"><div class="k">10-year Treasury</div><div class="v pos">{tenYRate}</div><div class="delta"><a href="/rates/treasury-yields/">Yield curve and TIPS &rarr;</a></div></div>
+    <div class="cell"><div class="k">Washington</div><div class="v">{washingtonLive ? `${num(model.counts.lobbying ?? 0)} + ${num(model.counts.contracts ?? 0)}` : "ingesting"}</div><div class="delta"><a href="/washington/">Lobbying filings + contract actions &rarr;</a></div></div>
+    <div class="cell"><div class="k">Newest</div><div class="v">{num(pub.filter((t) => withinDays(t.disclosedAt, 7)).length)}</div><div class="delta"><a href="/disclosures/">Disclosures in the last 7 days &rarr;</a></div></div>
   </div>
 
-  <section class="index-list" aria-label="Products">
-    <a class="index-row" href="/rates/i-bonds/">
-      <div class="num">01</div>
-      <div>
-        <h3>I-Bonds <span class="tag live">Live</span></h3>
-        <p>The current composite rate, what is already known about the next reset, a value calculator, and how the rate is set — straight from the U.S. Treasury.</p>
-      </div>
-      <div class="go">&rarr;</div>
-    </a>
-    <a class="index-row" href="/rates/">
-      <div class="num">02</div>
-      <div>
-        <h3>Rates Hub <span class="tag live">Live</span></h3>
-        <p>I-Bonds, TIPS real yields, Treasury yields and the yield curve — the cleanest, fastest read on safe yield.</p>
-      </div>
-      <div class="go">&rarr;</div>
-    </a>
-    <a class="index-row" href="/insiders/">
-      <div class="num">03</div>
-      <div>
-        <h3>Insider trades <span class={tagClass(insidersLive)}>{tagText(insidersLive)}</span></h3>
-        <p>Every SEC Form 4 in the tracked set the day after it lands: cluster buys, CEO purchases, officer sales, and one page per insider, company and ticker.</p>
-      </div>
-      <div class="go">&rarr;</div>
-    </a>
-    <a class="index-row" href="/congress/">
-      <div class="num">04</div>
-      <div>
-        <h3>Congress trades <span class={tagClass(congressLive)}>{tagText(congressLive)}</span></h3>
-        <p>STOCK Act disclosures with the days-to-report on every row, late filers, most active members, and a link to each filing.</p>
-      </div>
-      <div class="go">&rarr;</div>
-    </a>
-    <a class="index-row" href="/washington/">
-      <div class="num">05</div>
-      <div>
-        <h3>Washington <span class={tagClass(washingtonLive)}>{tagText(washingtonLive)}</span></h3>
-        <p>Donations, lobbying and federal contracts from the FEC, the Senate and USAspending — cross-linked to the companies and people above.</p>
-      </div>
-      <div class="go">&rarr;</div>
-    </a>
-    <a class="index-row" href="/disclosures/">
-      <div class="num">06</div>
-      <div>
-        <h3>Newest disclosures <span class={tagClass(insidersLive || congressLive || washingtonLive)}>{tagText(insidersLive || congressLive || washingtonLive)}</span></h3>
-        <p>One feed across every source, newest first. Scoreboard and alerts follow.</p>
-      </div>
-      <div class="go">&rarr;</div>
-    </a>
-  </section>
-
   <section class="manifesto">
-    <p class="eyebrow">Why we built this</p>
-    <h2>The data is public. The presentation never was.</h2>
+    <p class="eyebrow">How to read it</p>
     <p>
-      Rates, filings, donations and contracts are all free and open — but they live in slow,
-      ugly official sources nobody wants to revisit. We render the same facts clearly, fast, and
-      on a check-in basis. Transparency and the scoreboard, never a recommendation.
-      How every number is made: <a href="/methodology/">methodology</a>.
+      Congress reports dollar ranges, so a congressional tile counts each trade at the top of its
+      bracket; insider tiles are shares × the reported price. Green is net buying, red net selling,
+      and the deeper the color the more one-sided the flow. Open-market insider trades (codes P and S)
+      are shown by default with Rule 10b5-1 plan sales excluded; switch them on to compare.
+      Disclosures lag the trade — Congress has 45 days, insiders two business days — and every row
+      links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>
     </p>
   </section>
 
   <AdSlot label="Advertisement" />
   <JsonLd data={[website, catalog]} />
+
+  <script>
+    const sw = document.getElementById("hmSwitch");
+    const more = document.getElementById("hmMore") as HTMLAnchorElement | null;
+    const links: Record<string, [string, string]> = {
+      congress: ["/congress/", "Full Congress page: late filers, most active members, every filing →"],
+      insiders: ["/insiders/", "Full Insiders page: cluster buys, CEO purchases, officer sales →"],
+    };
+    sw?.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {
+      const pane = b.dataset.pane!;
+      sw.querySelectorAll("button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b ? "true" : "false"); });
+      document.querySelectorAll<HTMLElement>(".hm-pane").forEach((p) => { p.hidden = p.dataset.pane !== pane; });
+      if (more) { more.href = links[pane]![0]; more.textContent = links[pane]![1]; }
+      window.dispatchEvent(new Event("resize"));
+    }));
+  </script>
 </BaseLayout>

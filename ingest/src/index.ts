@@ -18,6 +18,7 @@ import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
 import { ingestSecForm4 } from "./sources/sec_form4.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
+import { ingestCongressRoster } from "./sources/congress_roster.js";
 import { ingestTreasuryRealYieldCurve } from "./sources/treasury_real_yield_curve.js";
 import { ingestBlsCpi } from "./sources/bls_cpi.js";
 import { ingestFecCommittees } from "./sources/fec_committees.js";
@@ -32,6 +33,7 @@ import type { IngestRunResult } from "@stm/shared";
 // per run and the X job posts publicly, so neither may ride along with the daily batch.
 const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean; run: () => Promise<IngestRunResult> }> = {
   universe: { label: "Tracked-ticker universe (securities seed)", cadence: "daily", daily: true, run: ingestUniverse },
+  congress_roster: { label: "Congress roster (party/state/district/bioguide)", cadence: "daily", daily: true, run: ingestCongressRoster },
   ibonds: { label: "I-Bond Composite Rate", cadence: "on_reset", daily: true, run: ingestIBonds },
   treasury_yield_curve: { label: "Treasury Daily Par Yield Curve", cadence: "daily", daily: true, run: ingestTreasuryYieldCurve },
   treasury_real_yield_curve: { label: "Treasury Daily Real (TIPS) Yield Curve", cadence: "daily", daily: true, run: ingestTreasuryRealYieldCurve },

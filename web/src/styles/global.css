@@ -2,10 +2,26 @@
    Source of truth: the congress-heatmap prototype (web/public/congress-heatmap.html), adopted
    site-wide 2026-09-06. Dark-first "editorial terminal": near-black ground, cool cyan signal
    accent, green/red only for direction, mono numerals everywhere, dense hairline rules.
-   Theme: `html.dark` / `html.light` set before paint by the inline script in BaseLayout
-   (system preference by default, toggle remembered per browser). */
+   Theme (changed 2026-09-28): LIGHT by default for everyone; `html.dark` only when the reader
+   chooses it with the header toggle (remembered per browser in localStorage.theme). The
+   `:root` tokens are the light set so a no-JS render is light too. */
 
-:root, html.dark {
+:root, html.light {
+  --bg: #F2F1EC; --surface: #FFFFFF; --surface-alt: #F6F5F0;
+  --ink: #0C0D0E; --ink-soft: #5B5F63;
+  --line: rgba(12,13,14,.12); --line-strong: rgba(12,13,14,.22);
+  --signal: #0C5C76; --signal-ink: #FFFFFF; --signal-deep: #0C5C76;
+  --green: #15824B; --red: #C0392B;
+  --glow-signal: none;
+  --chart-1: #15824B; --chart-2: #0E75B0; /* data marks — validated for the light surface */
+  --r-sm: 2px; --r-md: 4px;
+  --max: 1360px;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, "Courier New", monospace;
+  color-scheme: light;
+}
+html.dark {
   --bg: #0A0B0C; --surface: #101214; --surface-alt: #15181B;
   --ink: #F4F4F2; --ink-soft: #A6ADB3;
   --line: rgba(244,244,242,.10); --line-strong: rgba(244,244,242,.22);
@@ -19,16 +35,6 @@
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, "Courier New", monospace;
   color-scheme: dark;
-}
-html.light {
-  --bg: #F2F1EC; --surface: #FFFFFF; --surface-alt: #F6F5F0;
-  --ink: #0C0D0E; --ink-soft: #5B5F63;
-  --line: rgba(12,13,14,.12); --line-strong: rgba(12,13,14,.22);
-  --signal: #0C5C76; --signal-ink: #FFFFFF; --signal-deep: #0C5C76;
-  --green: #15824B; --red: #C0392B;
-  --glow-signal: none;
-  --chart-1: #15824B; --chart-2: #0E75B0; /* data marks — validated for the light surface */
-  color-scheme: light;
 }
 /* Back-compat aliases for older class names */
 :root { --paper: var(--bg); --card: var(--surface); --green-2: var(--green); }
@@ -254,3 +260,63 @@ h1 .soft { font-family: var(--font-sans); font-weight: 400; font-size: 0.55em; c
   ul.cols { columns: 1; }
   .two-col { grid-template-columns: 1fr; }
 }
+
+/* ── Heatmap (components/Heatmap.astro + scripts/heatmap.ts) — the centerpiece ───────────── */
+.heatmap { position: relative; margin: 0 0 1.5rem; }
+.hm-controls { gap: 14px 18px; }
+.hm-controls .ctl select + select { margin-left: 2px; }
+.hm-input { font-family: var(--font-mono); font-size: 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 8px; width: 150px; }
+.hm-input:focus { outline: none; border-color: var(--signal); }
+.hm-reset { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); background: transparent; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 10px; cursor: pointer; margin-left: auto; }
+.hm-reset:hover { color: var(--ink); border-color: var(--signal); }
+.hm-summary { grid-template-columns: repeat(5, 1fr); }
+.hm-main { display: grid; grid-template-columns: 1fr 304px; gap: 16px; padding: 16px 0 0; }
+.hm-map { position: relative; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+.hm-tile { position: absolute; overflow: hidden; border: 1px solid var(--bg); padding: 5px 6px; text-decoration: none; display: block; }
+.hm-tile:hover, .hm-tile:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; z-index: 3; }
+.hm-tile .tk { font-family: var(--font-mono); font-weight: 600; line-height: 1.1; }
+.hm-tile .amt { font-family: var(--font-mono); font-weight: 500; opacity: 0.95; line-height: 1.25; }
+.hm-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 2rem; text-align: center; color: var(--ink-soft); font-size: 13px; }
+.hm-side { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
+.hm-side-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 8px 13px; border-bottom: 1px solid var(--line); }
+.hm-side-head .seg { flex-shrink: 0; }
+.hm-side-title { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); font-weight: 500; }
+.seg.seg-sm button { padding: 4px 8px; font-size: 10px; }
+.hm-side-rows { overflow: auto; }
+.hm-side-rows .row { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 7px 13px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.hm-side-rows .rk { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); }
+.hm-side-rows .tkr { font-family: var(--font-mono); font-weight: 600; }
+.hm-side-rows .tkr a, .hm-side-rows a.tkr { color: var(--ink); text-decoration: none; }
+.hm-side-rows .tkr a:hover, .hm-side-rows a.tkr:hover { color: var(--signal); }
+.hm-side-rows .nm { color: var(--ink-soft); font-size: 11px; }
+.hm-side-rows .val { font-family: var(--font-mono); font-size: 12px; text-align: right; }
+.hm-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 10px 0 0; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); }
+.hm-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.hm-legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -2px; margin-right: 6px; }
+.hm-tip { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 50; background: var(--surface-alt); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 9px 11px; font-size: 12px; max-width: 260px; opacity: 0; transition: opacity 0.08s; color: var(--ink); }
+.hm-tip .t-tk { font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+.hm-tip .soft { color: var(--ink-soft); font-weight: 400; }
+.hm-tip .t-row { display: flex; justify-content: space-between; gap: 14px; margin-top: 3px; color: var(--ink-soft); }
+.hm-tip .t-row b { font-family: var(--font-mono); color: var(--ink); font-weight: 500; }
+.hm-tip .t-top { margin-top: 5px; border-top: 1px solid var(--line); padding-top: 5px; }
+/* home-page switch between the two maps */
+.hm-switch { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 4px; }
+.hm-switch .seg button { padding: 8px 16px; font-size: 12px; }
+.hm-pane[hidden] { display: none; }
+@media (max-width: 900px) {
+  .hm-main { grid-template-columns: 1fr; }
+  .hm-side { height: auto !important; max-height: 340px; }
+  .hm-map { height: 420px !important; }
+  .hm-summary { grid-template-columns: repeat(2, 1fr); }
+  .hm-summary .cell:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .hm-reset { margin-left: 0; }
+}
+.hero-map { padding: 1.1rem 0 0.9rem; border-bottom: 0; }
+.hero-map h1 { max-width: none; font-size: clamp(1.5rem, 3vw, 2.1rem); margin-bottom: 0.3rem; }
+.hero-map .lede { max-width: 90ch; margin-top: 0.2rem; font-size: 0.95rem; }
+.hm-more { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; color: var(--ink-soft); text-decoration: none; margin-left: auto; }
+.hm-more:hover { color: var(--signal); }
+.strip-compact { margin-top: 0.5rem; border-top: 1px solid var(--line); }
+.strip-compact .delta a { color: var(--ink-soft); text-decoration: none; }
+.strip-compact .delta a:hover { color: var(--signal); }
+.hm-h2 { margin-top: 1rem; }

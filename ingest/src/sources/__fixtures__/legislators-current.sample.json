@@ -1,0 +1,66 @@
+[
+  {
+    "id": { "bioguide": "P000608" },
+    "name": {
+      "first": "Scott",
+      "last": "Peters",
+      "middle_name": "H.",
+      "official_full": "Scott H. Peters"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "start": "2013-01-03",
+        "end": "2015-01-03",
+        "state": "CA",
+        "district": 52,
+        "party": "Democrat"
+      },
+      {
+        "type": "rep",
+        "start": "2025-01-03",
+        "end": "2027-01-03",
+        "state": "CA",
+        "district": 50,
+        "party": "Democrat"
+      }
+    ]
+  },
+  {
+    "id": { "bioguide": "T000999" },
+    "name": {
+      "first": "Jane",
+      "last": "Testsen",
+      "official_full": "Jane Testsen"
+    },
+    "terms": [
+      {
+        "type": "sen",
+        "start": "2023-01-03",
+        "end": "2029-01-03",
+        "state": "OH",
+        "party": "Republican",
+        "class": 2
+      }
+    ]
+  },
+  {
+    "id": { "bioguide": "B000998" },
+    "name": {
+      "first": "William",
+      "last": "Testsmith",
+      "nickname": "Bill",
+      "official_full": "Bill Testsmith"
+    },
+    "terms": [
+      {
+        "type": "rep",
+        "start": "2023-01-03",
+        "end": "2025-01-03",
+        "state": "TX",
+        "district": 7,
+        "party": "Republican"
+      }
+    ]
+  }
+]

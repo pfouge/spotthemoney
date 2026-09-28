@@ -6,7 +6,7 @@ import Mark from "../components/Mark.astro";
 interface Props { title: string; description?: string; section?: string; }
 const {
   title,
-  description = "See where the money really moves — in the markets and in Washington. Rendered clearly, updated constantly, free.",
+  description = "Who in Congress and which corporate insiders are buying and selling — every disclosed trade on one heatmap, updated daily, free.",
   section,
 } = Astro.props;
 const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com";
@@ -29,17 +29,14 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content="Spot the Money" />
-    <meta name="theme-color" content="#F2F1EC" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0A0B0C" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F2F1EC" id="themeColor" />
     <script is:inline>
-      // Theme before first paint: remembered choice, else the system preference.
+      // Theme before first paint: light for everyone unless this browser chose dark.
       (function () {
-        var t = null;
-        try { t = localStorage.getItem("theme"); } catch (e) {}
-        if (t !== "light" && t !== "dark") {
-          t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-        }
+        var t = "light";
+        try { if (localStorage.getItem("theme") === "dark") t = "dark"; } catch (e) {}
         document.documentElement.classList.add(t);
+        if (t === "dark") { var m = document.getElementById("themeColor"); if (m) m.setAttribute("content", "#0A0B0C"); }
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -59,12 +56,11 @@ const current = (href: string) => (path === href ? "page" : undefined);
           {section && <span class="sub">{section}</span>}
         </a>
         <nav class="site" aria-label="Primary">
-          <a href="/rates/" aria-current={current("/rates/")}>Rates</a>
-          <a href="/rates/i-bonds/" aria-current={current("/rates/i-bonds/")}>I-Bonds</a>
-          <a href="/insiders/" aria-current={current("/insiders/")}>Insiders</a>
           <a href="/congress/" aria-current={current("/congress/")}>Congress</a>
-          <a href="/washington/" aria-current={current("/washington/")}>Washington</a>
+          <a href="/insiders/" aria-current={current("/insiders/")}>Insiders</a>
           <a href="/disclosures/" aria-current={current("/disclosures/")}>Newest</a>
+          <a href="/washington/" aria-current={current("/washington/")}>Washington</a>
+          <a href="/rates/" aria-current={current("/rates/")}>Rates</a>
         </nav>
         <div class="hud">
           <span class="status"><span class="dot"></span> <span>Data</span> <span class="on">Live</span></span>
@@ -103,7 +99,9 @@ const current = (href: string) => (path === href ? "page" : undefined);
         const next = root.classList.contains("dark") ? "light" : "dark";
         root.classList.remove("dark", "light");
         root.classList.add(next);
+        document.getElementById("themeColor")?.setAttribute("content", next === "dark" ? "#0A0B0C" : "#F2F1EC");
         try { localStorage.setItem("theme", next); } catch {}
+        window.dispatchEvent(new CustomEvent("themechange", { detail: next }));
       });
     </script>
   </body>

@@ -357,14 +357,8 @@ EDGAR: rows match; multi-class `issuerTradingSymbol` ("LEN, LEN.B") had become a
 `primaryTicker` in sec_form4.ts + data migration 0007 (folds existing rows). Weighted-average
 price footnotes (price 0) and 10%-owner filings widening the universe noted in docs/06.
 
-**Next (in order):**
-1. Peter: push (0007 + sec_form4 fix), `node scripts/sample-source.mjs sec_form4 --approve`,
-   then confirm /insiders/ and /stocks/len/ render after the deploy.
-2. FEC_API_KEY (#28), then re-run ingest; run `archive_backfill` once (SUPABASE keys are set).
-3. Decide #21 (Senate) and #24 (X account); set the measurement keys when the spend is approved.
-4. Archive `pfouge/spotthemoney.com` after the first green scheduled run; bump actions to v5
-   (node-20 deprecation warnings) in a quiet moment.
-5. Carry the contract edits (docs/06-ingestion-contract.md, 2026-09-27 section) into IIF.
+**Both gates passed 2026-09-28:** house_ptr (4 filings) and sec_form4 (571 filings) approved
+and live; migration 0008 decoded XML entities in names; deploys #5–#8 green.
 
 **PowerShell — repo split (HISTORICAL, executed 2026-09-27; kept for the record).** The repos
 were created empty on github.com in Chrome and pushed with `git remote add origin` instead of
@@ -408,3 +402,32 @@ blank table): https://spotthemoney.com/ · /insiders/ · /congress/ · /stocks/ 
 /rates/i-bonds/#next-reset · /methodology/ · /corrections/ · /sitemap-index.xml ·
 /sitemaps/insiders.xml · /robots.txt · /llms.txt · then any `/insiders/<slug>/`,
 `/congress/<slug>/`, `/stocks/<ticker>/`, `/companies/<slug>/` from the sitemaps.
+
+## SESSION STATE 2026-09-28 — heatmap is the product
+
+- **Theme:** light by default for everyone; dark is opt-in via the header toggle
+  (`localStorage.theme === "dark"`). `:root` tokens are the light set (global.css).
+- **Heatmap:** `web/src/components/Heatmap.astro` + `web/src/scripts/heatmap.ts` (vanilla,
+  squarified treemap, ~400 lines) over `web/src/lib/heatmap.ts` → `/data/heatmap-congress.json`
+  and `/data/heatmap-insiders.json` (build-time, published rows, last 365 days). Home page = the
+  map with a Congress / Corporate insiders switch; `/congress/` and `/insiders/` open on their map.
+  Nav order Congress · Insiders · Newest · Washington · Rates. Rules: congress tile $ = top of
+  range; insiders = shares × price, open-market only + 10b5-1 excluded by default; filter state in
+  the URL hash (`#scope=house&w=365&view=buy&side=filers`).
+- **`congress_roster` job** (Sonnet-built, reviewed): unitedstates/congress-legislators →
+  bioguide/party/state/district on `people`/`person_roles`; matches the PTR job's name+chamber
+  key; idempotent (verified 2 runs); first in the ingest.yml rates group. Dem/Rep filter is
+  empty until its first live run.
+- Verified: tsc clean (web + ingest), 32 ingest + 3 web tests, 51-page build on the seed and on
+  the empty DB, verify-live clean on the local build (37 pages), headless Chromium screenshots
+  of home/congress/insiders in light + dark + mobile with tiles rendering and no page errors.
+- Open after this: market-cap range control (#20), Form 4 weighted-average-price footnotes,
+  name→ticker for ticker-less PTR assets, Senate (#21), FEC key (#28), X (#24).
+
+**Next (in order):**
+1. Peter: push; check https://spotthemoney.com/ renders the map with live data in both themes;
+   run ingest once so `congress_roster` fills party (or wait for 09:00 UTC).
+2. FEC_API_KEY (#28); `archive_backfill` once; decide #21 and #24; measurement keys (#25).
+3. Archive `pfouge/spotthemoney.com`; bump actions to v5; carry docs/06 contract items into IIF.
+4. Delete the stale root `congress-heatmap.html` and `design-preview.html` (the prototype in
+   `web/public/` stays as the design reference).
