@@ -23,10 +23,10 @@ const total = sum(ytd.map((l) => l.amount));
 const answer = model.lobbying.length === 0
   ? "No lobbying filings are on record yet; the daily senate_lda job loads the last two years of Senate LDA filings."
   : `${plural(ytd.length, "lobbying filing")} in ${year} report ${money(total)} in lobbying income across ${plural(topClients.length >= 50 ? agg((l) => l.client).length : topClients.length, "client")}. The biggest client so far is ${topClients[0]?.name ?? "—"} (${money(topClients[0]?.total ?? 0)}); the biggest registrant is ${topRegistrants[0]?.name ?? "—"} (${money(topRegistrants[0]?.total ?? 0)}).`;
-const description = `Senate Lobbying Disclosure Act filings for ${year}: the biggest clients and lobbying firms by reported income, and the newest filings, each linked to the Senate record.`;
+const description = `Senate lobbying disclosure filings for ${year}: the biggest clients and lobbying firms by reported income, and the newest filings, each linked to the Senate record.`;
 const ld = datasetLd({ name: "Federal lobbying filings (Senate LDA)", path: "/lobbying/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["lobbying", "LDA", "Senate", "registrants", "clients"], sources: [SOURCES.lda], parentCatalogPath: "/washington/" });
 ---
-<BaseLayout title={`Lobbying ${year} — top clients, registrants and newest LDA filings | Spot the Money`} description={description} section="Washington · Lobbying">
+<BaseLayout title={`Lobbying ${year} — Top Clients, Firms & New Filings`} description={description} section="Washington · Lobbying">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Lobbying", path: "/lobbying/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Lobbying</p>
   <h1>Federal lobbying</h1>

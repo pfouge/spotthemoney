@@ -9,12 +9,16 @@
 // Checks: robots.txt (text, AI allow lines, Sitemap line) · llms.txt (text) · /sitemap-index.xml
 // and /sitemap.xml (XML, children resolve, URL counts) · a sample of pages per child sitemap
 // (200, JSON-LD parses, BreadcrumbList on every page, Person/Organization/Dataset per page
-// type, an answer block, a last-updated stamp, no data table without rows, the disclaimer).
+// type, an answer block, a last-updated stamp, no data table without rows, the disclaimer)
+// · on-page SEO for each sampled page (title <= 60 chars, description 50-160, one h1,
+// indexable, canonical = its own URL, og:image + twitter card) · every member and stock
+// page in a sitemap has at least one data row (empty ones must be noindex and unlisted).
+// `--all` checks every URL in every sitemap instead of a sample.
 // Exit code 1 on any failure; prints a summary either way.
 
 const base = (process.argv[2] ?? "https://spotthemoney.com").replace(/\/$/, "");
 const sampleArg = process.argv.indexOf("--sample");
-const SAMPLE = sampleArg > 0 ? Number(process.argv[sampleArg + 1]) : 3;
+const SAMPLE = process.argv.includes("--all") ? Infinity : sampleArg > 0 ? Number(process.argv[sampleArg + 1]) : 3;
 
 const failures = [];
 const notes = [];
@@ -83,13 +87,14 @@ const sampled = [];
     const paths = urls.map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
     // deterministic spread: first, last, and evenly spaced middles
     const pick = new Set();
-    if (SAMPLE >= paths.length) paths.forEach((p) => pick.add(p));
+    if (SAMPLE >= paths.length || SAMPLE < 2) paths.forEach((p) => pick.add(p));
     else for (let i = 0; i < SAMPLE; i++) pick.add(paths[Math.floor((i * (paths.length - 1)) / (SAMPLE - 1))]);
     for (const p of pick) sampled.push(p);
   }
   notes.push(`total URLs in sitemaps: ${total}`);
 }
 // 4. sample pages
+const titles = new Map();
 for (const path of sampled) {
   const r = await get(path);
   if (!ok(r.status === 200, `${path} status ${r.status}`)) continue;
@@ -100,10 +105,23 @@ for (const path of sampled) {
   if (path !== "/") ok(ld.some((b) => b["@type"] === "BreadcrumbList" && Array.isArray(b.itemListElement) && b.itemListElement.length > 0), `${path} missing BreadcrumbList`);
   const want = expectedType(path);
   if (want) ok(ld.some((b) => b["@type"] === want && b.name && b.url), `${path} missing ${want} JSON-LD with name+url`);
-  if (path !== "/" && !/^\/(methodology|corrections|rates\/treasury-yields|rates)\/$/.test(path)) {
-    ok(html.includes('data-answer'), `${path} missing the answer block`);
-    ok(/Last updated/.test(html), `${path} missing the last-updated stamp`);
-  }
+  ok(html.includes('data-answer'), `${path} missing the answer block`);
+  ok(/Last updated/.test(html), `${path} missing the last-updated stamp`);
+
+  // on-page SEO
+  const attr = (re) => { const m = html.match(re); return m ? m[1].replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">") : null; };
+  const title = attr(/<title>([^<]*)<\/title>/);
+  const desc = attr(/<meta name="description" content="([^"]*)"/);
+  ok(title && title.length <= 60, `${path} title is ${title ? title.length : 0} chars (max 60): ${title}`);
+  ok(desc && desc.length >= 50 && desc.length <= 160, `${path} description is ${desc ? desc.length : 0} chars (50-160)`);
+  ok((html.match(/<h1[\s>]/g) ?? []).length === 1, `${path} has ${(html.match(/<h1[\s>]/g) ?? []).length} h1 tags`);
+  ok(!/<meta name="robots" content="[^"]*noindex/.test(html), `${path} is in a sitemap but noindex`);
+  const canon = attr(/<link rel="canonical" href="([^"]*)"/);
+  ok(canon && canon.replace(/^https?:\/\/[^/]+/, "") === path, `${path} canonical is ${canon}`);
+  ok(/<meta property="og:image" content="https?:\/\/[^"]+"/.test(html), `${path} missing og:image`);
+  ok(/<meta name="twitter:card" content="summary_large_image"/.test(html), `${path} missing twitter card`);
+  if (/^\/(congress|stocks|insiders)\/[^/]+\/$/.test(path)) ok(/<table class="data[^"]*">[\s\S]*?<tbody>[\s\S]*?<tr/.test(html), `${path} is in a sitemap but has no data rows`);
+  titles.set(title, (titles.get(title) ?? 0) + 1);
   ok(/Not investment advice|Draft — needs review/.test(html), `${path} missing the disclaimer`);
   // no data table without a body row
   for (const t of html.matchAll(/<table class="data[^"]*">([\s\S]*?)<\/table>/g)) {
@@ -111,6 +129,10 @@ for (const path of sampled) {
   }
   ok(!/>Soon</.test(html), `${path} still shows a "Soon" tag`);
 }
+
+for (const [t, n] of titles) if (n > 1) failures.push(`duplicate title on ${n} pages: ${t}`);
+// the share image itself
+{ const r = await fetch(base + "/og.png"); ok(r.status === 200 && /image\/png/.test(r.headers.get("content-type") ?? ""), `og.png status ${r.status}`); }
 
 console.log(`verify-live against ${base}`);
 for (const n of notes) console.log(`  · ${n}`);

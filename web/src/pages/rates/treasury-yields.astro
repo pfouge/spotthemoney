@@ -7,6 +7,7 @@ import { formatDate } from "../../lib/format";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { datasetLd, SOURCES } from "../../lib/seo";
+import Answer from "../../components/Answer.astro";
 
 // Built from the database at build time (daily ingest → redeploy). No DB reads at request time.
 const curve = await getYieldCurve();
@@ -39,11 +40,14 @@ const curveSvg = hasData
   : "";
 const trend = tenYear.length > 1 ? trendSvg(tenYear, { title: "10-year Treasury yield, year to date" }) : "";
 
+const answer = hasData
+  ? `The 10-year Treasury yield is ${pct(t10?.latest)} and the 2-year is ${pct(t2?.latest)} as of ${formatDate(curve!.latestDate)}, per the U.S. Treasury's daily par yield curve. The 10-year minus 2-year spread is ${bp(s10v2)} and the 10-year minus 3-month spread is ${bp(s10v3m)}${s10v2 != null && s10v2 < 0 ? ", so the curve is inverted on that measure" : ""}.`
+  : "The U.S. Treasury publishes par yields for every maturity from 1 month to 30 years each business day; figures appear here once the rates job has run.";
 const description = hasData
-  ? `The U.S. Treasury yield curve as of ${formatDate(curve!.latestDate)}: 3-month ${pct(t3m?.latest)}, 2-year ${pct(t2?.latest)}, 10-year ${pct(t10?.latest)}, 30-year ${pct(t30?.latest)}. Every maturity, daily, from official Treasury par yields.`
+  ? `Treasury yield curve on ${formatDate(curve!.latestDate)}: 3-month ${pct(t3m?.latest)}, 2-year ${pct(t2?.latest)}, 10-year ${pct(t10?.latest)}, 30-year ${pct(t30?.latest)}. Every maturity, updated daily.`
   : "The U.S. Treasury yield curve — every maturity, updated daily from official Treasury par yields.";
 ---
-<BaseLayout title="Treasury Yield Curve Today — Every Maturity, Daily | Spot the Money" description={description} section="Rates · Yield curve">
+<BaseLayout title="Treasury Yield Curve Today — Every Maturity" description={description} section="Rates · Yield curve">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }, { name: "Treasury yields", path: "/rates/treasury-yields/" }]} />
   <p class="eyebrow">Rates Hub <span class="x">/</span> Treasury yields</p>
   <h1>Treasury Yield Curve</h1>
@@ -52,6 +56,7 @@ const description = hasData
   ) : (
     <p class="lede">Par yields for every maturity, from the U.S. Treasury's daily curve.</p>
   )}
+  <Answer text={answer} updated={curve?.latestDate ?? null} sourceNote="Source: U.S. Treasury daily par yield curve" />
 
   {hasData ? (
     <>

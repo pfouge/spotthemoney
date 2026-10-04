@@ -1,35 +1,66 @@
 ---
+// /rates/ — the hub for the three safe-yield pages. It carries the live headline figure from
+// each so the hub itself answers "what do safe U.S. yields pay today" (it was 79 words of
+// navigation before the 2026-10-04 SEO audit).
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
+import Answer from "../../components/Answer.astro";
 import { dataCatalogLd } from "../../lib/seo";
+import { getLatestIBondRate, getYieldCurve } from "../../lib/db";
+import { formatDate } from "../../lib/format";
+
+const ibond = await getLatestIBondRate();
+const nominal = await getYieldCurve("UST_PAR");
+const real = await getYieldCurve("UST_REAL");
+const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(2)}%`);
+const tenor = (c: typeof nominal, label: string) => c?.tenors.find((t) => t.label === label)?.latest ?? null;
+const n10 = tenor(nominal, "10Y"), n2 = tenor(nominal, "2Y"), n3m = tenor(nominal, "3M");
+const r10 = tenor(real, "10Y");
+const breakeven10 = n10 != null && r10 != null ? n10 - r10 : null;
+const hasData = ibond?.compositeRate != null || n10 != null;
+const asOf = nominal?.latestDate ?? real?.latestDate ?? ibond?.effectiveDate ?? null;
+
+const answer = hasData
+  ? `Safe U.S. government yields as of ${asOf ? formatDate(asOf) : "the latest update"}: the I-Bond composite rate is ${pct(ibond?.compositeRate)}, the 10-year Treasury yields ${pct(n10)} and the 2-year ${pct(n2)}, and the 10-year TIPS real yield is ${pct(r10)}${breakeven10 != null ? `, which implies ${pct(breakeven10)} breakeven inflation over ten years` : ""}. Each figure comes from the U.S. Treasury and is refreshed every business day.`
+  : "This hub tracks the three safe U.S. government yields: the I-Bond composite rate, the Treasury yield curve and TIPS real yields. Figures appear here once the daily rates job has run.";
+const description = hasData
+  ? `Safe U.S. yields today: I-Bond rate ${pct(ibond?.compositeRate)}, 10-year Treasury ${pct(n10)}, 10-year TIPS real yield ${pct(r10)}. Official Treasury data, updated daily.`
+  : "Today's I-Bond rate, the Treasury yield curve and TIPS real yields in one place, from official U.S. Treasury data, updated every business day.";
 ---
-<BaseLayout
-  section="Rates"
-  title="Rates Hub — I-Bonds, TIPS, Treasury yields | Spot the Money"
-  description="The cleanest, fastest read on safe yield: I-Bonds, TIPS, Treasury yields and the yield curve, from official U.S. Treasury and FRED data."
->
+<BaseLayout section="Rates" title="Rates Hub — I-Bonds, TIPS, Treasury Yields" description={description}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }]} />
   <p class="eyebrow">Rates Hub</p>
   <h1>Safe yield, every day</h1>
-  <p class="lede">Official safe-yield data, rendered clearly and updated on every reset.</p>
+  <p class="lede">What the U.S. government pays savers and lenders today, from the Treasury's own published rates.</p>
+  <Answer text={answer} updated={asOf} sourceNote="Source: U.S. Treasury" />
 
   <div class="grid">
     <a class="card" href="/rates/i-bonds/">
-      <h3>I-Bonds →</h3>
-      <p>Current composite rate + value calculator. Live.</p>
-    </a>
-    <a class="card" href="/rates/tips/">
-      <h3>TIPS →</h3>
-      <p>Real yields for every TIPS maturity and the breakeven inflation rate, daily from the Treasury.</p>
+      <h3>I-Bonds → {pct(ibond?.compositeRate)}</h3>
+      <p>The current composite rate, how the fixed and inflation parts combine, the next reset date and a value calculator.</p>
     </a>
     <a class="card" href="/rates/treasury-yields/">
-      <h3>Treasury Yield Curve →</h3>
-      <p>Every maturity, 1 month to 30 years, updated each business day. Live.</p>
+      <h3>Treasury yield curve → 10-year {pct(n10)}</h3>
+      <p>Every maturity from 1 month to 30 years, the 10-year minus 2-year spread, and how each yield moved since yesterday, last month and the start of the year.</p>
+    </a>
+    <a class="card" href="/rates/tips/">
+      <h3>TIPS → 10-year real {pct(r10)}</h3>
+      <p>Real yields for every TIPS maturity and the breakeven inflation rate the bond market is pricing in.</p>
     </a>
   </div>
 
   <AdSlot label="Advertisement" />
+
+  <h2>How the three rates differ</h2>
+  <p><strong>I-Bonds</strong> are savings bonds sold directly by the Treasury. Their composite rate combines a fixed rate that lasts for the life of the bond with an inflation rate that changes every six months, and the Treasury announces new rates each May 1 and November 1. The composite rate shown here applies to bonds bought before the next reset.</p>
+  <p><strong>Treasury yields</strong> are what the government pays to borrow for a set period, from 1 month to 30 years. The Treasury publishes a par yield for each maturity every business day. Plotted together they form the yield curve; when short maturities yield more than long ones the curve is called inverted. {n10 != null && n3m != null ? `Today the 10-year yields ${pct(n10)} against ${pct(n3m)} for the 3-month.` : ""}</p>
+  <p><strong>TIPS</strong> are Treasury bonds whose principal rises with the Consumer Price Index, so their quoted yield is a real yield: the return above inflation. Subtracting a TIPS real yield from the ordinary Treasury yield of the same maturity gives the breakeven inflation rate{breakeven10 != null ? `, currently ${pct(breakeven10)} for ten years` : ""}.</p>
+
+  <h2>Where the numbers come from</h2>
+  <p>I-Bond rates come from Treasury Fiscal Data; Treasury and TIPS yields come from the Treasury's daily par and real yield curves; the inflation figures behind the I-Bond outlook come from the Bureau of Labor Statistics. All are read once a day and shown as published. See the <a href="/methodology/">methodology</a> for sources and update times.</p>
+  <p class="disclaimer">Not investment advice. Rates are shown as published by the U.S. Treasury and can change at the next reset or business day.</p>
+
   <JsonLd data={dataCatalogLd({ path: "/rates/", name: "Rates Hub", description: "Official U.S. safe-yield data: I-Bond rates, TIPS real yields, and the Treasury yield curve, updated daily.", datasets: [{ name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "TIPS real yield curve", path: "/rates/tips/" }, { name: "U.S. Treasury par yield curve", path: "/rates/treasury-yields/" }] })} />
 </BaseLayout>

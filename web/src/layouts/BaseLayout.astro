@@ -3,13 +3,17 @@ import "../styles/global.css";
 import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
 
-interface Props { title: string; description?: string; section?: string; }
-const {
-  title,
-  description = "Who in Congress and which corporate insiders are buying and selling — every disclosed trade on one heatmap, updated daily, free.",
-  section,
-} = Astro.props;
-const siteUrl = import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com";
+import { fitTitle, fitDescription } from "../lib/seo";
+
+// title / description: a string, or preferred wording first with shorter fallbacks after it
+// (see fitTitle / fitDescription). noindex: pages that exist for navigation but have no data
+// yet (a member with no filings on record) — kept out of search and out of the sitemap.
+interface Props { title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean }
+const { section, noindex = false } = Astro.props;
+const title = fitTitle(Astro.props.title);
+const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: every disclosed trade on one heatmap, updated daily, free.");
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
+const ogImage = `${siteUrl}/og.png`;
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
 const year = new Date().getFullYear();
 const path = Astro.url.pathname;
@@ -23,12 +27,21 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <meta name="robots" content={noindex ? "noindex, follow" : "index, follow, max-snippet:-1, max-image-preview:large"} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content="Spot the Money" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Spot the Money — Congress and insider stock trades on one heatmap" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
     <meta name="theme-color" content="#F2F1EC" id="themeColor" />
     <script is:inline>
       // Theme before first paint: light for everyone unless this browser chose dark.

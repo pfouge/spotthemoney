@@ -518,3 +518,21 @@ page and a wall-clock budget (`FEC_MAX_MINUTES`, default 25); a committee cut of
 left unmarked and restarted next run. The cancelled run left one `ingest_runs` row at
 `running` (harmless; the freshness check ignores running rows). Coverage of all ~805
 committees fills in over several daily runs.
+
+**SEO / LLM pass (2026-10-04, late).** Crawl of all 1,516 live sitemap URLs found: 529 of 539
+member pages and 15 stock pages with no data, 1,429 titles over 60 chars, 1,093 descriptions
+over 160, no `og:image` anywhere, `/rates/` at 79 words and four core pages with no answer
+block. Changed: `fitTitle` / `fitDescription` in `web/src/lib/seo.ts` (pages pass preferred
+wording plus shorter fallbacks; the layout takes the first that fits 60 / 155 chars);
+`BaseLayout` gains `noindex`, a robots meta, `og:image` (`web/public/og.png`, 1200×630) and
+Twitter card tags; member, insider and stock pages with no published transactions are
+`noindex, follow` and left out of the sitemap; all four profile templates and the 16 core
+pages have rewritten titles/descriptions; `/rates/` rebuilt with live figures and ~450 words;
+answer blocks added to `/rates/`, `/rates/treasury-yields/`, `/methodology/`, `/corrections/`.
+`scripts/verify-live.mjs` now also checks title/description length, one h1, indexable,
+canonical, og:image, Twitter card, data rows on listed profile pages and duplicate titles
+(`--all` crawls every URL; deploy.yml samples 5 per sitemap). Verified on the local seed build
+only (36 URLs, all checks pass). Not done: insider names are shown as EDGAR files them
+("SAMUELI HENRY") — reordering to "Henry Samueli" would match how people search but risks
+mangling multi-word surnames and entity filers; Peter's call. Page speed, mobile rendering and
+actual index coverage were not tested.

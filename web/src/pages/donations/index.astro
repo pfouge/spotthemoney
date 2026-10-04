@@ -24,7 +24,7 @@ const answer = committees.length === 0
 const description = "Campaign contributions to the committees of every member of Congress and the largest PACs, aggregated by committee, employer and state from FEC filings.";
 const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC Schedule A)", path: "/donations/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["FEC", "campaign finance", "donations", "PAC"], sources: [SOURCES.fec], parentCatalogPath: "/washington/" });
 ---
-<BaseLayout title="Campaign donations — FEC contributions by committee, employer and state | Spot the Money" description={description} section="Washington · Donations">
+<BaseLayout title="Campaign Donations — FEC Receipts by Committee" description={description} section="Washington · Donations">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Donations", path: "/donations/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Donations</p>
   <h1>Campaign donations</h1>

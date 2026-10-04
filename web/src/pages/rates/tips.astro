@@ -28,10 +28,10 @@ const answer = hasData
   ? `The 10-year TIPS real yield is ${pct(t10?.latest)} and the 5-year ${pct(t5?.latest)} as of ${formatDate(real!.latestDate)}, per the U.S. Treasury's daily real yield curve. Against nominal Treasuries that implies breakeven inflation of ${pct(be10)} over 10 years and ${pct(be5)} over 5.`
   : "TIPS real yields are published by the U.S. Treasury each business day for the 5-, 7-, 10-, 20- and 30-year maturities; figures appear here once the real-yield job has run.";
 const description = hasData
-  ? `TIPS real yields as of ${formatDate(real!.latestDate)}: 5-year ${pct(t5?.latest)}, 10-year ${pct(t10?.latest)}${be10 != null ? `; 10-year breakeven inflation ${pct(be10)}` : ""}. Every TIPS maturity, daily, from the U.S. Treasury's real yield curve.`
+  ? `TIPS real yields on ${formatDate(real!.latestDate)}: 5-year ${pct(t5?.latest)}, 10-year ${pct(t10?.latest)}${be10 != null ? `; 10-year breakeven inflation ${pct(be10)}` : ""}. Every maturity, updated daily.`
   : "TIPS real yields for every maturity and the implied breakeven inflation rate, from the U.S. Treasury's daily real yield curve.";
 ---
-<BaseLayout title="TIPS real yields today — every maturity + breakeven inflation | Spot the Money" description={description} section="Rates · TIPS">
+<BaseLayout title="TIPS Real Yields Today + Breakeven Inflation" description={description} section="Rates · TIPS">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }, { name: "TIPS", path: "/rates/tips/" }]} />
   <p class="eyebrow">Rates Hub <span class="x">/</span> TIPS</p>
   <h1>TIPS real yields</h1>

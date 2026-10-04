@@ -1,5 +1,6 @@
 // Sitemap model (roadmap B.2): one child sitemap per entity type, generated at build from the
-// same in-memory graph the pages use, so a URL is in the sitemap iff the page exists.
+// same in-memory graph the pages use, so a URL is in the sitemap iff the page exists AND has
+// data on it (members and tickers with no published transactions are noindex and left out).
 // lastmod is the newest filing/record date behind the page (or the build date for static pages),
 // which is also what scripts/indexnow-ping.mjs uses to decide which URLs to ping.
 
@@ -40,6 +41,9 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   for (const p of model.people.values()) {
     const path = personPath(p);
     if (!path) continue;
+    // Pages with no published transactions are noindex (see the page templates) and stay
+    // out of the sitemap: a URL is listed iff it has data to show.
+    if (p.txns.length === 0) continue;
     const u = { loc: path, lastmod: day(p.lastFiledAt, built), changefreq: "weekly", priority: 0.6 };
     (p.isCongress ? congress : insiders).push(u);
   }
@@ -51,6 +55,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   for (const s of [...model.securities.values()].sort((a, b) => (a.type === "equity" ? -1 : 1) - (b.type === "equity" ? -1 : 1))) {
     const loc = securityPath(s);
     if (seen.has(loc)) continue;
+    if (s.txns.length === 0) continue; // empty stock pages are noindex
     seen.add(loc);
     stocks.push({ loc, lastmod: day(s.txns[0]?.filedAt, built), changefreq: "weekly", priority: 0.6 });
   }

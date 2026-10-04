@@ -6,8 +6,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL } from "../lib/seo";
+import Answer from "../components/Answer.astro";
 
-const description = "How to report an error on Spot the Money and what happens next: acknowledgement, a fix or an explanation within five working days, and a public log of material corrections.";
+// Date this policy text last changed — update it when the wording does.
+const POLICY_UPDATED = "2026-09-27";
+
+const description = "How to report an error on Spot the Money and what happens next: a fix or an explanation within five working days and a public corrections log.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/corrections/#page`, name: "Corrections", url: `${SITE_URL}/corrections/`, description, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
 <BaseLayout title="Corrections — report an error | Spot the Money" description={description} section="Corrections">
@@ -15,6 +19,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p class="eyebrow">About <span class="x">/</span> Corrections</p>
   <h1>Corrections</h1>
   <p class="lede">If a figure here is wrong, we want to know, and we will say so in public when we fix it.</p>
+  <Answer text="To report an error on Spot the Money, email corrections@spotthemoney.com with the page URL and the figure you believe is wrong. Reports are answered with a fix or an explanation within five working days, and material corrections are logged publicly on this page." updated={POLICY_UPDATED} sourceNote="Corrections policy" />
   <p class="note"><strong>Draft — needs review.</strong> This policy is published in draft while it is reviewed; the commitments below are already honoured.</p>
 
   <h2>How to report</h2>

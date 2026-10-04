@@ -8,7 +8,7 @@ import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDays, CONGRESS_DEADLINE_DAYS, money, sum } from "../../lib/flagship";
-import { personLd } from "../../lib/seo";
+import { personLd, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 
 export async function getStaticPaths() {
@@ -33,14 +33,24 @@ const title = roleLabel(p, model.companies);
 const pendingOcr = p.filings.filter((f) => f.txnCount === 0).length;
 
 const answer = txns.length === 0
-  ? `${p.name} (${title}) has ${plural(p.filings.length, "periodic transaction report")} on record; ${pendingOcr ? `${num(pendingOcr)} could not be read automatically and are awaiting review` : "no transactions met the publishing bar yet"}. Source links are below.`
+  ? (p.filings.length > 0
+      ? `${p.name} (${title}) has ${plural(p.filings.length, "periodic transaction report")} on record; ${pendingOcr ? `${num(pendingOcr)} could not be read automatically and are awaiting review` : "no transactions met the publishing bar yet"}. Source links are below.`
+      : `No stock trade disclosures by ${p.name} (${title}) are on record here yet. ${role.chamber === "senate" ? "This site does not yet ingest Senate filings; they can be searched at the Senate's own disclosure site." : "House periodic transaction reports are checked daily and appear here the day after they are filed."}`)
   : `${p.name} (${title}) disclosed ${plural(thisYear.length, "trade")} in ${year} and ${plural(txns.length, "trade")} in total on record, filed on average ${avgLag == null ? "—" : Math.round(avgLag)} days after the trade; ${plural(late.length, "was late", "were late")} against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline. Disclosed ranges add up to between ${money(sum(txns.map((t) => t.amountLow)))} and ${money(sum(txns.map((t) => t.amountHigh)))}, most often in ${tickers.slice(0, 3).map((s) => s.ticker).join(", ") || "assets without a ticker"}.`;
 
-const description = `${p.name} (${title}): every STOCK Act stock trade disclosure, with trade and filing dates, days to report, amount ranges and a link to each filing.`;
+const description = fitDescription([
+  `${p.name} (${title}): every STOCK Act stock trade disclosure, with trade and filing dates, amount ranges and a link to each filing.`,
+  `${p.name}: every STOCK Act stock trade disclosure, with trade and filing dates, amount ranges and a link to each filing.`,
+  `${p.name}: STOCK Act stock trade disclosures with dates, amounts and filing links.`,
+]);
+// A member with no published trades has nothing to rank or cite: keep the page for
+// navigation, out of search and out of the sitemap, until a filing lands (audit 2026-10-04:
+// 529 of 539 member pages were empty, 100 of them senators the site does not ingest yet).
+const noindex = txns.length === 0;
 const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? "United States Senator" : "United States Representative", worksFor: { name: role.chamber === "senate" ? "United States Senate" : "United States House of Representatives" }, description,
   sameAs: p.bioguideId ? [`https://bioguide.congress.gov/search/bio/${p.bioguideId}`] : [] });
 ---
-<BaseLayout title={`${p.name} stock trades — STOCK Act disclosures | Spot the Money`} description={description} section="Congress">
+<BaseLayout title={[`${p.name} Stock Trades — STOCK Act Disclosures`, `${p.name} Stock Trades`]} description={description} noindex={noindex} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: p.name, path }]} />
   <p class="eyebrow">Congress <span class="x">/</span> {role.chamber === "senate" ? "Senate" : "House"}</p>
   <h1>{p.name}</h1>

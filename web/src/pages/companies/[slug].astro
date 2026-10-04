@@ -10,7 +10,7 @@ import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, companyPath, personPath, securityPath, withinDays, num, plural, money, sum, roleLabel } from "../../lib/flagship";
-import { organizationLd } from "../../lib/seo";
+import { organizationLd, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 
 export async function getStaticPaths() {
@@ -36,12 +36,15 @@ const lastUpdated = [txns[0]?.filedAt, c.contracts[0]?.createdAt, c.lobbying[0]?
 
 const answer = `${c.name}${c.primaryTicker ? ` (${c.primaryTicker})` : ""} has ${plural(c.insiders.length, "insider")} on file who disclosed ${plural(y.length, "transaction")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "sale")}, about ${money(sum(y.map((t) => t.value)))} at reported prices)${congressTxns.length ? `, and ${plural(congressTxns.length, "congressional trade")} in its stock ${congressTxns.length === 1 ? "is" : "are"} on record` : ""}. ${c.contracts.length ? `USAspending shows ${plural(c.contracts.length, "federal award action")} worth ${money(contractsTotal)} to a recipient with this name in the last 180 days` : "No federal award to a recipient with exactly this name appears in the last 180 days"}${lobbyingYtd.length ? `, and ${plural(lobbyingYtd.length, "lobbying filing")} naming it as client report ${money(lobbyingTotal)} in ${lobbyingYear}.` : "; no lobbying filing names it as client this year."}`;
 
-const description = `${c.name}: corporate insiders and their SEC Form 4 trades, plus federal contracts (USAspending) and lobbying (Senate LDA) under the same name, with source links.`;
+const description = fitDescription([
+  `${c.name}: insider trades from SEC Form 4 filings, federal contracts and lobbying disclosures under the same name, with source links.`,
+  `${c.name}: SEC Form 4 insider trades, federal contracts and lobbying filings, with source links.`,
+]);
 const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, description,
   identifier: c.cik ? { name: "SEC CIK", value: c.cik } : null,
   sameAs: c.cik ? [`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${c.cik}`] : [] });
 ---
-<BaseLayout title={`${c.name} — insiders, contracts, lobbying | Spot the Money`} description={description} section="Companies">
+<BaseLayout title={[`${c.name} Insider Trades, Contracts & Lobbying`, `${c.name} Insider Trades & Contracts`, `${c.name} Insider Trades`]} description={description} section="Companies">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: c.name, path }]} />
   <p class="eyebrow">Company{c.cik ? <> <span class="x">/</span> CIK {c.cik}</> : null}</p>
   <h1>{c.name}</h1>

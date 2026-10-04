@@ -34,10 +34,10 @@ const week = feed.filter((i) => withinDays(i.at, 7)).length;
 const answer = feed.length === 0
   ? "Nothing to show yet: the feed fills as the daily ingest jobs run (insiders, Congress, lobbying, contracts)."
   : `${plural(week, "disclosure")} landed in the last 7 days across insiders, Congress, lobbying and contracts (${plural(today, "in the last day")}). The newest is a ${feed[0]!.kind.toLowerCase()} record from ${formatDate(feed[0]!.at)}.`;
-const description = "The newest public disclosures in one feed: insider Form 4 trades, congressional STOCK Act trades, lobbying filings and federal contract awards, updated daily with a link to each record.";
+const description = "The newest public disclosures in one feed: insider Form 4 trades, Congress STOCK Act trades, lobbying filings and federal contracts, updated daily.";
 const ld = datasetLd({ name: "Newest disclosures feed", path: "/disclosures/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["disclosures", "Form 4", "STOCK Act", "lobbying", "contracts"], sources: [SOURCES.edgar, SOURCES.house, SOURCES.lda, SOURCES.usaspending], parentCatalogPath: "/" });
 ---
-<BaseLayout title="Newest disclosures — insiders, Congress, lobbying, contracts | Spot the Money" description={description} section="Newest">
+<BaseLayout title="Newest Disclosures — Insiders, Congress, Lobbying" description={description} section="Newest">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Newest disclosures", path: "/disclosures/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Newest</p>
   <h1>Newest disclosures</h1>

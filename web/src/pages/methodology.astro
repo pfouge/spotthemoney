@@ -7,9 +7,10 @@ import JsonLd from "../components/JsonLd.astro";
 import { getFlagship, CONGRESS_DEADLINE_DAYS, num } from "../lib/flagship";
 import { SITE_URL, SOURCES } from "../lib/seo";
 import { formatDate } from "../lib/format";
+import Answer from "../components/Answer.astro";
 
 const model = await getFlagship();
-const description = "How Spot the Money collects, filters and presents public disclosures: sources, update cadence, the publishing bar, disclosure-lag and late-filer rules, cluster-buy and flag definitions, and what the site never does.";
+const description = "How Spot the Money collects, filters and presents public disclosures: sources, update cadence, the publishing bar, late-filer rules and flag definitions.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/methodology/#page`, name: "Methodology", url: `${SITE_URL}/methodology/`, description, dateModified: model.builtAt.slice(0, 10), isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
 <BaseLayout title="Methodology — how the numbers are made | Spot the Money" description={description} section="Methodology">
@@ -17,6 +18,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p class="eyebrow">About <span class="x">/</span> Methodology</p>
   <h1>How the numbers are made</h1>
   <p class="lede">Every figure on this site is a public record, shown as filed, with the rule that produced it written down here. Site built {formatDate(model.builtAt)}.</p>
+  <Answer text={`Spot the Money shows public U.S. government records as filed: SEC Form 4 insider trades, House STOCK Act trade reports, FEC contributions, Senate lobbying filings, USAspending contracts and Treasury rates, read once a day from the official sources. A transaction is shown only if its filing parsed cleanly, congressional trades count as late after ${CONGRESS_DEADLINE_DAYS} days, and every row links to its source filing.`} updated={model.builtAt} sourceNote="Rules below apply to every page" />
 
   <h2 id="sources">Sources and cadence</h2>
   <p>We read only official primary sources, once a day, with a client that identifies this site and its contact address on every request and never exceeds one request every 1.5 seconds per host:</p>

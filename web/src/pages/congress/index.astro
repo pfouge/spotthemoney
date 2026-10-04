@@ -33,10 +33,10 @@ const avgLagAll = avg(all.map((t) => t.lagDays));
 const answer = all.length === 0
   ? `No congressional trades have met the publishing bar yet. House periodic transaction reports are parsed daily from the Clerk's disclosures; Senate reports are pending a separate decision. ${plural(members.length, "member")} and ${plural(model.filings.size - model.txns.filter((t) => t.source === "sec_form4").length, "filing")} are on record so far.`
   : `${plural(withRows.length, "member")} of Congress have ${plural(all.length, "disclosed trade")} on record, ${num(month.length)} of them disclosed in the last 30 days. The average filing came ${avgLagAll == null ? "—" : Math.round(avgLagAll)} days after the trade against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline, and ${plural(all.filter(isLate).length, "trade was", "trades were")} filed late. House filings only until the Senate feed is live.`;
-const description = "Newest STOCK Act stock trade disclosures by members of Congress, the most active traders, late filers against the 45-day deadline, and the most-traded tickers — with a link to every filing.";
+const description = "Newest STOCK Act stock trades by members of Congress: most active traders, late filers against the 45-day deadline and most-traded tickers.";
 const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act PTRs)", path: "/congress/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["congress stock trades", "STOCK Act", "periodic transaction report", "late filers"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
 ---
-<BaseLayout title={`Congress stock trades ${year} — newest STOCK Act disclosures, late filers | Spot the Money`} description={description} section="Congress">
+<BaseLayout title={`Congress Stock Trades ${year} — Newest Disclosures`} description={description} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Congress</p>
   <h1>Congressional stock trades</h1>

@@ -22,7 +22,7 @@ const answer = rows.length === 0
 const description = "Federal contract awards from USAspending in the last 180 days: the largest awards, the top recipients, and a link to every award record.";
 const ld = datasetLd({ name: "Federal contract award actions (USAspending)", path: "/contracts/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["federal contracts", "USAspending", "government awards"], sources: [SOURCES.usaspending], parentCatalogPath: "/washington/" });
 ---
-<BaseLayout title="Federal contracts — largest awards and top recipients, last 180 days | Spot the Money" description={description} section="Washington · Contracts">
+<BaseLayout title="Federal Contracts — Largest Awards, Last 180 Days" description={description} section="Washington · Contracts">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Contracts", path: "/contracts/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Contracts</p>
   <h1>Federal contracts</h1>

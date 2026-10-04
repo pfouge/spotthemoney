@@ -8,7 +8,7 @@ import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, securityPath, companyPath, personPath, withinDays, num, plural, money, sum } from "../../lib/flagship";
-import { datasetLd, SOURCES } from "../../lib/seo";
+import { datasetLd, SOURCES, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 
 export async function getStaticPaths() {
@@ -47,11 +47,14 @@ const answer = txns.length === 0
   ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.`
   : `${s.ticker} (${name}) has ${plural(yIns.length, "disclosed insider transaction")} from ${plural(insiders.size, "insider")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "sale")}, about ${money(sum(yIns.map((t) => t.value)))} at reported prices) and ${plural(yCon.length, "congressional trade")} from ${plural(members.size, "member")} of Congress. The most recent disclosure was filed ${formatDate(txns[0]!.filedAt)}.`;
 
-const description = `${s.ticker} insider trades and congressional stock trades: every SEC Form 4 and STOCK Act disclosure in ${name}, with dates, values and source links.`;
+const description = fitDescription([
+  `${s.ticker} (${name}) insider trades and congressional stock trades: every SEC Form 4 and STOCK Act disclosure, with dates, values and source links.`,
+  `${s.ticker} insider trades and congressional stock trades: every SEC Form 4 and STOCK Act disclosure, with dates, values and source links.`,
+]);
 const ld = datasetLd({ name: `${s.ticker} insider and congressional transactions`, path, description, dateModified: lastUpdated.slice(0, 10),
   keywords: [s.ticker, name, "insider trading", "Form 4", "congressional stock trades", "STOCK Act"], sources: [SOURCES.edgar, SOURCES.house], parentCatalogPath: "/stocks/" });
 ---
-<BaseLayout title={`${s.ticker} insider trades & Congress trades — ${name} | Spot the Money`} description={description} section="Stocks">
+<BaseLayout title={[`${s.ticker} Insider Trades & Congress Trades — ${name}`, `${s.ticker} Insider & Congress Trades — ${name}`, `${s.ticker} Insider Trades & Congress Trades`]} description={description} noindex={txns.length === 0} section="Stocks">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }, { name: s.ticker, path }]} />
   <p class="eyebrow">Stock <span class="x">/</span> {s.type}</p>
   <h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1>

@@ -12,6 +12,40 @@ export const PUBLISHER = {
   logo: { "@type": "ImageObject", url: `${SITE_URL}/mark.svg` },
 };
 
+// ── Title / description fitting ─────────────────────────────────────────────────────────
+// Google truncates titles at roughly 60 characters and descriptions at roughly 160. Pages
+// pass their preferred wording first and shorter fallbacks after it; the layout takes the
+// first that fits, so a long name never produces a clipped result (audit 2026-10-04: 1,429
+// of 1,516 titles and 1,093 descriptions ran over).
+export const TITLE_MAX = 60;
+export const DESCRIPTION_MAX = 155;
+const BRAND_SUFFIX = ` | ${"Spot the Money"}`;
+
+function clip(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[\s,;:—–-]+$/, "")}…`;
+}
+
+/** First candidate that fits (with the brand suffix when there is room, without it otherwise), else the last one clipped. */
+export function fitTitle(candidates: string | string[]): string {
+  const list = (Array.isArray(candidates) ? candidates : [candidates]).map((c) => c.replace(/\s*\|\s*Spot the Money\s*$/, "").trim()).filter(Boolean);
+  for (const c of list) {
+    if (c.includes("Spot the Money")) { if (c.length <= TITLE_MAX) return c; continue; }
+    if ((c + BRAND_SUFFIX).length <= TITLE_MAX) return c + BRAND_SUFFIX;
+    if (c.length <= TITLE_MAX) return c; // keyword-rich wording beats the brand suffix
+  }
+  return clip(list[list.length - 1] ?? "Spot the Money", TITLE_MAX);
+}
+
+/** First candidate within the limit, else the last one clipped at a word boundary. */
+export function fitDescription(candidates: string | string[]): string {
+  const list = (Array.isArray(candidates) ? candidates : [candidates]).map((c) => c.replace(/\s+/g, " ").trim()).filter(Boolean);
+  for (const c of list) if (c.length <= DESCRIPTION_MAX) return c;
+  return clip(list[list.length - 1] ?? "", DESCRIPTION_MAX);
+}
+
 export const LICENSE_NOTE =
   "Public U.S. government records (SEC EDGAR, House Clerk, FEC, USAspending, Senate LDA, U.S. Treasury, BLS), rendered as filed. Attribution to spotthemoney.com requested when reused.";
 

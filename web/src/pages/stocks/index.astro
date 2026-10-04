@@ -22,7 +22,7 @@ const active = rows.filter((r) => r.ins.length + r.con.length > 0);
 const answer = `${plural(rows.length, "ticker")} are tracked; ${plural(active.length, "of them has", "of them have")} disclosed insider or congressional activity in the last 12 months. The tracked set is about 70 large or frequently traded names plus every ticker that appears in a congressional filing.`;
 const description = "Every tracked stock with its insider trades (SEC Form 4) and congressional trades (STOCK Act) over the last 12 months.";
 ---
-<BaseLayout title="Stocks — insider and Congress trading by ticker | Spot the Money" description={description} section="Stocks">
+<BaseLayout title="Stocks — Insider and Congress Trading by Ticker" description={description} section="Stocks">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Stocks</p>
   <h1>By ticker</h1>
