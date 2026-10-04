@@ -9,9 +9,9 @@
 // already in `securities` get a (ticker, type='equity') upsert so they have a
 // security_id to write prices against.
 //
-// RATE LIMITS: Twelve Data's free/low tiers have tight daily credit limits. lib/http's
-// 1.5s per-host gap is the pacing mechanism (tickers are fetched strictly sequentially,
-// never in parallel). If the API itself reports a rate-limit (status "error", code 429,
+// RATE LIMITS: Twelve Data's free Basic plan is 8 credits/minute and 800/day. Tickers are
+// fetched strictly sequentially, never in parallel, at least TWELVEDATA_MIN_INTERVAL_MS apart
+// (default 8000 — see the loop). If the API itself reports a rate-limit (status "error", code 429,
 // or a message mentioning credits/limit), we STOP THE WHOLE RUN early rather than
 // poll/retry — submit-and-exit posture: whatever has already been written stays
 // written, and the run reports "partial" so the scheduler knows to resume later.
@@ -149,9 +149,20 @@ export async function ingestTwelvedataEod(): Promise<IngestRunResult> {
   let barsDroppedIncomplete = 0;
   let stoppedEarly = false;
 
+  // Pace to the plan. The free Basic plan allows 8 credits/minute (800/day) and one symbol
+  // costs one credit; lib/http's 1.5 s gap is ~40/minute, which tripped the limit after eight
+  // tickers and ended the run "partial" with the same eight symbols every day. 8 s between
+  // requests is ~7/minute: ~130 tickers in ~17 minutes, inside the 55-minute job. On a paid
+  // plan set TWELVEDATA_MIN_INTERVAL_MS lower (e.g. 1500).
+  const minIntervalMs = Number(optionalEnv("TWELVEDATA_MIN_INTERVAL_MS") ?? "8000");
+  let lastRequestAt = 0;
+
   for (const ticker of tickers) {
     const securityId = tickerToId.get(ticker)!;
     let resp: TimeSeriesResponse;
+    const wait = lastRequestAt + minIntervalMs - Date.now();
+    if (lastRequestAt > 0 && wait > 0) await new Promise((r) => setTimeout(r, wait));
+    lastRequestAt = Date.now();
     try {
       resp = await fetchJson<TimeSeriesResponse>(timeSeriesUrl(ticker, outputsize, apiKey));
     } catch (err) {

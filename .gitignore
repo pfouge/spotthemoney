@@ -20,3 +20,6 @@ ingest/out/
 # Private docs repo lives nested at docs/ (own .git); the public site repo never tracks it.
 /docs/
 /*-prompt.md
+
+# Session screenshots and scratch output — never part of the public repo.
+Claude outputs/
