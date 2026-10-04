@@ -18,8 +18,8 @@
 //
 // BUDGET: a standard key allows 1,000 calls an hour. Committees are visited least-recently-
 // checked first (committees.donations_checked_at, migration 0010) and the run stops at
-// FEC_MAX_REQUESTS (default 850); the rest are picked up by the next run. A 429 ends the
-// run "partial" the same way.
+// FEC_MAX_REQUESTS (default 850) or FEC_MAX_MINUTES (default 25), whichever comes first; the
+// rest are picked up by the next run. A 429 ends the run "partial" the same way.
 //
 // PAGINATION: schedule_a paginates by CURSOR, not by page number. Each response's
 // pagination.last_indexes gives { last_index, last_contribution_receipt_date };
@@ -138,6 +138,11 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
   const today = isoDaysAgo(0);
   const maxPages = Number(process.env.FEC_MAX_PAGES ?? 10);
   const maxRequests = Number(process.env.FEC_MAX_REQUESTS ?? 850);
+  // Wall-clock budget: the run must end itself well inside the 55-minute Actions job, whatever
+  // the API's response times are. Unfinished committees carry over to the next run.
+  const maxMinutes = Number(process.env.FEC_MAX_MINUTES ?? 25);
+  const startedAt = Date.now();
+  const outOfTime = (): boolean => Date.now() - startedAt > maxMinutes * 60_000;
   // The site shows a 90-day window; receipts older than this are not worth a request.
   const oldestUseful = isoDaysAgo(120);
 
@@ -199,6 +204,7 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
 
   for (const committeeId of committeeScope) {
     if (requests >= maxRequests) { stoppedReason = "request budget reached"; break; }
+    if (outOfTime()) { stoppedReason = "time budget reached"; break; }
 
     // Load-date floor: since the last visit (2 days of overlap), never further back than
     // the first-visit window.
@@ -215,7 +221,13 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
     let pages = 0;
     let failed = false;
 
-    while (pages < maxPages && requests < maxRequests) {
+    let cutShort = false;
+
+    while (pages < maxPages) {
+      // Budget hit mid-committee: leave it unmarked so the next run starts it again from the
+      // newest receipts (already-stored rows are skipped by the sub_id key).
+      if (requests >= maxRequests) { cutShort = true; stoppedReason = "request budget reached"; break; }
+      if (outOfTime()) { cutShort = true; stoppedReason = "time budget reached"; break; }
       const url = scheduleAUrl(key, committeeId, minLoadDate, today, cursor);
       let data: ScheduleAPage;
       try {
@@ -231,6 +243,7 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
       }
       pages++;
       let newOnPage = 0;
+      const batch: { committee_id: number; donor_name: string | null; donor_employer: string | null; donor_state: string | null; amount: number | null; donated_at: string; source_ref: string }[] = [];
       let oldestOnPage: string | null = null;
 
       for (const result of data.results ?? []) {
@@ -269,16 +282,23 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
         });
 
         const internalCommitteeId = await resolveCommitteeId(row.committee_fec_id, row.committee_name);
+        batch.push({
+          committee_id: internalCommitteeId,
+          donor_name: row.contributor_name,
+          donor_employer: row.contributor_employer,
+          donor_state: row.contributor_state,
+          amount: row.amount,
+          donated_at: row.donated_at,
+          source_ref: row.sub_id,
+        });
+      }
 
+      // One statement per page. Row-at-a-time inserts (100 round trips a page from a GitHub
+      // runner to Supabase) were most of the 55 minutes the first live run spent on 36
+      // committees before the job timeout cancelled it (2026-10-04).
+      if (batch.length > 0) {
         const result_ = await sql`
-          insert into donations (
-            committee_id, donor_name, donor_employer, donor_state,
-            amount, donated_at, source_ref
-          )
-          values (
-            ${internalCommitteeId}, ${row.contributor_name}, ${row.contributor_employer}, ${row.contributor_state},
-            ${row.amount}, ${row.donated_at}, ${row.sub_id}
-          )
+          insert into donations ${sql(batch, "committee_id", "donor_name", "donor_employer", "donor_state", "amount", "donated_at", "source_ref")}
           on conflict (source_ref) where source_ref is not null do nothing
         `;
         ctx.rowsChanged += result_.count ?? 0;
@@ -294,7 +314,7 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
 
     if (pages > 0) pagesPerCommittee[committeeId] = pages;
     if (stoppedReason) break;
-    if (!failed) {
+    if (!failed && !cutShort) {
       await sql`update committees set donations_checked_at = now() where fec_id = ${committeeId}`;
       committeesDone++;
     }
@@ -305,6 +325,8 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
   ctx.extra["committees_deferred"] = committeeScope.length - committeesDone;
   ctx.extra["requests"] = requests;
   ctx.extra["max_requests"] = maxRequests;
+  ctx.extra["max_minutes"] = maxMinutes;
+  ctx.extra["elapsed_seconds"] = Math.round((Date.now() - startedAt) / 1000);
   ctx.extra["stopped"] = stoppedReason;
   ctx.extra["future_or_undated_skipped"] = futureDated;
   ctx.extra["multi_page_committees"] = Object.values(pagesPerCommittee).filter((n) => n > 1).length;

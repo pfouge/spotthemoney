@@ -509,3 +509,12 @@ test only); **`min_load_date` and `/candidates/search/` are from memory of the O
 were not callable from the sandbox — the first live run is the proof** (expect
 `member_committees` > 0 in `ingest_runs.stats` and several hundred committees after a few
 runs). Real committee totals (`/committee/{id}/totals/`) are a separate, unbuilt piece.
+
+**FEC first live run (ingest #12, 2026-10-04 19:55 UTC).** `fec_committees` loaded 805
+committees (member committees now present — `/candidates/search/` confirmed). `fec_schedule_a`
+stored 15,356 real receipts (dated Jul–Aug 2026) for 36 committees, then the 55-minute job
+limit cancelled it: row-at-a-time inserts plus slow API pages. Fixed: one batched insert per
+page and a wall-clock budget (`FEC_MAX_MINUTES`, default 25); a committee cut off mid-pull is
+left unmarked and restarted next run. The cancelled run left one `ingest_runs` row at
+`running` (harmless; the freshness check ignores running rows). Coverage of all ~805
+committees fills in over several daily runs.
