@@ -113,7 +113,9 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
   const apiKey = process.env.FEC_API_KEY;
   const demoKey = !apiKey;
   if (demoKey) {
-    ctx.warn("using DEMO_KEY — dev only, heavily throttled");
+    ctx.warn("FEC_API_KEY not set — skipped (no-op). Free key: https://api.data.gov/signup/");
+    ctx.extra["skipped"] = "FEC_API_KEY not set";
+    return { source: SOURCE, rowsSeen: 0, rowsChanged: 0, status: "success", stats: ctx.stats() };
   }
   const key = apiKey ?? "DEMO_KEY";
 

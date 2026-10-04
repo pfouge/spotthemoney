@@ -11,7 +11,7 @@ name: x-daily
 
 on:
   schedule:
-    - cron: "30 15 * * *"   # 15:30 UTC = 11:30 ET, after the 13:00 UTC congress run
+    - cron: "47 15 * * *"   # 15:47 UTC ≈ 11:47 ET, after the 13:23 UTC congress run
   workflow_dispatch:
     inputs:
       since:

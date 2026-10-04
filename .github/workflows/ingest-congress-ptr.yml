@@ -4,16 +4,17 @@
 # writes to DATABASE_URL. HOUSE filings only: the Senate eFD path needs a residential IP
 # and browser-TLS impersonation (docs/04 #21).
 #
-# Scheduled daily at 13:00 UTC (House Clerk posts filings during the US business day; the
-# 09:00 UTC ingest.yml run covers everything else). Filings land unpublished
-# (is_published=false) until Peter approves the sample — see ingest/py/README.md.
+# Scheduled daily at 13:23 UTC (House Clerk posts filings during the US business day; the
+# 09:17 UTC ingest.yml run covers everything else). house_ptr passed the sample review on
+# 2026-09-28, so text-PDF filings publish with the run (publish_gates, migration 0009);
+# scanned filings that need OCR stay unpublished for review — see ingest/py/README.md.
 # The deploy at the end rebuilds the site so the congress pages pick up new rows.
 
 name: Ingest — Congressional PTR (Python)
 
 on:
   schedule:
-    - cron: "0 13 * * *"
+    - cron: "23 13 * * *" # off the top of the hour — :00 schedules ran hours late
   workflow_dispatch:
     inputs:
       window_days:

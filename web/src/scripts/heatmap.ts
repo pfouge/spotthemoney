@@ -135,14 +135,22 @@ export function initHeatmap(root: HTMLElement): void {
     const p = (pa ?? "").toLowerCase(); if (!p) return null;
     return p.startsWith("dem") ? "dem" : p.startsWith("rep") ? "rep" : "ind";
   };
+  // On the combined map a class-specific filter narrows to its class: Party = Democrats
+  // means "what Democrats traded", not "Democrats plus every corporate insider" (which is
+  // what it showed until 2026-10-04 — insider dollars swamped the answer). If both classes
+  // carry a filter (Party + Role) each applies to its own class and both are shown.
   const scopeMatch = (r: Row): boolean => {
+    const congressFilter = state.chamber !== "all" || state.party !== "all";
+    const insiderFilter = state.role !== "all";
     if (isC(r)) {
       if (state.cls === "insiders") return false;
+      if (state.cls === "all" && insiderFilter && !congressFilter) return false;
       if (state.chamber !== "all" && r.ch !== state.chamber) return false;
       if (state.party !== "all" && partyOf(r.pa) !== state.party) return false;
       return true;
     }
     if (state.cls === "congress") return false;
+    if (state.cls === "all" && congressFilter && !insiderFilter) return false;
     const i = r as InsiderRow;
     if (state.codes === "open" && i.c !== "P" && i.c !== "S") return false;
     if (state.plan === "exclude" && i.pl) return false;

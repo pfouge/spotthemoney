@@ -80,9 +80,16 @@ Owned by the integration contract, not duplicated here:
   filings_needs_ocr, quarantined sample) — the diagnostic of record.
 - **Scrub before every write** (`scrub_strings`, mirrors `ingest/src/lib/sanitize.ts`).
 - **Per-row quarantine, not fail-fast**; circuit breaker at 50 quarantined filings.
-- **`is_published=false` until Peter approves a sample.** Review with
-  `node scripts/sample-source.mjs house_ptr`, publish with `--approve`. The upsert never
-  un-publishes a filing already approved.
+- **Publish gate is per source, once.** A new source stays `is_published=false` until Peter
+  approves a sample (`node scripts/sample-source.mjs house_ptr`, then `--approve`). Approval
+  writes a `publish_gates` row (migration 0009); from then on every run ends with
+  `select publish_approved_filings()`, which publishes that source's new filings at
+  review `auto_approved`/`approved` and confidence ≥ 0.9. `house_ptr` was approved 2026-09-28.
+  Scanned filings (`needs_ocr`, confidence 0.3) never qualify and wait for review. The upsert
+  never un-publishes a filing already approved.
+- **One row per member.** `resolve_person` matches the name as filed, then the seat (chamber +
+  state + district with the surname present) so "Allen, Richard W." lands on the roster's
+  "Rick W. Allen" row and keeps its party; `congress_roster` merges any older duplicates.
 - **Archive first.** Every PDF is stored content-addressed via `archive.py` before parsing;
   `filings.raw_document_id` links to it. Without `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` the
   row is recorded and `npm run ingest -- archive_backfill` uploads later.

@@ -141,18 +141,76 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Lowercase ASCII fold for name comparison ("Luján" → "lujan"). */
+export function foldName(s: string): string {
+  return s.normalize("NFKD").replace(/[^\x00-\x7F]/g, "").toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * A filer row the PTR job created under the name AS FILED ("Richard W. Allen") that the
+ * name rule cannot reach from the roster's names ("Rick W. Allen" / "Richard Allen" /
+ * "Rick Allen"). The seat identifies the member: same chamber + state + district (House) or
+ * chamber + state (Senate), with the roster surname present in the filed name as a guard.
+ * Without this the member had two `people` rows and their trades carried no party, so the
+ * party filter silently dropped them (found on the live Congress map, 2026-10-04).
+ */
+async function findUnlinkedFilerBySeat(
+  sql: Sql,
+  name: LegislatorName,
+  chamber: Chamber,
+  state: string | null,
+  district: string | null,
+): Promise<number | null> {
+  if (!state) return null;
+  const rows = await sql<{ id: number; full_name: string }[]>`
+    select p.id, p.full_name from people p
+      join person_roles r on r.person_id = p.id
+        and r.role_kind = 'congress'
+        and r.chamber = ${chamber}
+     where p.bioguide_id is null
+       and r.state = ${state}
+       and (${chamber} = 'senate' or r.district is not distinct from ${district})
+       and (r.valid_to is null or r.valid_to >= current_date)
+     order by p.id
+  `;
+  const last = foldName(name.last);
+  if (!last) return null;
+  const hit = rows.find((r) => ` ${foldName(r.full_name)} `.includes(` ${last} `));
+  return hit?.id ?? null;
+}
+
+/** Fold a duplicate filer row into the roster's row: move its filings and trades, drop it. */
+async function mergePerson(sql: Sql, fromId: number, intoId: number): Promise<void> {
+  await sql.begin(async (tx) => {
+    await tx`update filings set filer_person_id = ${intoId} where filer_person_id = ${fromId}`;
+    await tx`update transactions set person_id = ${intoId} where person_id = ${fromId}`;
+    await tx`update leaderboard_snapshots set person_id = ${intoId} where person_id = ${fromId}`;
+    await tx`delete from person_roles where person_id = ${fromId}`;
+    await tx`delete from people where id = ${fromId}`;
+  });
+}
+
 async function resolvePerson(
   sql: Sql,
   ctx: RunContext,
   bioguide: string,
   name: LegislatorName,
   chamber: Chamber,
+  state: string | null = null,
+  district: string | null = null,
 ): Promise<{ personId: number; created: boolean }> {
   // Rule 1: already linked by bioguide_id.
   const [byBioguide] = await sql<{ id: number }[]>`
     select id from people where bioguide_id = ${bioguide} limit 1
   `;
   if (byBioguide) {
+    // Rule 1b: a duplicate filer row for the same seat → merge it into the linked row.
+    const dup = await findUnlinkedFilerBySeat(sql, name, chamber, state, district);
+    if (dup != null && dup !== byBioguide.id) {
+      await mergePerson(sql, dup, byBioguide.id);
+      ctx.extra.merged_duplicates = ((ctx.extra.merged_duplicates as number) ?? 0) + 1;
+      ctx.rowsChanged++;
+    }
     ctx.extra.matched_by_bioguide = ((ctx.extra.matched_by_bioguide as number) ?? 0) + 1;
     return { personId: byBioguide.id, created: false };
   }
@@ -175,6 +233,15 @@ async function resolvePerson(
       ctx.rowsChanged++;
       return { personId: byName.id, created: false };
     }
+  }
+
+  // Rule 2b: the seat (see findUnlinkedFilerBySeat) when the name as filed differs.
+  const bySeat = await findUnlinkedFilerBySeat(sql, name, chamber, state, district);
+  if (bySeat != null) {
+    await sql`update people set bioguide_id = ${bioguide}, updated_at = now() where id = ${bySeat}`;
+    ctx.extra.matched_by_seat = ((ctx.extra.matched_by_seat as number) ?? 0) + 1;
+    ctx.rowsChanged++;
+    return { personId: bySeat, created: false };
   }
 
   // Rule 3: no match — create the person.
@@ -283,7 +350,7 @@ export async function ingestCongressRoster(): Promise<IngestRunResult> {
       const party = term.party ?? null;
       const validFrom = term.start ?? null;
 
-      const { personId } = await resolvePerson(sql, ctx, bioguide, member.name, chamber);
+      const { personId } = await resolvePerson(sql, ctx, bioguide, member.name, chamber, state, district);
       await upsertCongressRole(sql, ctx, personId, chamber, state, district, party, validFrom);
     } catch (err) {
       ctx.quarantine(bioguide, err instanceof Error ? err.message : String(err));

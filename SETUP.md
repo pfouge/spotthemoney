@@ -132,6 +132,15 @@ robots, llms.txt, JSON-LD) and `scripts/indexnow-ping.mjs`.
 **Sample approval (gate).** New filing sources land with `is_published = false`. From the repo
 root: `node scripts/sample-source.mjs sec_form4` writes `docs/reference/samples/…`, review it,
 then `node scripts/sample-source.mjs sec_form4 --approve` publishes. Same for `house_ptr`.
+Approval is per source and one-time: it records a `publish_gates` row, and every later ingest
+run publishes that source's new high-confidence filings by itself (migration 0009). Both
+sources were approved on 2026-09-28.
+
+**Is everything updating?** `node scripts/freshness-check.mjs` prints one row per source
+(OK / NOT CONFIGURED / STALE / FAILING) plus the publish backlog and party coverage; the daily
+`ingest` workflow runs it last and goes red if anything is stale. **Do the filters work?**
+`node scripts/verify-filters.mjs` drives every heatmap control in a headless browser and
+compares the page with a recomputation from the same data (needs Playwright; see the file).
 
 **Offline build.** `scripts/seed-local.sql` seeds a throwaway local Postgres so the whole site
 builds without Supabase (instructions in the file header).

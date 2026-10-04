@@ -37,6 +37,9 @@ const out = join(outDir, `${source}-${date}.md`);
 try {
   if (approve) {
     if (!FILING_SOURCES.has(source)) { console.error("--approve applies to filing sources only (flat tables have no publish flag)"); process.exit(1); }
+    // Approving the sample approves the SOURCE (migration 0009): the gate row makes every
+    // later ingest run publish this source's new high-confidence filings on its own.
+    await sql`insert into publish_gates (source, note) values (${source}::filing_source, 'approved via sample-source.mjs') on conflict (source) do nothing`;
     const r = await sql`update filings set is_published = true where source = ${source} and review in ('auto_approved','approved') and confidence >= 0.9 and not is_published`;
     const line = `\n\n**Approved by Peter ${new Date().toISOString()}** — ${r.count} filing(s) set is_published = true.\n`;
     if (existsSync(out)) appendFileSync(out, line); else writeFileSync(out, `# ${source} sample — ${date}\n${line}`);

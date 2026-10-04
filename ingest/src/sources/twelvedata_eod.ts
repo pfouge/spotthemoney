@@ -101,6 +101,7 @@ export async function ingestTwelvedataEod(): Promise<IngestRunResult> {
   const apiKey = optionalEnv("TWELVEDATA_API_KEY");
   if (!apiKey) {
     ctx.warn("TWELVEDATA_API_KEY not set — skipped (staging-safe no-op)");
+    ctx.extra["skipped"] = "TWELVEDATA_API_KEY not set";
     return { source: SOURCE, rowsSeen: 0, rowsChanged: 0, status: "success", stats: ctx.stats() };
   }
 

@@ -223,6 +223,12 @@ def display_name(member: str) -> str:
     return member.strip()
 
 
+def fold_name(s: str) -> str:
+    """Lowercase ASCII fold for name comparison ('Luján' → 'lujan')."""
+    s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().lower()
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z ]+", " ", s)).strip()
+
+
 def slugify(name: str) -> str:
     s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
     s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
@@ -301,6 +307,26 @@ def resolve_person(conn, member: str, chamber: str, state_district: Optional[str
         row = cur.fetchone()
         if row:
             return row[0]
+        # Seat match: the Clerk files under the legal name ("Allen, Richard W.") while the
+        # roster job's row carries the official one ("Rick W. Allen"). Same chamber + state +
+        # district with the surname present is the same member — reuse that row (it has the
+        # party) instead of creating a party-less duplicate. Mirrors findUnlinkedFilerBySeat
+        # in ingest/src/sources/congress_roster.ts.
+        surname = fold_name(member.split(",", 1)[0] if "," in member else name.split(" ")[-1])
+        if state and surname:
+            cur.execute(
+                """
+                select p.id, p.full_name from people p
+                  join person_roles r on r.person_id = p.id and r.role_kind = 'congress' and r.chamber = %s
+                 where r.state = %s and (%s = 'senate' or r.district is not distinct from %s)
+                   and (r.valid_to is null or r.valid_to >= current_date)
+                 order by (p.bioguide_id is null), p.id
+                """,
+                (chamber, state, chamber, district),
+            )
+            for pid, full_name in cur.fetchall():
+                if f" {surname} " in f" {fold_name(full_name)} ":
+                    return pid
         # Collision-safe slug: append -2, -3 … (never regenerated later).
         cur.execute("select slug from people where slug = %s or slug ~ %s", (slug, f"^{re.escape(slug)}-\\d+$"))
         taken = {r[0] for r in cur.fetchall()}
@@ -570,6 +596,21 @@ def main(argv: Optional[list[str]] = None) -> int:
                     conn.rollback()
                 ctx.quarantine(f"house:{f.doc_id}", f"{type(exc).__name__}: {exc}")
         ctx.set_extra("filings_processed", processed)
+        # Publish on autopilot (migration 0009): house_ptr passed Peter's sample review on
+        # 2026-09-28, so new high-confidence filings go public with the run. Scanned PTRs
+        # (needs_ocr → confidence 0.3, review pending) never qualify and stay held.
+        if conn is not None and not args.dry_run:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select publish_approved_filings()")
+                    published = cur.fetchone()[0]
+                conn.commit()
+                ctx.set_extra("filings_published", published)
+                if published:
+                    print(f"✓ publish: {published} filing(s) from approved sources set public")
+            except Exception as exc:  # noqa: BLE001 — never fail the run on the publish step
+                conn.rollback()
+                print(f"⚠ publish step skipped: {type(exc).__name__}: {exc}")
         status = "success"
     except SystemicFailureError as exc:
         error, status = str(exc), "failed"

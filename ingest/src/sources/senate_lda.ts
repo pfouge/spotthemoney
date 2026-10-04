@@ -45,6 +45,7 @@ interface Filing {
   expenses?: string | number | null;
   lobbying_activities?: LobbyingActivity[] | null;
   filing_document_url?: string | null;
+  dt_posted?: string | null;
 }
 
 interface FilingsPage {
@@ -79,6 +80,9 @@ function parseAmount(income: unknown, expenses: unknown): number | null {
 function filingsUrl(filingYear: number, page: number): string {
   const u = new URL(`${BASE_URL}/filings/`);
   u.searchParams.set("filing_year", String(filingYear));
+  // The API's default order is OLDEST first. Without this the job re-read the same January
+  // filings every day and never saw a new one (found 2026-10-04).
+  u.searchParams.set("ordering", "-dt_posted");
   u.searchParams.set("page_size", String(PAGE_SIZE));
   u.searchParams.set("page", String(page));
   return u.toString();
@@ -89,7 +93,7 @@ export async function ingestSenateLda(): Promise<IngestRunResult> {
   const ctx = createRunContext(SOURCE);
 
   const filingYear = Number(process.env.LDA_FILING_YEAR ?? new Date().getFullYear());
-  const maxPages = Number(process.env.LDA_MAX_PAGES ?? 20);
+  const maxPages = Number(process.env.LDA_MAX_PAGES ?? 60);
   const apiKey = process.env.LDA_API_KEY;
   const keyless = !apiKey;
 
@@ -125,6 +129,13 @@ export async function ingestSenateLda(): Promise<IngestRunResult> {
     }
 
     pagesFetched++;
+
+    // Newest-first paging: once a whole page is already stored we have caught up.
+    const pageUuids = (data.results ?? []).map((f) => f.filing_uuid).filter((u): u is string => !!u);
+    const knownRows = pageUuids.length
+      ? await sql<{ filing_uuid: string }[]>`select filing_uuid from lobbying where filing_uuid = any(${pageUuids}) and posted_at is not null`
+      : [];
+    const pageAllKnown = pageUuids.length > 0 && knownRows.length === pageUuids.length;
 
     for (const filing of data.results ?? []) {
       const ref = filing.filing_uuid ?? `${SOURCE}:page${page}:${filing.filing_type ?? "unknown"}:${filing.registrant?.name ?? "unknown"}`;
@@ -167,16 +178,17 @@ export async function ingestSenateLda(): Promise<IngestRunResult> {
         issue_area: firstActivity?.general_issue_code ?? null,
         issues,
         source_ref: filing.filing_document_url ?? null,
+        posted_at: filing.dt_posted ?? null,
       });
 
       const result = await sql`
         insert into lobbying (
           filing_uuid, filing_type, registrant, client, amount,
-          period_year, period_quarter, issue_area, issues, source_ref
+          period_year, period_quarter, issue_area, issues, source_ref, posted_at
         )
         values (
           ${row.filing_uuid}, ${row.filing_type}, ${row.registrant}, ${row.client}, ${row.amount},
-          ${row.period_year}, ${row.period_quarter}, ${row.issue_area}, ${sql.json(row.issues)}, ${row.source_ref}
+          ${row.period_year}, ${row.period_quarter}, ${row.issue_area}, ${sql.json(row.issues)}, ${row.source_ref}, ${row.posted_at}
         )
         on conflict (filing_uuid) where filing_uuid is not null do update
           set filing_type = excluded.filing_type,
@@ -187,13 +199,18 @@ export async function ingestSenateLda(): Promise<IngestRunResult> {
               period_quarter = excluded.period_quarter,
               issue_area = excluded.issue_area,
               issues = excluded.issues,
-              source_ref = excluded.source_ref
+              source_ref = excluded.source_ref,
+              posted_at = excluded.posted_at
       `;
       ctx.rowsChanged += result.count ?? 0;
     }
 
     hasNext = data.next != null;
     page++;
+    if (pageAllKnown) {
+      ctx.extra["caught_up_on_page"] = page - 1;
+      break;
+    }
 
     if (hasNext && pagesFetched < maxPages && keyless) {
       // Keyless target is 15 req/min; lib/http's 1.5s gap alone isn't enough headroom.

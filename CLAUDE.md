@@ -434,3 +434,60 @@ blank table): https://spotthemoney.com/ · /insiders/ · /congress/ · /stocks/ 
 3. Archive `pfouge/spotthemoney.com`; bump actions to v5; carry docs/06 contract items into IIF.
 4. Delete the stale root `congress-heatmap.html` and `design-preview.html` (the prototype in
    `web/public/` stays as the design reference).
+
+## SESSION STATE 2026-10-04 — autopilot audit
+
+_Question asked: is every source updating on its own, is classification automatic, do the
+filters work. Supersedes the 2026-09-28 "Next" list where noted._
+
+**Found (all confirmed against live Actions logs and the live site):**
+
+- **The archived-to-be repo was overwriting production.** `pfouge/spotthemoney.com`'s Actions
+  budget reset on Oct 1; its scheduled ingest (runs #25–28) deployed the old 3-page site to the
+  same Worker and wrote to the same database with pre-fix code. The live site flipped to the
+  old build every day until the Congress run redeployed. **Archived 2026-10-04** (docs/04 #22).
+- **`ingest` failed every scheduled run since 09-30.** `fec_committees` 403s without a key →
+  "money" group red → retry red → deploy skipped (the condition tested the matrix result, which
+  is `failure` if any group fails). Data still landed; the site only rebuilt via the Congress job.
+- **Nothing filed after 09-28 was public.** New Form 4s and PTRs landed `is_published=false`;
+  the heatmaps read published rows only (newest insider filing on the map: 09-25).
+- **`senate_lda` was frozen while green.** The API's default order is oldest-first, so the job
+  re-read the same 500 January filings daily.
+- **Party missing for members filed under a legal name.** "Richard W. Allen" (PTR) vs
+  "Rick W. Allen" (roster) became two `people` rows; 3 of the 4 Congress map rows had no party
+  and dropped out of any party filter.
+- **Combined-map filter leak.** On the home map, Party/Chamber did not hide corporate insiders
+  (and Role did not hide Congress), so "Democrats" showed Democrats plus every insider.
+- Schedules at `:00` fired ~5 h late. A job returning `status: "failed"` without throwing
+  printed ✓ and exited 0.
+
+**Changed (verified locally: 32 ingest tests, 28 + 9 Python tests, ingest `tsc` clean, migration
+0009 on a local Postgres, 41-page build, `verify-filters` 367 filter states / 0 mismatches):**
+
+- `db/migrations/0009_publish_gates.sql` — `publish_gates` (house_ptr + sec_form4 seeded as
+  approved 2026-09-28), `publish_approved_filings()`, backlog published on apply,
+  `lobbying.posted_at`.
+- `ingest/src/index.ts` — calls `publish_approved_filings()` after every run; a `failed` result
+  now exits 1. `ingest/py/congress_ptr_job.py` — same publish call; seat-based
+  `resolve_person`. `scripts/sample-source.mjs --approve` records the gate.
+- `congress_roster.ts` — seat match (rule 2b) and duplicate merge (rule 1b).
+- `senate_lda.ts` — `ordering=-dt_posted`, stores `posted_at`, stops when a page is all known,
+  default 60 pages. `fec_committees` / `fec_schedule_a` — no key → no-op with
+  `stats.skipped` instead of a 403 failure; `twelvedata_eod` sets `stats.skipped` too.
+- `web/src/scripts/heatmap.ts` — a class-specific filter narrows the combined map to its class.
+- Workflows (hand-copied from `_workflows-2026-10-04/`): `ingest.yml` deploys whenever migrate
+  succeeded and ends with a `freshness` job; crons moved to 09:17 / 13:23 / 15:47 UTC.
+- New `scripts/freshness-check.mjs` (per-source OK / NOT CONFIGURED / STALE / FAILING + publish
+  backlog + party coverage; exit 1 on stale) and `scripts/verify-filters.mjs` (Playwright;
+  every control option + seeded combinations vs an independent recomputation).
+
+**Still not on autopilot — needs Peter:** `FEC_API_KEY` (donations, #28) and
+`TWELVEDATA_API_KEY` (prices) are unset, so those two sources report NOT CONFIGURED; Senate PTRs
+(#21) are not ingested at all; X thread dry-runs (#24); measurement keys (#25). Scanned House
+PTRs that need OCR stay held by design. Insider coverage is the 70-ticker universe plus tickers
+Congress trades — widening it is a scope decision, not a freshness one.
+
+**Next:** push (PowerShell block in the 2026-10-04 chat / project handoff) → run `ingest` once
+by hand → read the `freshness` table in the run summary → `node scripts/verify-filters.mjs`
+against live. Then FEC + Twelve Data keys. Unchanged: bump actions to v5 (Node 20 warnings;
+`ubuntu-latest` moves to Ubuntu 26 on 2026-10-19), #21, #24, #25, #26.

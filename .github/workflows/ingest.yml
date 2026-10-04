@@ -4,8 +4,12 @@
 # batch stays inside the job budget as sources are added (sec_form4 alone is ~30 min cold).
 # Each group runs `npm run ingest -- <sources…>` in order; a group's failure does not stop
 # the others, and the retry job re-runs only the failed groups on a fresh runner (new IP).
-# The deploy runs when at least one group succeeded, so a single bad source never blocks
-# fresh data from the rest. `ingest_runs` in the database is the diagnostic of record.
+# The deploy runs whenever the migrate job succeeded — it rebuilds from whatever is in the
+# database, so one bad source never blocks fresh data from the rest. (Until 2026-10-04 the
+# condition tested the matrix result, which is "failure" if ANY group fails; with FEC 403ing
+# daily, the deploy was skipped for a week.) The last job, `freshness`, reads `ingest_runs`
+# (the diagnostic of record) and fails the run — GitHub emails it — if any configured source
+# is stale or failing; the table lands in the run summary.
 #
 # Not in the daily batch (run by their own workflows or by hand): x_daily (x-daily.yml),
 # citation_count / search_console_weekly (measure.yml), archive_backfill (dispatch here).
@@ -14,7 +18,8 @@ name: ingest
 
 on:
   schedule:
-    - cron: "0 9 * * *" # daily 09:00 UTC (congress-ptr runs separately at 13:00, see its workflow)
+    # Off the top of the hour: GitHub delays :00 schedules heavily (these ran ~5 h late).
+    - cron: "17 9 * * *" # daily 09:17 UTC (congress-ptr runs separately at 13:23, see its workflow)
   workflow_dispatch:
     inputs:
       source:
@@ -126,10 +131,30 @@ jobs:
 
   # Rebuild + deploy from the refreshed database (same pipeline as a push to main).
   deploy:
-    needs: [ingest, ingest-retry]
-    if: always() && (contains(needs.ingest.result, 'success') || needs.ingest-retry.result == 'success')
+    needs: [migrate, ingest, ingest-retry]
+    if: always() && needs.migrate.result == 'success'
     uses: ./.github/workflows/deploy.yml
     secrets:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # Autopilot monitor: one row per source in the run summary; red run = something is stale.
+  freshness:
+    needs: [migrate, ingest, ingest-retry, deploy]
+    if: always() && needs.migrate.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Freshness check (every source, publish backlog, party coverage)
+        run: node scripts/freshness-check.mjs

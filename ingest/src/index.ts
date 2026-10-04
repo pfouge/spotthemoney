@@ -82,7 +82,14 @@ async function runSource(code: string): Promise<void> {
             stats = ${result.stats ? sql.json(result.stats as never) : null}
         where id = ${run!.id}
     `;
-    console.log(`✓ ${code}: ${result.rowsSeen} seen, ${result.rowsChanged} written (${result.status})`);
+    if (result.status === "failed") {
+      // A job that reports failure without throwing (e.g. congress_roster on a fetch error)
+      // must still fail the process, or the workflow shows green on a dead source.
+      console.error(`✗ ${code} failed: ${result.error ?? "status failed"}`);
+      process.exitCode = 1;
+    } else {
+      console.log(`✓ ${code}: ${result.rowsSeen} seen, ${result.rowsChanged} written (${result.status})`);
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // The circuit breaker carries partial stats — persist them so the failed run
@@ -106,5 +113,16 @@ const toRun = requested.length > 0
 
 for (const code of toRun) {
   await runSource(code);
+}
+
+// Publish on autopilot (migration 0009): filings from a source whose sample Peter has
+// approved (`publish_gates`) go public as soon as they are ingested, on the same bar the
+// approve script uses (auto_approved/approved, confidence >= 0.9). Sources without a gate
+// row and low-confidence rows are left for review. Never fails the run.
+try {
+  const [row] = await getDb()<{ n: number }[]>`select publish_approved_filings() as n`;
+  if ((row?.n ?? 0) > 0) console.log(`✓ publish: ${row!.n} filing(s) from approved sources set public`);
+} catch (err) {
+  console.error("⚠ publish step skipped:", err instanceof Error ? err.message : String(err));
 }
 await closeDb();

@@ -47,8 +47,16 @@ export async function ingestFecCommittees(): Promise<IngestRunResult> {
   const sql = getDb();
   const ctx = createRunContext(SOURCE);
   const apiKey = process.env.FEC_API_KEY;
-  if (!apiKey) ctx.warn("using DEMO_KEY — throttled; set FEC_API_KEY for the full universe");
-  const key = apiKey ?? "DEMO_KEY";
+  if (!apiKey) {
+    // api.open.fec.gov answers DEMO_KEY with 403 from GitHub runners (docs/04 #28), which
+    // failed the whole "money" group and blocked the daily deploy for a week. Without a key
+    // this source is "not configured", not "broken": no-op, and say so in the run stats so
+    // scripts/freshness-check.mjs reports it as needing a key.
+    ctx.warn("FEC_API_KEY not set — skipped (no-op). Free key: https://api.data.gov/signup/");
+    ctx.extra["skipped"] = "FEC_API_KEY not set";
+    return { source: SOURCE, rowsSeen: 0, rowsChanged: 0, status: "success", stats: ctx.stats() };
+  }
+  const key = apiKey;
   const cycle = Number(process.env.FEC_CYCLE ?? currentCycle());
   const topPacs = Number(process.env.FEC_TOP_PACS ?? 200);
   ctx.extra["cycle"] = cycle;
