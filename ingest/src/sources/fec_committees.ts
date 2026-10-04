@@ -2,7 +2,7 @@
 // 2026-09-27 under the autonomous-session rules):
 //
 //   scope = principal campaign committees of every current member of Congress
-//           (OpenFEC candidates with incumbent_challenge=I in the current cycle, H + S)
+//           (OpenFEC /candidates/search/ with incumbent_challenge=I in the current cycle, H + S)
 //         ∪ the top 200 PACs by receipts in the current cycle (OpenFEC /totals/pac/,
 //           sorted -receipts).
 //
@@ -25,7 +25,7 @@ import { getDb, closeDb } from "../lib/db.js";
 import type { IngestRunResult } from "@stm/shared";
 
 const SOURCE = "fec_committees";
-const API = "https://api.open.fec.gov/v1";
+const API = process.env.FEC_API_BASE ?? "https://api.open.fec.gov/v1"; // override is for the local mock test only
 
 interface Candidate {
   candidate_id: string;
@@ -67,7 +67,10 @@ export async function ingestFecCommittees(): Promise<IngestRunResult> {
   // 1. Incumbent members' principal committees.
   for (const office of ["H", "S"]) {
     for (let page = 1; page <= 20; page++) {
-      const u = new URL(`${API}/candidates/`);
+      // /candidates/search/ — the plain /candidates/ endpoint does not return
+      // principal_committees, so the first keyed run (2026-10-04) loaded 0 member
+      // committees and only the 200 PACs.
+      const u = new URL(`${API}/candidates/search/`);
       u.searchParams.set("api_key", key);
       u.searchParams.set("cycle", String(cycle));
       u.searchParams.set("office", office);
@@ -96,6 +99,7 @@ export async function ingestFecCommittees(): Promise<IngestRunResult> {
     }
   }
   ctx.extra["member_committees"] = rows.size;
+  if (rows.size === 0) ctx.warn("no member principal committees returned by /candidates/search/ — check the endpoint and filters");
 
   // 2. Top PACs by receipts this cycle.
   let pacCount = 0;

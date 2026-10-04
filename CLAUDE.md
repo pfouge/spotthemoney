@@ -491,3 +491,21 @@ Congress trades — widening it is a scope decision, not a freshness one.
 by hand → read the `freshness` table in the run summary → `node scripts/verify-filters.mjs`
 against live. Then FEC + Twelve Data keys. Unchanged: bump actions to v5 (Node 20 warnings;
 `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19), #21, #24, #25, #26.
+
+**Evening addendum (2026-10-04) — keys set, FEC donations rebuilt.** `FEC_API_KEY` and
+`TWELVEDATA_API_KEY` are set (ingest #11 green; prices 3,450 bars at the free plan's 8/min
+pace, `TWELVEDATA_MIN_INTERVAL_MS`). The first keyed FEC run exposed three faults: the
+30-day window was on receipt DATE (receipts exist only after a committee files, so it returned
+16 rows, mostly typos dated 2035/2036 — the live page said "Last updated May 29, 2035");
+`fec_committees` used `/candidates/`, which has no `principal_committees`, so 0 member
+committees loaded; and the page called a capped sample "receipts". Fixed: `fec_schedule_a`
+pulls by `min_load_date` (+ `max_date` = today, `sort_hide_null`), visits committees
+least-recently-checked first under `FEC_MAX_REQUESTS` (850; key limit 1,000/h) using
+`committees.donations_checked_at` (migration 0010, which also deletes future-dated rows);
+`fec_committees` uses `/candidates/search/`; web SQL ignores receipts dated after today; the
+donations page says "receipts held / recent sample", never totals; freshness probes for FEC and
+USAspending ignore future dates. Verified against a local mock API (`FEC_API_BASE` override —
+test only); **`min_load_date` and `/candidates/search/` are from memory of the OpenFEC API and
+were not callable from the sandbox — the first live run is the proof** (expect
+`member_committees` > 0 in `ingest_runs.stats` and several hundred committees after a few
+runs). Real committee totals (`/committee/{id}/totals/`) are a separate, unbuilt piece.

@@ -42,11 +42,14 @@ const CHECKS = [
     newest: `select max(filed_at)::date from filings where source = 'sec_form4'` },
   { code: "senate_lda", label: "Senate lobbying filings", runDays: 2, dataDays: 7,
     newest: `select max(posted_at)::date from lobbying` },
+  // Both feeds carry future-dated records (planned contract actions, filer typos); without the
+  // <= current_date guard the newest date is always "fresh" and a frozen feed never trips.
   { code: "usaspending", label: "USAspending contracts", runDays: 2, dataDays: 10,
-    newest: `select max(action_date) from contracts` },
+    newest: `select max(action_date) from contracts where action_date <= current_date` },
   { code: "fec_committees", label: "FEC committees", runDays: 8 },
-  { code: "fec_schedule_a", label: "FEC donations", runDays: 2, dataDays: 60,
-    newest: `select max(donated_at) from donations` },
+  // Receipts appear only after a committee files (monthly or quarterly), hence the long allowance.
+  { code: "fec_schedule_a", label: "FEC donations", runDays: 2, dataDays: 75,
+    newest: `select max(donated_at) from donations where donated_at <= current_date` },
   { code: "twelvedata_eod", label: "Stock prices (Twelve Data)", runDays: 2, dataDays: 6,
     newest: `select max(price_date) from security_prices` },
   { code: "universe", label: "Tracked-ticker universe", runDays: 2 },

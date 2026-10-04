@@ -3,19 +3,29 @@
 //
 // SCOPE (staging-safe — schedule_a is a firehose, never ingest it unbounded):
 // committee scope = env FEC_COMMITTEE_IDS (comma-separated fec_id values) UNION
-// every fec_id already present in the committees table. If that combined scope
-// is empty, this is a no-op success (rowsSeen 0) — there is nothing to be
-// staging-safe about but also nothing to fetch.
+// every fec_id already present in the committees table. Empty scope = no-op success.
 //
-// WINDOW: min_date = today - FEC_LOOKBACK_DAYS (default 30). No max_date is sent
-// (defaults to "up to now" on the API side).
+// WINDOW (rewritten 2026-10-04): receipts reach the FEC only when a committee FILES — most
+// file quarterly — so "receipts dated in the last 30 days" is nearly empty and what it does
+// return is mostly typos dated years ahead (they sort first). The job now asks for receipts
+// the FEC LOADED recently (min_load_date) and never dated after today (max_date):
+//   first visit to a committee: loaded in the last FEC_LOOKBACK_DAYS (default 100) days
+//   later visits:               loaded since the last visit, minus 2 days of overlap
+// Newest receipt date first; paging stops at FEC_MAX_PAGES (default 10 = 1,000 receipts),
+// when a page adds nothing new, or when receipts are older than the site's display window.
+// So for very large committees (conduits such as ActBlue or WinRed) the table holds a
+// recent SAMPLE, not every receipt — the page says so and never calls the sum a total.
+//
+// BUDGET: a standard key allows 1,000 calls an hour. Committees are visited least-recently-
+// checked first (committees.donations_checked_at, migration 0010) and the run stops at
+// FEC_MAX_REQUESTS (default 850); the rest are picked up by the next run. A 429 ends the
+// run "partial" the same way.
 //
 // PAGINATION: schedule_a paginates by CURSOR, not by page number. Each response's
 // pagination.last_indexes gives { last_index, last_contribution_receipt_date };
 // repeat the same request with those two params added to get the next page.
-// last_indexes is null/absent once the result set is exhausted. We always send
-// sort=-contribution_receipt_date explicitly for a stable order (never rely on
-// an implicit default), and cap pages per committee at FEC_MAX_PAGES (default 10).
+// sort=-contribution_receipt_date with sort_hide_null=true (undated receipts are useless
+// to a dated window and break the date cursor).
 //
 // AUTH: FEC_API_KEY, sent as the required `api_key` query param. Falls back to
 // "DEMO_KEY" (heavily throttled, dev-only) with a warning. The key itself must
@@ -39,7 +49,8 @@ import { getDb, closeDb } from "../lib/db.js";
 import type { IngestRunResult } from "@stm/shared";
 
 const SOURCE = "fec_schedule_a";
-const BASE_URL = "https://api.open.fec.gov/v1/schedules/schedule_a/";
+// FEC_API_BASE exists for the local mock test only; production never sets it.
+const BASE_URL = `${process.env.FEC_API_BASE ?? "https://api.open.fec.gov/v1"}/schedules/schedule_a/`;
 const PER_PAGE = 100; // API max
 
 interface CommitteeRef {
@@ -88,15 +99,18 @@ function dateOnly(raw: string): string {
 function scheduleAUrl(
   apiKey: string,
   committeeId: string,
-  minDate: string,
+  minLoadDate: string,
+  maxDate: string,
   cursor?: LastIndexes,
 ): string {
   const u = new URL(BASE_URL);
   u.searchParams.set("api_key", apiKey);
   u.searchParams.set("committee_id", committeeId);
-  u.searchParams.set("min_date", minDate);
+  u.searchParams.set("min_load_date", minLoadDate);
+  u.searchParams.set("max_date", maxDate);
   u.searchParams.set("per_page", String(PER_PAGE));
   u.searchParams.set("sort", "-contribution_receipt_date");
+  u.searchParams.set("sort_hide_null", "true");
   if (cursor?.last_index != null) {
     u.searchParams.set("last_index", String(cursor.last_index));
   }
@@ -119,19 +133,28 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
   }
   const key = apiKey ?? "DEMO_KEY";
 
-  const lookbackDays = Number(process.env.FEC_LOOKBACK_DAYS ?? 30);
-  const minDate = isoDaysAgo(Number.isFinite(lookbackDays) ? lookbackDays : 30);
+  const lookbackDays = Number(process.env.FEC_LOOKBACK_DAYS ?? 100);
+  const firstVisitLoadDate = isoDaysAgo(Number.isFinite(lookbackDays) ? lookbackDays : 100);
+  const today = isoDaysAgo(0);
   const maxPages = Number(process.env.FEC_MAX_PAGES ?? 10);
+  const maxRequests = Number(process.env.FEC_MAX_REQUESTS ?? 850);
+  // The site shows a 90-day window; receipts older than this are not worth a request.
+  const oldestUseful = isoDaysAgo(120);
 
   const envCommitteeIds = (process.env.FEC_COMMITTEE_IDS ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
-  const dbCommitteeRows = await sql`
-    select fec_id from committees where fec_id is not null
+  // Least-recently-checked first, so a run that stops at its request budget resumes where
+  // it left off next time instead of always serving the same committees.
+  const dbCommitteeRows = await sql<{ fec_id: string; checked: string | null }[]>`
+    select fec_id, (donations_checked_at at time zone 'utc')::date::text as checked
+      from committees where fec_id is not null
+     order by donations_checked_at asc nulls first, id
   `;
-  const dbCommitteeIds = dbCommitteeRows.map((r) => r.fec_id as string);
+  const lastChecked = new Map(dbCommitteeRows.map((r) => [r.fec_id, r.checked]));
+  const dbCommitteeIds = dbCommitteeRows.map((r) => r.fec_id);
 
   const committeeScope = Array.from(new Set([...envCommitteeIds, ...dbCommitteeIds]));
 
@@ -169,15 +192,46 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
   }
 
   const pagesPerCommittee: Record<string, number> = {};
+  let requests = 0;
+  let committeesDone = 0;
+  let stoppedReason: string | null = null;
+  let futureDated = 0;
 
   for (const committeeId of committeeScope) {
+    if (requests >= maxRequests) { stoppedReason = "request budget reached"; break; }
+
+    // Load-date floor: since the last visit (2 days of overlap), never further back than
+    // the first-visit window.
+    const checked = lastChecked.get(committeeId) ?? null;
+    let minLoadDate = firstVisitLoadDate;
+    if (checked) {
+      const d = new Date(`${checked}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - 2);
+      const floor = d.toISOString().slice(0, 10);
+      if (floor > minLoadDate) minLoadDate = floor;
+    }
+
     let cursor: LastIndexes | undefined = undefined;
     let pages = 0;
+    let failed = false;
 
-    while (pages < maxPages) {
-      const url = scheduleAUrl(key, committeeId, minDate, cursor);
-      const data = await fetchJson<ScheduleAPage>(url);
+    while (pages < maxPages && requests < maxRequests) {
+      const url = scheduleAUrl(key, committeeId, minLoadDate, today, cursor);
+      let data: ScheduleAPage;
+      try {
+        requests++;
+        data = await fetchJson<ScheduleAPage>(url);
+      } catch (err) {
+        // lib/http errors carry host+path only — never the query string or the key.
+        const message = err instanceof Error ? err.message : String(err);
+        ctx.quarantine(`${SOURCE}:${committeeId}`, message);
+        failed = true;
+        if (message.includes("429")) stoppedReason = "rate limited (429)";
+        break;
+      }
       pages++;
+      let newOnPage = 0;
+      let oldestOnPage: string | null = null;
 
       for (const result of data.results ?? []) {
         const subId = result.sub_id;
@@ -194,6 +248,9 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
         const receiptDate = result.contribution_receipt_date
           ? dateOnly(result.contribution_receipt_date)
           : null;
+        // Belt and braces with max_date: a receipt dated after today is a filer typo.
+        if (receiptDate == null || receiptDate > today) { futureDated++; continue; }
+        if (oldestOnPage == null || receiptDate < oldestOnPage) oldestOnPage = receiptDate;
         const committeeFecId = result.committee_id ?? committeeId;
         const committeeName = result.committee?.name ?? null;
 
@@ -225,29 +282,43 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
           on conflict (source_ref) where source_ref is not null do nothing
         `;
         ctx.rowsChanged += result_.count ?? 0;
+        newOnPage += result_.count ?? 0;
       }
 
       const lastIndexes = data.pagination?.last_indexes;
       if (lastIndexes == null || lastIndexes.last_index == null) break;
+      if ((data.results ?? []).length > 0 && newOnPage === 0) break; // caught up
+      if (oldestOnPage != null && oldestOnPage < oldestUseful) break; // past the display window
       cursor = lastIndexes;
     }
 
-    pagesPerCommittee[committeeId] = pages;
+    if (pages > 0) pagesPerCommittee[committeeId] = pages;
+    if (stoppedReason) break;
+    if (!failed) {
+      await sql`update committees set donations_checked_at = now() where fec_id = ${committeeId}`;
+      committeesDone++;
+    }
   }
 
-  ctx.extra["committees_queried"] = committeeScope.length;
-  ctx.extra["pages_per_committee"] = pagesPerCommittee;
-  ctx.extra["total_pages"] = Object.values(pagesPerCommittee).reduce((a, b) => a + b, 0);
-  ctx.extra["lookback_days"] = lookbackDays;
-  ctx.extra["min_date"] = minDate;
+  ctx.extra["committees_in_scope"] = committeeScope.length;
+  ctx.extra["committees_done"] = committeesDone;
+  ctx.extra["committees_deferred"] = committeeScope.length - committeesDone;
+  ctx.extra["requests"] = requests;
+  ctx.extra["max_requests"] = maxRequests;
+  ctx.extra["stopped"] = stoppedReason;
+  ctx.extra["future_or_undated_skipped"] = futureDated;
+  ctx.extra["multi_page_committees"] = Object.values(pagesPerCommittee).filter((n) => n > 1).length;
+  ctx.extra["first_visit_min_load_date"] = firstVisitLoadDate;
   ctx.extra["max_pages"] = maxPages;
-  ctx.extra["demo_key"] = demoKey;
+
+  if (stoppedReason) ctx.warn(`stopped early: ${stoppedReason} — ${committeeScope.length - committeesDone} committee(s) carry over to the next run`);
 
   return {
     source: SOURCE,
     rowsSeen: ctx.rowsSeen,
     rowsChanged: ctx.rowsChanged,
-    status: "success",
+    // Deferring committees to the next run is the design, not a fault: only a 429 is partial.
+    status: stoppedReason === "rate limited (429)" ? "partial" : "success",
     stats: ctx.stats(),
   };
 }

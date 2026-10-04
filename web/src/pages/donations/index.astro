@@ -1,7 +1,11 @@
 ---
 // /donations/ — FEC Schedule A, aggregated. Individual donor names are withheld at launch
 // (roadmap C.4: pending counsel's review of what the regulator publishes); the page shows
-// committee totals and employer / state aggregates only. Draft — needs review.
+// employer / state aggregates and per-committee sums only. Draft — needs review.
+// HONESTY RULE (2026-10-04): the ingest keeps at most the 1,000 most recent itemized receipts
+// per committee per pull, so for large committees these sums are a recent sample, not the
+// committee's receipts. The copy must never present them as totals; the FEC link on each row
+// is where the full figure lives.
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
@@ -16,7 +20,7 @@ const committees = model.committees.filter((c) => c.count > 0);
 const total = sum(committees.map((c) => c.total));
 const answer = committees.length === 0
   ? `No itemized contributions are on record yet. The committee universe (every member of Congress's principal committee plus the 200 largest PACs, about 735 committees) is seeded weekly and contributions for the last ${model.donationWindowDays} days follow on the daily run.`
-  : `${money(total)} in itemized contributions reached ${plural(committees.length, "tracked committee")} in the last ${model.donationWindowDays} days (${plural(sum(committees.map((c) => c.count)), "receipt")}). The largest recipient was ${committees[0]!.name} with ${money(committees[0]!.total)}. Donor names are withheld here; every figure links to the committee's own FEC page.`;
+  : `We hold ${plural(sum(committees.map((c) => c.count)), "itemized receipt")} dated in the last ${model.donationWindowDays} days across ${plural(committees.length, "tracked committee")}, worth ${money(total)}. This is a recent sample, not a total: we keep up to 1,000 of the newest receipts per committee, and committees report to the FEC monthly or quarterly, so recent weeks fill in after each filing deadline. Donor names are withheld here; each row links to the committee's full figures at the FEC.`;
 const description = "Campaign contributions to the committees of every member of Congress and the largest PACs, aggregated by committee, employer and state from FEC filings.";
 const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC Schedule A)", path: "/donations/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["FEC", "campaign finance", "donations", "PAC"], sources: [SOURCES.fec], parentCatalogPath: "/washington/" });
 ---
@@ -27,9 +31,9 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
   <p class="lede">Itemized receipts as reported to the FEC, aggregated. Draft presentation — donor names withheld pending review.</p>
   <Answer text={answer} updated={committees[0]?.latest ?? model.builtAt} sourceNote="Source: FEC Schedule A (OpenFEC)" />
 
-  <h2>Committees by receipts ({model.donationWindowDays} days)</h2>
-  {committees.length === 0 ? <p class="empty-reason">No receipts in the window yet — needs the FEC_API_KEY secret and the first fec_committees + fec_schedule_a runs.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Committee</th><th>Type</th><th>Party</th><th class="num">Receipts</th><th class="num">Count</th><th>Latest</th><th>Source</th></tr></thead><tbody>
+  <h2>Committees by itemized receipts held ({model.donationWindowDays} days)</h2>
+  {committees.length === 0 ? <p class="empty-reason">No itemized receipts dated in the window yet. Committees report monthly or quarterly, so the window fills after each FEC filing deadline.</p> : (
+    <div class="tablewrap"><table class="data"><thead><tr><th>Committee</th><th>Type</th><th>Party</th><th class="num">Sampled amount</th><th class="num">Receipts held</th><th>Latest</th><th>Full totals</th></tr></thead><tbody>
       {committees.slice(0, 200).map((c) => <tr><td>{c.name}</td><td class="mono">{c.type ?? "—"}</td><td class="mono">{c.party ?? "—"}</td><td class="num strong">{money(c.total)}</td><td class="num">{num(c.count)}</td><td class="mono">{formatDate(c.latest)}</td><td>{c.fecId ? <a href={`https://www.fec.gov/data/committee/${c.fecId}/`} rel="noopener nofollow" target="_blank">FEC ↗</a> : "—"}</td></tr>)}
     </tbody></table></div>
   )}
@@ -38,7 +42,7 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
 
   <div class="two-col">
     <div>
-      <h2>By donor employer</h2>
+      <h2>By donor employer (receipts held)</h2>
       {model.donationsByEmployer.length === 0 ? <p class="empty-reason">No receipts in the window yet.</p> : (
         <div class="tablewrap"><table class="data"><thead><tr><th>Employer (as stated by the donor)</th><th class="num">Total</th><th class="num">Receipts</th></tr></thead><tbody>
           {model.donationsByEmployer.slice(0, 50).map((r) => <tr><td>{r.key}</td><td class="num">{money(r.total)}</td><td class="num">{num(r.count)}</td></tr>)}
@@ -46,7 +50,7 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
       )}
     </div>
     <div>
-      <h2>By donor state</h2>
+      <h2>By donor state (receipts held)</h2>
       {model.donationsByState.length === 0 ? <p class="empty-reason">No receipts in the window yet.</p> : (
         <div class="tablewrap"><table class="data"><thead><tr><th>State</th><th class="num">Total</th><th class="num">Receipts</th></tr></thead><tbody>
           {model.donationsByState.slice(0, 60).map((r) => <tr><td class="mono">{r.key}</td><td class="num">{money(r.total)}</td><td class="num">{num(r.count)}</td></tr>)}

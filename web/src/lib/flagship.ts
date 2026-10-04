@@ -184,14 +184,14 @@ async function load(): Promise<Flagship> {
       sql<{ id: number; fec_id: string | null; name: string; party: string | null; committee_type: string | null; total: number; count: number; latest: string | null }[]>`
         select c.id, c.fec_id, c.name, c.party, c.committee_type,
                coalesce(sum(d.amount), 0)::float8 as total, count(d.id)::int as count, max(d.donated_at)::text as latest
-          from committees c left join donations d on d.committee_id = c.id and d.donated_at >= current_date - 90
+          from committees c left join donations d on d.committee_id = c.id and d.donated_at >= current_date - 90 and d.donated_at <= current_date
          group by c.id order by total desc, c.name limit 500`,
       sql<{ key: string; total: number; count: number }[]>`
         select coalesce(nullif(trim(donor_employer), ''), '(not stated)') as key, sum(amount)::float8 as total, count(*)::int as count
-          from donations where donated_at >= current_date - 90 group by 1 order by total desc limit 100`,
+          from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 100`,
       sql<{ key: string; total: number; count: number }[]>`
         select coalesce(nullif(trim(donor_state), ''), '(not stated)') as key, sum(amount)::float8 as total, count(*)::int as count
-          from donations where donated_at >= current_date - 90 group by 1 order by total desc limit 60`,
+          from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
     const model: Flagship = { ...empty, connected: true };
