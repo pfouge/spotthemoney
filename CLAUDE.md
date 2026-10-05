@@ -818,3 +818,20 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
 - Deploy flip-flop on 2026-10-05 evening: runs started before `c9688a4` still carry the old
   `deploy.yml` and redeploy their own commit when they finish. Settles once those runs are
   done; a manual `deploy` run from main fixes it at any time.
+
+### TradingView price + chart on ticker pages — 2026-10-05 (Peter: add the free widgets, hold the paid feed)
+
+- `web/src/components/TradingView.astro` + `web/src/scripts/tradingview.ts`, placed on
+  `/stocks/[ticker]/` (equity/etf/adr only) under the figure strip: TradingView's free
+  Symbol Info widget (price, change) and Advanced Chart. Loaded lazily, rebuilt on theme
+  change, TradingView branding kept, note says US prices are delayed.
+- Not a change to docs/04 #33: TradingView shows its own data in its own frames; the site
+  stores and publishes no prices. The data cannot be read back out, so market-cap bands stay
+  the filings-based estimate. A licensed feed (Twelve Data Venture, $414/month billed yearly,
+  external display allowed — priced 2026-10-05) is on hold.
+- Symbol is passed without an exchange prefix ("AAPL"); TradingView resolves it. Some
+  tickers may show "only available on TradingView" or resolve to a non-US listing — not yet
+  checked across the ~760 tickers.
+- Verified locally only (the sandbox blocks tradingview.com): both embed scripts are created
+  with the right config, re-created on theme change, no layout overflow at 390px, build and
+  `astro check` clean, `verify-live --all` passes. Rendering to be confirmed on the live site.

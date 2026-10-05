@@ -1,0 +1,23 @@
+---
+// Share price and price chart from TradingView's free embeddable widgets (added 2026-10-05,
+// Peter). TradingView serves its own data inside its own frames — we store and publish no
+// price data, so docs/04 #33 (filings-only charts, no licensed feed) is unchanged. US prices
+// in these widgets are delayed by the exchanges' rules; the note under the chart says so.
+// The widgets load only when the block scrolls near the viewport (scripts/tradingview.ts),
+// follow the site's light/dark switch, and keep TradingView's own branding as its terms ask.
+interface Props { symbol: string; name?: string | null }
+const { symbol, name = null } = Astro.props as Props;
+const tvUrl = `https://www.tradingview.com/symbols/${encodeURIComponent(symbol)}/`;
+---
+<section class="tv" data-tv data-symbol={symbol} aria-label={`${symbol} share price and chart from TradingView`}>
+  <h2>Share price</h2>
+  <div class="tv-info" data-tv-slot="info"></div>
+  <div class="tv-chart" data-tv-slot="chart"></div>
+  <p class="tv-note">Price and chart by <a href={tvUrl} rel="noopener nofollow" target="_blank">TradingView</a>{name ? ` for ${name}` : ""}. US share prices here are delayed, not real-time. The trade records on this page come from government filings, not from this chart.</p>
+  <noscript><p class="tv-note"><a href={tvUrl} rel="noopener nofollow">See {symbol} on TradingView</a>.</p></noscript>
+</section>
+
+<script>
+  import { initTradingView } from "../scripts/tradingview";
+  initTradingView();
+</script>

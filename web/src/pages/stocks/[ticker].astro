@@ -11,6 +11,7 @@ import { getFlagship, securityPath, companyPath, personPath, withinDays, num, pl
 import { datasetLd, SOURCES, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizStock from "../../components/VizStock.astro";
+import TradingView from "../../components/TradingView.astro";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -70,6 +71,8 @@ const ld = datasetLd({ name: `${s.ticker} insider and congressional transactions
     <div class="cell"><div class="k">Congress trades (12m)</div><div class="v">{num(yCon.length)}</div></div>
     <div class="cell"><div class="k">Distinct filers (12m)</div><div class="v">{num(insiders.size + members.size)}</div></div>
   </section>
+
+  {["equity", "etf", "adr"].includes(s.type) && <TradingView symbol={s.ticker} name={name} />}
 
   <VizStock security={s} company={company ?? null} />
 

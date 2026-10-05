@@ -378,6 +378,14 @@ h1 .soft { font-family: var(--font-sans); font-weight: 400; font-size: 0.5em; le
 .ctl[hidden] { display: none; }
 
 /* ── Charts (lib/viz.ts + components/Viz.astro) ───────────────────────────────────────── */
+/* TradingView share price + chart on ticker pages (components/TradingView.astro). Heights are
+   reserved before the widgets load so the page does not jump. */
+.tv { margin: 1.5rem 0; }
+.tv-info { min-height: 150px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0.4rem 0.6rem; overflow: hidden; }
+.tv-chart { height: 440px; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
+.tv-chart .tradingview-widget-container, .tv-chart .tradingview-widget-container__widget { height: 100%; width: 100%; }
+.tv-note { margin: 0.6rem 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+@media (max-width: 640px) { .tv-chart { height: 340px; } .tv-info { min-height: 190px; } }
 .viz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 1.25rem 0; }
 .viz { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 1.15rem 1.3rem 1.05rem; min-width: 0; }
 .viz-wide { grid-column: 1 / -1; }
