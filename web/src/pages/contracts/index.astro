@@ -34,7 +34,7 @@ const ld = datasetLd({ name: "Federal contract award actions (USAspending)", pat
   {(() => { const flows = contractFlows(model); const big = [...flows].filter((f) => f.left !== "Other agencies" && f.right !== "All other recipients").sort((a, b) => b.value - a.value)[0]; return (
     <div class="viz-grid">
       <Viz title="Contract flow: agency to recipient" question="Which agencies pay which companies? Band width is contract dollars in the last 180 days." wide={true}
-        svg={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days", true)} svgNarrow={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days")}
+        svg={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days", 1120)} svgNarrow={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days")} svgPhone={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days", 360)}
         summary={big ? `The largest flow between a named agency and a named recipient in the last 180 days is ${big.left} to ${big.right}. The five largest agencies and seven largest recipients are shown by name; the rest are grouped.` : undefined} />
     </div>); })()}
 

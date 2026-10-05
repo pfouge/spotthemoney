@@ -9,6 +9,8 @@ interface Props {
   svg?: string;
   /** A second, narrow-viewBox build of the same chart, shown instead of `svg` on small screens (wide charts only). */
   svgNarrow?: string;
+  /** A 360-wide build shown on phones (≤560px) so labels stay legible instead of shrinking with the card. */
+  svgPhone?: string;
   /** [css class, label] pairs, e.g. ["v-buy", "Bought"]. Needed whenever two or more series share a chart. */
   legend?: [string, string][];
   summary?: string;
@@ -20,7 +22,7 @@ interface Props {
   /** Force visibility for slot-only bodies (cards, tiles). Defaults to "there is an SVG". */
   show?: boolean;
 }
-const { title, question, svg = "", svgNarrow = "", legend = [], summary, wide = false, embed = null, embedTitle, id, show } = Astro.props;
+const { title, question, svg = "", svgNarrow = "", svgPhone = "", legend = [], summary, wide = false, embed = null, embedTitle, id, show } = Astro.props;
 const visible = show ?? svg !== "";
 const site = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
 const snippet = embed
@@ -36,7 +38,7 @@ const snippet = embed
     {legend.length > 0 && (
       <div class="viz-legend">{legend.map(([cls, label]) => <span><i class={cls}></i>{label}</span>)}</div>
     )}
-    <div class="viz-body">{svgNarrow ? (<Fragment><div class="vz-w" set:html={svg} /><div class="vz-n" set:html={svgNarrow} /></Fragment>) : <Fragment set:html={svg} />}<slot /></div>
+    <div class="viz-body">{svgNarrow || svgPhone ? (<Fragment><div class="vz-a" set:html={svg} />{svgNarrow && <div class="vz-b" set:html={svgNarrow} />}{svgPhone && <div class="vz-c" set:html={svgPhone} />}</Fragment>) : <Fragment set:html={svg} />}<slot /></div>
     {summary && <p class="viz-sum">{summary}</p>}
     {embed && (
       <details class="viz-embed">

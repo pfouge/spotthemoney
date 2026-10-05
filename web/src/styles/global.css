@@ -339,8 +339,10 @@ h1 .soft { font-family: var(--font-sans); font-weight: 400; font-size: 0.55em; c
 .viz-legend i.v-late { background: var(--viz-late); } .viz-legend i.v-muted { background: var(--viz-muted); } .viz-legend i.v-none { background: var(--viz-none); }
 .viz-sum { margin: 0.6rem 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
 .viz-body { min-width: 0; }
-.vz-n { display: none; }
-@media (max-width: 760px) { .vz-w { display: none; } .vz-n { display: block; } }
+/* One chart, up to three builds (Viz.astro): .vz-a default, .vz-b for a full-row chart once the page is one column, .vz-c for phones. */
+.vz-b, .vz-c { display: none; }
+@media (max-width: 760px) { .viz-body:has(.vz-b) .vz-a { display: none; } .vz-b { display: block; } }
+@media (max-width: 560px) { .viz-body:has(.vz-c) .vz-a, .viz-body:has(.vz-c) .vz-b { display: none; } .vz-c { display: block; } }
 /* Phones: time-series charts scroll sideways inside their card (scripts/viz.ts starts them at the newest end) so their
    text stays legible; every other chart shrinks to fit so the whole picture stays in view. */
 @media (max-width: 560px) { .viz-body { overflow-x: auto; -webkit-overflow-scrolling: touch; } .viz-body svg.vz-time { min-width: 470px; } }

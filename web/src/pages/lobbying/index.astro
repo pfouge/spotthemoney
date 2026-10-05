@@ -38,7 +38,7 @@ const ld = datasetLd({ name: "Federal lobbying filings (Senate LDA)", path: "/lo
   {(() => { const issues = lobbyingIssues(model, year); const top = issues[0]; return (
     <div class="viz-grid">
       <Viz title="Lobbying by issue" question={`What is Washington being lobbied about in ${year}? Tile size is reported spending, by each filing's first listed issue.`} wide={true}
-        svg={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 340, 1120)} svgNarrow={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 300)}
+        svg={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 340, 1120)} svgNarrow={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 300)} svgPhone={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 320, 360)}
         summary={top ? `${issues.length} issue areas have reported lobbying spend in ${year}${issues.length > 14 ? "; the 14 largest are shown" : ""}. The largest is ${top.name} at ${top.label}. A filing that lists several issues is counted under its first.` : undefined} />
     </div>); })()}
 

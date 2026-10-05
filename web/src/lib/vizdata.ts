@@ -40,25 +40,26 @@ export function headlineTiles(m: Flagship) {
   const pub = m.txns.filter((t) => t.isPublished);
   const byDisc = (a: number, b: number) => { const lo = iso(Date.now() - a * DAY), hi = iso(Date.now() - b * DAY); return pub.filter((t) => (t.disclosedAt ?? "") > lo && (t.disclosedAt ?? "") <= hi); };
   const weeks = Array.from({ length: 13 }, (_, i) => byDisc((13 - i) * 7, (12 - i) * 7));
-  const ratio = (ts: Txn[]) => { const s = split(ts.filter((t) => isInsiderTxn(t) && isSignal(t))); return s.sell > 0 ? s.buy / s.sell : 0; };
+  /** Buying as a share of open-market insider dollars (0–100), or null when there were none. A ratio would be undefined in a week with no sells. */
+  const share = (ts: Txn[]) => { const s = split(ts.filter((t) => isInsiderTxn(t) && isSignal(t))); return s.buy + s.sell > 0 ? (s.buy / (s.buy + s.sell)) * 100 : null; };
   const cur = weeks[12]!, prev = weeks[11]!;
   const dollars = (ts: Txn[]) => ts.filter(isSignal).reduce((a, t) => a + val(t), 0);
   const late = (ts: Txn[]) => ts.filter(isLate).length;
   const delta = (a: number, b: number, fmt: (n: number) => string) => (a === b ? "same as the week before" : `${a > b ? "▲" : "▼"} ${fmt(Math.abs(a - b))} vs the week before`);
-  return { weeks, cur, prev, dollars, late, ratio, delta };
+  return { weeks, cur, prev, dollars, late, share, delta };
 }
 
 // 03 gauge
 export function gaugeData(txns: Txn[]) {
   const sig = txns.filter((t) => t.isPublished && isInsiderTxn(t) && isSignal(t));
   const cur = split(since(sig, 30));
-  const now = new Date(), monthly: { label: string; ratio: number | null }[] = [];
+  const now = new Date(), monthly: { label: string; share: number | null }[] = [];
   for (let k = 11; k >= 0; k--) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - k, 1)), key = d.toISOString().slice(0, 7);
     const s = split(sig.filter((t) => (when(t) ?? "").startsWith(key)));
-    monthly.push({ label: MONTH[d.getUTCMonth()]!, ratio: s.sell > 0 ? s.buy / s.sell : s.buy > 0 ? null : null });
+    monthly.push({ label: MONTH[d.getUTCMonth()]!, share: s.buy + s.sell > 0 ? (s.buy / (s.buy + s.sell)) * 100 : null });
   }
-  while (monthly.length > 2 && monthly[0]!.ratio == null) monthly.shift();
+  while (monthly.length > 2 && monthly[0]!.share == null) monthly.shift();
   return { ...cur, monthly };
 }
 
@@ -173,6 +174,13 @@ export function holdingsSeries(m: Flagship, s: Security) {
   }
   return [...byPerson.entries()].map(([id, pts]) => ({ name: m.people.get(id)?.name ?? "Insider", points: pts.sort((a, b) => a.date.localeCompare(b.date)) }))
     .filter((x) => x.points.length >= 2).sort((a, b) => b.points.length - a.points.length).slice(0, 2);
+}
+/** 12b: open-market insider trades of one stock with the share price each Form 4 reported (last two years). */
+export function tradePrices(m: Flagship, s: Security) {
+  const cut = iso(Date.now() - 730 * DAY);
+  return s.insiderTxns.filter((t) => t.isPublished && (t.code === "P" || t.code === "S") && !t.isDerivative && (t.side === "buy" || t.side === "sell") && (t.price ?? 0) > 0 && t.txnDate != null && t.txnDate >= cut)
+    .map((t) => ({ date: t.txnDate!.slice(0, 10), price: t.price!, side: t.side, value: val(t), label: (t.personId != null ? m.people.get(t.personId)?.name : null) ?? "Insider" }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 export function whoIsTrading(m: Flagship, txns: Txn[], days = 365) {
   const by = new Map<number, Txn[]>();

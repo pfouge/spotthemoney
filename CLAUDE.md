@@ -570,3 +570,27 @@ backfill first): price chart with trade markers, "what happened after" calculato
 soft spots: phone text in the shrink-to-fit charts is small (~6px); `/congress/` and
 `/insiders/` keep a "Charts" jump link even if the section is empty; no typecheck was run
 (`astro check` is not installed) — the build is the only compile check.
+
+**Charts, round 2 (2026-10-04, late night).** Live as `0f15cf6` + `07acd5d`; this round fixes
+what real data and a phone exposed.
+- **Phones.** Every shrink-to-fit chart now has a third, 360-wide build (`svgPhone` on
+  `Viz.astro`, `PHONE_W` in `viz.ts`); CSS shows `.vz-a` (default), `.vz-b` (full-row chart at
+  ≤760px) or `.vz-c` (≤560px). Label text is ~10px on a phone instead of ~6px. Time-series
+  charts (`svg.vz-time`) still scroll sideways. Builders take a width, not a `wide` flag.
+- **Scatter** uses signed log scales with decade gridlines and dollar ticks (one outlier used to
+  flatten it); labels are placed in the first free spot beside/above/below a dot or dropped.
+- **Buying share replaces buy/sell ratio** in the home tile and the monthly line: a ratio is
+  undefined in any period with no sells (it showed 0, or a gap); share of dollars always exists.
+- **"Prices insiders traded at"** (stock pages): open-market Form 4 trades plotted at the share
+  price each filing reported — ▲ bought, ▼ sold, sized by dollars. It uses filings only.
+- **Price feed is a licensing decision, not a backfill.** Twelve Data's individual plans (the
+  free key in use) allow internal use only; showing prices on a public site needs a business
+  plan (Venture, from $149/mo as of 2026-10-04) plus attribution. So the market-price chart
+  with trade markers and the "what happened after" view are NOT built, and `security_prices`
+  must stay off every public page until Peter picks a licensed source (docs/04 #33). Nothing
+  on the site reads `security_prices` today.
+- Wording: donations "N states and DC"; lobbying "the 14 largest are shown"; contracts names the
+  largest named flow; insider lag says "Form 4 deadline"; `/congress/` and `/insiders/` only
+  show the "Charts" jump link when the section exists.
+- `astro check` now run (install with `npm i --no-save @astrojs/check typescript` in `web/`;
+  never run it without those installed — it prompts and hangs): 0 errors.

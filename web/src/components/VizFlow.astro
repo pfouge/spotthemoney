@@ -3,7 +3,7 @@
 // buy/sell gauge (insider data only), activity calendar and weekly flow bars.
 import Viz from "./Viz.astro";
 import type { Txn } from "../lib/flagship";
-import { gaugeSvg, calendarSvg, flowSvg, usd } from "../lib/viz";
+import { gaugeSvg, calendarSvg, flowSvg, usd, PHONE_W } from "../lib/viz";
 import { gaugeData, calendarData, weeklyFlow, todayIso } from "../lib/vizdata";
 interface Props { txns: Txn[]; who: string; gauge?: boolean }
 const { txns, who, gauge = false } = Astro.props;
@@ -16,7 +16,7 @@ const ratioNow = g && g.sell > 0 ? g.buy / g.sell : null;
 ---
 {g && (
   <Viz title="Buy / sell pressure" question="Are corporate insiders buying or selling right now, and how does that compare with the past year?"
-    svg={gaugeSvg(g)}
+    svg={gaugeSvg(g)} svgPhone={gaugeSvg(g, PHONE_W)}
     summary={ratioNow != null ? `In the last 30 days insiders bought ${usd(g.buy)} and sold ${usd(g.sell)} on the open market: $${ratioNow.toFixed(2)} bought for every dollar sold. Pre-scheduled 10b5-1 plan trades are left out.` : undefined} />
 )}
 <Viz title="Activity calendar" question={`Which days saw the most trading by ${who}, and in which direction? One square per day for the last year.`}

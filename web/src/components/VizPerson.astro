@@ -3,7 +3,7 @@
 // `embedOnly` renders just the timeline for the slim /embed/ page.
 import Viz from "./Viz.astro";
 import { getFlagship, personPath, type Person } from "../lib/flagship";
-import { timelineSvg, treemapSvg, lagStripSvg, usd } from "../lib/viz";
+import { timelineSvg, treemapSvg, lagStripSvg, usd, PHONE_W } from "../lib/viz";
 import { timelineDots, portfolioMix, lagBars, todayIso } from "../lib/vizdata";
 interface Props { person: Person; embedOnly?: boolean }
 const { person: p, embedOnly = false } = Astro.props;
@@ -34,7 +34,7 @@ const tlSummary = !yearDots.length ? undefined
         legend={[["v-buy", "Bought (above the line)"], ["v-sell", "Sold (below the line)"], ...(hasOther ? [["v-muted", "Other transaction"] as [string, string]] : [])]}
         svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} embed={path ? `/embed${path}` : null} embedTitle={`${p.name} disclosed trades`} />
       <Viz title="Portfolio mix" question="Which stocks does this person trade most? Tile size is dollars traded, all time on record."
-        svg={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`)}
+        svg={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`)} svgPhone={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`, 230, PHONE_W)}
         summary={mix.length ? `${p.name} has traded ${mix.length} ${mix.length === 1 ? "stock" : "stocks"} on record; the largest by dollars is ${[...mix].sort((a, b) => b.value - a.value)[0]!.name}.` : undefined} />
       <Viz title="Reporting lag" question={`Does this person report on time? One bar per filing against the ${p.isCongress ? `${lag.deadline}-day` : "Form 4"} deadline.`}
         legend={[["v-one", "On time"], ["v-late", "Late"]]} svg={lagStripSvg(lag.bars, lag.deadline, p.isCongress ? undefined : "Form 4 deadline")}

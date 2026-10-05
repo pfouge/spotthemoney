@@ -16,8 +16,9 @@ const curve = await getYieldCurve();
 const tenYear = await getSeriesYearToDate("UST_PAR_10Y");
 const hasData = !!curve && curve.tenors.length > 0;
 const playback = await getCurveFrames(13);
-const playbackSvg = curvePlaybackSvg(playback.tenors, playback.frames, true);
+const playbackSvg = curvePlaybackSvg(playback.tenors, playback.frames, 1120);
 const playbackNarrow = curvePlaybackSvg(playback.tenors, playback.frames);
+const playbackPhone = curvePlaybackSvg(playback.tenors, playback.frames, 360);
 
 const find = (label: string) => curve?.tenors.find((t) => t.label === label);
 const t10 = find("10Y"), t2 = find("2Y"), t3m = find("3M"), t30 = find("30Y");
@@ -138,7 +139,7 @@ const description = hasData
 
   {playbackSvg && (
     <div class="viz-grid">
-      <Viz title="Yield curve playback" question="How has the shape of the curve changed over the last year? Drag the slider or press play." wide={true} svg={playbackSvg} svgNarrow={playbackNarrow}
+      <Viz title="Yield curve playback" question="How has the shape of the curve changed over the last year? Drag the slider or press play." wide={true} svg={playbackSvg} svgNarrow={playbackNarrow} svgPhone={playbackPhone}
         legend={[["v-one", "Selected month"], ["v-muted", `${playback.frames[0]!.label} (start)`]]}
         summary={`Month-end Treasury par yields from ${playback.frames[0]!.label} to ${playback.frames[playback.frames.length - 1]!.label}, ${playback.tenors[0]} to ${playback.tenors[playback.tenors.length - 1]}. Without scripting the chart shows the latest month against the first.`}>
         <div class="viz-ctl"><button type="button" data-curve-play>▶ Play</button><input type="range" min="0" max={playback.frames.length - 1} value={playback.frames.length - 1} data-curve-range aria-label="Month" /><b data-curve-label>{playback.frames[playback.frames.length - 1]!.label}</b></div>

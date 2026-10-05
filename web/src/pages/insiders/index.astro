@@ -75,7 +75,7 @@ const feeds = [
 
   <nav class="feeds" aria-label="Preset feeds">
     <a href="#heatmap">Heatmap</a>
-    <a href="#charts">Charts</a>
+    {model.txns.some((t) => t.isPublished && t.source === "sec_form4") && <a href="#charts">Charts</a>}
     <a href="#newest">Newest</a>
     {feeds.map((f) => <a href={`#${f.id}`}>{f.title.replace(/ \(.*\)$/, "")}</a>)}
     <a href="/stocks/">By ticker</a>

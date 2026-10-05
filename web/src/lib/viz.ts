@@ -28,6 +28,10 @@ const open = (w: number, h: number, label: string, cls = "") => `<svg class="vz 
 const text = (x: number, y: number, s: string, cls = "vt", anchor = "start", extra = "") => `<text x="${f1(x)}" y="${f1(y)}" class="${cls}" text-anchor="${anchor}"${extra}>${esc(s)}</text>`;
 /** Approximate width of a label in the 11px mono face, for "does it fit" decisions. */
 const tw = (s: string) => s.length * 6.7;
+/** `s` shortened with an ellipsis until it fits `w` px; "" when not even two characters fit. */
+const fit = (s: string, w: number): string => { if (tw(s) <= w) return s; let t = s; while (t.length > 2 && tw(t + "…") > w) t = t.slice(0, -1); return t.length > 2 ? t.trimEnd() + "…" : ""; };
+/** Chart widths: 1120 for a full-row card on desktop, 560 for a half-row card, 360 for phones (see Viz.astro). */
+export const PHONE_W = 360, WIDE_W = 1120;
 
 // ── 02 sparkline ────────────────────────────────────────────────────────────────────────
 export function sparklineSvg(values: number[], label: string): string {
@@ -39,10 +43,10 @@ export function sparklineSvg(values: number[], label: string): string {
 }
 
 // ── 03 buy / sell gauge ─────────────────────────────────────────────────────────────────
-export function gaugeSvg(d: { buy: number; sell: number; monthly: { label: string; ratio: number | null }[] }): string {
+export function gaugeSvg(d: { buy: number; sell: number; monthly: { label: string; share: number | null }[] }, W = 560): string {
   const tot = d.buy + d.sell;
   if (tot <= 0) return "";
-  const W = 560, pts = d.monthly.filter((m) => m.ratio != null);
+  const pts = d.monthly.filter((m) => m.share != null);
   const H = pts.length >= 2 ? 232 : 76;
   const bp = (d.buy / tot) * 100, bw = Math.max(4, Math.min(W - 4, (W * d.buy) / tot));
   let o = open(W, H, `Open-market buying ${bp.toFixed(1)}% of dollars, selling ${(100 - bp).toFixed(1)}%`);
@@ -51,21 +55,20 @@ export function gaugeSvg(d: { buy: number; sell: number; monthly: { label: strin
   o += `<rect x="${f1(bw + 1)}" y="26" width="${f1(W - bw - 1)}" height="22" rx="4" class="v-sell"${tip(`Selling|${usd(d.sell)} · ${(100 - bp).toFixed(1)}% of dollars`)}/>`;
   o += text(0, 66, `▲ Buying ${bp.toFixed(1)}%`, "vi") + text(W, 66, `Selling ${(100 - bp).toFixed(1)}% ▼`, "vi", "end");
   if (pts.length >= 2) {
-    const mx = Math.max(0.1, ...pts.map((p) => p.ratio!)), top = 112, bot = 208;
-    const x = (i: number) => 34 + (i * (W - 50)) / (d.monthly.length - 1 || 1), y = (v: number) => bot - (v / mx) * (bot - top);
-    o += text(0, 98, "Buy / sell ratio by month", "vi vb");
-    for (const g of [0, mx / 2, mx]) o += `<line x1="34" x2="${W - 16}" y1="${f1(y(g))}" y2="${f1(y(g))}" class="${g === 0 ? "v-axis" : "v-grid"}"/>` + text(28, y(g) + 4, g.toFixed(2), "vt", "end");
-    let path = "", started = false;
-    d.monthly.forEach((m, i) => { if (m.ratio == null) { started = false; return; } path += `${started ? "L" : "M"}${f1(x(i))},${f1(y(m.ratio))}`; started = true; });
+    const top = 112, bot = 208;
+    const x = (i: number) => 34 + (i * (W - 50)) / (d.monthly.length - 1 || 1), y = (v: number) => bot - (v / 100) * (bot - top);
+    o += text(0, 98, "Buying share of open-market dollars, by month", "vi vb");
+    for (const g of [0, 50, 100]) o += `<line x1="34" x2="${W - 16}" y1="${f1(y(g))}" y2="${f1(y(g))}" class="${g === 0 ? "v-axis" : "v-grid"}"/>` + text(28, y(g) + 4, `${g}%`, "vt", "end");
+    let path = "", started = false, lastI = -1;
+    d.monthly.forEach((m, i) => { if (m.share == null) { started = false; return; } path += `${started ? "L" : "M"}${f1(x(i))},${f1(y(m.share))}`; started = true; lastI = i; });
     o += `<path d="${path}" class="v-line" fill="none" stroke-width="2" stroke-linejoin="round"/>`;
     d.monthly.forEach((m, i) => {
       if (i % 2 === (d.monthly.length - 1) % 2) o += text(x(i), 226, m.label, "vt", "middle");
-      if (m.ratio == null) return;
-      o += `<circle cx="${f1(x(i))}" cy="${f1(y(m.ratio))}" r="${i === d.monthly.length - 1 ? 4.5 : 3}" class="v-one ring" stroke-width="2"/>`;
-      o += `<rect x="${f1(x(i) - 20)}" y="${top - 8}" width="40" height="${bot - top + 16}" fill="transparent"${tip(`${m.label}|ratio ${m.ratio.toFixed(2)}`)}/>`;
+      if (m.share == null) return;
+      o += `<circle cx="${f1(x(i))}" cy="${f1(y(m.share))}" r="${i === lastI ? 4.5 : 3}" class="v-one ring" stroke-width="2"/>`;
+      o += `<rect x="${f1(x(i) - 12)}" y="${top - 8}" width="24" height="${bot - top + 16}" fill="transparent"${tip(`${m.label}|${m.share.toFixed(0)}% of dollars were buys`)}/>`;
     });
-    const last = d.monthly[d.monthly.length - 1]!;
-    if (last.ratio != null) o += text(x(d.monthly.length - 1) - 8, y(last.ratio) - 9, last.ratio.toFixed(2), "vi vb", "end");
+    if (lastI >= 0) { const v = d.monthly[lastI]!.share!; o += text(x(lastI) - 8, y(v) + (v > 80 ? 16 : -9), `${v.toFixed(0)}%`, "vi vb v-halo", "end"); }
   }
   return o + "</svg>";
 }
@@ -113,14 +116,14 @@ export function flowSvg(weeks: { label: string; buy: number; sell: number }[]): 
 }
 
 // ── 06 grouped buy/sell bars (party, chamber) · 14 who is trading ──────────────────────
-export function pairBarsSvg(rows: { label: string; buy: number; sell: number; href?: string | null }[], stacked = false): string {
+export function pairBarsSvg(rows: { label: string; buy: number; sell: number; href?: string | null }[], stacked = false, W = 560): string {
   const live = rows.filter((r) => r.buy + r.sell > 0);
   if (live.length === 0) return "";
-  const W = 560, lw = Math.min(200, Math.max(...live.map((r) => tw(r.label))) + 12), rowH = stacked ? 30 : 40, H = live.length * rowH + 6;
+  const lw = Math.min(W * 0.36, Math.max(...live.map((r) => tw(r.label))) + 12), rowH = stacked ? 30 : 40, H = live.length * rowH + 6;
   const mx = Math.max(...live.map((r) => (stacked ? r.buy + r.sell : Math.max(r.buy, r.sell)))), sc = (W - lw - 70) / mx;
   let o = open(W, H, "Dollars bought and sold by group");
   live.forEach((r, i) => {
-    const y = i * rowH + 4, lab = text(0, y + (stacked ? 15 : 18), r.label, "vi");
+    const y = i * rowH + 4, lab = text(0, y + (stacked ? 15 : 18), fit(r.label, lw - 8), "vi");
     o += r.href ? `<a href="${esc(r.href)}">${lab}</a>` : lab;
     if (stacked) {
       let x = lw;
@@ -140,13 +143,13 @@ export function pairBarsSvg(rows: { label: string; buy: number; sell: number; hr
 /** State codes drawn on the tile map (50 states + DC). */
 export const isMapState = (code: string): boolean => TILES.some((t) => t[0] === code);
 const TILES: [string, number, number][] = [["AK", 0, 0], ["ME", 0, 10], ["VT", 1, 9], ["NH", 1, 10], ["WA", 2, 0], ["ID", 2, 1], ["MT", 2, 2], ["ND", 2, 3], ["MN", 2, 4], ["IL", 2, 5], ["WI", 2, 6], ["MI", 2, 7], ["NY", 2, 8], ["RI", 2, 9], ["MA", 2, 10], ["OR", 3, 0], ["NV", 3, 1], ["WY", 3, 2], ["SD", 3, 3], ["IA", 3, 4], ["IN", 3, 5], ["OH", 3, 6], ["PA", 3, 7], ["NJ", 3, 8], ["CT", 3, 9], ["CA", 4, 0], ["UT", 4, 1], ["CO", 4, 2], ["NE", 4, 3], ["MO", 4, 4], ["KY", 4, 5], ["WV", 4, 6], ["VA", 4, 7], ["MD", 4, 8], ["DE", 4, 9], ["AZ", 5, 1], ["NM", 5, 2], ["KS", 5, 3], ["AR", 5, 4], ["TN", 5, 5], ["NC", 5, 6], ["SC", 5, 7], ["DC", 5, 8], ["OK", 6, 3], ["LA", 6, 4], ["MS", 6, 5], ["AL", 6, 6], ["GA", 6, 7], ["HI", 7, 0], ["TX", 7, 3], ["FL", 7, 8]];
-export function tileMapSvg(values: Map<string, number>, unit: string, detail?: Map<string, string>, wide = false): string {
+export function tileMapSvg(values: Map<string, number>, unit: string, detail?: Map<string, string>, W = 560): string {
   const vals = [...values.values()].filter((v) => v > 0).sort((a, b) => a - b);
   if (vals.length === 0) return "";
   // five quantile steps of one hue; states with nothing stay the empty tone
   const q = (p: number) => vals[Math.min(vals.length - 1, Math.floor(p * vals.length))]!;
   const cuts = [q(0.2), q(0.4), q(0.6), q(0.8)], ops = [0.16, 0.34, 0.54, 0.76, 1];
-  const W = wide ? 1120 : 560, cw = wide ? 92 : 48, ch = wide ? 40 : 34, H = 8 * ch + 30, lx = W - 230;
+  const cw = W >= 1000 ? 92 : W >= 500 ? 48 : 31, ch = W >= 1000 ? 40 : W >= 500 ? 34 : 27, H = 8 * ch + 30, lx = W - (W >= 500 ? 230 : 172);
   let o = open(W, H, `${unit} by state`);
   for (const [st, r, c] of TILES) {
     const v = values.get(st) ?? 0, bin = v <= 0 ? -1 : cuts.filter((k) => v > k).length;
@@ -160,13 +163,13 @@ export function tileMapSvg(values: Map<string, number>, unit: string, detail?: M
 }
 
 // ── 08 reporting-lag histogram ──────────────────────────────────────────────────────────
-export function histogramSvg(lags: number[], deadline: number, opts: { bin?: number; max?: number } = {}): string {
+export function histogramSvg(lags: number[], deadline: number, opts: { bin?: number; max?: number; w?: number } = {}): string {
   const v = lags.filter((d) => Number.isFinite(d) && d >= 0);
   if (v.length < 3) return "";
   const bin = opts.bin ?? 5, max = opts.max ?? 90, nb = Math.ceil(max / bin) + 1; // last bin = "max+"
   const counts = new Array<number>(nb).fill(0);
   for (const d of v) counts[Math.min(nb - 1, Math.floor(d / bin))]!++;
-  const W = 560, H = 224, base = 180, bw = (W - 40) / nb, mx = Math.max(...counts);
+  const W = opts.w ?? 560, H = 224, base = 180, bw = (W - 40) / nb, mx = Math.max(...counts);
   let o = open(W, H, "Days between the trade and its disclosure");
   counts.forEach((c, i) => {
     const lo = i * bin, late = lo >= deadline, h = (c / mx) * 150, lab = i === nb - 1 ? `${max}+ days` : `${lo}–${lo + bin - 1} days`;
@@ -181,46 +184,80 @@ export function histogramSvg(lags: number[], deadline: number, opts: { bin?: num
 }
 
 // ── 10 Congress vs insiders scatter ─────────────────────────────────────────────────────
-export function scatterSvg(points: { label: string; x: number; y: number; size: number; href?: string | null }[]): string {
+export function scatterSvg(points: { label: string; x: number; y: number; size: number; href?: string | null }[], W = 560): string {
   if (points.length < 2) return "";
-  const W = 560, H = 330, l = 40, r = 540, t = 10, b = 290, cx = (l + r) / 2, cy = (t + b) / 2;
-  // signed square-root scales: insider dollars and congressional dollars differ by orders of magnitude
-  const mxX = Math.max(1, ...points.map((p) => Math.abs(p.x))), mxY = Math.max(1, ...points.map((p) => Math.abs(p.y))), mxS = Math.max(1, ...points.map((p) => p.size));
-  const sx = (v: number) => cx + Math.sign(v) * Math.sqrt(Math.abs(v) / mxX) * ((r - l) / 2 - 16), sy = (v: number) => cy - Math.sign(v) * Math.sqrt(Math.abs(v) / mxY) * ((b - t) / 2 - 16);
-  let o = open(W, H, "Net congressional trading against net insider trading, one dot per stock");
-  o += `<rect x="${l}" y="${t}" width="${r - l}" height="${b - t}" class="v-plot"/><line x1="${l}" x2="${r}" y1="${cy}" y2="${cy}" class="v-axis"/><line x1="${cx}" x2="${cx}" y1="${t}" y2="${b}" class="v-axis"/>`;
-  o += text(r - 4, t + 14, "Both buying", "vi vb", "end") + text(l + 4, b - 6, "Both selling", "vi vb") + text(l + 4, t + 14, "Congress buys, insiders sell") + text(r - 4, b - 6, "Insiders buy, Congress sells", "vt", "end");
-  const sorted = [...points].sort((a, c) => c.size - a.size), labelled = new Set(sorted.slice(0, 7).map((p) => p.label));
+  const H = 344, l = 32, r = W - 42, t = 10, b = 290, cx = (l + r) / 2, cy = (t + b) / 2, hx = (r - l) / 2 - 16, hy = (b - t) / 2 - 36; // top and bottom bands stay clear for the quadrant names
+  // Signed log scales. Insider and congressional dollars differ by orders of magnitude and one
+  // large holder would flatten a linear (or square-root) axis; everything under $10K sits at the centre.
+  const K = 10_000, lg = (v: number) => Math.log10(1 + Math.abs(v) / K);
+  const mxX = Math.max(K, ...points.map((p) => Math.abs(p.x))), mxY = Math.max(K, ...points.map((p) => Math.abs(p.y))), mxS = Math.max(1, ...points.map((p) => p.size));
+  const sx = (v: number) => cx + Math.sign(v) * (lg(v) / lg(mxX)) * hx, sy = (v: number) => cy - Math.sign(v) * (lg(v) / lg(mxY)) * hy;
+  let o = open(W, H, "Net congressional trading against net insider trading, one dot per stock, log scales");
+  o += `<rect x="${l}" y="${t}" width="${r - l}" height="${b - t}" class="v-plot"/>`;
+  // decade gridlines with dollar labels: every decade on a normal card, every other one on a phone
+  const decades = (mx: number) => [1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11].filter((d) => d <= mx);
+  const stepX = W < 500 ? 2 : 1, dx = decades(mxX), dy = decades(mxY), dec = (d: number) => (d >= 1e9 ? `$${d / 1e9}B` : d >= 1e6 ? `$${d / 1e6}M` : `$${d / 1e3}K`);
+  dx.forEach((d, i) => {
+    for (const sgn of [-1, 1]) {
+      const X = sx(sgn * d);
+      o += `<line x1="${f1(X)}" x2="${f1(X)}" y1="${t}" y2="${b}" class="v-grid"/>`;
+      if ((dx.length - 1 - i) % stepX === 0) o += text(X, b + 13, dec(d), "vt", "middle");
+    }
+  });
+  for (const d of dy) for (const sgn of [-1, 1]) {
+    const Y = sy(sgn * d);
+    o += `<line x1="${l}" x2="${r}" y1="${f1(Y)}" y2="${f1(Y)}" class="v-grid"/>`;
+    o += text(r + 4, Y + 4, dec(d));
+  }
+  o += `<line x1="${l}" x2="${r}" y1="${cy}" y2="${cy}" class="v-axis"/><line x1="${cx}" x2="${cx}" y1="${t}" y2="${b}" class="v-axis"/>`;
+  const corner: [number, number, string, string, string][] = [[r - 4, t + 14, "Both buying", "vi vb", "end"], [l + 4, b - 6, "Both selling", "vi vb", "start"], [l + 4, t + 14, "Congress buys, insiders sell", "vt", "start"], [r - 4, b - 6, "Insiders buy, Congress sells", "vt", "end"]];
+  type Box = [number, number, number, number];
+  const taken: Box[] = corner.map(([x, y, s2, , an]) => (an === "end" ? [x - tw(s2), y - 10, x, y + 2] : [x, y - 10, x + tw(s2), y + 2]) as Box);
+  for (const [x, y, s2, cls, an] of corner) o += text(x, y, s2, cls, an);
+  const sorted = [...points].sort((a, c) => c.size - a.size);
+  const dots = sorted.map((p) => ({ p, X: sx(p.x), Y: sy(p.y), R: 4 + Math.sqrt(p.size / mxS) * 10 }));
+  for (const d of dots) taken.push([d.X - d.R, d.Y - d.R, d.X + d.R, d.Y + d.R]);
+  const hits = (q: Box) => q[0] < l || q[2] > r || q[1] < t || q[3] > b || taken.some((k) => q[0] < k[2] && q[2] > k[0] && q[1] < k[3] && q[3] > k[1]);
   let labels = "";
-  for (const p of sorted) {
-    const X = sx(p.x), Y = sy(p.y), R = 4 + Math.sqrt(p.size / mxS) * 10;
+  dots.forEach((d, i) => {
+    const { p, X, Y, R } = d;
     const dot = `<circle cx="${f1(X)}" cy="${f1(Y)}" r="${f1(R)}" class="v-one ring" fill-opacity=".78" stroke-width="2"${tip(`${p.label}|Insiders net ${p.x >= 0 ? "bought" : "sold"} ${usd(Math.abs(p.x))}|Congress net ${p.y >= 0 ? "bought" : "sold"} ${usd(Math.abs(p.y))}`)}/>`;
     o += p.href ? `<a href="${esc(p.href)}">${dot}</a>` : dot;
-    if (labelled.has(p.label)) { const right = X + R + 4 + tw(p.label) < r; labels += text(right ? X + R + 4 : X - R - 4, Y + 4, p.label, "vi vb v-halo", right ? "start" : "end"); }
-  }
-  o += labels + text(cx, H - 22, "corporate insiders: net selling  ←→  net buying", "vt", "middle");
-  o += text(14, cy, "Congress: selling ←→ buying", "vt", "middle", ` transform="rotate(-90 14 ${cy})"`);
+    if (i >= 10) return;
+    // a label goes in the first free spot beside, above or below its dot; no free spot, no label (the tooltip still names it)
+    const w = tw(p.label);
+    const spots: [number, number, string, Box][] = [
+      [X + R + 4, Y + 4, "start", [X + R + 3, Y - 7, X + R + 5 + w, Y + 6]], [X - R - 4, Y + 4, "end", [X - R - 5 - w, Y - 7, X - R - 3, Y + 6]],
+      [X, Y - R - 5, "middle", [X - w / 2 - 1, Y - R - 16, X + w / 2 + 1, Y - R - 3]], [X, Y + R + 13, "middle", [X - w / 2 - 1, Y + R + 3, X + w / 2 + 1, Y + R + 16]],
+    ];
+    const spot = spots.find((c) => !hits(c[3]));
+    if (!spot) return;
+    taken.push(spot[3]);
+    labels += text(spot[0], spot[1], p.label, "vi vb v-halo", spot[2]);
+  });
+  o += labels + text(cx, H - 6, W < 500 ? "insiders: net selling  ←→  net buying (log)" : "corporate insiders: net selling  ←→  net buying (log scale)", "vt", "middle");
+  o += text(12, cy, "Congress: selling ←→ buying", "vt", "middle", ` transform="rotate(-90 12 ${cy})"`);
   return o + "</svg>";
 }
 
 // ── 11 leaderboards · 15 agencies ───────────────────────────────────────────────────────
-export function rankBarsSvg(rows: { label: string; value: number; valueLabel: string; href?: string | null }[], label = "Ranked bars"): string {
+export function rankBarsSvg(rows: { label: string; value: number; valueLabel: string; href?: string | null }[], label = "Ranked bars", W = 560): string {
   const live = rows.filter((r) => r.value > 0);
   if (live.length === 0) return "";
-  const W = 560, lw = Math.min(230, Math.max(...live.map((r) => tw(r.label))) + 12), H = live.length * 28 + 4, mx = Math.max(...live.map((r) => r.value));
+  const lw = Math.min(W * 0.41, Math.max(...live.map((r) => tw(r.label))) + 12), H = live.length * 28 + 4, mx = Math.max(...live.map((r) => r.value));
   const room = W - lw - Math.max(...live.map((r) => tw(r.valueLabel))) - 10;
   let o = open(W, H, label);
   live.forEach((r, i) => {
-    const y = i * 28 + 4, w = Math.max(4, (r.value / mx) * room), lab = text(0, y + 15, r.label.length > 32 ? r.label.slice(0, 31) + "…" : r.label, "vi");
+    const y = i * 28 + 4, w = Math.max(4, (r.value / mx) * room), lab = text(0, y + 15, fit(r.label, lw - 8), "vi");
     o += (r.href ? `<a href="${esc(r.href)}">${lab}</a>` : lab) + `<rect x="${lw}" y="${y + 2}" width="${f1(w)}" height="16" rx="3" class="v-one"${tip(`${r.label}|${r.valueLabel}`)}/>` + text(lw + w + 6, y + 15, r.valueLabel);
   });
   return o + "</svg>";
 }
 
 // ── 15 column bars (lobbying by quarter) ────────────────────────────────────────────────
-export function columnsSvg(cols: { label: string; value: number }[], label: string): string {
+export function columnsSvg(cols: { label: string; value: number }[], label: string, W = 560): string {
   if (!cols.some((c) => c.value > 0)) return "";
-  const W = 560, H = 204, base = 170, bw = (W - 20) / cols.length, mx = Math.max(...cols.map((c) => c.value));
+  const H = 204, base = 170, bw = (W - 20) / cols.length, mx = Math.max(...cols.map((c) => c.value));
   let o = open(W, H, label);
   cols.forEach((c, i) => {
     const h = (c.value / mx) * 140, x = 10 + i * bw + bw * 0.15;
@@ -278,12 +315,11 @@ export function timelineSvg(dots: { date: string; value: number; side: string; l
 export function treemapSvg(items: { name: string; value: number; label: string; href?: string | null }[], label: string, height = 230, W = 560): string {
   const live = items.filter((i) => i.value > 0).sort((a, b) => b.value - a.value).slice(0, 14);
   if (live.length === 0) return "";
-  const cut = (s: string, w: number) => { if (tw(s) + 14 <= w) return s; let t = s; while (t.length > 2 && tw(t + "…") + 14 > w) t = t.slice(0, -1); return t.length > 2 ? t.trimEnd() + "…" : ""; };
   let o = open(W, height, label);
   const place = (list: typeof live, x: number, y: number, w: number, h: number): void => {
     if (list.length === 0) return;
     if (list.length === 1) {
-      const it = list[0]!, nm = cut(it.name, w), fits = (s: string) => w >= tw(s) + 14;
+      const it = list[0]!, nm = fit(it.name, w - 14), fits = (s: string) => w >= tw(s) + 14;
       let g = `<rect x="${f1(x + 1)}" y="${f1(y + 1)}" width="${f1(Math.max(0, w - 2))}" height="${f1(Math.max(0, h - 2))}" rx="3" class="v-one"${tip(`${it.name}|${it.label}`)}/>`;
       if (h > 24 && nm) g += text(x + 7, y + 17, nm, "v-on vb");
       if (h > 40 && nm && fits(it.label)) g += text(x + 7, y + 32, it.label, "v-on");
@@ -318,23 +354,22 @@ export function lagStripSvg(bars: { days: number; label: string }[], deadline: n
 }
 
 // ── 20 contract flow (agency → recipient) ───────────────────────────────────────────────
-export function flowDiagramSvg(flows: { left: string; right: string; value: number }[], label: string, wide = false): string {
+export function flowDiagramSvg(flows: { left: string; right: string; value: number }[], label: string, W = 560): string {
   const live = flows.filter((f) => f.value > 0);
   if (live.length === 0) return "";
   const tot = (key: "left" | "right") => { const m = new Map<string, number>(); for (const f of live) m.set(f[key], (m.get(f[key]) ?? 0) + f.value); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
   const L = tot("left"), R = tot("right"), sum = live.reduce((a, f) => a + f.value, 0);
-  const W = wide ? 1120 : 560, gap = 13, H = wide ? 360 : 300, usable = H - 12 - gap * (Math.max(L.length, R.length) - 1), sc = usable / sum;
+  const wide = W >= 1000, phone = W < 500, gap = 13, H = wide ? 360 : 300, usable = H - 12 - gap * (Math.max(L.length, R.length) - 1), sc = usable / sum;
   const pos = (list: [string, number][]) => { const m = new Map<string, number>(); let y = 6; for (const [k, v] of list) { m.set(k, y); y += v * sc + gap; } return m; };
-  const ly = pos(L), ry = pos(R), lo = new Map(ly), ro = new Map(ry), x1 = wide ? 300 : 170, x2 = W - (wide ? 320 : 160), xm = (x1 + x2) / 2;
-  const short = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+  const ly = pos(L), ry = pos(R), lo = new Map(ly), ro = new Map(ry), x1 = wide ? 300 : phone ? 118 : 170, x2 = W - (wide ? 320 : phone ? 128 : 160), xm = (x1 + x2) / 2;
   let o = open(W, H, label);
   for (const f of [...live].sort((a, b) => b.value - a.value)) {
     const h = Math.max(1, f.value * sc), y1 = lo.get(f.left)!, y2 = ro.get(f.right)!;
     lo.set(f.left, y1 + f.value * sc); ro.set(f.right, y2 + f.value * sc);
     o += `<path d="M${x1},${f1(y1)}C${xm},${f1(y1)} ${xm},${f1(y2)} ${x2},${f1(y2)}V${f1(y2 + h)}C${xm},${f1(y2 + h)} ${xm},${f1(y1 + h)} ${x1},${f1(y1 + h)}Z" class="v-band"${tip(`${f.left} → ${f.right}|${usd(f.value)}`)}/>`;
   }
-  for (const [k, v] of L) o += `<rect x="${x1 - 12}" y="${f1(ly.get(k)!)}" width="12" height="${f1(Math.max(2, v * sc))}" rx="3" class="v-ink"${tip(`${k}|${usd(v)}`)}/>` + text(x1 - 18, ly.get(k)! + Math.max(2, v * sc) / 2 + 4, short(k, wide ? 40 : 22), "vi", "end");
-  for (const [k, v] of R) o += `<rect x="${x2}" y="${f1(ry.get(k)!)}" width="12" height="${f1(Math.max(2, v * sc))}" rx="3" class="v-ink"${tip(`${k}|${usd(v)}`)}/>` + text(x2 + 18, ry.get(k)! + Math.max(2, v * sc) / 2 + 4, short(k, wide ? 40 : 20), "vi");
+  for (const [k, v] of L) o += `<rect x="${x1 - 12}" y="${f1(ly.get(k)!)}" width="12" height="${f1(Math.max(2, v * sc))}" rx="3" class="v-ink"${tip(`${k}|${usd(v)}`)}/>` + text(x1 - 18, ly.get(k)! + Math.max(2, v * sc) / 2 + 4, fit(k, x1 - 22), "vi", "end");
+  for (const [k, v] of R) o += `<rect x="${x2}" y="${f1(ry.get(k)!)}" width="12" height="${f1(Math.max(2, v * sc))}" rx="3" class="v-ink"${tip(`${k}|${usd(v)}`)}/>` + text(x2 + 18, ry.get(k)! + Math.max(2, v * sc) / 2 + 4, fit(k, W - x2 - 20), "vi");
   return o + "</svg>";
 }
 
@@ -359,20 +394,51 @@ export function rateStepsSvg(periods: { date: string; composite: number | null; 
 }
 
 // ── 23 yield curve playback (static last frame; scripts/viz.ts animates from data-frames) ─
-export function curvePlaybackSvg(tenors: string[], frames: { label: string; values: (number | null)[] }[], wide = false): string {
+export function curvePlaybackSvg(tenors: string[], frames: { label: string; values: (number | null)[] }[], W = 560): string {
   if (frames.length < 2 || tenors.length < 3) return "";
   const all = frames.flatMap((f) => f.values).filter((v): v is number => v != null);
   const lo = Math.floor(Math.min(...all) * 2) / 2, hi = Math.ceil(Math.max(...all) * 2) / 2 || 1;
-  const W = wide ? 1120 : 560, H = wide ? 300 : 214, l = 44, r = W - 12, base = H - 32, top = 14;
+  const wide = W >= 1000, H = wide ? 300 : 214, l = 44, r = W - 12, base = H - 32, top = 14;
   const x = (i: number) => l + (i * (r - l)) / (tenors.length - 1), y = (v: number) => base - ((v - lo) / (hi - lo || 1)) * (base - top);
   const d = (vals: (number | null)[]) => { let s = "", on = false; vals.forEach((v, i) => { if (v == null) { on = false; return; } s += `${on ? "L" : "M"}${f1(x(i))},${f1(y(v))}`; on = true; }); return s; };
   const last = frames[frames.length - 1]!;
   let o = `<svg class="vz" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Treasury yield curve, month by month" data-curve data-lo="${lo}" data-hi="${hi}" data-l="${l}" data-r="${r}" data-base="${base}" data-top="${top}" data-frames="${esc(JSON.stringify(frames))}">`;
   const stepv = hi - lo > 3 ? 1 : 0.5;
   for (let g = lo; g <= hi + 1e-9; g += stepv) o += `<line x1="${l}" x2="${r}" y1="${f1(y(g))}" y2="${f1(y(g))}" class="v-grid"/>` + text(l - 6, y(g) + 4, `${g.toFixed(1)}%`, "vt", "end");
-  tenors.forEach((t, i) => { if (wide || tenors.length <= 9 || i % 2 === 0 || i === tenors.length - 1) o += text(x(i), H - 8, t, "vt", "middle"); });
+  tenors.forEach((t, i) => { if (wide || (tenors.length <= 9 && W >= 500) || i % (W < 500 ? 3 : 2) === 0 || i === tenors.length - 1) o += text(x(i), H - 8, t, "vt", "middle"); });
   o += `<path d="${d(frames[0]!.values)}" class="v-line2" fill="none" stroke-width="2"/>` + text(r, y(frames[0]!.values.filter((v) => v != null).pop() ?? lo) + 16, frames[0]!.label, "vt", "end");
   o += `<path data-live d="${d(last.values)}" class="v-line" fill="none" stroke-width="2" stroke-linejoin="round"/>`;
   last.values.forEach((v, i) => { if (v != null) o += `<circle data-dot="${i}" cx="${f1(x(i))}" cy="${f1(y(v))}" r="4" class="v-one ring" stroke-width="2"${tip(`${tenors[i]}|${v.toFixed(2)}%`)}/>`; });
+  return o + "</svg>";
+}
+
+// ── 12b prices insiders traded at (from the filings themselves; no market data) ─────────
+export function tradePricesSvg(pts: { date: string; price: number; side: string; value: number; label: string }[], W = 560): string {
+  const live = pts.filter((p) => p.price > 0 && (p.side === "buy" || p.side === "sell")).sort((a, c) => a.date.localeCompare(c.date));
+  if (live.length < 3) return "";
+  const H = 236, l = 50, r = W - 14, top = 14, base = 200;
+  const d0 = dayNum(live[0]!.date), d1 = Math.max(d0 + 30, dayNum(live[live.length - 1]!.date));
+  const lo0 = Math.min(...live.map((p) => p.price)), hi0 = Math.max(...live.map((p) => p.price)), pad = (hi0 - lo0) * 0.1 || hi0 * 0.05;
+  // round gridlines: a 1/2/5 step that gives three to five lines across the range
+  const raw = (hi0 - lo0 + 2 * pad) / 3, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((k) => k * mag).find((v) => v >= raw)!;
+  const lo = Math.max(0, Math.floor((lo0 - pad) / step) * step), hi = Math.ceil((hi0 + pad) / step) * step, ticks: number[] = [];
+  for (let g = lo; g <= hi + step / 1e6; g += step) ticks.push(g);
+  const x = (iso: string) => l + ((dayNum(iso) - d0) / (d1 - d0)) * (r - l), y = (v: number) => base - ((v - lo) / (hi - lo)) * (base - top);
+  const money = (v: number) => `$${v >= 100 ? Math.round(v).toLocaleString("en-US") : v.toFixed(2)}`;
+  let o = open(W, H, "Share price reported on each open-market insider trade");
+  for (const g of ticks) o += `<line x1="${l}" x2="${r}" y1="${f1(y(g))}" y2="${f1(y(g))}" class="v-grid"/>` + text(l - 6, y(g) + 4, step >= 1 ? `$${Math.round(g).toLocaleString("en-US")}` : `$${g.toFixed(2)}`, "vt", "end");
+  // dollar-weighted average reported price per day, joined in date order: a trace of where trades happened, not a market series
+  const byDay = new Map<string, { pv: number; v: number }>();
+  for (const p of live) { const w = Math.max(1, p.value), e = byDay.get(p.date) ?? { pv: 0, v: 0 }; e.pv += p.price * w; e.v += w; byDay.set(p.date, e); }
+  o += `<path d="${[...byDay.entries()].map(([d, e], i) => `${i ? "L" : "M"}${f1(x(d))},${f1(y(e.pv / e.v))}`).join("")}" class="v-line2" fill="none" stroke-width="1.5" stroke-linejoin="round"/>`;
+  const mx = Math.max(1, ...live.map((p) => p.value));
+  [...live].sort((a, c) => c.value - a.value).forEach((p) => {
+    const X = x(p.date), Y = y(p.price), R = 5 + Math.sqrt(p.value / mx) * 6, buy = p.side === "buy";
+    // direction is shape as well as colour: ▲ bought, ▼ sold
+    const tri = buy ? `M${f1(X)},${f1(Y - R)}L${f1(X + R)},${f1(Y + R * 0.8)}H${f1(X - R)}Z` : `M${f1(X)},${f1(Y + R)}L${f1(X + R)},${f1(Y - R * 0.8)}H${f1(X - R)}Z`;
+    o += `<path d="${tri}" class="${buy ? "v-buy" : "v-sell"} ring" fill-opacity=".86" stroke-width="1.5"${tip(`${p.label}|${p.date} · ${buy ? "▲ bought" : "▼ sold"} at ${money(p.price)}${p.value > 0 ? `|${usd(p.value)}` : ""}`)}/>`;
+  });
+  const fmt = (n: number) => { const dt = new Date(n * 86400000); return `${MONTH[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`; };
+  o += text(l, H - 6, fmt(d0)) + text(r, H - 6, fmt(d1), "vt", "end");
   return o + "</svg>";
 }

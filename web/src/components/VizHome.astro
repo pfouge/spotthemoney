@@ -4,23 +4,23 @@
 import Viz from "./Viz.astro";
 import VizFlow from "./VizFlow.astro";
 import { getFlagship } from "../lib/flagship";
-import { sparklineSvg, scatterSvg, rankBarsSvg, usd } from "../lib/viz";
-import { headlineTiles, agreementPoints, leaderboards, isInsiderTxn, isSignal } from "../lib/vizdata";
+import { sparklineSvg, scatterSvg, rankBarsSvg, usd, PHONE_W } from "../lib/viz";
+import { headlineTiles, agreementPoints, leaderboards, isInsiderTxn } from "../lib/vizdata";
 const model = await getFlagship();
 const h = headlineTiles(model);
 const tiles = [
   { k: "Trades disclosed this week", v: String(h.cur.length), series: h.weeks.map((w) => w.length), d: h.delta(h.cur.length, h.prev.length, (n) => String(n)) },
   { k: "Dollars disclosed this week", v: usd(h.dollars(h.cur)), series: h.weeks.map(h.dollars), d: h.delta(h.dollars(h.cur), h.dollars(h.prev), usd) },
   { k: "Late filings this week", v: String(h.late(h.cur)), series: h.weeks.map(h.late), d: h.delta(h.late(h.cur), h.late(h.prev), (n) => String(n)) },
-  { k: "Insider buy / sell ratio this week", v: h.ratio(h.cur).toFixed(2), series: h.weeks.map(h.ratio), d: h.delta(h.ratio(h.cur), h.ratio(h.prev), (n) => n.toFixed(2)) },
+  { k: "Insider buying share this week", v: h.share(h.cur) == null ? "—" : `${h.share(h.cur)!.toFixed(0)}%`, series: h.weeks.map((w) => h.share(w) ?? 0), d: h.share(h.cur) == null || h.share(h.prev) == null ? "of open-market dollars" : h.delta(h.share(h.cur)!, h.share(h.prev)!, (n) => `${n.toFixed(0)} pts`) },
 ];
 const pts = agreementPoints(model);
 const agree = pts.filter((p) => Math.sign(p.x) === Math.sign(p.y)).length;
 const lb = leaderboards(model);
 const tabs = [
-  { id: "members", label: "Most active members", svg: rankBarsSvg(lb.members, "Members of Congress by trades disclosed, last 90 days") },
-  { id: "buys", label: "Biggest buys", svg: rankBarsSvg(lb.buys, "Largest single purchases, last 90 days") },
-  { id: "tickers", label: "Most-traded tickers", svg: rankBarsSvg(lb.tickers, "Tickers by dollars traded, last 90 days") },
+  { id: "members", label: "Most active members", svg: rankBarsSvg(lb.members, "Members of Congress by trades disclosed, last 90 days"), phone: rankBarsSvg(lb.members, "Members of Congress by trades disclosed, last 90 days", PHONE_W) },
+  { id: "buys", label: "Biggest buys", svg: rankBarsSvg(lb.buys, "Largest single purchases, last 90 days"), phone: rankBarsSvg(lb.buys, "Largest single purchases, last 90 days", PHONE_W) },
+  { id: "tickers", label: "Most-traded tickers", svg: rankBarsSvg(lb.tickers, "Tickers by dollars traded, last 90 days"), phone: rankBarsSvg(lb.tickers, "Tickers by dollars traded, last 90 days", PHONE_W) },
 ].filter((t) => t.svg);
 const signal = model.txns.filter((t) => t.isPublished);
 ---
@@ -35,13 +35,13 @@ const signal = model.txns.filter((t) => t.isPublished);
     <div class="viz-grid">
       <VizFlow txns={signal.filter(isInsiderTxn)} who="corporate insiders" gauge={true} />
       <Viz title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock."
-        svg={scatterSvg(pts)}
-        summary={pts.length ? `${pts.length} stocks were traded by both groups in the last year; in ${agree} of them Congress and insiders moved the same way. Dot size is total dollars traded.` : undefined} />
+        svg={scatterSvg(pts)} svgPhone={scatterSvg(pts, PHONE_W)}
+        summary={pts.length ? `${pts.length} stocks were traded by both groups in the last year; in ${agree} of them Congress and insiders moved the same way. Dot size is total dollars traded; both axes are log scales.` : undefined} />
       {tabs.length > 0 && (
         <Viz title="Leaderboards" question="Who and what was most active in the last 90 days?" show={true}>
           <div data-viz-tabs>
             <div class="viz-tabs" role="tablist">{tabs.map((t, i) => <button type="button" role="tab" data-tab={t.id} class:list={[{ on: i === 0 }]} aria-selected={i === 0 ? "true" : "false"}>{t.label}</button>)}</div>
-            {tabs.map((t, i) => <div data-panel={t.id} hidden={i !== 0}><Fragment set:html={t.svg} /></div>)}
+            {tabs.map((t, i) => <div data-panel={t.id} hidden={i !== 0}><div class="vz-a" set:html={t.svg} /><div class="vz-c" set:html={t.phone} /></div>)}
           </div>
         </Viz>
       )}
