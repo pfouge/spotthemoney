@@ -1,7 +1,9 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
-import { getYieldCurve, getSeriesYearToDate } from "../../lib/db";
+import { getYieldCurve, getSeriesYearToDate, getCurveFrames } from "../../lib/db";
+import Viz from "../../components/Viz.astro";
+import { curvePlaybackSvg } from "../../lib/viz";
 import { yieldCurveSvg, trendSvg, SERIES } from "../../lib/charts";
 import { formatDate } from "../../lib/format";
 import Crumbs from "../../components/Crumbs.astro";
@@ -13,6 +15,9 @@ import Answer from "../../components/Answer.astro";
 const curve = await getYieldCurve();
 const tenYear = await getSeriesYearToDate("UST_PAR_10Y");
 const hasData = !!curve && curve.tenors.length > 0;
+const playback = await getCurveFrames(13);
+const playbackSvg = curvePlaybackSvg(playback.tenors, playback.frames, true);
+const playbackNarrow = curvePlaybackSvg(playback.tenors, playback.frames);
 
 const find = (label: string) => curve?.tenors.find((t) => t.label === label);
 const t10 = find("10Y"), t2 = find("2Y"), t3m = find("3M"), t30 = find("30Y");
@@ -129,6 +134,16 @@ const description = hasData
       <div class="bignum pending">data pending</div>
       <p class="disclaimer">Run <code>npm run ingest -- treasury_yield_curve</code> with <code>DATABASE_URL</code> set and this page fills with the live curve.</p>
     </section>
+  )}
+
+  {playbackSvg && (
+    <div class="viz-grid">
+      <Viz title="Yield curve playback" question="How has the shape of the curve changed over the last year? Drag the slider or press play." wide={true} svg={playbackSvg} svgNarrow={playbackNarrow}
+        legend={[["v-one", "Selected month"], ["v-muted", `${playback.frames[0]!.label} (start)`]]}
+        summary={`Month-end Treasury par yields from ${playback.frames[0]!.label} to ${playback.frames[playback.frames.length - 1]!.label}, ${playback.tenors[0]} to ${playback.tenors[playback.tenors.length - 1]}. Without scripting the chart shows the latest month against the first.`}>
+        <div class="viz-ctl"><button type="button" data-curve-play>▶ Play</button><input type="range" min="0" max={playback.frames.length - 1} value={playback.frames.length - 1} data-curve-range aria-label="Month" /><b data-curve-label>{playback.frames[playback.frames.length - 1]!.label}</b></div>
+      </Viz>
+    </div>
   )}
 
   <h2>How to read the yield curve</h2>

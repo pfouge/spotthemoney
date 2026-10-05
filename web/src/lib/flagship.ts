@@ -79,6 +79,8 @@ export interface Filing {
   id: number; source: string; externalId: string | null; personId: number | null; companyId: number | null;
   filedAt: string | null; sourceUrl: string | null; confidence: number; review: string; isPublished: boolean;
   txnCount: number;
+  /** Form 4 only: non-derivative shares reported as held after the filing's last transaction. */
+  heldAfter?: number | null;
 }
 export interface Txn {
   id: number; filingId: number; personId: number | null; securityId: number | null;
@@ -117,6 +119,7 @@ export interface Flagship {
   donationWindowDays: number;
   counts: Record<string, number>;
   latestByPath: Map<string, string>;   // page path → lastmod (ISO date) for sitemaps
+  issueNames: Map<string, string>;     // LDA general issue code → display name (for the charts)
 }
 
 const APPROVED = new Set(["auto_approved", "approved"]);
@@ -137,7 +140,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -194,7 +197,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -272,6 +275,28 @@ async function load(): Promise<Flagship> {
     for (const c of model.companies.values()) { const k = normalizeOrgName(c.name); if (k) byName.set(k, c); }
     for (const r of model.contracts) { const c = byName.get(normalizeOrgName(r.recipient)); if (c) c.contracts.push(r); }
     for (const r of model.lobbying) { const c = byName.get(normalizeOrgName(r.client)); if (c) c.lobbying.push(r); }
+
+    // Chart-only extras. Their own try/catch on purpose: the charts are optional, and a
+    // failure here must never blank the pages the way a failure in the core queries does.
+    try {
+      const [heldRows, issueRows] = await Promise.all([
+        sql<{ id: number; held: number | null }[]>`
+          select f.id,
+                 (select (e->>'sharesOwnedAfter')::float8
+                    from jsonb_array_elements(case when jsonb_typeof(f.payload->'transactions') = 'array' then f.payload->'transactions' else '[]'::jsonb end) with ordinality as x(e, n)
+                   where coalesce((e->>'isDerivative')::boolean, false) = false and (e->>'sharesOwnedAfter') ~ '^[0-9.]+$'
+                   order by n desc limit 1) as held
+            from filings f
+           where f.source = 'sec_form4' and f.review in ('auto_approved','approved') and f.confidence >= 0.9`,
+        sql<{ code: string; name: string | null }[]>`
+          select issue_area as code, max(issues->0->>'display') as name
+            from lobbying where issue_area is not null group by 1`,
+      ]);
+      for (const h of heldRows) { const f = model.filings.get(h.id); if (f) f.heldAfter = h.held; }
+      for (const i of issueRows) if (i.name) model.issueNames.set(i.code, i.name);
+    } catch (err) {
+      console.warn("[web] chart extras skipped:", (err as Error).message);
+    }
 
     model.counts = {
       people: model.people.size, companies: model.companies.size, securities: model.securities.size, filings: model.filings.size,

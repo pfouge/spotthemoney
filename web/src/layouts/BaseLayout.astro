@@ -4,6 +4,7 @@ import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
 
 import { fitTitle, fitDescription } from "../lib/seo";
+import Tape from "../components/Tape.astro";
 
 // title / description: a string, or preferred wording first with shorter fallbacks after it
 // (see fitTitle / fitDescription). noindex: pages that exist for navigation but have no data
@@ -83,6 +84,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
         </div>
       </div>
     </header>
+    <Tape />
 
     <main>
       <div class="container">
@@ -116,6 +118,9 @@ const current = (href: string) => (path === href ? "page" : undefined);
         try { localStorage.setItem("theme", next); } catch {}
         window.dispatchEvent(new CustomEvent("themechange", { detail: next }));
       });
+    </script>
+    <script>
+      import "../scripts/viz";
     </script>
   </body>
 </html>

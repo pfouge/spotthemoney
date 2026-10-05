@@ -10,6 +10,7 @@ import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, securityPath, companyPath, personPath, withinDays, num, plural, money, sum } from "../../lib/flagship";
 import { datasetLd, SOURCES, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import VizStock from "../../components/VizStock.astro";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -69,6 +70,8 @@ const ld = datasetLd({ name: `${s.ticker} insider and congressional transactions
     <div class="cell"><div class="k">Congress trades (12m)</div><div class="v">{num(yCon.length)}</div></div>
     <div class="cell"><div class="k">Distinct filers (12m)</div><div class="v">{num(insiders.size + members.size)}</div></div>
   </section>
+
+  <VizStock security={s} company={company ?? null} />
 
   <h2>Insider transactions</h2>
   <TxnTable model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />

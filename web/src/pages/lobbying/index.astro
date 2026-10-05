@@ -7,6 +7,9 @@ import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural, money, sum, normalizeOrgName, companyPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
+import Viz from "../../components/Viz.astro";
+import { treemapSvg } from "../../lib/viz";
+import { lobbyingIssues } from "../../lib/vizdata";
 
 const model = await getFlagship();
 const year = new Date().getUTCFullYear();
@@ -32,6 +35,12 @@ const ld = datasetLd({ name: "Federal lobbying filings (Senate LDA)", path: "/lo
   <h1>Federal lobbying</h1>
   <p class="lede">Quarterly LDA filings as submitted to the Senate: who paid, who was paid, and for what.</p>
   <Answer text={answer} updated={model.lobbying[0]?.createdAt ?? model.builtAt} sourceNote="Source: Senate Office of Public Records (LDA)" />
+  {(() => { const issues = lobbyingIssues(model, year); const top = issues[0]; return (
+    <div class="viz-grid">
+      <Viz title="Lobbying by issue" question={`What is Washington being lobbied about in ${year}? Tile size is reported spending, by each filing's first listed issue.`} wide={true}
+        svg={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 340, 1120)} svgNarrow={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 300)}
+        summary={top ? `${issues.length} issue areas have reported lobbying spend in ${year}; the largest is ${top.name} at ${top.label}. A filing that lists several issues is counted under its first.` : undefined} />
+    </div>); })()}
 
   <div class="two-col">
     <div>

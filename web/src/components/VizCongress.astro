@@ -1,0 +1,33 @@
+---
+// Congress page chart deck: direction over time, party and chamber, where members are from,
+// and how long they take to report.
+import Viz from "./Viz.astro";
+import VizFlow from "./VizFlow.astro";
+import { getFlagship, CONGRESS_DEADLINE_DAYS } from "../lib/flagship";
+import { pairBarsSvg, tileMapSvg, histogramSvg, usd } from "../lib/viz";
+import { congressTxns, partySplit, stateVolumes, lagStats, isInsiderTxn } from "../lib/vizdata";
+const model = await getFlagship();
+const year = congressTxns(model, 365);
+const all = model.txns.filter((t) => t.isPublished && !isInsiderTxn(t));
+const party = partySplit(model, year);
+const st = stateVolumes(model, year);
+const lag = lagStats(all, CONGRESS_DEADLINE_DAYS);
+const top = [...st.vol.entries()].sort((a, b) => b[1] - a[1])[0];
+---
+{all.length > 0 && (
+  <section aria-label="Charts">
+    <h2 id="charts">Congress trading in charts</h2>
+    <div class="viz-grid">
+      <VizFlow txns={all} who="members of Congress" />
+      <Viz title="Party and chamber" question="Do Democrats and Republicans trade differently? Dollars bought and sold by each group in the last year."
+        legend={[["v-buy", "Bought"], ["v-sell", "Sold"]]} svg={pairBarsSvg(party)}
+        summary={party.length ? `${party.map((p) => `${p.label} bought ${usd(p.buy)} and sold ${usd(p.sell)}`).join("; ")}. Amounts are the top of each disclosed range. Senate filings are not yet covered.` : undefined} />
+      <Viz title="Trading by state" question="Which states' members trade the most? Each tile is one state, shaded by dollars traded in the last year."
+        svg={tileMapSvg(st.vol, "traded by this state's members", st.detail)}
+        summary={top ? `Members from ${st.vol.size} states disclosed trades in the last year. ${top[0]} leads with ${usd(top[1])}.` : undefined} />
+      <Viz title="How long members take to report" question={`How many days pass between a trade and its disclosure, and how many filings miss the ${CONGRESS_DEADLINE_DAYS}-day deadline?`}
+        legend={[["v-one", "Filed on time"], ["v-late", "Filed late"]]} svg={histogramSvg(lag.lags, CONGRESS_DEADLINE_DAYS)}
+        summary={lag.median != null ? `The median trade is disclosed ${lag.median} days after it happens. ${lag.late} of ${lag.lags.length} trades on record (${lag.pctLate.toFixed(0)}%) were reported after the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline.` : undefined} />
+    </div>
+  </section>
+)}

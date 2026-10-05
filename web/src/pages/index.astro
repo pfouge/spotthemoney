@@ -10,6 +10,7 @@ import { getLatestIBondRate, getYieldCurve } from "../lib/db";
 import { getFlagship, withinDays, num, money, plural } from "../lib/flagship";
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
+import VizHome from "../components/VizHome.astro";
 
 const model = await getFlagship();
 const pub = model.txns.filter((t) => t.isPublished);
@@ -69,6 +70,8 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
     <p class="answer-text">{answer}</p>
     <p class="answer-meta"><span>Last updated {lastDisclosed ? new Date(lastDisclosed + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "—"}</span><span> · Sources: House Clerk PTRs; SEC EDGAR Form 4</span></p>
   </section>
+
+  <VizHome />
 
   <div class="datastrip strip-compact">
     <div class="cell"><div class="k">I-Bond composite</div><div class="v pos">{ibondRate}</div><div class="delta"><a href="/rates/i-bonds/">Next reset and calculator &rarr;</a></div></div>

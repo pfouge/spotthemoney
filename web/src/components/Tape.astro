@@ -1,0 +1,24 @@
+---
+// The disclosure ticker tape: the newest published buys and sells, scrolling under the header
+// on every page. CSS-only motion; pauses on hover or focus and stands still for readers who
+// ask for reduced motion. Hidden from assistive tech as a marquee — the same rows are on
+// /disclosures/, which the label links to.
+import { getFlagship } from "../lib/flagship";
+import { tapeItems } from "../lib/vizdata";
+import { usd } from "../lib/viz";
+const items = tapeItems(await getFlagship());
+---
+{items.length >= 4 && (
+  <div class="tape" role="region" aria-label="Newest disclosed trades">
+    <a class="tape-label" href="/disclosures/">Newest</a>
+    <div class="tape-view">
+      <div class="tape-run" style={`animation-duration:${items.length * 5}s`}>
+        {[0, 1].map((copy) => items.map((t) => (
+          <a href={t.href} aria-hidden={copy === 1 ? "true" : undefined} tabindex={copy === 1 ? -1 : undefined}>
+            <b>{t.ticker}</b> <span class={t.side === "buy" ? "tb" : "ts"}>{t.side === "buy" ? "▲ bought" : "▼ sold"}</span> {usd(t.amount)} · {t.who} <small>{t.days === 0 ? "filed today" : `filed ${t.days}d ago`}</small>
+          </a>
+        )))}
+      </div>
+    </div>
+  </div>
+)}

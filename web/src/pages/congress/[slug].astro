@@ -10,6 +10,7 @@ import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDays, CONGRESS_DEADLINE_DAYS, money, sum } from "../../lib/flagship";
 import { personLd, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import VizPerson from "../../components/VizPerson.astro";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -65,6 +66,8 @@ const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? 
     <div class="cell"><div class="k">Avg. days to report</div><div class="v">{avgLag == null ? "—" : Math.round(avgLag)}</div></div>
     <div class="cell"><div class="k">Late filings</div><div class={`v ${late.length ? "neg" : ""}`}>{num(late.length)}</div></div>
   </section>
+
+  <VizPerson person={p} />
 
   <h2>Disclosed trades</h2>
   <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />

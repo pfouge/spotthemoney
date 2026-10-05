@@ -13,6 +13,11 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Cache-Control: public, max-age=0, s-maxage=120, must-revalidate
 
+# Embeddable charts are meant to sit in an iframe on other sites, so /embed/* drops the
+# frame ban the rest of the site keeps. Everything else under /* still applies to them.
+/embed/*
+  ! X-Frame-Options
+
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 

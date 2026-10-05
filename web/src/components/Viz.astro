@@ -1,0 +1,48 @@
+---
+// One chart, framed the same way everywhere: a title, the question it answers, an optional
+// legend, the build-time SVG (lib/viz.ts) and a one-sentence reading of it in plain text —
+// the sentence is what search engines and answer engines can quote, since they cannot read
+// the picture. Renders NOTHING when there is no chart to show (empty SVG and no slot use).
+interface Props {
+  title: string;
+  question?: string;
+  svg?: string;
+  /** A second, narrow-viewBox build of the same chart, shown instead of `svg` on small screens (wide charts only). */
+  svgNarrow?: string;
+  /** [css class, label] pairs, e.g. ["v-buy", "Bought"]. Needed whenever two or more series share a chart. */
+  legend?: [string, string][];
+  summary?: string;
+  wide?: boolean;
+  /** Path of the slim /embed/… page for this chart; adds an "Embed this chart" snippet. */
+  embed?: string | null;
+  embedTitle?: string;
+  id?: string;
+  /** Force visibility for slot-only bodies (cards, tiles). Defaults to "there is an SVG". */
+  show?: boolean;
+}
+const { title, question, svg = "", svgNarrow = "", legend = [], summary, wide = false, embed = null, embedTitle, id, show } = Astro.props;
+const visible = show ?? svg !== "";
+const site = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
+const snippet = embed
+  ? `<iframe src="${site}${embed}" width="640" height="360" loading="lazy" style="border:0;max-width:100%" title="${(embedTitle ?? title).replace(/"/g, "&quot;")} — Spot the Money"></iframe>\n<p>Source: <a href="${site}${embed.replace(/^\/embed/, "")}">Spot the Money</a></p>`
+  : "";
+---
+{visible && (
+  <figure class:list={["viz", { "viz-wide": wide }]} id={id}>
+    <figcaption class="viz-head">
+      <h3>{title}</h3>
+      {question && <p class="viz-q">{question}</p>}
+    </figcaption>
+    {legend.length > 0 && (
+      <div class="viz-legend">{legend.map(([cls, label]) => <span><i class={cls}></i>{label}</span>)}</div>
+    )}
+    <div class="viz-body">{svgNarrow ? (<Fragment><div class="vz-w" set:html={svg} /><div class="vz-n" set:html={svgNarrow} /></Fragment>) : <Fragment set:html={svg} />}<slot /></div>
+    {summary && <p class="viz-sum">{summary}</p>}
+    {embed && (
+      <details class="viz-embed">
+        <summary>Embed this chart</summary>
+        <pre><code>{snippet}</code></pre>
+      </details>
+    )}
+  </figure>
+)}

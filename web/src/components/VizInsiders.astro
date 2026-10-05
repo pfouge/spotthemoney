@@ -1,0 +1,32 @@
+---
+// Insiders page chart deck: buy/sell pressure, calendar, weekly flow and cluster-buy cards.
+import Viz from "./Viz.astro";
+import VizFlow from "./VizFlow.astro";
+import { getFlagship } from "../lib/flagship";
+import { usd } from "../lib/viz";
+import { clusterBuys, isInsiderTxn } from "../lib/vizdata";
+const model = await getFlagship();
+const all = model.txns.filter((t) => t.isPublished && isInsiderTxn(t));
+const clusters = clusterBuys(model);
+---
+{all.length > 0 && (
+  <section aria-label="Charts">
+    <h2 id="charts">Insider trading in charts</h2>
+    <div class="viz-grid">
+      <VizFlow txns={all} who="corporate insiders" gauge={true} />
+      <Viz title="Cluster buys" question="Where are several insiders buying the same stock at once? A cluster is three or more buyers within 30 days." show={clusters.length > 0}
+        summary={clusters.length ? `${clusters.length} ${clusters.length === 1 ? "stock has" : "stocks have"} three or more insiders buying on the open market in the last 30 days, led by ${clusters[0]!.ticker} with ${clusters[0]!.buyers} buyers. Each dot is one buyer.` : undefined}>
+        <div class="viz-cards">
+          {clusters.map((c) => (
+            <a class="viz-card" href={c.href}>
+              <div class="t">{c.ticker}</div>
+              <div class="m"><strong>{c.buyers} insiders</strong> bought {usd(c.total)}</div>
+              <div class="m">{c.roles}</div>
+              <div class="dots">{Array.from({ length: c.buyers }, () => <i></i>)}</div>
+            </a>
+          ))}
+        </div>
+      </Viz>
+    </div>
+  </section>
+)}

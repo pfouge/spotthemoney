@@ -1,0 +1,42 @@
+---
+// Chart deck for one ticker (and, with `company`, the company page): who is trading it, how
+// insiders' holdings have changed, and the company's lobbying and federal contracts.
+// The price-with-trade-markers chart joins this deck once price history is backfilled.
+import Viz from "./Viz.astro";
+import { getFlagship, securityPath, type Security, type Company } from "../lib/flagship";
+import { pairBarsSvg, stepLinesSvg, columnsSvg, rankBarsSvg, usd } from "../lib/viz";
+import { whoIsTrading, holdingsSeries, lobbyingByQuarter, contractsByAgency } from "../lib/vizdata";
+interface Props { security?: Security; company?: Company | null; embedOnly?: boolean }
+const { security: s, company: c = null, embedOnly = false } = Astro.props;
+const model = await getFlagship();
+const who = s ? whoIsTrading(model, s.txns) : c ? whoIsTrading(model, c.txns) : [];
+const held = s ? holdingsSeries(model, s) : [];
+const lobby = c ? lobbyingByQuarter(c) : [];
+const agencies = c ? contractsByAgency(c) : [];
+const lobbyTotal = lobby.reduce((a, q) => a + q.value, 0), contractTotal = c ? c.contracts.reduce((a, r) => a + Math.max(0, r.amount ?? 0), 0) : 0;
+const name = s?.ticker ?? c?.name ?? "";
+const whoSvg = pairBarsSvg(who, true);
+const whoSummary = who.length ? `${who.length} ${who.length === 1 ? "person accounts" : "people account"} for the disclosed buying and selling in ${name} over the last 12 months; the most active is ${who[0]!.label} with ${usd(who[0]!.buy + who[0]!.sell)}.` : undefined;
+const any = whoSvg || held.length || lobbyTotal > 0 || agencies.length;
+---
+{embedOnly ? (
+  <Viz title={`Who is trading ${name}, last 12 months`} wide={true} legend={[["v-buy", "Bought"], ["v-sell", "Sold"]]} svg={whoSvg} summary={whoSummary} />
+) : any && (
+  <section aria-label="Charts">
+    <h2 id="charts">{name} in charts</h2>
+    <div class="viz-grid">
+      <Viz title="Who is trading this stock" question="Which people account for the buying and selling over the last 12 months?"
+        legend={[["v-buy", "Bought"], ["v-sell", "Sold"]]} svg={whoSvg} summary={whoSummary}
+        embed={s ? `/embed${securityPath(s)}` : null} embedTitle={`Who is trading ${name}`} />
+      <Viz title="Insider holdings over time" question="Is an insider building or unwinding a position? Shares held directly after each filing."
+        legend={held.map((h, i) => [i === 0 ? "v-one" : "v-muted", h.name] as [string, string])} svg={stepLinesSvg(held)}
+        summary={held.length ? `${held[0]!.name} reported ${Math.round(held[0]!.points[held[0]!.points.length - 1]!.value).toLocaleString("en-US")} shares held after the latest filing, against ${Math.round(held[0]!.points[0]!.value).toLocaleString("en-US")} at the first on record.` : undefined} />
+      {c && <Viz title="Lobbying spend by quarter" question={`How much has ${c.name} reported spending on federal lobbying?`}
+        svg={columnsSvg(lobby, `${c.name} reported lobbying by quarter`)}
+        summary={lobbyTotal > 0 ? `${c.name} reported ${usd(lobbyTotal)} in lobbying over the last eight quarters, from filings matched by exact company name.` : undefined} />}
+      {c && <Viz title="Federal contracts by agency" question={`Which agencies awarded ${c.name} contracts in the last 180 days?`}
+        svg={rankBarsSvg(agencies, `${c.name} contract dollars by awarding agency`)}
+        summary={agencies.length ? `${c.name} received ${usd(contractTotal)} in federal contract actions in the last 180 days, most from ${agencies[0]!.label}.` : undefined} />}
+    </div>
+  </section>
+)}

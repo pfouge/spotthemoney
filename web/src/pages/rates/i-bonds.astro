@@ -4,7 +4,9 @@ import AdSlot from "../../components/AdSlot.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import Answer from "../../components/Answer.astro";
 import Crumbs from "../../components/Crumbs.astro";
-import { getLatestIBondRate, getCpiSeries } from "../../lib/db";
+import { getLatestIBondRate, getCpiSeries, getIBondHistory } from "../../lib/db";
+import Viz from "../../components/Viz.astro";
+import { rateStepsSvg } from "../../lib/viz";
 import { formatPercent, formatDate } from "../../lib/format";
 import { resetOutlook, monthLabel } from "../../lib/ibond";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -12,6 +14,8 @@ import { datasetLd, SOURCES } from "../../lib/seo";
 // Built FROM the database at build time. Falls back gracefully if the DB isn't connected yet.
 const rate = await getLatestIBondRate();
 const cpi = await getCpiSeries(30);
+const history = await getIBondHistory(24);
+const peak = history.filter((h) => h.composite != null).sort((a, b) => b.composite! - a.composite!)[0];
 const outlook = resetOutlook(cpi, rate?.fixedRate ?? null);
 const resetDateLabel = formatDate(outlook.nextResetDate);
 const hasData = rate?.compositeRate != null;
@@ -48,6 +52,12 @@ const description = hasData
       </p>
     </section>
   )}
+
+  <div class="viz-grid">
+    <Viz title="I-Bond rate history" question="How has the I-Bond rate moved at each six-month reset?" wide={true}
+      legend={[["v-one", "Composite rate"], ["v-muted", "Fixed-rate part"]]} svg={rateStepsSvg(history, true)} svgNarrow={rateStepsSvg(history)}
+      summary={peak ? `Over the last ${history.length} rate periods the composite rate peaked at ${peak.composite!.toFixed(2)}% for bonds issued from ${formatDate(peak.date)}. The fixed-rate part stays with a bond for its life; the rest resets with inflation.` : undefined} />
+  </div>
 
   <h2 id="next-reset">Next reset: {resetDateLabel}</h2>
   <section class="panel reset" id="reset">

@@ -1,0 +1,13 @@
+---
+// Embeddable trade timeline for one member of Congress (see layouts/EmbedLayout.astro).
+import EmbedLayout from "../../../layouts/EmbedLayout.astro";
+import VizPerson from "../../../components/VizPerson.astro";
+import { getFlagship, personPath } from "../../../lib/flagship";
+export async function getStaticPaths() {
+  const model = await getFlagship();
+  return [...model.people.values()].filter((p) => p.isCongress && p.slug && p.txns.length > 0).map((p) => ({ params: { slug: p.slug! }, props: { id: p.id } }));
+}
+const { id } = Astro.props as { id: number };
+const p = (await getFlagship()).people.get(id)!;
+---
+<EmbedLayout title={`${p.name} disclosed stock trades`} canonicalPath={personPath(p)!}><VizPerson person={p} embedOnly={true} /></EmbedLayout>

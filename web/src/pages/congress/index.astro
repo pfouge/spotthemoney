@@ -11,6 +11,7 @@ import Heatmap from "../../components/Heatmap.astro";
 import { getFlagship, withinDays, num, plural, personPath, securityPath, roleLabel, avg, isLate, CONGRESS_DEADLINE_DAYS } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import VizCongress from "../../components/VizCongress.astro";
 
 const model = await getFlagship();
 const all = model.txns.filter((t) => t.source !== "sec_form4");
@@ -50,8 +51,10 @@ const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act P
   <Heatmap kind="congress" primary={true} />
 
   <nav class="feeds" aria-label="Sections">
-    <a href="#heatmap">Heatmap</a><a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
+    <a href="#heatmap">Heatmap</a><a href="#charts">Charts</a><a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
   </nav>
+
+  <VizCongress />
 
   <h2 id="newest">Newest disclosures</h2>
   <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet — the daily congress-ptr job fills this table." />

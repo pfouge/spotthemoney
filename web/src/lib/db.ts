@@ -209,3 +209,54 @@ export async function getCpiSeries(months = 30): Promise<CpiPoint[]> {
     return [];
   }
 }
+
+// ---------------------------------------------------------------------------
+// Chart inputs (lib/viz.ts): I-Bond history and month-by-month yield curves
+// ---------------------------------------------------------------------------
+
+/** Every I-Bond rate period on record, oldest first (composite + the fixed-rate part). */
+export async function getIBondHistory(limit = 24): Promise<{ date: string; composite: number | null; fixed: number | null }[]> {
+  const sql = db();
+  if (!sql) return [];
+  try {
+    const rows = await sql<{ obs_date: string; value: number | null; meta: Record<string, number | null> | null }[]>`
+      select o.obs_date::text as obs_date, o.value::float8 as value, o.meta
+        from rate_observations o join rate_series r on r.id = o.series_id
+       where r.code = 'IBOND_COMPOSITE' and o.obs_date <= current_date
+       order by o.obs_date desc limit ${limit}`;
+    return rows.reverse().map((r) => ({ date: String(r.obs_date), composite: r.value, fixed: r.meta?.fixedRate ?? null }));
+  } catch (err) {
+    console.warn("[web] getIBondHistory failed:", (err as Error).message);
+    return [];
+  }
+}
+
+/** The par yield curve on the last business day of each of the last `months` months, oldest first. */
+export async function getCurveFrames(months = 13, prefix = "UST_PAR"): Promise<{ tenors: string[]; frames: { label: string; values: (number | null)[] }[] }> {
+  const sql = db();
+  if (!sql) return { tenors: [], frames: [] };
+  try {
+    const rows = await sql<{ code: string; d: string; value: number | null }[]>`
+      with days as (
+        select max(o.obs_date) as d
+          from rate_observations o join rate_series s on s.id = o.series_id
+         where s.code like ${prefix + "_%"} and o.obs_date > current_date - (${months}::int * interval '1 month')
+         group by date_trunc('month', o.obs_date)
+      )
+      select s.code, o.obs_date::text as d, o.value::float8 as value
+        from rate_observations o join rate_series s on s.id = o.series_id
+       where s.code like ${prefix + "_%"} and o.obs_date in (select d from days)
+       order by o.obs_date`;
+    const tenorMap = new Map<string, { label: string; months: number }>();
+    for (const r of rows) { const t = parseTenorCode(r.code, prefix); if (t) tenorMap.set(r.code, t); }
+    const codes = [...tenorMap.entries()].sort((a, b) => a[1].months - b[1].months);
+    const byDay = new Map<string, Map<string, number | null>>();
+    for (const r of rows) { const m = byDay.get(r.d) ?? new Map(); m.set(r.code, r.value); byDay.set(r.d, m); }
+    const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const frames = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([d, m]) => ({ label: `${MONTH[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}`, values: codes.map(([c]) => m.get(c) ?? null) }));
+    return { tenors: codes.map(([, t]) => t.label), frames };
+  } catch (err) {
+    console.warn("[web] getCurveFrames failed:", (err as Error).message);
+    return { tenors: [], frames: [] };
+  }
+}

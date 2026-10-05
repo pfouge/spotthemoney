@@ -11,6 +11,7 @@ import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, personPath, companyPath, securityPath, roleLabel, sum, avg, money, num, plural, isLate } from "../../lib/flagship";
 import { personLd, edgarFilingUrl, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import VizPerson from "../../components/VizPerson.astro";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -62,6 +63,8 @@ const ld = personLd({ name: p.name, path, jobTitle: role?.officerTitle ?? (role?
     <div class="cell"><div class="k">Sales</div><div class="v neg">{num(sells.length)}</div></div>
     <div class="cell"><div class="k">Avg. disclosure lag</div><div class="v">{avg(txns.map((t) => t.lagDays)) == null ? "—" : `${avg(txns.map((t) => t.lagDays))!.toFixed(1)}d`}</div></div>
   </section>
+
+  <VizPerson person={p} />
 
   <h2>Transactions</h2>
   <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet — the filings below may be amendments, holdings-only reports, or rows still under review." />

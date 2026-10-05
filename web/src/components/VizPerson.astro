@@ -1,0 +1,40 @@
+---
+// Chart deck for one member or insider: trade timeline, portfolio mix, reporting-lag strip.
+// `embedOnly` renders just the timeline for the slim /embed/ page.
+import Viz from "./Viz.astro";
+import { getFlagship, personPath, type Person } from "../lib/flagship";
+import { timelineSvg, treemapSvg, lagStripSvg, usd } from "../lib/viz";
+import { timelineDots, portfolioMix, lagBars, todayIso } from "../lib/vizdata";
+interface Props { person: Person; embedOnly?: boolean }
+const { person: p, embedOnly = false } = Astro.props;
+const model = await getFlagship();
+const dots = timelineDots(model, p.txns);
+const yearDots = dots.filter((d) => d.date >= new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10));
+const buys = yearDots.filter((d) => d.side === "buy"), sells = yearDots.filter((d) => d.side === "sell");
+const mix = portfolioMix(model, p.txns);
+const lag = lagBars(model, p);
+const lateN = lag.bars.filter((b) => b.days > lag.deadline).length;
+const path = personPath(p);
+const timeline = timelineSvg(dots, { endIso: todayIso() }), timelineNarrow = timelineSvg(dots, { endIso: todayIso(), width: 560 });
+const hasOther = yearDots.some((d) => d.side !== "buy" && d.side !== "sell");
+const part = (n: number, one: string, many: string, total: number) => (n === 0 ? `no ${many}` : `${n} ${n === 1 ? one : many} worth ${usd(total)}`);
+const tlSummary = yearDots.length ? `In the last 12 months ${p.name} made ${part(buys.length, "purchase", "purchases", buys.reduce((a, d) => a + d.value, 0))} and ${part(sells.length, "sale", "sales", sells.reduce((a, d) => a + d.value, 0))}. Dot size is the dollar amount.` : undefined;
+---
+{embedOnly ? (
+  <Viz title={`${p.name}: disclosed trades, last 12 months`} wide={true} legend={[["v-buy", "Bought (above the line)"], ["v-sell", "Sold (below the line)"]]} svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} />
+) : p.txns.length > 0 && (
+  <section aria-label="Charts">
+    <h2 id="charts">Trading in charts</h2>
+    <div class="viz-grid">
+      <Viz title="Trade timeline" question="When does this person trade, how big, and in which direction? Every trade in the last 12 months." wide={true}
+        legend={[["v-buy", "Bought (above the line)"], ["v-sell", "Sold (below the line)"], ...(hasOther ? [["v-muted", "Other transaction"] as [string, string]] : [])]}
+        svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} embed={path ? `/embed${path}` : null} embedTitle={`${p.name} disclosed trades`} />
+      <Viz title="Portfolio mix" question="Which stocks does this person trade most? Tile size is dollars traded, all time on record."
+        svg={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`)}
+        summary={mix.length ? `${p.name} has traded ${mix.length} ${mix.length === 1 ? "stock" : "stocks"} on record; the largest by dollars is ${[...mix].sort((a, b) => b.value - a.value)[0]!.name}.` : undefined} />
+      <Viz title="Reporting lag" question={`Does this person report on time? One bar per filing against the ${lag.deadline}-day deadline.`}
+        legend={[["v-one", "On time"], ["v-late", "Late"]]} svg={lagStripSvg(lag.bars, lag.deadline)}
+        summary={lag.bars.length >= 2 ? `${lateN} of ${lag.bars.length} filings on record were reported after the ${lag.deadline}-day deadline.` : undefined} />
+    </div>
+  </section>
+)}

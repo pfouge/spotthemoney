@@ -1,0 +1,14 @@
+---
+// Embeddable "who is trading this stock" chart for one ticker (see layouts/EmbedLayout.astro).
+import EmbedLayout from "../../../layouts/EmbedLayout.astro";
+import VizStock from "../../../components/VizStock.astro";
+import { getFlagship, securityPath } from "../../../lib/flagship";
+export async function getStaticPaths() {
+  const model = await getFlagship();
+  const seen = new Set<string>();
+  return [...model.securities.values()].sort((a, b) => (a.type === "equity" ? -1 : 1) - (b.type === "equity" ? -1 : 1)).filter((s) => s.txns.length > 0 && !seen.has(s.ticker.toLowerCase()) && seen.add(s.ticker.toLowerCase())).map((s) => ({ params: { ticker: s.ticker.toLowerCase() }, props: { id: s.id } }));
+}
+const { id } = Astro.props as { id: number };
+const s = (await getFlagship()).securities.get(id)!;
+---
+<EmbedLayout title={`Who is trading ${s.ticker}`} canonicalPath={securityPath(s)}><VizStock security={s} embedOnly={true} /></EmbedLayout>

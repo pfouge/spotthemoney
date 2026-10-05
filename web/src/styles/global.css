@@ -14,6 +14,9 @@
   --green: #15824B; --red: #C0392B;
   --glow-signal: none;
   --chart-1: #15824B; --chart-2: #0E75B0; /* data marks — validated for the light surface */
+  /* lib/viz.ts charts. Buy/sell pair validated colorblind-safe on this surface (the brand
+     --green/--red pair is not: deutan ΔE 5.7). --viz-late is a caution tone, never a series. */
+  --viz-buy: #12876A; --viz-sell: #D4472F; --viz-one: #0E75B0; --viz-late: #8A5A00; --viz-muted: #A9ADB1; --viz-none: #E7E7E2; --viz-on: #FFFFFF;
   --r-sm: 2px; --r-md: 4px;
   --max: 1360px;
   --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
@@ -29,6 +32,7 @@ html.dark {
   --green: #4ADE80; --red: #E5484D;
   --glow-signal: 0 0 10px rgba(47,200,234,.55);
   --chart-1: #2FAE5E; --chart-2: #2098BB; /* data marks — validated for the dark surface */
+  --viz-buy: #23AA8A; --viz-sell: #E25B46; --viz-one: #2098BB; --viz-late: #B87D14; --viz-muted: #6B7278; --viz-none: #1C2024; --viz-on: #04141B;
   --r-sm: 2px; --r-md: 4px;
   --max: 1360px;
   --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
@@ -321,3 +325,74 @@ h1 .soft { font-family: var(--font-sans); font-weight: 400; font-size: 0.55em; c
 .strip-compact .delta a:hover { color: var(--signal); }
 .hm-h2 { margin-top: 1rem; }
 .ctl[hidden] { display: none; }
+
+/* ── Charts (lib/viz.ts + components/Viz.astro) ───────────────────────────────────────── */
+.viz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 1.25rem 0; }
+.viz { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0.95rem 1.1rem 0.85rem; min-width: 0; }
+.viz-wide { grid-column: 1 / -1; }
+.viz-grid:not(:has(*)) { display: none; }
+.viz-head h3 { margin: 0; font-size: 1.02rem; letter-spacing: -0.01em; }
+.viz-q { margin: 0.2rem 0 0.6rem; color: var(--ink-soft); font-size: 13.5px; line-height: 1.45; }
+.viz-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.95rem; font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin: 0 0 0.55rem; }
+.viz-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.viz-legend i.v-buy { background: var(--viz-buy); } .viz-legend i.v-sell { background: var(--viz-sell); } .viz-legend i.v-one { background: var(--viz-one); }
+.viz-legend i.v-late { background: var(--viz-late); } .viz-legend i.v-muted { background: var(--viz-muted); } .viz-legend i.v-none { background: var(--viz-none); }
+.viz-sum { margin: 0.6rem 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.viz-body { min-width: 0; }
+.vz-n { display: none; }
+@media (max-width: 760px) { .vz-w { display: none; } .vz-n { display: block; } }
+/* Phones: time-series charts scroll sideways inside their card (scripts/viz.ts starts them at the newest end) so their
+   text stays legible; every other chart shrinks to fit so the whole picture stays in view. */
+@media (max-width: 560px) { .viz-body { overflow-x: auto; -webkit-overflow-scrolling: touch; } .viz-body svg.vz-time { min-width: 470px; } }
+svg.vz { display: block; height: auto; overflow: visible; }
+svg.vz text { font-family: var(--font-mono); font-size: 11px; fill: var(--ink-soft); }
+svg.vz text.vi { fill: var(--ink); } svg.vz text.vb { font-weight: 600; } svg.vz text.v-on { fill: var(--viz-on); }
+svg.vz text.v-halo { paint-order: stroke; stroke: var(--surface-alt); stroke-width: 3px; }
+svg.vz a text.vi { text-decoration: underline; text-decoration-color: var(--line-strong); }
+svg.vz .v-buy { fill: var(--viz-buy); } svg.vz .v-sell { fill: var(--viz-sell); } svg.vz .v-one { fill: var(--viz-one); }
+svg.vz .v-late { fill: var(--viz-late); } svg.vz .v-muted { fill: var(--viz-muted); } svg.vz .v-none { fill: var(--viz-none); } svg.vz .v-ink { fill: var(--ink); }
+svg.vz .v-plot { fill: var(--surface-alt); } svg.vz .v-band { fill: var(--viz-one); fill-opacity: 0.24; } svg.vz .v-band:hover { fill-opacity: 0.55; }
+svg.vz .v-line { stroke: var(--viz-one); } svg.vz .v-line2 { stroke: var(--viz-muted); }
+svg.vz .v-grid { stroke: var(--line); } svg.vz .v-axis { stroke: var(--line-strong); } svg.vz .v-rule { stroke: var(--ink); stroke-width: 1.5; }
+svg.vz .ring { stroke: var(--surface); }
+svg.vz [data-tip] { cursor: default; } svg.vz a [data-tip], svg.vz a { cursor: pointer; }
+.viz-tip { position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; line-height: 1.4; padding: 6px 9px; border-radius: var(--r-md); max-width: 260px; opacity: 0; transition: opacity 0.08s; }
+.viz-tip b, .viz-tip span { display: block; } .viz-tip b { font-weight: 600; }
+.viz-embed { margin-top: 0.6rem; font-size: 12px; color: var(--ink-soft); }
+.viz-embed summary { cursor: pointer; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.viz-embed pre { margin: 0.5rem 0 0; padding: 0.7rem 0.8rem; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--r-md); overflow-x: auto; font-size: 11.5px; white-space: pre-wrap; word-break: break-all; }
+.viz-tabs { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden; margin: 0 0 0.6rem; flex-wrap: wrap; }
+.viz-tabs button { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; border: 0; background: var(--surface); color: var(--ink-soft); padding: 5px 10px; cursor: pointer; }
+.viz-tabs button.on { background: var(--ink); color: var(--bg); }
+.viz-body:has(> .viz-ctl) { display: flex; flex-direction: column; }
+.viz-ctl { display: flex; align-items: center; gap: 10px; margin: 0 0 0.5rem; order: -1; }
+.viz-ctl button { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); padding: 5px 11px; cursor: pointer; }
+.viz-ctl input[type="range"] { flex: 1; accent-color: var(--viz-one); }
+.viz-ctl b { font-family: var(--font-mono); font-size: 12px; min-width: 76px; text-align: right; }
+/* headline tiles */
+.viz-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 1.25rem 0; }
+.viz-tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0.8rem 0.95rem; min-width: 0; }
+.viz-tile .k { font-size: 12.5px; color: var(--ink-soft); } .viz-tile .v { font-family: var(--font-mono); font-size: 1.55rem; font-weight: 600; letter-spacing: -0.02em; margin: 2px 0 4px; }
+.viz-tile .d { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+/* cluster cards */
+.viz-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.viz-card { display: block; border: 1px solid var(--line); border-radius: var(--r-md); padding: 0.65rem 0.8rem; background: var(--surface-alt); color: var(--ink); text-decoration: none; }
+.viz-card:hover { border-color: var(--signal); }
+.viz-card .t { font-family: var(--font-mono); font-weight: 600; font-size: 1.1rem; } .viz-card .m { font-size: 12.5px; color: var(--ink-soft); }
+.viz-card .dots { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; } .viz-card .dots i { width: 13px; height: 13px; border-radius: 50%; background: var(--viz-buy); }
+/* ticker tape */
+.tape { display: flex; align-items: stretch; background: var(--ink); color: var(--bg); border-bottom: 1px solid var(--line); font-size: 12.5px; overflow: hidden; }
+.tape-label { flex: none; display: flex; align-items: center; padding: 0 12px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); background: var(--bg); text-decoration: none; }
+.tape-view { overflow: hidden; white-space: nowrap; flex: 1; }
+.tape-run { display: inline-block; padding: 7px 0; animation: tape 90s linear infinite; }
+.tape:hover .tape-run, .tape:focus-within .tape-run { animation-play-state: paused; }
+.tape-run a { color: inherit; text-decoration: none; margin: 0 20px; } .tape-run a:hover b { text-decoration: underline; }
+.tape-run b { font-family: var(--font-mono); font-weight: 600; } .tape-run small { opacity: 0.6; font-size: 11.5px; }
+.tape .tb { color: #6FD6BB; font-weight: 600; } .tape .ts { color: #FF9A85; font-weight: 600; }
+html.dark .tape .tb { color: #0B6B55; } html.dark .tape .ts { color: #B2331E; }
+@keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .tape-run { animation: none; } }
+@media (max-width: 860px) { .viz-grid { grid-template-columns: 1fr; } .viz-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* slim /embed/ pages */
+body.embed { background: var(--surface); padding: 12px 14px; } body.embed .viz { border: 0; padding: 0; }
+.embed-foot { font-family: var(--font-mono); font-size: 11px; color: var(--ink-soft); margin: 8px 0 0; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

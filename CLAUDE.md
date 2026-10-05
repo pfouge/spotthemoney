@@ -536,3 +536,37 @@ only (36 URLs, all checks pass). Not done: insider names are shown as EDGAR file
 ("SAMUELI HENRY") — reordering to "Henry Samueli" would match how people search but risks
 mangling multi-word surnames and entity filers; Peter's call. Page speed, mobile rendering and
 actual index coverage were not tested.
+
+**Charts (2026-10-04, night).** Peter approved a 25-chart mockup
+(`docs/mockups/viz-mockup-2026-10-04.html`); the 23 that need no new data are built. All are
+build-time SVG, no chart library: `web/src/lib/viz.ts` (pure string builders, each returns ""
+when it has nothing to draw), `web/src/lib/vizdata.ts` (shapes the flagship model for them),
+`web/src/components/Viz.astro` (one frame for every chart: title, the question it answers,
+legend, SVG, a one-sentence text reading for search and answer engines, optional embed
+snippet) and `web/src/scripts/viz.ts` (shared tooltip from `data-tip`, leaderboard tabs,
+yield-curve playback, phone scroll-to-newest). Where they are: ticker tape under the header on
+every page (`Tape.astro`, needs 4+ signal trades); home (`VizHome`: tiles with sparklines,
+buy/sell gauge, activity calendar, weekly flow, Congress-vs-insiders scatter, leaderboards);
+`/congress/` (`VizCongress`: calendar, flow, party/chamber, state tile map, reporting-lag
+histogram); `/insiders/` (`VizInsiders`: gauge, calendar, flow, cluster buys); member and
+insider pages (`VizPerson`: trade timeline, portfolio mix, reporting lag); stock and company
+pages (`VizStock`: who is trading, insider holdings, lobbying by quarter, contracts by
+agency); `/lobbying/` issue treemap; `/contracts/` agency-to-recipient flow; `/donations/`
+state map; `/rates/i-bonds/` rate history; `/rates/treasury-yields/` curve playback.
+Rules that hold the set together: chart colours are their own tokens (`--viz-buy`,
+`--viz-sell`, `--viz-one`, `--viz-late`, …) because the brand green/red fail a colour-blind
+check; buy/sell is never colour alone (position or ▲▼ as well); wide charts ship two SVGs
+(`svg` + `svgNarrow`, swapped at 760px); on phones time-series charts (`svg.vz-time`) scroll
+sideways inside the card and the rest shrink to fit. `flagship.ts` loads two chart-only
+extras (shares held after each Form 4, lobbying issue names) in their own try/catch so a
+chart query can never blank a page. Embeds: `/embed/congress/[slug]/`, `/embed/insiders/[slug]/`,
+`/embed/stocks/[ticker]/` (`EmbedLayout.astro`, noindex, canonical to the full page, not in
+sitemaps); `web/public/_headers` lifts `X-Frame-Options` for `/embed/*` — **untested on
+Cloudflare; check a real iframe after deploy.** Verified locally only, on synthetic data
+(988 trades): 242 pages build, no page errors, light/dark and 390px screenshots reviewed,
+tooltip/tabs/playback exercised, `verify-live --all` passes, and a build against an empty
+database renders no chart, no tape and no empty frame. Not built (need a price-history
+backfill first): price chart with trade markers, "what happened after" calculator. Known
+soft spots: phone text in the shrink-to-fit charts is small (~6px); `/congress/` and
+`/insiders/` keep a "Charts" jump link even if the section is empty; no typecheck was run
+(`astro check` is not installed) — the build is the only compile check.

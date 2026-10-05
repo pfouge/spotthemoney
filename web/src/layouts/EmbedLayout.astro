@@ -1,0 +1,28 @@
+---
+// Slim page for /embed/… charts: just the chart, the date and a link back. Meant to be put
+// in an iframe on other sites, so it is noindex (the full page is the one to rank) and
+// public/_headers lifts X-Frame-Options for /embed/* only.
+import "../styles/global.css";
+interface Props { title: string; canonicalPath: string }
+const { title, canonicalPath } = Astro.props;
+const site = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
+const built = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+---
+<!doctype html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — Spot the Money</title>
+    <meta name="robots" content="noindex, follow" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={`${site}${canonicalPath}`} />
+  </head>
+  <body class="embed">
+    <slot />
+    <p class="embed-foot"><a href={`${site}${canonicalPath}`} target="_top" rel="noopener">Full data at Spot the Money →</a><span>Public filings as disclosed · updated {built}</span></p>
+    <script>
+      import "../scripts/viz";
+    </script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ import Heatmap from "../../components/Heatmap.astro";
 import { getFlagship, withinDays, num, plural, money, sum, personPath, securityPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import VizInsiders from "../../components/VizInsiders.astro";
 
 const model = await getFlagship();
 const all = model.txns.filter((t) => t.source === "sec_form4");
@@ -74,11 +75,14 @@ const feeds = [
 
   <nav class="feeds" aria-label="Preset feeds">
     <a href="#heatmap">Heatmap</a>
+    <a href="#charts">Charts</a>
     <a href="#newest">Newest</a>
     {feeds.map((f) => <a href={`#${f.id}`}>{f.title.replace(/ \(.*\)$/, "")}</a>)}
     <a href="/stocks/">By ticker</a>
     <a href="/companies/">By company</a>
   </nav>
+
+  <VizInsiders />
 
   <h2 id="newest">Newest disclosures</h2>
   <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved Form 4 rows yet — the daily sec_form4 job fills this table (see the ingest status in the footer of the methodology page)." />

@@ -12,6 +12,7 @@ import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, companyPath, personPath, securityPath, withinDays, num, plural, money, sum, roleLabel } from "../../lib/flagship";
 import { organizationLd, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import VizStock from "../../components/VizStock.astro";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -52,6 +53,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
   <ReviewNote show={c.underReview} what="Insider rows" />
+
+  <VizStock company={c} />
 
   <h2>Insiders</h2>
   {c.insiders.length === 0 ? <p class="empty-reason">No reporting owners on file for this issuer yet.</p> : (
