@@ -232,6 +232,169 @@ export async function ingestSenateLda(): Promise<IngestRunResult> {
   };
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// History pass (2026-10-05) — `senate_lda_history`, run by name only.
+//
+// The daily job above reads the newest 60 pages of the current filing year, so until this
+// pass has run the table is a sample. This pass walks EVERY filing posted since
+// LDA_HISTORY_SINCE (default 2025-10-01, Peter 2026-10-05), oldest first
+// (`filing_dt_posted_after`, `ordering=dt_posted` — both confirmed against the live API on
+// 2026-10-05: 112,256 filings in that window), and stops cleanly on a time budget.
+// RESUME: the last posted time reached is saved in ingest_runs.stats.cursor; the next run
+// starts one second before it (upserts make the overlap harmless). Re-run until
+// stats.history_complete is true — after that the daily newest-first job keeps it current.
+// Rows are written one page per statement, and issue descriptions are not stored (the site
+// uses the codes only; descriptions are most of a filing's bytes).
+// PACING: lda.gov publishes 120 requests/minute for keyed clients, so with a key this pass
+// uses a 750 ms gap (80/minute); keyless it keeps the daily job's ~4 s.
+// ──────────────────────────────────────────────────────────────────────────
+
+export const LDA_HISTORY_FLOOR = "2025-10-01";
+
+/** `after` for the next request: the wall-clock time as lda.gov printed it, minus one second. */
+export function cursorBefore(dtPosted: string): string {
+  const naive = Date.parse(`${dtPosted.slice(0, 19)}Z`);
+  if (!Number.isFinite(naive)) return dtPosted.slice(0, 10);
+  return new Date(naive - 1000).toISOString().slice(0, 19);
+}
+
+export function historyUrl(after: string, page: number): string {
+  const u = new URL(`${BASE_URL}/filings/`);
+  u.searchParams.set("filing_dt_posted_after", after);
+  u.searchParams.set("ordering", "dt_posted");
+  u.searchParams.set("page_size", String(PAGE_SIZE));
+  u.searchParams.set("page", String(page));
+  return u.toString();
+}
+
+/** One API filing → one lobbying row (issue codes and names only). Null when it has no uuid. */
+export function historyRow(filing: Filing): Record<string, unknown> | null {
+  if (!filing.filing_uuid) return null;
+  const activities = filing.lobbying_activities ?? [];
+  const token = filing.filing_period ?? "";
+  return scrubDeep({
+    filing_uuid: filing.filing_uuid,
+    filing_type: filing.filing_type ?? null,
+    registrant: filing.registrant?.name ?? null,
+    client: filing.client?.name ?? null,
+    amount: parseAmount(filing.income, filing.expenses),
+    period_year: filing.filing_year ?? null,
+    period_quarter: token in PERIOD_TO_QUARTER ? PERIOD_TO_QUARTER[token]! : null,
+    issue_area: activities[0]?.general_issue_code ?? null,
+    issues: activities.map((a) => ({ code: a.general_issue_code ?? null, display: a.general_issue_code_display ?? null })),
+    source_ref: filing.filing_document_url ?? null,
+    posted_at: filing.dt_posted ?? null,
+  });
+}
+
+export async function ingestSenateLdaHistory(): Promise<IngestRunResult> {
+  const sql = getDb();
+  const ctx = createRunContext("senate_lda_history");
+  const startedAt = Date.now();
+  const budgetMs = Number(process.env.LDA_HISTORY_BUDGET_MIN ?? 42) * 60_000;
+  const since = process.env.LDA_HISTORY_SINCE ?? LDA_HISTORY_FLOOR;
+  const apiKey = process.env.LDA_API_KEY;
+  const opts = apiKey
+    ? { headers: { Authorization: `Token ${apiKey}` }, minGapMs: 750 }
+    : {};
+
+  // Resume from the last run that got anywhere (same floor only).
+  const [prev] = await sql<{ cursor: string | null; done: string | null }[]>`
+    select r.stats->>'cursor' as cursor, r.stats->>'history_complete' as done
+      from ingest_runs r join sources s on s.id = r.source_id
+     where s.code = 'senate_lda_history' and r.stats->>'cursor' is not null
+       and r.stats->>'history_since' = ${since}
+     order by r.id desc limit 1
+  `;
+  const startAfter = prev?.cursor ? cursorBefore(prev.cursor) : since;
+
+  let page = 1;
+  let pagesFetched = 0;
+  let cursor: string | null = prev?.cursor ?? null;
+  let complete = false;
+  let stopped: string | null = null;
+  let total: number | null = null;
+
+  for (;;) {
+    if (Date.now() - startedAt > budgetMs) { stopped = "time budget reached"; break; }
+    let data: FilingsPage;
+    try {
+      data = await fetchJson<FilingsPage>(historyUrl(startAfter, page), opts);
+    } catch (err) {
+      // Nothing read at all = a real failure. Otherwise keep what was stored and let the
+      // next run resume from the saved cursor.
+      if (pagesFetched === 0) throw err;
+      stopped = `request failed: ${err instanceof Error ? err.message : String(err)}`;
+      ctx.warn(stopped);
+      break;
+    }
+    pagesFetched++;
+    if (total == null) total = data.count ?? null;
+
+    const rows: Record<string, unknown>[] = [];
+    for (const filing of data.results ?? []) {
+      const row = historyRow(filing);
+      if (!row) { ctx.quarantine(`senate_lda_history:page${page}`, "missing filing_uuid"); continue; }
+      if (!ctx.markSeen(row.filing_uuid as string)) continue;
+      ctx.rowsSeen++;
+      rows.push(row);
+    }
+    if (rows.length > 0) {
+      const result = await sql`
+        insert into lobbying (
+          filing_uuid, filing_type, registrant, client, amount,
+          period_year, period_quarter, issue_area, issues, source_ref, posted_at
+        )
+        select filing_uuid, filing_type, registrant, client, amount,
+               period_year, period_quarter, issue_area, issues, source_ref, posted_at
+          from jsonb_to_recordset(${sql.json(rows as never)}::jsonb) as t(
+            filing_uuid text, filing_type text, registrant text, client text, amount numeric,
+            period_year int, period_quarter int, issue_area text, issues jsonb,
+            source_ref text, posted_at timestamptz)
+        on conflict (filing_uuid) where filing_uuid is not null do update
+          set filing_type = excluded.filing_type,
+              registrant = excluded.registrant,
+              client = excluded.client,
+              amount = excluded.amount,
+              period_year = excluded.period_year,
+              period_quarter = excluded.period_quarter,
+              issue_area = excluded.issue_area,
+              source_ref = excluded.source_ref,
+              posted_at = excluded.posted_at
+      `;
+      ctx.rowsChanged += result.count ?? 0;
+      const last = (data.results ?? []).map((f) => f.dt_posted).filter((d): d is string => !!d).pop();
+      if (last) cursor = last;
+    }
+
+    if (data.next == null) { complete = true; break; }
+    page++;
+    if (!apiKey) await sleep(2500);
+  }
+
+  const [size] = await sql<{ mb: number }[]>`select round(pg_database_size(current_database()) / 1048576.0)::int as mb`;
+  console.log(`senate_lda_history: ${pagesFetched} pages from ${startAfter}, reached ${cursor ?? "nothing"}, ` +
+    `${complete ? "COMPLETE" : `stopped (${stopped})`}; window holds ${total ?? "?"} filings from this start; database ${size?.mb ?? "?"} MB`);
+
+  ctx.extra["history_since"] = since;
+  ctx.extra["started_after"] = startAfter;
+  ctx.extra["cursor"] = cursor;
+  ctx.extra["history_complete"] = complete;
+  ctx.extra["stopped"] = stopped;
+  ctx.extra["pages_fetched"] = pagesFetched;
+  ctx.extra["filings_from_start"] = total;
+  ctx.extra["keyless"] = !apiKey;
+  ctx.extra["db_size_mb"] = size?.mb ?? null;
+
+  return {
+    source: SOURCE,
+    rowsSeen: ctx.rowsSeen,
+    rowsChanged: ctx.rowsChanged,
+    status: complete ? "success" : "partial",
+    stats: ctx.stats(),
+  };
+}
+
 // Allow running directly: `npm run ingest -- senate_lda`
 if (import.meta.url === `file://${process.argv[1]}`) {
   ingestSenateLda()

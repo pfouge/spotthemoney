@@ -736,3 +736,35 @@ show below ~1300px). What was adopted, all in `web/src/styles/global.css` unless
   is only in `ingest_runs.stats`).
 - **Freshness job fails** on "Members with trades but no party: 1" (a member added by the
   backfill). Run `congress_roster` with the next manual ingest; if it stays 1, find the name.
+
+### SESSION STATE 2026-10-05 (night) — lobbying and donations history, self-restarting backfill
+
+Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donations too.
+
+- **Lobbying** — new on-demand source `senate_lda_history` (in `senate_lda.ts`). Walks every
+  filing POSTED since 2025-10-01, oldest first; 112,256 filings in that window (live API,
+  2026-10-05). Resumes from `ingest_runs.stats.cursor`; 42-minute budget; "partial" until
+  done. Issue descriptions are not stored (site uses codes only). With `LDA_API_KEY` it paces
+  at 750 ms (lda.gov publishes 120/minute for keyed clients).
+  - Site: the lobbying query in `flagship.ts` now keeps ONE row per registrant + client +
+    period (latest posted wins) so amended reports are not counted twice, orders "newest" by
+    the Senate's posted date instead of our load time, and reads up to 400,000 rows.
+    Coverage wording changed to "every filing posted since October 2025" — true only once
+    the history pass reports success.
+- **Donations** — new on-demand source `fec_schedule_a_history` (own file) + migration 0012
+  (`committees.donations_history_floor`, `_note`). Per committee, once: all receipts since
+  2025-10-01 when the committee has <= 3,000 of them; otherwise the newest 200 from each
+  30-day slice (conduits hold tens of millions — ActBlue 47M). 600 requests / 30 minutes a
+  run. Stops if the database exceeds 400 MB (`FEC_HISTORY_MAX_DB_MB`) and logs the size.
+  FEC facts found: `sort=-contribution_receipt_amount` times out (504) even for one member
+  committee; the first page's `pagination.count` gives the committee's receipt count.
+  - The site still shows donations for 90 days and contracts for 180; the older rows are
+    stored, not displayed. Peter has not decided the display windows.
+- **`backfill.yml`** (delivered in `_workflows-2026-10-05/` for Peter to copy into
+  `.github/workflows/`): runs the three history sources in parallel jobs, redeploys, and
+  re-dispatches itself with whatever still printed "(partial)", counting `remaining` down
+  from 30. A failed job is not retried — a red run stops that source's chain. Replaces the
+  manual re-dispatching done earlier today. `sec_form4_history` now reports "partial" only
+  when it stopped on its budget.
+- Tested locally only (fake APIs + local Postgres): resume, failure mid-run, completion,
+  budget stop, database guard, site build, `astro check`. Not yet run live.

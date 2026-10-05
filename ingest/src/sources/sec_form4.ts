@@ -796,7 +796,9 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
     ctx.extra["minutes"] = Math.round((Date.now() - startedAt) / 6000) / 10;
   }
 
-  const status: IngestRunResult["status"] = tickersUnresolved > 0 || stoppedOnBudget ? "partial" : "success";
+  // History pass: "partial" means exactly "stopped on the budget — run me again" (the backfill
+  // workflow chains on it). Unresolved tickers are a daily-pass concern and would never clear.
+  const status: IngestRunResult["status"] = (history ? stoppedOnBudget : tickersUnresolved > 0) ? "partial" : "success";
 
   return {
     source: SOURCE,

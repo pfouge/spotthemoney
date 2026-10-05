@@ -24,7 +24,7 @@ const topRegistrants = agg((l) => l.registrant).slice(0, 50);
 const byName = new Map([...model.companies.values()].map((c) => [normalizeOrgName(c.name), c]));
 const total = sum(ytd.map((l) => l.amount));
 const answer = model.lobbying.length === 0
-  ? "No lobbying filings are on record yet; the daily senate_lda job loads the last two years of Senate LDA filings."
+  ? "No lobbying filings are on record yet; the Senate LDA job loads every filing posted since October 2025."
   : `${plural(ytd.length, "lobbying filing")} in ${year} report ${money(total)} in lobbying income across ${plural(topClients.length >= 50 ? agg((l) => l.client).length : topClients.length, "client")}. The biggest client so far is ${topClients[0]?.name ?? "—"} (${money(topClients[0]?.total ?? 0)}); the biggest registrant is ${topRegistrants[0]?.name ?? "—"} (${money(topRegistrants[0]?.total ?? 0)}).`;
 const description = `Senate lobbying disclosure filings for ${year}: the biggest clients and lobbying firms by reported income, and the newest filings, each linked to the Senate record.`;
 const ld = datasetLd({ name: "Federal lobbying filings (Senate LDA)", path: "/lobbying/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["lobbying", "LDA", "Senate", "registrants", "clients"], sources: [SOURCES.lda], parentCatalogPath: "/washington/" });
@@ -71,7 +71,7 @@ const ld = datasetLd({ name: "Federal lobbying filings (Senate LDA)", path: "/lo
   )}
 
   <h2>How to read this</h2>
-  <p>Amounts are the income (or, for in-house lobbyists, expenses) a registrant reports for the quarter, rounded as filed; "primary issue" is the first issue code on the filing and the full list is on the Senate record. See <a href="/methodology/">methodology</a>.</p>
+  <p>Coverage is every filing the Senate has posted since October 1, 2025. Amounts are the income (or, for in-house lobbyists, expenses) a registrant reports for the quarter, rounded as filed; where a report was later amended, only the latest version is counted; "primary issue" is the first issue code on the filing and the full list is on the Senate record. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />
 </BaseLayout>

@@ -17,7 +17,7 @@ const answer = `Three official feeds, one place: ${plural(model.contracts.length
 const description = "Money in Washington from official sources: FEC campaign donations, Senate lobbying disclosures and USAspending federal contracts, cross-linked to companies.";
 const cards = [
   { path: "/donations/", title: "Donations", body: "Itemized contributions to the campaign committees of every member of Congress and the 200 largest PACs, aggregated by committee, employer and state.", n: model.counts.committees ?? 0, unit: "committees with receipts (90d)" },
-  { path: "/lobbying/", title: "Lobbying", body: "Every Senate LDA filing for the last two years: registrants, clients, issues and reported income.", n: model.lobbying.length, unit: "filings on record" },
+  { path: "/lobbying/", title: "Lobbying", body: "Every Senate LDA filing posted since October 2025: registrants, clients, issues and reported income.", n: model.lobbying.length, unit: "filings on record" },
   { path: "/contracts/", title: "Federal contracts", body: "The largest contract awards that started in the last 180 days, from USAspending: recipient, agency, award value, NAICS, with a link to each award.", n: model.contracts.length, unit: "awards (180d)" },
 ];
 ---

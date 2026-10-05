@@ -90,7 +90,7 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   )}
 
   <h2>Lobbying (Senate LDA, as client)</h2>
-  {c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing names "{c.name}" as the client in the last two years. Filings under a subsidiary or trade-association name are not matched — search <a href="/lobbying/">lobbying</a>.</p> : (
+  {c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing posted since October 2025 names "{c.name}" as the client. Filings under a subsidiary or trade-association name are not matched — search <a href="/lobbying/">lobbying</a>.</p> : (
     <div class="tablewrap">
       <table class="data">
         <thead><tr><th>Period</th><th>Registrant</th><th>Primary issue</th><th class="num">Amount</th><th>Source</th></tr></thead>

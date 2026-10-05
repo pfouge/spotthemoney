@@ -12,9 +12,10 @@ import { getDb, closeDb } from "./lib/db.js";
 import { SystemicFailureError } from "./lib/run.js";
 import { ingestIBonds } from "./sources/ibonds.js";
 import { ingestTreasuryYieldCurve } from "./sources/treasury_yield_curve.js";
-import { ingestSenateLda } from "./sources/senate_lda.js";
+import { ingestSenateLda, ingestSenateLdaHistory } from "./sources/senate_lda.js";
 import { ingestUsaspending } from "./sources/usaspending.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
+import { ingestFecScheduleAHistory } from "./sources/fec_schedule_a_history.js";
 import { ingestSecForm4, ingestSecForm4History } from "./sources/sec_form4.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
@@ -39,9 +40,11 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   treasury_real_yield_curve: { label: "Treasury Daily Real (TIPS) Yield Curve", cadence: "daily", daily: true, run: ingestTreasuryRealYieldCurve },
   bls_cpi: { label: "BLS CPI-U (I-Bond variable-rate input)", cadence: "daily", daily: true, run: ingestBlsCpi },
   senate_lda: { label: "Senate LDA Lobbying Filings", cadence: "daily", daily: true, run: ingestSenateLda },
+  senate_lda_history: { label: "Senate LDA history pass (every filing posted since 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSenateLdaHistory },
   usaspending: { label: "USAspending Contract Awards", cadence: "daily", daily: true, run: ingestUsaspending },
   fec_committees: { label: "FEC committee universe (members + top PACs)", cadence: "weekly", daily: true, run: ingestFecCommittees },
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
+  fec_schedule_a_history: { label: "FEC Schedule A history pass (back to 2025-10-01, capped per committee)", cadence: "on_demand", daily: false, run: ingestFecScheduleAHistory },
   sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: () => ingestSecForm4() },
   sec_form4_history: { label: "SEC EDGAR Form 4 history pass (back to 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSecForm4History },
   twelvedata_eod: { label: "Twelve Data EOD Prices", cadence: "daily", daily: true, run: ingestTwelvedataEod },

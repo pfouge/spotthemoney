@@ -167,11 +167,21 @@ async function load(): Promise<Flagship> {
            and f.review in ('auto_approved','approved') and f.confidence >= 0.9
          order by coalesce(t.disclosed_at, f.filed_at::date) desc, t.id desc`,
       sql<{ id: number; registrant: string | null; client: string | null; issue_area: string | null; amount: number | null; period_year: number | null; period_quarter: number | null; filing_type: string | null; source_ref: string | null; created_at: string }[]>`
-        select id, registrant, client, issue_area, amount::float8 as amount, period_year, period_quarter, filing_type, source_ref, created_at::text as created_at
-          from lobbying
-         where period_year >= extract(year from current_date)::int - 2
+        -- One row per registrant + client + period: an amended report replaces the report it
+        -- amends (latest posted wins) so amounts are not counted twice; registrations and other
+        -- filings without an amount are kept apart from reports. created_at carries the date
+        -- the Senate POSTED the filing, so "newest" lists are not reordered by a history load.
+        select id, registrant, client, issue_area, amount::float8 as amount, period_year, period_quarter, filing_type, source_ref, created_at
+          from (
+            select distinct on (registrant, client, period_year, period_quarter, (amount is null))
+                   id, registrant, client, issue_area, amount, period_year, period_quarter, filing_type, source_ref,
+                   coalesce(posted_at, created_at)::text as created_at
+              from lobbying
+             where period_year >= extract(year from current_date)::int - 2
+             order by registrant, client, period_year, period_quarter, (amount is null), posted_at desc nulls last, id desc
+          ) l
          order by period_year desc nulls last, period_quarter desc nulls last, amount desc nulls last
-         limit 20000`,
+         limit 400000`,
       sql<{ id: number; recipient: string | null; awarding_agency: string | null; amount: number | null; action_date: string | null; naics: string | null; source_ref: string | null; created_at: string }[]>`
         select id, recipient, awarding_agency, amount::float8 as amount, action_date::text as action_date, naics, source_ref, created_at::text as created_at
           from contracts
