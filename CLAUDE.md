@@ -624,3 +624,36 @@ and research notes: `docs/brand/logo-2026-10-05/` (docs repo).
 - Verified locally: `astro check` 0 errors, 242-page build, header/footer screenshots in light,
   dark and 390px, favicon at 16/32/64, `verify-live --all` passes. Not checked against existing
   trademarks. The stale root `design-preview.html` still shows the old mark (not served).
+
+**Layout redesign after TradingView (2026-10-05).** Feedback: the phone site was cluttered;
+"take after tradingview.com" for navigation, filtering, layout and fonts, keeping our colours.
+Studied their markets, list and symbol pages in Chrome (desktop width only — the window would
+not resize to phone width, so their phone layout is inferred from the folded-menu state they
+show below ~1300px). What was adopted, all in `web/src/styles/global.css` unless noted:
+- **Type.** Their body stack verbatim (`-apple-system, BlinkMacSystemFont, "Trebuchet MS",
+  Roboto, Ubuntu, sans-serif`). Their headline face is a licensed font (Euclid Circular), so
+  headlines use Outfit instead — self-hosted at `web/public/fonts/` (OFL, licence alongside),
+  preloaded in `BaseLayout`. Google Fonts is no longer requested at all. `--font-mono` now maps
+  to the sans stack with tabular figures; the uppercase mono labels are gone everywhere.
+- **Header.** Sticky; logo, search pill, nav links, theme icon. Under 1024px the links fold
+  into a drop-down menu with icons (`#menuBtn` / `#siteMenu`) and search becomes an icon.
+  Without JS the links stay visible (`html.js` gates the folded state).
+- **Search (new).** `/data/search.json` (`web/src/pages/data/search.json.ts`): tickers, members
+  and insiders with trades, companies, main pages. `web/src/scripts/ui.ts` runs the dialog
+  (opens on the pill, `/` or Ctrl/Cmd+K; arrows + Enter), the menu, the theme switch and the
+  "Show more" on answer blocks, which are clamped to three lines on phones.
+- **Filters.** Same controls and `data-` hooks (the filter verifier still passes), restyled as
+  pill chips: selects are pills, button groups are pill groups with an ink active state, labels
+  are screen-reader only. On phones the filter row, section chips (`.feeds`) and figure strips
+  are one swipeable row each instead of stacked rows. Wording: "Both chambers", "No 10b5-1
+  plans / With plans".
+- **Tables.** Quiet sentence-case header, 48px rows, no wrapping; on phones the table scrolls
+  sideways with the first column pinned.
+- **Cards.** 16px radius, more padding. Eyebrow lines are hidden (they repeated the
+  breadcrumb). The ticker tape is hidden under 640px.
+- Gotcha found: a visually-hidden label (`position:absolute`) inside a scrolling flex row widened
+  the whole page on phones until `.ctl` was made `position: relative`.
+- Verified locally only: `astro check` 0 errors; 242-page build; `verify-live --all` passes;
+  `verify-filters` 391 states, 0 mismatches; screenshots at 390px and 1280px, light and dark;
+  menu, search and "Show more" exercised. Not verified: real phones, Windows rendering of
+  Trebuchet MS (the sandbox has no such font), the live site.

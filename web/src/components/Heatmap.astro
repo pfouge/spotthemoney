@@ -26,7 +26,7 @@ const hasInsiders = kind !== "congress";
     {kind !== "insiders" && (
       <div class="ctl" data-only="congress"><span class="lbl">Chamber</span>
         <select data-ctl="chamber" aria-label="Chamber">
-          <option value="all">Both</option>
+          <option value="all">Both chambers</option>
           <option value="house">House</option>
           <option value="senate">Senate</option>
         </select>
@@ -58,7 +58,7 @@ const hasInsiders = kind !== "congress";
     )}
     {hasInsiders && (
       <div class="ctl"><span class="lbl">10b5-1</span>
-        <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">Exclude plans</button><button type="button" data-v="include">Include</button></div>
+        <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">No 10b5-1 plans</button><button type="button" data-v="include">With plans</button></div>
       </div>
     )}
     <div class="ctl"><span class="lbl">Window</span>
@@ -67,7 +67,7 @@ const hasInsiders = kind !== "congress";
     <div class="ctl"><span class="lbl">View</span>
       <div class="seg" data-seg="view"><button type="button" data-v="net" class="on">Net</button><button type="button" data-v="buy">Buying</button><button type="button" data-v="sell">Selling</button></div>
     </div>
-    <div class="ctl"><span class="lbl">Tickers</span><input class="hm-input mono" data-ctl="tickers" type="text" inputmode="text" placeholder="e.g. NVDA, AAPL" aria-label="Filter tickers" /></div>
+    <div class="ctl"><span class="lbl">Tickers</span><input class="hm-input mono" data-ctl="tickers" type="text" inputmode="text" placeholder="Tickers: NVDA, AAPL" aria-label="Filter tickers" /></div>
     <button type="button" class="hm-reset" data-ctl="reset">Reset</button>
   </div>
 

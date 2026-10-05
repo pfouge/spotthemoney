@@ -11,7 +11,7 @@ import Tape from "../components/Tape.astro";
 // (see fitTitle / fitDescription). noindex: pages that exist for navigation but have no data
 // yet (a member with no filings on record) — kept out of search and out of the sitemap.
 interface Props { title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean }
-const { section, noindex = false } = Astro.props;
+const { noindex = false } = Astro.props;
 const title = fitTitle(Astro.props.title);
 const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: every disclosed trade on one heatmap, updated daily, free.");
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
@@ -51,41 +51,46 @@ const current = (href: string) => (path === href ? "page" : undefined);
       (function () {
         var t = "light";
         try { if (localStorage.getItem("theme") === "dark") t = "dark"; } catch (e) {}
-        document.documentElement.classList.add(t);
+        document.documentElement.classList.add(t, "js");
         if (t === "dark") { var m = document.getElementById("themeColor"); if (m) m.setAttribute("content", "#0A0B0C"); }
       })();
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
-    />
+    <link rel="preload" href="/fonts/outfit-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
     <Analytics />
   </head>
   <body>
-    <header class="site">
+    <header class="site" id="siteHeader">
       <div class="container">
+        <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="siteMenu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <a class="brand" href="/" aria-label="Spot the Money home">
           <Mark size={28} />
           <Wordmark height={11} />
-          {section && <span class="sub">{section}</span>}
         </a>
-        <nav class="site" aria-label="Primary">
-          <a href="/congress/" aria-current={current("/congress/")}>Congress</a>
-          <a href="/insiders/" aria-current={current("/insiders/")}>Insiders</a>
-          <a href="/disclosures/" aria-current={current("/disclosures/")}>Newest</a>
-          <a href="/washington/" aria-current={current("/washington/")}>Washington</a>
-          <a href="/rates/" aria-current={current("/rates/")}>Rates</a>
+        <button class="search-pill" type="button" data-search-open aria-haspopup="dialog" aria-label="Search members, insiders and tickers">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>Search members, insiders, tickers</span><kbd>/</kbd>
+        </button>
+        <nav class="site" id="siteMenu" aria-label="Primary">
+          <a href="/congress/" aria-current={current("/congress/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M3 10h18M12 3l9 5H3z"/></svg><span>Congress</span><i class="chev" aria-hidden="true">›</i></a>
+          <a href="/insiders/" aria-current={current("/insiders/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M4 13h16"/></svg><span>Insiders</span><i class="chev" aria-hidden="true">›</i></a>
+          <a href="/disclosures/" aria-current={current("/disclosures/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Newest</span><i class="chev" aria-hidden="true">›</i></a>
+          <a href="/washington/" aria-current={current("/washington/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 20v-7M18 20v-7M10 20v-4h4v4M5 13h14M12 4a6 6 0 0 1 6 6H6a6 6 0 0 1 6-6zM12 2v2"/></svg><span>Washington</span><i class="chev" aria-hidden="true">›</i></a>
+          <a href="/rates/" aria-current={current("/rates/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19l5-6 4 3 7-9M15 7h5v5"/></svg><span>Rates</span><i class="chev" aria-hidden="true">›</i></a>
         </nav>
-        <div class="hud">
-          <span class="status"><span class="dot"></span> <span>Data</span> <span class="on">Live</span></span>
-          <button class="toggle" id="themeBtn" type="button" aria-label="Switch color theme">
-            <span class="if-dark">Light</span><span class="if-light">Dark</span>
-          </button>
-        </div>
+        <button class="icon-btn theme-btn" id="themeBtn" type="button" aria-label="Switch color theme">
+          <span class="if-light"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span><span class="if-dark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg></span>
+        </button>
       </div>
     </header>
+    <dialog class="search-dlg" id="searchDlg" aria-label="Search">
+      <div class="search-box">
+        <div class="search-top">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="searchInput" type="search" placeholder="Search a member, insider, ticker or company" autocomplete="off" spellcheck="false" aria-controls="searchResults" />
+          <button type="button" class="icon-btn" id="searchClose" aria-label="Close search"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="search-results" id="searchResults" role="listbox"></div>
+      </div>
+    </dialog>
     <Tape />
 
     <main>
@@ -110,16 +115,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
     </footer>
 
     <script>
-      const btn = document.getElementById("themeBtn");
-      btn?.addEventListener("click", () => {
-        const root = document.documentElement;
-        const next = root.classList.contains("dark") ? "light" : "dark";
-        root.classList.remove("dark", "light");
-        root.classList.add(next);
-        document.getElementById("themeColor")?.setAttribute("content", next === "dark" ? "#0A0B0C" : "#F2F1EC");
-        try { localStorage.setItem("theme", next); } catch {}
-        window.dispatchEvent(new CustomEvent("themechange", { detail: next }));
-      });
+      import "../scripts/ui";
     </script>
     <script>
       import "../scripts/viz";
