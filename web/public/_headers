@@ -4,6 +4,8 @@
 #
 # Cache policy (nsnexplorer lesson): HTML revalidates at the edge within 2 minutes of a deploy,
 # so no manual cache purge is ever needed; fingerprinted /_astro/* assets are immutable.
+# A more specific block must first detach the /* value ("! Cache-Control"): without that the two
+# values are joined into one header and browsers obey the first, max-age=0 (seen live 2026-10-05).
 
 /*
   X-Frame-Options: DENY
@@ -19,14 +21,18 @@
   ! X-Frame-Options
 
 /_astro/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
 # Self-hosted display font (Outfit, OFL). Not fingerprinted, so a month rather than forever.
 /fonts/*
+  ! Cache-Control
   Cache-Control: public, max-age=2592000
 
 /favicon.svg
+  ! Cache-Control
   Cache-Control: public, max-age=86400
 
 /mark.svg
+  ! Cache-Control
   Cache-Control: public, max-age=86400

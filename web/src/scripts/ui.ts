@@ -31,12 +31,13 @@ function initSearch(): void {
   let rows: Row[] | null = null, loading: Promise<void> | null = null, active = 0, shown: Row[] = [];
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
   const load = (): Promise<void> => (loading ??= fetch("/data/search.json").then((r) => r.json()).then((d: Row[]) => { rows = d; }).catch(() => { rows = []; }));
-  // rank: exact ticker, then title starts with the query, then a word starts with it, then anywhere
+  // rank: exact ticker, then title starts with the query, then a word starts with it, then anywhere.
+  // A member of Congress is usually looked up by surname, so a word match counts as a title match there.
   const score = (r: Row, q: string): number => {
     const t = r[1].toLowerCase(), s = r[2].toLowerCase();
     if (t === q) return 0;
     if (t.startsWith(q)) return 1;
-    if (t.split(/[\s,.-]+/).some((w) => w.startsWith(q))) return 2;
+    if (t.split(/[\s,.-]+/).some((w) => w.startsWith(q))) return r[0] === "Congress" ? 1 : 2;
     if (s.startsWith(q) || s.split(/[\s,.-]+/).some((w) => w.startsWith(q))) return 3;
     if (t.includes(q) || s.includes(q)) return 4;
     return -1;
@@ -46,12 +47,12 @@ function initSearch(): void {
     if (!rows) { list.innerHTML = `<p class="search-note">Loading…</p>`; return; }
     shown = q === ""
       ? [...rows].filter((r) => r[0] !== "Page").sort((a, b) => b[4] - a[4]).slice(0, 8)
-      : rows.map((r) => [score(r, q), r] as const).filter((x) => x[0] >= 0).sort((a, b) => a[0] - b[0] || b[1][4] - a[1][4]).slice(0, 12).map((x) => x[1]);
+      : rows.map((r) => [score(r, q), r] as const).filter((x) => x[0] >= 0).sort((a, b) => a[0] - b[0] || Number(b[1][0] === "Congress") - Number(a[1][0] === "Congress") || b[1][4] - a[1][4]).slice(0, 12).map((x) => x[1]);
     active = Math.min(active, Math.max(0, shown.length - 1));
     list.innerHTML = shown.length === 0
       ? `<p class="search-note">Nothing on record matches “${esc(input.value.trim())}”.</p>`
       : (q === "" ? `<p class="search-note">Most active on record</p>` : "") + shown.map((r, i) =>
-          `<a class="search-row${i === active ? " on" : ""}" href="${esc(r[3])}" role="option" aria-selected="${i === active}"><span class="tk">${esc(r[0] === "Ticker" ? r[1] : r[0])}</span><span class="nm"><b>${esc(r[0] === "Ticker" ? r[2] || r[1] : r[1])}</b>${r[0] !== "Ticker" && r[2] ? `<small>${esc(r[2])}</small>` : ""}</span></a>`).join("");
+          `<a class="search-row${i === active ? " on" : ""}" href="${esc(r[3])}" role="option" aria-selected="${i === active}"><span class="tk">${esc(r[0] === "Ticker" ? r[1] : r[0])}</span><span class="nm"><b>${esc(r[0] === "Ticker" ? r[2] || "Stock" : r[1])}</b>${r[0] !== "Ticker" && r[2] ? `<small>${esc(r[2])}</small>` : ""}</span></a>`).join("");
   };
   const open = (): void => { if (dlg.open) return; dlg.showModal(); input.value = ""; active = 0; render(); void load().then(render); input.focus(); };
   document.querySelectorAll("[data-search-open]").forEach((b) => b.addEventListener("click", open));

@@ -27,8 +27,10 @@ for (const l of [...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.c
 for (const c of [...model.contracts].sort((a, b) => (b.actionDate ?? "").localeCompare(a.actionDate ?? "")).slice(0, 150)) {
   items.push({ at: c.actionDate ?? c.createdAt.slice(0, 10), kind: "Contract", who: c.recipient ?? "—", whoHref: null, what: `from ${c.agency ?? "—"}`, whatHref: null, amount: money(c.amount), href: c.sourceRef ? `https://www.usaspending.gov/award/${c.sourceRef}` : null, review: false });
 }
+// Nothing can have been disclosed after today: a later date is a source error, not news.
+const todayIso = new Date().toISOString().slice(0, 10);
 items.sort((a, b) => b.at.localeCompare(a.at));
-const feed = items.slice(0, 300);
+const feed = items.filter((i) => i.at.slice(0, 10) <= todayIso).slice(0, 300);
 const today = feed.filter((i) => withinDays(i.at, 1)).length;
 const week = feed.filter((i) => withinDays(i.at, 7)).length;
 const answer = feed.length === 0

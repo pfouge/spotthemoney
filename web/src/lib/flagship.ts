@@ -181,7 +181,9 @@ async function load(): Promise<Flagship> {
       sql<{ id: number; recipient: string | null; awarding_agency: string | null; amount: number | null; action_date: string | null; naics: string | null; source_ref: string | null; created_at: string }[]>`
         select id, recipient, awarding_agency, amount::float8 as amount, action_date::text as action_date, naics, source_ref, created_at::text as created_at
           from contracts
-         where action_date >= current_date - 180
+         -- USAspending carries award actions dated in the future (planned start dates, typos); a
+         -- "last 180 days" window ends today, or the newest-first pages lead with December.
+         where action_date >= current_date - 180 and action_date <= current_date
          order by amount desc nulls last
          limit 20000`,
       sql<{ id: number; fec_id: string | null; name: string; party: string | null; committee_type: string | null; total: number; count: number; latest: string | null }[]>`

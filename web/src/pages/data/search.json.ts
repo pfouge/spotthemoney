@@ -9,7 +9,8 @@ export const GET: APIRoute = async () => {
   const rows: [string, string, string, string, number][] = [];
   for (const s of m.securities.values()) {
     if (s.txns.length === 0) continue;
-    rows.push(["Ticker", s.ticker, s.name ?? "", securityPath(s), s.txns.length]);
+    const name = s.name ?? (s.companyId != null ? m.companies.get(s.companyId)?.name : null) ?? "";
+    rows.push(["Ticker", s.ticker, name, securityPath(s), s.txns.length]);
   }
   for (const p of m.people.values()) {
     const path = personPath(p);
