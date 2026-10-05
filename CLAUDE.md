@@ -688,9 +688,26 @@ show below ~1300px). What was adopted, all in `web/src/styles/global.css` unless
     and an end-to-end run against a fake EDGAR with a real local database (budget stop,
     resume, daily pass unchanged). `start=`/`count=100` paging was confirmed against the real
     EDGAR in a browser.
-  - Contracts: NOT done. Finding: `usaspending` stores the newest 1,000 award rows by action
-    date across all federal contracts on each run; it is a rolling sample, not every award.
-    Pages that say "N award actions worth $X in the last 180 days" describe that sample.
-    Widening the window alone would not change what is stored. Needs a decision on what the
-    180-day set should be (e.g. largest awards per month, plus awards to tracked companies).
-    The USAspending API was also returning HTTP 500 on 2026-10-05 ~14:45 UTC.
+  - Congress result: run 1 loaded 400 filings (3,688 rows written, 354 filings published,
+    deployed 14:55 UTC); run 2 found nothing new, so the House year-to-date is complete. Five
+    filings (doc ids 8221285, 8221287, 8221297, 8221302, 8221310) return 404 from the Clerk's
+    PDF path every run and are skipped — not investigated.
+  - Insiders: `45b1ba4` pushed; first `sec_form4_history` run started 15:06 UTC.
+  - Contracts — CORRECTION to what was first written here: production was not storing the
+    newest 1,000 awards by action date. The API rejects the "Action Date" field, so every run
+    took the fallback: the 1,000 largest awards with any activity in the last 30 days, dated
+    by award START date. Most started years ago, so the 180-day pages showed 96 rows.
+  - Contracts rewrite (Peter approved "largest per month plus tracked companies"):
+    `ingest/src/sources/usaspending.ts` now stores (1) the largest awards that started in
+    each 30-day slice of the last 180 days (3 pages of 100 per slice) and (2) awards to
+    companies with a tracked ticker, exact normalised-name match only. Rows outside the
+    window by start date are dropped. `normalizeOrgName` moved to `shared/src/orgname.ts` so
+    the site and the ingest use one rule. Site wording changed everywhere contracts appear:
+    "awards that started in the last 180 days", "award value", and the contracts page says it
+    is not every federal contract.
+  - Contracts, unverified: the USAspending API returned HTTP 500 from Peter's machine and was
+    unreachable from the sandbox on 2026-10-05, so the request shape (`date_type:
+    "new_awards_only"`, the "NAICS" field, `recipient_search_text`) has only run against a
+    fake API. The job drops a rejected optional piece and carries on; read
+    `stats.new_awards_filter`, `stats.naics_field`, `largest_rows_kept` and
+    `company_rows_kept` on the first live run to see which path it took.

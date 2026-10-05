@@ -43,9 +43,9 @@ const any = whoSvg || pricesSvg || held.length || lobbyTotal > 0 || agencies.len
       {c && <Viz title="Lobbying spend by quarter" question={`How much has ${c.name} reported spending on federal lobbying?`}
         svg={columnsSvg(lobby, `${c.name} reported lobbying by quarter`)} svgPhone={columnsSvg(lobby, `${c.name} reported lobbying by quarter`, PHONE_W)}
         summary={lobbyTotal > 0 ? `${c.name} reported ${usd(lobbyTotal)} in lobbying over the last eight quarters, from filings matched by exact company name.` : undefined} />}
-      {c && <Viz title="Federal contracts by agency" question={`Which agencies awarded ${c.name} contracts in the last 180 days?`}
+      {c && <Viz title="Federal contracts by agency" question={`Which agencies awarded ${c.name} contracts that started in the last 180 days?`}
         svg={rankBarsSvg(agencies, `${c.name} contract dollars by awarding agency`)} svgPhone={rankBarsSvg(agencies, `${c.name} contract dollars by awarding agency`, PHONE_W)}
-        summary={agencies.length ? `${c.name} received ${usd(contractTotal)} in federal contract actions in the last 180 days, most from ${agencies[0]!.label}.` : undefined} />}
+        summary={agencies.length ? `Federal contract awards to ${c.name} that started in the last 180 days have a combined award value of ${usd(contractTotal)}, most from ${agencies[0]!.label}.` : undefined} />}
     </div>
   </section>
 )}

@@ -13,6 +13,7 @@
 // pages render their empty-state reason lines instead of blank tables.
 
 import postgres from "postgres";
+import { normalizeOrgName } from "@stm/shared";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -112,7 +113,7 @@ export interface Flagship {
   filings: Map<number, Filing>;
   txns: Txn[];                          // all rendered transactions, newest disclosed first
   lobbying: LobbyingRow[];              // last 8 quarters, newest first
-  contracts: ContractRow[];             // last 180 days, largest first
+  contracts: ContractRow[];             // awards that started in the last 180 days, largest first
   committees: CommitteeRow[];           // committees with donation totals in the window
   donationsByEmployer: DonationAgg[];   // aggregates only — no individual donor names at launch
   donationsByState: DonationAgg[];
@@ -126,14 +127,7 @@ const APPROVED = new Set(["auto_approved", "approved"]);
 export const CONGRESS_DEADLINE_DAYS = 45;
 export const FORM4_DEADLINE_DAYS = 4; // 2 business days ≈ 4 calendar days, conservative
 
-export function normalizeOrgName(s: string | null | undefined): string {
-  return (s ?? "")
-    .toUpperCase()
-    .replace(/[.,'"()]/g, " ")
-    .replace(/\b(INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LLC|LTD|LIMITED|PLC|THE|HOLDINGS?|GROUP)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+export { normalizeOrgName };
 
 async function load(): Promise<Flagship> {
   const builtAt = new Date().toISOString();
@@ -181,7 +175,7 @@ async function load(): Promise<Flagship> {
       sql<{ id: number; recipient: string | null; awarding_agency: string | null; amount: number | null; action_date: string | null; naics: string | null; source_ref: string | null; created_at: string }[]>`
         select id, recipient, awarding_agency, amount::float8 as amount, action_date::text as action_date, naics, source_ref, created_at::text as created_at
           from contracts
-         -- USAspending carries award actions dated in the future (planned start dates, typos); a
+         -- action_date holds the award start date; some are in the future (planned starts, typos); a
          -- "last 180 days" window ends today, or the newest-first pages lead with December.
          where action_date >= current_date - 180 and action_date <= current_date
          order by amount desc nulls last

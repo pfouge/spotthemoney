@@ -43,7 +43,7 @@ const washingtonLive = (model.counts.lobbying ?? 0) + (model.counts.contracts ??
 const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", description: "Free public U.S. disclosure data: congressional stock trades, corporate insider trades, Treasury rates, donations, lobbying, federal contracts.", datasets: [
   { name: "Congressional stock trade disclosures", path: "/congress/" }, { name: "Corporate insider transactions (SEC Form 4)", path: "/insiders/" },
   { name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "Treasury par yield curve", path: "/rates/treasury-yields/" }, { name: "TIPS real yield curve", path: "/rates/tips/" },
-  { name: "Campaign contributions to tracked committees", path: "/donations/" }, { name: "Federal lobbying filings", path: "/lobbying/" }, { name: "Federal contract award actions", path: "/contracts/" }, { name: "Newest disclosures feed", path: "/disclosures/" },
+  { name: "Campaign contributions to tracked committees", path: "/donations/" }, { name: "Federal lobbying filings", path: "/lobbying/" }, { name: "Largest federal contract awards", path: "/contracts/" }, { name: "Newest disclosures feed", path: "/disclosures/" },
 ] });
 const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling — every disclosed trade on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
 ---

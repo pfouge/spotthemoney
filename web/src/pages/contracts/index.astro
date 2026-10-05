@@ -1,5 +1,6 @@
 ---
-// /contracts/ — USAspending award actions, last 180 days: largest awards and top recipients.
+// /contracts/ — USAspending contract awards that started in the last 180 days: the largest
+// each month plus awards to tracked companies (see ingest/src/sources/usaspending.ts).
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
@@ -20,42 +21,42 @@ const topRecipients = [...byRecipient.values()].sort((a, b) => b.total - a.total
 const byName = new Map([...model.companies.values()].map((c) => [normalizeOrgName(c.name), c]));
 const total = sum(rows.map((r) => r.amount));
 const answer = rows.length === 0
-  ? "No award actions are on record yet; the daily usaspending job loads the last 30 days of contract awards and the archive grows from there."
-  : `${plural(rows.length, "federal award action")} worth ${money(total)} were recorded in the last 180 days. The largest single action was ${money(rows[0]?.amount)} to ${rows[0]?.recipient ?? "—"} from ${rows[0]?.agency ?? "—"}; the biggest recipient overall is ${topRecipients[0]?.name ?? "—"} at ${money(topRecipients[0]?.total ?? 0)}.`;
-const description = "Federal contract awards from USAspending in the last 180 days: the largest awards, the top recipients, and a link to every award record.";
-const ld = datasetLd({ name: "Federal contract award actions (USAspending)", path: "/contracts/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["federal contracts", "USAspending", "government awards"], sources: [SOURCES.usaspending], parentCatalogPath: "/washington/" });
+  ? "No contract awards are on record yet; the daily USAspending job loads the largest awards that started in each of the last six months."
+  : `This page tracks ${plural(rows.length, "federal contract award")} that started in the last 180 days, with a combined award value of ${money(total)}: the largest awards of each month, plus awards to companies followed here. It is not every federal contract. The largest is ${money(rows[0]?.amount)} to ${rows[0]?.recipient ?? "—"} from ${rows[0]?.agency ?? "—"}; the biggest recipient overall is ${topRecipients[0]?.name ?? "—"} at ${money(topRecipients[0]?.total ?? 0)}.`;
+const description = "The largest federal contract awards that started in the last 180 days, from USAspending: top recipients, awarding agencies, and a link to every award record.";
+const ld = datasetLd({ name: "Largest federal contract awards (USAspending)", path: "/contracts/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["federal contracts", "USAspending", "government awards"], sources: [SOURCES.usaspending], parentCatalogPath: "/washington/" });
 ---
 <BaseLayout title="Federal Contracts — Largest Awards, Last 180 Days" description={description} section="Washington · Contracts">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Contracts", path: "/contracts/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Contracts</p>
   <h1>Federal contracts</h1>
-  <p class="lede">Award actions as published by USAspending — recipient, agency, amount, industry code — updated daily.</p>
+  <p class="lede">The largest contract awards as published by USAspending — recipient, agency, award value, industry code — updated daily.</p>
   <Answer text={answer} updated={rows[0]?.createdAt ?? model.builtAt} sourceNote="Source: USAspending.gov" />
   {(() => { const flows = contractFlows(model); const big = [...flows].filter((f) => f.left !== "Other agencies" && f.right !== "All other recipients").sort((a, b) => b.value - a.value)[0]; return (
     <div class="viz-grid">
-      <Viz title="Contract flow: agency to recipient" question="Which agencies pay which companies? Band width is contract dollars in the last 180 days." wide={true}
-        svg={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days", 1120)} svgNarrow={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days")} svgPhone={flowDiagramSvg(flows, "Federal contract dollars from awarding agency to recipient, last 180 days", 360)}
-        summary={big ? `The largest flow between a named agency and a named recipient in the last 180 days is ${big.left} to ${big.right}. The five largest agencies and seven largest recipients are shown by name; the rest are grouped.` : undefined} />
+      <Viz title="Contract flow: agency to recipient" question="Which agencies pay which companies? Band width is the value of tracked awards that started in the last 180 days." wide={true}
+        svg={flowDiagramSvg(flows, "Value of tracked federal contract awards from awarding agency to recipient, awards started in the last 180 days", 1120)} svgNarrow={flowDiagramSvg(flows, "Value of tracked federal contract awards from awarding agency to recipient, awards started in the last 180 days")} svgPhone={flowDiagramSvg(flows, "Value of tracked federal contract awards from awarding agency to recipient, awards started in the last 180 days", 360)}
+        summary={big ? `Among tracked awards that started in the last 180 days, the largest flow between a named agency and a named recipient is ${big.left} to ${big.right}. The five largest agencies and seven largest recipients are shown by name; the rest are grouped.` : undefined} />
     </div>); })()}
 
-  <h2>Top recipients (180 days)</h2>
+  <h2>Top recipients (awards started in the last 180 days)</h2>
   {topRecipients.length === 0 ? <p class="empty-reason">No awards on record yet.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Recipient</th><th class="num">Total</th><th class="num">Actions</th></tr></thead><tbody>
+    <div class="tablewrap"><table class="data"><thead><tr><th>Recipient</th><th class="num">Award value</th><th class="num">Awards</th></tr></thead><tbody>
       {topRecipients.map((r) => { const c = byName.get(normalizeOrgName(r.name)); const cp = c ? companyPath(c) : null; return <tr><td>{cp ? <a href={cp}>{r.name}</a> : r.name}</td><td class="num strong">{money(r.total)}</td><td class="num">{num(r.count)}</td></tr>; })}
     </tbody></table></div>
   )}
 
   <AdSlot label="Advertisement" />
 
-  <h2>Largest award actions (180 days)</h2>
+  <h2>Largest awards (started in the last 180 days)</h2>
   {rows.length === 0 ? <p class="empty-reason">No awards on record yet.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Action date</th><th>Recipient</th><th>Awarding agency</th><th class="num">Amount</th><th>NAICS</th><th>Source</th></tr></thead><tbody>
+    <div class="tablewrap"><table class="data"><thead><tr><th>Start date</th><th>Recipient</th><th>Awarding agency</th><th class="num">Award value</th><th>NAICS</th><th>Source</th></tr></thead><tbody>
       {rows.slice(0, 100).map((r) => <tr><td class="mono">{formatDate(r.actionDate)}</td><td>{r.recipient ?? "—"}</td><td>{r.agency ?? "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>)}
     </tbody></table></div>
   )}
 
   <h2>How to read this</h2>
-  <p>An award action is one transaction on a contract — a new award, a modification or an option exercise — so a large contract appears as several actions over time and negative amounts (de-obligations) are real. Amounts are federal obligations, not payments. See <a href="/methodology/">methodology</a>.</p>
+  <p>Each row is one contract award. The date is the award's start date and the amount is its total award value to date as USAspending reports it, which is an obligation, not a payment, and can change as the contract is modified. The list is a defined slice, not every federal contract: the largest awards starting in each 30-day period (up to 300 each), plus awards to companies followed on this site whose recipient name matches exactly. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />
 </BaseLayout>
