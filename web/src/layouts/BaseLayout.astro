@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
+import Wordmark from "../components/Wordmark.astro";
 
 import { fitTitle, fitDescription } from "../lib/seo";
 import Tape from "../components/Tape.astro";
@@ -30,6 +31,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={noindex ? "noindex, follow" : "index, follow, max-snippet:-1, max-image-preview:large"} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
@@ -65,8 +67,8 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <header class="site">
       <div class="container">
         <a class="brand" href="/" aria-label="Spot the Money home">
-          <Mark size={22} />
-          <span class="word">Spot the <em>Money</em></span>
+          <Mark size={28} />
+          <Wordmark height={11} />
           {section && <span class="sub">{section}</span>}
         </a>
         <nav class="site" aria-label="Primary">
@@ -95,8 +97,8 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <footer class="site">
       <div class="container">
         <div class="foot-top">
-          <Mark size={20} />
-          <span class="word">Spot the <em>Money</em></span>
+          <Mark size={24} />
+          <Wordmark height={10} />
         </div>
         <p class="disclaimer">
           <strong>Not investment advice.</strong> Figures are based on public, official data and

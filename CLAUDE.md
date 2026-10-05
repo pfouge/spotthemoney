@@ -602,3 +602,25 @@ skip; freshness shows NOT CONFIGURED) unless `TWELVEDATA_ENABLED=1`, and migrati
 the public read policy on `security_prices` so the stored Twelve Data rows are not readable
 through the anon API. The rows are kept. Tested locally only (migration applies, job skips,
 freshness check stays green); the `prices` matrix job still starts and exits in about a minute.
+
+## SESSION STATE 2026-10-05 — new identity
+
+**Logo.** Peter asked for a new logo in the manner of Allan Peters (Peters Design Co) and
+approved the result for the site, except the ring-text badge ("CONGRESS · INSIDERS"), which is
+NOT used anywhere on the site. The mark is one continuous line that is a bullseye and a dollar
+sign: two centres one stroke apart, three half-rings from each, stroke = gap = one unit, plus a
+short vertical bar at each free end. Rules, all asset files, the geometry generator (`mark.py`)
+and research notes: `docs/brand/logo-2026-10-05/` (docs repo).
+- `web/src/components/Mark.astro` — inline, `currentColor`; `size` is the HEIGHT; under 48px it
+  draws the two-ring cut so the stroke stays solid. `web/src/components/Wordmark.astro` — "SPOT
+  THE MONEY" drawn with the mark's stroke (not a font); its viewBox does the flat cut on M/N/Y,
+  so never pad it. Header = Mark 28 + Wordmark 11; footer = Mark 24 + Wordmark 10. One colour,
+  always ink — the green "Money" in the old text wordmark is gone on purpose.
+- `web/public/favicon.svg` (ink tile, two-ring cut), `mark.svg` (full mark, ink; the JSON-LD
+  logo), `apple-touch-icon.png` (180, new; linked from `BaseLayout`), `og.png` regenerated with
+  the new lockup. `web/public/congress-heatmap.html` (prototype) carries the new mark too.
+- Only 14 capitals are drawn (S P O T H E M N Y C G R I D); any other lettering in this style
+  needs new glyphs in `mark.py`.
+- Verified locally: `astro check` 0 errors, 242-page build, header/footer screenshots in light,
+  dark and 390px, favicon at 16/32/64, `verify-live --all` passes. Not checked against existing
+  trademarks. The stale root `design-preview.html` still shows the old mark (not served).

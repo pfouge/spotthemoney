@@ -1,15 +1,16 @@
 ---
-// Inline reticle mark (from the prototype). Inline so `currentColor` follows the theme —
-// an <img> of the SVG would render black on the dark ground.
+// The Spot the Money mark: one continuous line that is a bullseye and a dollar sign (identity
+// adopted 2026-10-05; geometry and rules in docs/brand/logo-2026-10-05/). Inline so
+// `currentColor` follows the theme. `size` is the HEIGHT in px. Below 48px it draws the
+// two-ring cut, which keeps the stroke solid; from 48px up, the full three-ring mark.
 interface Props { size?: number; class?: string }
-const { size = 22, class: cls = "mark" } = Astro.props;
+const { size = 28, class: cls = "mark" } = Astro.props;
+const small = size < 48;
+const [vw, vh] = small ? [64, 112] : [96, 144];
+const d = small
+  ? "M32,24A24,24 0 0 0 32,72A8,8 0 0 0 32,56A8,8 0 0 1 32,40A24,24 0 0 1 32,88M32,8V28M32,84V104"
+  : "M48,24A40,40 0 0 0 48,104A24,24 0 0 0 48,56A8,8 0 0 0 48,72A8,8 0 0 1 48,88A24,24 0 0 1 48,40A40,40 0 0 1 48,120M48,4V28M48,116V140";
 ---
-<svg class={cls} width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
-  <circle cx="24" cy="24" r="19" stroke="currentColor" stroke-width="3"/>
-  <circle cx="24" cy="24" r="11.5" stroke="currentColor" stroke-width="1.5" opacity=".45"/>
-  <line x1="24" y1="1.5" x2="24" y2="9.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-  <line x1="24" y1="38.5" x2="24" y2="46.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-  <line x1="1.5" y1="24" x2="9.5" y2="24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-  <line x1="38.5" y1="24" x2="46.5" y2="24" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="24" cy="24" r="5.5" fill="var(--green)"/>
+<svg class={cls} width={Math.round((size * vw) / vh * 100) / 100} height={size} viewBox={`0 0 ${vw} ${vh}`} fill="none" aria-hidden="true">
+  <path d={d} stroke="currentColor" stroke-width="8"/>
 </svg>
