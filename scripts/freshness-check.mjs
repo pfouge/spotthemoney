@@ -50,6 +50,7 @@ const CHECKS = [
   // Receipts appear only after a committee files (monthly or quarterly), hence the long allowance.
   { code: "fec_schedule_a", label: "FEC donations", runDays: 2, dataDays: 75,
     newest: `select max(donated_at) from donations where donated_at <= current_date` },
+  // Switched off 2026-10-04 (docs/04 #33): the job reports a skip, which lists here as NOT CONFIGURED and never fails.
   { code: "twelvedata_eod", label: "Stock prices (Twelve Data)", runDays: 2, dataDays: 6,
     newest: `select max(price_date) from security_prices` },
   { code: "universe", label: "Tracked-ticker universe", runDays: 2 },

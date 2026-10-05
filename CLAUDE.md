@@ -594,3 +594,11 @@ what real data and a phone exposed.
   show the "Charts" jump link when the section exists.
 - `astro check` now run (install with `npm i --no-save @astrojs/check typescript` in `web/`;
   never run it without those installed — it prompts and hangs): 0 errors.
+
+**Price decision (2026-10-04).** Peter chose filings-only charts (docs/04 #33): no market price
+feed, no market-price chart, no "what happened after" view. `security_prices` stays off every
+public page. Peter then had the price pull switched off: `twelvedata_eod` no-ops (reports a
+skip; freshness shows NOT CONFIGURED) unless `TWELVEDATA_ENABLED=1`, and migration 0011 drops
+the public read policy on `security_prices` so the stored Twelve Data rows are not readable
+through the anon API. The rows are kept. Tested locally only (migration applies, job skips,
+freshness check stays green); the `prices` matrix job still starts and exits in about a minute.

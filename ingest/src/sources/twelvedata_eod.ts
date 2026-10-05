@@ -1,6 +1,8 @@
 // Source: Twelve Data end-of-day (EOD) bars (api.twelvedata.com/time_series).
 // Contract: integration contract §4.7 (security_prices upsert; no market-cap target table).
 //
+// STATUS: switched off by default since 2026-10-04 — see the TWELVEDATA_ENABLED gate below.
+//
 // AUTH: required. TWELVEDATA_API_KEY. If unset, this is a staging-safe no-op — return
 // success with rowsSeen 0 rather than failing the whole ingest run.
 //
@@ -97,6 +99,16 @@ function parseNum(v: string | undefined): number | null {
 export async function ingestTwelvedataEod(): Promise<IngestRunResult> {
   const sql = getDb();
   const ctx = createRunContext(SOURCE);
+
+  // SWITCHED OFF 2026-10-04 (docs/04 #33). Twelve Data's individual plans allow internal use only,
+  // so these prices cannot be shown on the public site, and Peter chose filings-only charts.
+  // Nothing reads security_prices, so the daily pull is off unless TWELVEDATA_ENABLED=1 is set
+  // (do that only with a plan whose terms allow public display). Reports as a skip, never a failure.
+  if (optionalEnv("TWELVEDATA_ENABLED") !== "1") {
+    ctx.warn("twelvedata_eod is switched off (prices are not shown on the site) — skipped");
+    ctx.extra["skipped"] = "switched off: prices are not shown on the site (set TWELVEDATA_ENABLED=1 to turn back on)";
+    return { source: SOURCE, rowsSeen: 0, rowsChanged: 0, status: "success", stats: ctx.stats() };
+  }
 
   const apiKey = optionalEnv("TWELVEDATA_API_KEY");
   if (!apiKey) {
