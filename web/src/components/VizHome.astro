@@ -12,7 +12,7 @@ const tiles = [
   { k: "Trades disclosed this week", v: String(h.cur.length), series: h.weeks.map((w) => w.length), d: h.delta(h.cur.length, h.prev.length, (n) => String(n)) },
   { k: "Dollars disclosed this week", v: usd(h.dollars(h.cur)), series: h.weeks.map(h.dollars), d: h.delta(h.dollars(h.cur), h.dollars(h.prev), usd) },
   { k: "Late filings this week", v: String(h.late(h.cur)), series: h.weeks.map(h.late), d: h.delta(h.late(h.cur), h.late(h.prev), (n) => String(n)) },
-  { k: "Insider buy / sell ratio", v: h.ratio(h.cur).toFixed(2), series: h.weeks.map(h.ratio), d: h.delta(h.ratio(h.cur), h.ratio(h.prev), (n) => n.toFixed(2)) },
+  { k: "Insider buy / sell ratio this week", v: h.ratio(h.cur).toFixed(2), series: h.weeks.map(h.ratio), d: h.delta(h.ratio(h.cur), h.ratio(h.prev), (n) => n.toFixed(2)) },
 ];
 const pts = agreementPoints(model);
 const agree = pts.filter((p) => Math.sign(p.x) === Math.sign(p.y)).length;

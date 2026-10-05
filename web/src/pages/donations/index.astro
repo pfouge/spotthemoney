@@ -15,7 +15,7 @@ import { getFlagship, num, plural, money, sum } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import Viz from "../../components/Viz.astro";
-import { tileMapSvg } from "../../lib/viz";
+import { tileMapSvg, isMapState } from "../../lib/viz";
 
 const model = await getFlagship();
 const committees = model.committees.filter((c) => c.count > 0);
@@ -32,11 +32,11 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
   <h1>Campaign donations</h1>
   <p class="lede">Itemized receipts as reported to the FEC, aggregated. Draft presentation — donor names withheld pending review.</p>
   <Answer text={answer} updated={committees[0]?.latest ?? model.builtAt} sourceNote="Source: FEC Schedule A (OpenFEC)" />
-  {(() => { const byState = new Map(model.donationsByState.filter((r) => /^[A-Z]{2}$/.test(r.key)).map((r) => [r.key, r.total] as [string, number])); const top = [...byState.entries()].sort((a, b) => b[1] - a[1])[0]; return (
+  {(() => { const byState = new Map(model.donationsByState.filter((r) => isMapState(r.key)).map((r) => [r.key, r.total] as [string, number])); const top = [...byState.entries()].sort((a, b) => b[1] - a[1])[0]; return (
     <div class="viz-grid">
       <Viz title="Donations by state" question={`Where does the money come from? Itemized receipts held for the last ${model.donationWindowDays} days, by the donor's state.`} wide={true}
         svg={tileMapSvg(byState, "in itemized receipts held", undefined, true)} svgNarrow={tileMapSvg(byState, "in itemized receipts held")}
-        summary={top ? `Donors in ${byState.size} states appear in the receipts held; ${top[0]} is the largest source. This reflects the sample of receipts on this site, not every contribution.` : undefined} />
+        summary={top ? `Donors in ${byState.size} states${byState.has("DC") ? " (counting DC)" : ""} appear in the receipts held; ${top[0]} is the largest source. This reflects the sample of receipts on this site, not every contribution.` : undefined} />
     </div>); })()}
 
   <h2>Committees by itemized receipts held ({model.donationWindowDays} days)</h2>

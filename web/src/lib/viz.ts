@@ -137,6 +137,8 @@ export function pairBarsSvg(rows: { label: string; buy: number; sell: number; hr
 }
 
 // ── 07 / 21 state tile map ──────────────────────────────────────────────────────────────
+/** State codes drawn on the tile map (50 states + DC). */
+export const isMapState = (code: string): boolean => TILES.some((t) => t[0] === code);
 const TILES: [string, number, number][] = [["AK", 0, 0], ["ME", 0, 10], ["VT", 1, 9], ["NH", 1, 10], ["WA", 2, 0], ["ID", 2, 1], ["MT", 2, 2], ["ND", 2, 3], ["MN", 2, 4], ["IL", 2, 5], ["WI", 2, 6], ["MI", 2, 7], ["NY", 2, 8], ["RI", 2, 9], ["MA", 2, 10], ["OR", 3, 0], ["NV", 3, 1], ["WY", 3, 2], ["SD", 3, 3], ["IA", 3, 4], ["IN", 3, 5], ["OH", 3, 6], ["PA", 3, 7], ["NJ", 3, 8], ["CT", 3, 9], ["CA", 4, 0], ["UT", 4, 1], ["CO", 4, 2], ["NE", 4, 3], ["MO", 4, 4], ["KY", 4, 5], ["WV", 4, 6], ["VA", 4, 7], ["MD", 4, 8], ["DE", 4, 9], ["AZ", 5, 1], ["NM", 5, 2], ["KS", 5, 3], ["AR", 5, 4], ["TN", 5, 5], ["NC", 5, 6], ["SC", 5, 7], ["DC", 5, 8], ["OK", 6, 3], ["LA", 6, 4], ["MS", 6, 5], ["AL", 6, 6], ["GA", 6, 7], ["HI", 7, 0], ["TX", 7, 3], ["FL", 7, 8]];
 export function tileMapSvg(values: Map<string, number>, unit: string, detail?: Map<string, string>, wide = false): string {
   const vals = [...values.values()].filter((v) => v > 0).sort((a, b) => a - b);
@@ -301,7 +303,7 @@ export function treemapSvg(items: { name: string; value: number; label: string; 
 }
 
 // ── 18 reporting-lag strip ──────────────────────────────────────────────────────────────
-export function lagStripSvg(bars: { days: number; label: string }[], deadline: number): string {
+export function lagStripSvg(bars: { days: number; label: string }[], deadline: number, deadlineLabel = `${deadline}-day deadline`): string {
   const live = bars.filter((b) => Number.isFinite(b.days) && b.days >= 0).slice(-40);
   if (live.length < 2) return "";
   const W = 560, H = 176, base = 150, top = 14, mx = Math.max(deadline * 1.3, ...live.map((b) => b.days)), bw = (W - 40) / live.length, y = (d: number) => base - (d / mx) * (base - top);
@@ -311,7 +313,7 @@ export function lagStripSvg(bars: { days: number; label: string }[], deadline: n
     o += `<rect x="${f1(30 + i * bw + 1.5)}" y="${f1(Math.min(base - 2, y(b.days)))}" width="${f1(Math.max(2, bw - 3))}" height="${f1(Math.max(2, base - y(b.days)))}" rx="3" class="${late ? "v-late" : "v-one"}"${tip(`${b.label}|${b.days} day${b.days === 1 ? "" : "s"} to report${late ? " · late" : ""}`)}/>`;
   });
   o += `<line x1="30" x2="${W - 10}" y1="${base}" y2="${base}" class="v-axis"/><line x1="30" x2="${W - 10}" y1="${f1(y(deadline))}" y2="${f1(y(deadline))}" class="v-rule"/>`;
-  o += text(W - 10, y(deadline) - 6, `${deadline}-day deadline`, "vi vb", "end") + text(30, H - 6, "oldest filing") + text(W - 10, H - 6, "newest", "vt", "end");
+  o += text(W - 10, y(deadline) - 6, deadlineLabel, "vi vb", "end") + text(30, H - 6, "oldest filing") + text(W - 10, H - 6, "newest", "vt", "end");
   return o + "</svg>";
 }
 

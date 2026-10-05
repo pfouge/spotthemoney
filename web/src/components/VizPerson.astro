@@ -18,7 +18,11 @@ const path = personPath(p);
 const timeline = timelineSvg(dots, { endIso: todayIso() }), timelineNarrow = timelineSvg(dots, { endIso: todayIso(), width: 560 });
 const hasOther = yearDots.some((d) => d.side !== "buy" && d.side !== "sell");
 const part = (n: number, one: string, many: string, total: number) => (n === 0 ? `no ${many}` : `${n} ${n === 1 ? one : many} worth ${usd(total)}`);
-const tlSummary = yearDots.length ? `In the last 12 months ${p.name} made ${part(buys.length, "purchase", "purchases", buys.reduce((a, d) => a + d.value, 0))} and ${part(sells.length, "sale", "sales", sells.reduce((a, d) => a + d.value, 0))}. Dot size is the dollar amount.` : undefined;
+const otherN = yearDots.length - buys.length - sells.length;
+const deadlineText = p.isCongress ? `${lag.deadline}-day STOCK Act deadline` : `Form 4 deadline (two business days, counted here as ${lag.deadline} calendar days)`;
+const tlSummary = !yearDots.length ? undefined
+  : buys.length + sells.length === 0 ? `In the last 12 months ${p.name} reported ${otherN} ${otherN === 1 ? "transaction" : "transactions"} that ${otherN === 1 ? "was" : "were"} neither a purchase nor a sale, such as stock awards, option exercises or shares withheld for tax.`
+  : `In the last 12 months ${p.name} made ${part(buys.length, "purchase", "purchases", buys.reduce((a, d) => a + d.value, 0))} and ${part(sells.length, "sale", "sales", sells.reduce((a, d) => a + d.value, 0))}${otherN > 0 ? `, plus ${otherN} other ${otherN === 1 ? "transaction" : "transactions"}` : ""}. Dot size is the dollar amount.`;
 ---
 {embedOnly ? (
   <Viz title={`${p.name}: disclosed trades, last 12 months`} wide={true} legend={[["v-buy", "Bought (above the line)"], ["v-sell", "Sold (below the line)"]]} svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} />
@@ -32,9 +36,9 @@ const tlSummary = yearDots.length ? `In the last 12 months ${p.name} made ${part
       <Viz title="Portfolio mix" question="Which stocks does this person trade most? Tile size is dollars traded, all time on record."
         svg={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`)}
         summary={mix.length ? `${p.name} has traded ${mix.length} ${mix.length === 1 ? "stock" : "stocks"} on record; the largest by dollars is ${[...mix].sort((a, b) => b.value - a.value)[0]!.name}.` : undefined} />
-      <Viz title="Reporting lag" question={`Does this person report on time? One bar per filing against the ${lag.deadline}-day deadline.`}
-        legend={[["v-one", "On time"], ["v-late", "Late"]]} svg={lagStripSvg(lag.bars, lag.deadline)}
-        summary={lag.bars.length >= 2 ? `${lateN} of ${lag.bars.length} filings on record were reported after the ${lag.deadline}-day deadline.` : undefined} />
+      <Viz title="Reporting lag" question={`Does this person report on time? One bar per filing against the ${p.isCongress ? `${lag.deadline}-day` : "Form 4"} deadline.`}
+        legend={[["v-one", "On time"], ["v-late", "Late"]]} svg={lagStripSvg(lag.bars, lag.deadline, p.isCongress ? undefined : "Form 4 deadline")}
+        summary={lag.bars.length >= 2 ? `${lateN} of ${lag.bars.length} filings on record were reported after the ${deadlineText}.` : undefined} />
     </div>
   </section>
 )}
