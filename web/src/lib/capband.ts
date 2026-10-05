@@ -5,8 +5,8 @@
 //              most recent open-market Form 4 prices (last 400 days)
 //   fallback = public float from the latest 10-K, when there is no single shares figure
 //              (multi-class companies) or no recent Form 4 price
-//   cross-check: when both exist and differ by more than 20×, the float is used — that gap
-//              means a unit mistake or a price from another share class, not a real value.
+//   guards:   see estimateSize — shares × price needs a float on file (rules out ADS
+//              issuers), and figures above $6 trillion are thrown away as filing mistakes.
 //
 // It is an estimate for sorting companies into wide bands, not a market capitalisation.
 import type { Flagship } from "./flagship";
@@ -33,16 +33,28 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[(s.length - 1) / 2]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2;
 }
 
-/** Pure: one company's estimate from its filed figures and its recent Form 4 prices (newest first). */
+/** Larger than any listed company: a figure above this is a filing mistake, not a size. */
+const ABSURD = 6e12;
+
+/**
+ * Pure: one company's estimate from its filed figures and its recent Form 4 prices (newest first).
+ *
+ * Rules, each from a real case on the first live run (2026-10-05):
+ *  - shares × price is used whenever it is available. A public float that disagrees with it by
+ *    a wide margin is the float's mistake more often than not: Novanta's 10-K states a float
+ *    of $3.5 TRILLION (thousands tagged as dollars) against a real value near $5 billion.
+ *  - shares × price is only trusted for companies that also report a public float. Foreign
+ *    issuers on Form 20-F report no float, count ORDINARY shares, and trade here as ADSs worth
+ *    several shares each, so shares × ADS price overstates them (NetEase came out near $415B
+ *    against a real value near $85B). They are left unsized rather than mis-sized.
+ *  - any figure above ABSURD is discarded.
+ */
 export function estimateSize(size: SizeInput, recentPrices: number[]): SizeEstimate | null {
   const price = recentPrices.length ? median(recentPrices.slice(0, 5)) : null;
-  const byShares = size.shares != null && size.shares > 0 && price != null && price > 0 ? size.shares * price : null;
-  const byFloat = size.float != null && size.float > 0 ? size.float : null;
-  if (byShares != null && byFloat != null) {
-    const ratio = byShares / byFloat;
-    if (ratio > 20 || ratio < 1 / 20) return { value: byFloat, band: bandOf(byFloat), basis: "float", asOf: size.floatAsOf, price: null };
-  }
-  if (byShares != null) return { value: byShares, band: bandOf(byShares), basis: "shares", asOf: size.sharesAsOf, price };
+  const hasFloat = size.float != null && size.float > 0;
+  const byShares = hasFloat && size.shares != null && size.shares > 0 && price != null && price > 0 ? size.shares * price : null;
+  if (byShares != null && byShares <= ABSURD) return { value: byShares, band: bandOf(byShares), basis: "shares", asOf: size.sharesAsOf, price };
+  const byFloat = hasFloat && size.float! <= ABSURD ? size.float! : null;
   if (byFloat != null) return { value: byFloat, band: bandOf(byFloat), basis: "float", asOf: size.floatAsOf, price: null };
   return null;
 }

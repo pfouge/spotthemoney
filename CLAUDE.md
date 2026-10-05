@@ -835,3 +835,23 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
 - Verified locally only (the sandbox blocks tradingview.com): both embed scripts are created
   with the right config, re-created on theme change, no layout overflow at 390px, build and
   `astro check` clean, `verify-live --all` passes. Rendering to be confirmed on the live site.
+
+### First live market-cap bands — checked 2026-10-05 22:20 UTC
+
+- Live after GitHub's Actions outage cleared (~21:30 UTC): dropdown labelled "Market cap" on
+  the three maps; TradingView block renders on ticker pages (two frames, 181 px and 438 px).
+- First band data (build 22:15 UTC): insiders map 459 of 493 tickers banded; Congress map 393
+  of 797. The Congress gap is mostly tickers whose insider filings are not loaded yet (no
+  company row, e.g. JPM, XOM, GS at that time) — it closes as `sec_form4_history` proceeds
+  and the daily pass refreshes `company_size`.
+- Two wrong bands found and the rules changed (`capband.ts`, tests in
+  `scripts/capband.test.ts`, run `npx tsx --test scripts/capband.test.ts`):
+  - NOVT showed mega: its 10-K states a public float of $3.5 trillion (a units mistake). The
+    old rule trusted the float when the two estimates disagreed; now shares × price wins.
+  - NTES showed mega: Form 20-F filers count ordinary shares but trade as ADSs. Shares ×
+    price is now used only for companies that also report a public float; 20-F filers are
+    left unbanded. (Foreign-issuer insiders file Form 4s since March 2026, which is why they
+    have prices at all.)
+  - Anything above $6 trillion is discarded.
+- Not verified: SNDK and STX show mega; plausible only if their 2026 share prices are very
+  high — no price source here to check against.
