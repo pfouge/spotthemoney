@@ -53,7 +53,12 @@ jobs:
       ASTRO_TELEMETRY_DISABLED: "1"
       WRANGLER_SEND_METRICS: "false"
     steps:
+      # Always build the newest main, whatever commit started this run. An ingest or backfill
+      # run that began before a push used to redeploy ITS older commit when it finished, which
+      # took a just-shipped feature off the site (the Market cap filter, 2026-10-05).
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-node@v4
         with:

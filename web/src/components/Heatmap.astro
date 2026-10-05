@@ -62,9 +62,9 @@ const hasInsiders = kind !== "congress";
         <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">No 10b5-1 plans</button><button type="button" data-v="include">With plans</button></div>
       </div>
     )}
-    <div class="ctl"><span class="lbl">Size</span>
-      <select data-ctl="cap" aria-label="Company size" title="Estimated from SEC filings: shares outstanding times the latest insider-reported price, or public float. Not a live market cap.">
-        <option value="all">Any size</option>
+    <div class="ctl"><span class="lbl">Market cap</span>
+      <select data-ctl="cap" aria-label="Market cap" title="Market cap, estimated from SEC filings: shares outstanding times the latest insider-reported price, or public float. Not a live market cap.">
+        <option value="all">Any market cap</option>
         {CAP_BANDS.map((b) => <option value={b.code}>{b.label} · {b.range}</option>)}
       </select>
     </div>

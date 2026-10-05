@@ -791,3 +791,16 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
   `verify-filters` 427 states, 0 mismatches; screenshot of the bar. The frames API shape was
   checked against the real SEC in a browser. First live run still to be read — check that
   obvious names land in the right band before trusting it.
+
+### Deploy race found and fixed — 2026-10-05 ~19:20 UTC
+
+- Peter: "the size dropdown should be called market cap, also it disappeared."
+- **Why it disappeared:** `deploy.yml` is also called at the end of `ingest.yml` and
+  `backfill.yml`, and it checked out the commit THAT RUN started on. The backfill run that
+  began at 18:01 on `e62bf01` finished at 18:44 and redeployed `e62bf01`, undoing the 18:34
+  deploy of `b14d770` (the filter). Any long run that straddles a push did this.
+- **Fix:** `deploy.yml` now checks out `ref: main`, so every deploy builds the newest code.
+  Delivered as `_workflows-2026-10-05/deploy.yml` (workflow files cannot be written by the
+  bridge; Peter copies it into `.github/workflows/`).
+- The filter is now labelled **Market cap** ("Any market cap" when unset). Bands and logic
+  unchanged; the methodology page still says the figure is an estimate from filings.
