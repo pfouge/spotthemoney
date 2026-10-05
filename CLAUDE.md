@@ -804,3 +804,17 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
   bridge; Peter copies it into `.github/workflows/`).
 - The filter is now labelled **Market cap** ("Any market cap" when unset). Bands and logic
   unchanged; the methodology page still says the figure is an estimate from filings.
+
+### Daily insider run was failing — found 2026-10-05 19:40 UTC
+
+- The scheduled `ingest` (fired 18:25 UTC, nine hours late) failed in `sec_form4`:
+  "52 rows quarantined (limit 50)". The TS jobs did not print quarantine reasons, so the cause
+  is inferred, not read: the Congress backfill grew the tracked set to ~760 tickers, and
+  tickers with no SEC company CIK (funds, ETFs, foreign, delisted) were each quarantined.
+- Fix: such tickers are counted and sampled in stats (`tickers_unresolved_sample`) and
+  named in one log line, not quarantined. `lib/run.ts` now prints the first 60 quarantine
+  reasons to the job log for every TS source. If the next daily run still trips the breaker,
+  the log will say why.
+- Deploy flip-flop on 2026-10-05 evening: runs started before `c9688a4` still carry the old
+  `deploy.yml` and redeploy their own commit when they finish. Settles once those runs are
+  done; a manual `deploy` run from main fixes it at any time.

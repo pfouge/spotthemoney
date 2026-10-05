@@ -521,6 +521,7 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
 
   let tickersProcessed = 0;
   let tickersUnresolved = 0;
+  const unresolvedSample: string[] = [];
   let filingsFetched = 0;
   let filingsSkippedExisting = 0;
   let filingsQuarantined = 0;
@@ -534,8 +535,12 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
     try {
       const cik = resolveCik(tickerCikMap, ticker);
       if (!cik) {
+        // Not a failure: funds, ETFs, foreign listings and delisted names that members of
+        // Congress trade have no SEC company CIK. They used to be quarantined, and once the
+        // tracked set grew past 50 such tickers the circuit breaker failed every daily run
+        // (first seen 2026-10-05, "52 rows quarantined"). Count them, name a sample, move on.
         tickersUnresolved++;
-        ctx.quarantine(ticker, "ticker -> CIK lookup failed (not in company_tickers.json)");
+        if (unresolvedSample.length < 40) unresolvedSample.push(ticker);
         continue;
       }
 
@@ -794,6 +799,8 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
   ctx.extra["tickers_in_universe"] = universe.length;
   ctx.extra["tickers_processed"] = tickersProcessed;
   ctx.extra["tickers_unresolved"] = tickersUnresolved;
+  ctx.extra["tickers_unresolved_sample"] = unresolvedSample;
+  if (tickersUnresolved > 0) console.log(`${SOURCE}: ${tickersUnresolved} tracked ticker(s) have no SEC company CIK (funds, ETFs, foreign or delisted), e.g. ${unresolvedSample.slice(0, 12).join(", ")}`);
   ctx.extra["filings_fetched"] = filingsFetched;
   ctx.extra["filings_skipped_existing"] = filingsSkippedExisting;
   ctx.extra["filings_quarantined"] = filingsQuarantined;
@@ -811,7 +818,7 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
 
   // History pass: "partial" means exactly "stopped on the budget — run me again" (the backfill
   // workflow chains on it). Unresolved tickers are a daily-pass concern and would never clear.
-  const status: IngestRunResult["status"] = (history ? stoppedOnBudget : tickersUnresolved > 0) ? "partial" : "success";
+  const status: IngestRunResult["status"] = history && stoppedOnBudget ? "partial" : "success";
 
   return {
     source: SOURCE,

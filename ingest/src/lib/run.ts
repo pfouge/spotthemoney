@@ -66,6 +66,9 @@ export function createRunContext(source: string, quarantineLimit = 50): RunConte
     quarantine(ref, reason) {
       quarantineCount++;
       if (quarantined.length < QUARANTINE_SAMPLE_LIMIT) quarantined.push({ ref, reason });
+      // Say it in the job log too (first 60): the reasons were only in ingest_runs.stats, so
+      // a run that tripped the breaker gave no clue why from the Actions page (2026-10-05).
+      if (quarantineCount <= 60) console.error(`QUARANTINE ${source} ${ref}: ${reason.slice(0, 300)}`);
       if (quarantineCount > quarantineLimit) {
         throw new SystemicFailureError(
           `${source}: ${quarantineCount} rows quarantined (limit ${quarantineLimit}) — treating as systemic failure`,
