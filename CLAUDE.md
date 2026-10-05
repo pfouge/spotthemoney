@@ -711,3 +711,28 @@ show below ~1300px). What was adopted, all in `web/src/styles/global.css` unless
     fake API. The job drops a rejected optional piece and carries on; read
     `stats.new_awards_filter`, `stats.naics_field`, `largest_rows_kept` and
     `company_rows_kept` on the first live run to see which path it took.
+
+### SESSION STATE 2026-10-05 (evening) — backfill results, history floor moved to 2025-10-01
+
+- **Peter, 17:05 UTC: take the history back to October 1, 2025.**
+  - Congress: `ingest-congress-ptr` dispatched with `window_days=370 --limit 1400`.
+  - Insiders: `HISTORY_FLOOR = "2025-10-01"` in `sec_form4.ts` is now the default floor for
+    `sec_form4_history` (was January 1, 2026).
+  - Contracts: `USASPENDING_WINDOW_DAYS` default is now 400 (14 slices). The site still shows
+    180 days; the older rows are stored but not displayed until Peter decides the display
+    window. Company searches now page up to 3 × 100. Worst case the job makes ~870 requests
+    (~22 minutes); it shares the 55-minute "money" job with FEC's 25-minute budget — watch it.
+  - Lobbying and donations: NOT extended. Finding: `senate_lda` stores the newest 60 pages
+    of the current filing year per run, so the lobbying totals on the site are a sample, the
+    same kind of problem contracts had. A full pull is its own piece of work.
+- **Results so far.** Congress Jan 1 → today complete (400 filings; site: 97 members, 3,431
+  trades). Contracts rewrite live: 3,333 rows on the first run, NAICS populated, site shows
+  3,334 awards / $93.91B. Insiders: run 1 4,527 filings, run 2 4,357, zero quarantines,
+  run 3 in progress at 17:10 UTC.
+- **The Congress backfill grew the tracked-ticker universe from ~106 to ~762 tickers**, so
+  the insider history is several times larger than first sized (dozens of thousands of
+  filings; each 42-minute run loads ~4,400). Completion signal: a `sec_form4_history` job
+  that ends well under 42 minutes (the log line says "partial" either way; `history_complete`
+  is only in `ingest_runs.stats`).
+- **Freshness job fails** on "Members with trades but no party: 1" (a member added by the
+  backfill). Run `congress_roster` with the next manual ingest; if it stays 1, find the name.

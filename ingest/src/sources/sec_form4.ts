@@ -30,7 +30,8 @@
 // so the daily pass asks for 40 and the history pass pages 100 at a time with `start=`.
 //
 // HISTORY PASS (2026-10-05): `sec_form4_history` (run by name only) walks each ticker's
-// listing back to SEC_FORM4_HISTORY_SINCE (default January 1 of the current year), skips
+// listing back to SEC_FORM4_HISTORY_SINCE (default HISTORY_FLOOR, 2025-10-01 — the start of
+// the site's history, Peter 2026-10-05; first set to January 1, 2026), skips
 // filings already stored, and stops cleanly when its time budget is spent. Re-run it until
 // stats.history_complete is true; every run resumes where the last one stopped because
 // stored accessions cost one listing request per 100, not a fetch each.
@@ -459,6 +460,9 @@ function isoDateDiffDays(later: string | null, earlier: string | null): number |
 // Main job
 // ──────────────────────────────────────────────────────────────────────────
 
+/** The site's history starts here (Peter, 2026-10-05). */
+export const HISTORY_FLOOR = "2025-10-01";
+
 export interface Form4RunOptions {
   /** History pass: walk each ticker's listing back to this date (YYYY-MM-DD). */
   since?: string;
@@ -468,7 +472,7 @@ export interface Form4RunOptions {
 
 /** History pass, run by name (`npm run ingest -- sec_form4_history`); see the header. */
 export function ingestSecForm4History(): Promise<IngestRunResult> {
-  const since = process.env.SEC_FORM4_HISTORY_SINCE ?? `${new Date().getUTCFullYear()}-01-01`;
+  const since = process.env.SEC_FORM4_HISTORY_SINCE ?? HISTORY_FLOOR;
   const budgetMin = Number(process.env.SEC_FORM4_HISTORY_BUDGET_MIN ?? 42);
   return ingestSecForm4({ since, budgetMs: budgetMin * 60_000 });
 }

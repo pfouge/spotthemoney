@@ -43,7 +43,7 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   fec_committees: { label: "FEC committee universe (members + top PACs)", cadence: "weekly", daily: true, run: ingestFecCommittees },
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
   sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: () => ingestSecForm4() },
-  sec_form4_history: { label: "SEC EDGAR Form 4 history pass (back to January 1)", cadence: "on_demand", daily: false, run: ingestSecForm4History },
+  sec_form4_history: { label: "SEC EDGAR Form 4 history pass (back to 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSecForm4History },
   twelvedata_eod: { label: "Twelve Data EOD Prices", cadence: "daily", daily: true, run: ingestTwelvedataEod },
   x_daily: { label: "Daily X thread of notable filings", cadence: "daily", daily: false, run: runXDaily },
   archive_backfill: { label: "Raw-filing archive backfill (unstored rows)", cadence: "on_demand", daily: false, run: runArchiveBackfill },

@@ -4,7 +4,8 @@
 // WHAT THIS STORES (rewritten 2026-10-05). The table is a defined slice of federal
 // contracts, not every award:
 //   1. LARGEST NEW AWARDS — for each 30-day slice of the last USASPENDING_WINDOW_DAYS
-//      (default 180), the largest contract awards by total award amount
+//      (default 400: the site shows 180 days today, the rest is history kept back to
+//      October 2025 on Peter's instruction, 2026-10-05), the largest awards by total amount
 //      (USASPENDING_PAGES_PER_SLICE pages of 100, default 3).
 //   2. TRACKED COMPANIES — for every company with a tracked ticker, a recipient search
 //      over the same window; only rows whose recipient name normalises to exactly the
@@ -49,6 +50,7 @@ const SEARCH_URL = "https://api.usaspending.gov/api/v2/search/spending_by_award/
 const PAGE_LIMIT = 100;
 const SLICE_DAYS = 30;
 const SORT = "Award Amount";
+const COMPANY_PAGES = 3;
 
 const BASE_FIELDS = [
   "Award ID",
@@ -118,7 +120,7 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   const sql = getDb();
   const ctx = createRunContext(SOURCE);
 
-  const windowDays = Number(optionalEnv("USASPENDING_WINDOW_DAYS") ?? "180");
+  const windowDays = Number(optionalEnv("USASPENDING_WINDOW_DAYS") ?? "400");
   const pagesPerSlice = Number(optionalEnv("USASPENDING_PAGES_PER_SLICE") ?? "3");
   const companyCap = Number(optionalEnv("USASPENDING_MAX_COMPANIES") ?? "400");
 
@@ -240,13 +242,20 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
     const text = recipientSearchText(name);
     if (text.length < 3) continue; // nothing distinctive to search by
     try {
-      const resp = await search(wholeWindow, 1, text);
-      companiesSearched++;
+      // Up to three pages: a busy contractor has more than 100 awards in a 400-day window.
       let kept = 0;
-      for (const row of resp.results ?? []) {
-        if (normalizeOrgName(row["Recipient Name"] as string | null) !== key) continue;
-        if (await store(row, `company "${name.slice(0, 30)}"`)) kept++;
+      let page = 1;
+      let hasNext = true;
+      while (hasNext && page <= COMPANY_PAGES) {
+        const resp = await search(wholeWindow, page, text);
+        for (const row of resp.results ?? []) {
+          if (normalizeOrgName(row["Recipient Name"] as string | null) !== key) continue;
+          if (await store(row, `company "${name.slice(0, 30)}"`)) kept++;
+        }
+        hasNext = resp.page_metadata?.hasNext ?? false;
+        page++;
       }
+      companiesSearched++;
       if (kept > 0) companiesWithAwards++;
       companyKept += kept;
     } catch (err) {
