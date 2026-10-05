@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/sec_form4.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities } from "./sec_form4.js";
+import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities, collectForm4Entries } from "./sec_form4.js";
 
 const XML = `<?xml version="1.0"?>
 <ownershipDocument>
@@ -105,4 +105,64 @@ test("decodeXmlEntities restores issuer names filed with XML escapes", () => {
   assert.equal(decodeXmlEntities("WELLS FARGO &amp; COMPANY/MN"), "WELLS FARGO & COMPANY/MN");
   assert.equal(decodeXmlEntities("A &lt;B&gt; &quot;C&quot; &apos;D&apos; &#39;E&#39; &#x26;F"), "A <B> \"C\" 'D' 'E' &F");
   assert.equal(decodeXmlEntities("plain"), "plain");
+});
+
+// ── Listing walk (history pass) ───────────────────────────────────────────
+function atomPage(rows: Array<[string, string, string]>): string {
+  return rows
+    .map(([acc, date, type]) =>
+      `<entry><content><accession-number>${acc}</accession-number><filing-date>${date}</filing-date><filing-type>${type}</filing-type></content></entry>`)
+    .join("\n");
+}
+/** A fake EDGAR: `n` filings, newest first, one every 3 days back from 2026-10-01, every 5th a 4/A. */
+function fakeEdgar(n: number) {
+  const all: Array<[string, string, string]> = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(Date.UTC(2026, 9, 1) - i * 3 * 86_400_000).toISOString().slice(0, 10);
+    all.push([`0000000000-26-${String(i).padStart(6, "0")}`, d, i % 5 === 4 ? "4/A" : "4"]);
+  }
+  const calls: Array<[number, number]> = [];
+  const fetchPage = async (start: number, count: number) => { calls.push([start, count]); return atomPage(all.slice(start, start + count)); };
+  return { all, calls, fetchPage };
+}
+
+test("daily listing: one page of 40, newest N exact Form 4s only", async () => {
+  const f = fakeEdgar(300);
+  const r = await collectForm4Entries(f.fetchPage, { limit: 10 });
+  assert.deepEqual(f.calls, [[0, 40]]);
+  assert.equal(r.entries.length, 10);
+  assert.ok(r.entries.every((e) => e.filingType === "4"));
+  assert.equal(r.entries[0]!.filingDate, "2026-10-01");
+  assert.equal(r.truncated, false);
+});
+
+test("history listing: pages back to the since date and stops there", async () => {
+  const f = fakeEdgar(300);
+  const r = await collectForm4Entries(f.fetchPage, { limit: 2000, since: "2026-01-01" });
+  const want = f.all.filter(([, d, t]) => d >= "2026-01-01" && t === "4").map(([a]) => a);
+  assert.deepEqual(r.entries.map((e) => e.accession), want);
+  assert.deepEqual(f.calls, [[0, 100]]); // 92 filings since Jan 1 sit on the first page
+  assert.equal(r.truncated, false);
+});
+
+test("history listing: walks several pages and stops on a short page", async () => {
+  const f = fakeEdgar(250);
+  const r = await collectForm4Entries(f.fetchPage, { limit: 2000, since: "2020-01-01" });
+  assert.deepEqual(f.calls, [[0, 100], [100, 100], [200, 100]]);
+  assert.equal(r.entries.length, 200); // 250 minus the fifty 4/A rows
+  assert.equal(r.truncated, false);
+});
+
+test("history listing: exact multiple of the page size ends on an empty page", async () => {
+  const f = fakeEdgar(200);
+  const r = await collectForm4Entries(f.fetchPage, { limit: 2000, since: "2020-01-01" });
+  assert.deepEqual(f.calls, [[0, 100], [100, 100], [200, 100]]);
+  assert.equal(r.entries.length, 160);
+});
+
+test("history listing: the per-ticker cap reports truncation", async () => {
+  const f = fakeEdgar(250);
+  const r = await collectForm4Entries(f.fetchPage, { limit: 50, since: "2020-01-01" });
+  assert.equal(r.entries.length, 50);
+  assert.equal(r.truncated, true);
 });

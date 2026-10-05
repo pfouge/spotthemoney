@@ -15,7 +15,7 @@ import { ingestTreasuryYieldCurve } from "./sources/treasury_yield_curve.js";
 import { ingestSenateLda } from "./sources/senate_lda.js";
 import { ingestUsaspending } from "./sources/usaspending.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
-import { ingestSecForm4 } from "./sources/sec_form4.js";
+import { ingestSecForm4, ingestSecForm4History } from "./sources/sec_form4.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
 import { ingestCongressRoster } from "./sources/congress_roster.js";
@@ -42,7 +42,8 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   usaspending: { label: "USAspending Contract Awards", cadence: "daily", daily: true, run: ingestUsaspending },
   fec_committees: { label: "FEC committee universe (members + top PACs)", cadence: "weekly", daily: true, run: ingestFecCommittees },
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
-  sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: ingestSecForm4 },
+  sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: () => ingestSecForm4() },
+  sec_form4_history: { label: "SEC EDGAR Form 4 history pass (back to January 1)", cadence: "on_demand", daily: false, run: ingestSecForm4History },
   twelvedata_eod: { label: "Twelve Data EOD Prices", cadence: "daily", daily: true, run: ingestTwelvedataEod },
   x_daily: { label: "Daily X thread of notable filings", cadence: "daily", daily: false, run: runXDaily },
   archive_backfill: { label: "Raw-filing archive backfill (unstored rows)", cadence: "on_demand", daily: false, run: runArchiveBackfill },

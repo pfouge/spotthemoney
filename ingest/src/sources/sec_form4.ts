@@ -25,7 +25,18 @@
 //
 // LIST FILINGS gotcha (binding): EDGAR's `type=4` query param is a PREFIX match that
 // also returns "4/A" (amendments) and "425" (merger communications, no ownership XML).
-// We over-fetch (count = N+25) then keep only entries whose filing-type is EXACTLY "4".
+// We over-fetch then keep only entries whose filing-type is EXACTLY "4". EDGAR only honours
+// count = 10/20/40/80/100 (anything else rounds DOWN: count=35 returned 20, seen 2026-10-05),
+// so the daily pass asks for 40 and the history pass pages 100 at a time with `start=`.
+//
+// HISTORY PASS (2026-10-05): `sec_form4_history` (run by name only) walks each ticker's
+// listing back to SEC_FORM4_HISTORY_SINCE (default January 1 of the current year), skips
+// filings already stored, and stops cleanly when its time budget is spent. Re-run it until
+// stats.history_complete is true; every run resumes where the last one stopped because
+// stored accessions cost one listing request per 100, not a fetch each.
+//
+// PACING: SEC publishes a 10 requests/second fair-access limit; this module uses a 250 ms
+// gap (4/s) via the http client's minGapMs exception.
 //
 // RE-INGEST RULE (contract §3.2): re-processing a filing deletes and reinserts its
 // transactions rather than diffing — transactions have no natural key by design.
@@ -49,6 +60,12 @@ function userAgent(): string {
   return process.env.SEC_EDGAR_USER_AGENT ?? DEFAULT_USER_AGENT;
 }
 
+const SEC_GAP_MS = 250;
+/** Options for every SEC request: honest UA + the published-limit pacing. */
+function sec(): { userAgent: string; minGapMs: number } {
+  return { userAgent: userAgent(), minGapMs: SEC_GAP_MS };
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Ticker → CIK
 // ──────────────────────────────────────────────────────────────────────────
@@ -63,7 +80,7 @@ interface CompanyTickerRow {
 async function buildTickerCikMap(): Promise<Map<string, string>> {
   const data = await fetchJson<Record<string, CompanyTickerRow>>(
     `${SEC_BASE}/files/company_tickers.json`,
-    { userAgent: userAgent() },
+    sec(),
   );
   const map = new Map<string, string>();
   for (const row of Object.values(data)) {
@@ -103,28 +120,65 @@ interface FilingListEntry {
 const ATOM_ENTRY_RE =
   /<accession-number>([^<]+)<\/accession-number>[\s\S]*?<filing-date>([^<]+)<\/filing-date>[\s\S]*?<filing-type>([^<]+)<\/filing-type>/g;
 
-/**
- * List Form 4 filings for a CIK via the browse-edgar atom feed. `type=4` is a PREFIX
- * match at the API level (also returns "4/A", "425") — we over-fetch and filter to
- * filing-type EXACTLY "4" here.
- */
-async function listForm4Filings(cik: string, limit: number): Promise<FilingListEntry[]> {
-  const fetchN = limit + 25;
-  const url =
-    `${SEC_BASE}/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=4&dateb=&owner=include` +
-    `&count=${fetchN}&output=atom`;
-  const xml = await fetchText(url, { userAgent: userAgent() });
+const LIST_PAGE = 100; // EDGAR's largest page
+const LIST_MAX_PAGES = 30; // safety stop: 3,000 listing entries per ticker
 
+/** Pull {accession, date, type} triples out of one atom page (all filing types). */
+export function parseAtomEntries(xml: string): FilingListEntry[] {
   const out: FilingListEntry[] = [];
   for (const m of xml.matchAll(ATOM_ENTRY_RE)) {
-    const accession = m[1]!.trim();
-    const filingDate = m[2]!.trim();
-    const filingType = m[3]!.trim();
-    if (filingType !== "4") continue; // drop 4/A, 425, etc.
-    out.push({ accession, filingDate, filingType });
-    if (out.length >= limit) break;
+    out.push({ accession: m[1]!.trim(), filingDate: m[2]!.trim(), filingType: m[3]!.trim() });
   }
   return out;
+}
+
+/**
+ * Walk listing pages (newest first) and keep Form 4s. `type=4` is a PREFIX match at the
+ * API level (also returns "4/A", "424B2", "425") — only filing-type EXACTLY "4" is kept.
+ * With `since` (YYYY-MM-DD) the walk continues until a page reaches an older filing or runs
+ * short; without it, the newest `limit` are returned from one page. `truncated` is true
+ * when the page cap stopped a history walk before it reached `since`.
+ */
+export async function collectForm4Entries(
+  fetchPage: (start: number, count: number) => Promise<string>,
+  opts: { limit: number; since?: string | null },
+): Promise<{ entries: FilingListEntry[]; truncated: boolean }> {
+  const out: FilingListEntry[] = [];
+  if (!opts.since) {
+    for (const e of parseAtomEntries(await fetchPage(0, 40))) {
+      if (e.filingType !== "4") continue; // drop 4/A, 425, etc.
+      out.push(e);
+      if (out.length >= opts.limit) break;
+    }
+    return { entries: out, truncated: false };
+  }
+  for (let page = 0; page < LIST_MAX_PAGES; page++) {
+    const all = parseAtomEntries(await fetchPage(page * LIST_PAGE, LIST_PAGE));
+    let reachedOlder = false;
+    for (const e of all) {
+      if (e.filingDate < opts.since) { reachedOlder = true; continue; }
+      if (e.filingType !== "4") continue;
+      out.push(e);
+      if (out.length >= opts.limit) return { entries: out, truncated: true };
+    }
+    if (reachedOlder || all.length < LIST_PAGE) return { entries: out, truncated: false };
+  }
+  return { entries: out, truncated: true };
+}
+
+async function listForm4Filings(
+  cik: string,
+  opts: { limit: number; since?: string | null },
+): Promise<{ entries: FilingListEntry[]; truncated: boolean }> {
+  return collectForm4Entries(
+    (start, count) =>
+      fetchText(
+        `${SEC_BASE}/cgi-bin/browse-edgar?action=getcompany&CIK=${cik}&type=4&dateb=&owner=include` +
+          `&start=${start}&count=${count}&output=atom`,
+        sec(),
+      ),
+    opts,
+  );
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -147,7 +201,7 @@ async function findOwnershipXmlUrl(cik: string, accession: string): Promise<stri
   const unpaddedCik = String(Number(cik));
   const accessionNoDashes = accession.replace(/-/g, "");
   const base = `${SEC_BASE}/Archives/edgar/data/${unpaddedCik}/${accessionNoDashes}`;
-  const idx = await fetchJson<IndexJson>(`${base}/index.json`, { userAgent: userAgent() });
+  const idx = await fetchJson<IndexJson>(`${base}/index.json`, sec());
   const items = idx.directory?.item ?? [];
   const xmlNames = items
     .map((it) => it.name ?? "")
@@ -405,11 +459,31 @@ function isoDateDiffDays(later: string | null, earlier: string | null): number |
 // Main job
 // ──────────────────────────────────────────────────────────────────────────
 
-export async function ingestSecForm4(): Promise<IngestRunResult> {
-  const sql = getDb();
-  const ctx = createRunContext(SOURCE);
+export interface Form4RunOptions {
+  /** History pass: walk each ticker's listing back to this date (YYYY-MM-DD). */
+  since?: string;
+  /** Stop cleanly once this much wall-clock time is spent (the workflow job has 55 minutes). */
+  budgetMs?: number;
+}
 
-  const maxFilingsPerTicker = Number(process.env.SEC_MAX_FILINGS_PER_TICKER ?? 10);
+/** History pass, run by name (`npm run ingest -- sec_form4_history`); see the header. */
+export function ingestSecForm4History(): Promise<IngestRunResult> {
+  const since = process.env.SEC_FORM4_HISTORY_SINCE ?? `${new Date().getUTCFullYear()}-01-01`;
+  const budgetMin = Number(process.env.SEC_FORM4_HISTORY_BUDGET_MIN ?? 42);
+  return ingestSecForm4({ since, budgetMs: budgetMin * 60_000 });
+}
+
+export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<IngestRunResult> {
+  const sql = getDb();
+  const history = Boolean(opts.since);
+  // A history pass touches thousands of filings, so its circuit breaker sits higher.
+  const ctx = createRunContext(SOURCE, history ? 300 : 50);
+  const startedAt = Date.now();
+  const overBudget = () => opts.budgetMs != null && Date.now() - startedAt > opts.budgetMs;
+
+  const maxFilingsPerTicker = history
+    ? Number(process.env.SEC_FORM4_HISTORY_MAX_PER_TICKER ?? 2000)
+    : Number(process.env.SEC_MAX_FILINGS_PER_TICKER ?? 10);
 
   // Universe: distinct active tickers from securities (equity/etf/adr) UNION
   // env SEC_EDGAR_TICKERS (comma-separated). Phase-1 fallback universe is the
@@ -447,8 +521,11 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
   let filingsQuarantined = 0;
   let transactionsWritten = 0;
   let documentsArchived = 0;
+  let stoppedOnBudget = false;
+  let tickersTruncated = 0;
 
   for (const ticker of universe) {
+    if (overBudget()) { stoppedOnBudget = true; break; }
     try {
       const cik = resolveCik(tickerCikMap, ticker);
       if (!cik) {
@@ -457,7 +534,10 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
         continue;
       }
 
-      const entries = await listForm4Filings(cik, maxFilingsPerTicker);
+      const listing = await listForm4Filings(cik, { limit: maxFilingsPerTicker, since: opts.since ?? null });
+      // Oldest first on a history pass, so a budget stop mid-ticker leaves no gap behind it.
+      const entries = history ? [...listing.entries].reverse() : listing.entries;
+      if (history && listing.truncated) tickersTruncated++;
       filingsFetched += entries.length;
       if (entries.length === 0) {
         tickersProcessed++;
@@ -476,6 +556,7 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
           filingsSkippedExisting++;
           continue;
         }
+        if (overBudget()) { stoppedOnBudget = true; break; }
         if (!ctx.markSeen(entry.accession)) continue;
         ctx.rowsSeen++;
 
@@ -487,7 +568,7 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
             continue;
           }
 
-          const xmlText = await fetchText(xmlUrl, { userAgent: userAgent() });
+          const xmlText = await fetchText(xmlUrl, sec());
           let parsed: ParsedForm4;
           try {
             parsed = parseForm4Xml(xmlText);
@@ -684,6 +765,7 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
         }
       }
 
+      if (stoppedOnBudget) break;
       tickersProcessed++;
     } catch (err) {
       // One ticker's hard failure quarantines that ticker and continues (does not
@@ -701,8 +783,16 @@ export async function ingestSecForm4(): Promise<IngestRunResult> {
   ctx.extra["transactions_written"] = transactionsWritten;
   ctx.extra["documents_archived"] = documentsArchived;
   ctx.extra["max_filings_per_ticker"] = maxFilingsPerTicker;
+  if (history) {
+    ctx.extra["history_since"] = opts.since;
+    ctx.extra["history_complete"] = !stoppedOnBudget && tickersTruncated === 0;
+    ctx.extra["stopped_on_budget"] = stoppedOnBudget;
+    ctx.extra["tickers_remaining"] = universe.length - tickersProcessed - tickersUnresolved;
+    ctx.extra["tickers_truncated"] = tickersTruncated;
+    ctx.extra["minutes"] = Math.round((Date.now() - startedAt) / 6000) / 10;
+  }
 
-  const status: IngestRunResult["status"] = tickersUnresolved > 0 ? "partial" : "success";
+  const status: IngestRunResult["status"] = tickersUnresolved > 0 || stoppedOnBudget ? "partial" : "success";
 
   return {
     source: SOURCE,

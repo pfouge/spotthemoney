@@ -2,7 +2,10 @@
 // (gratisglobal lesson + IIF connector practice, adopted 2026-07-06):
 //
 //   1. Descriptive User-Agent with a contact email on every request.
-//   2. >= 1.5s minimum gap between requests to the same host.
+//   2. >= 1.5s minimum gap between requests to the same host. One exception, recorded
+//      2026-10-05: a source may pass `minGapMs` where the host PUBLISHES a rate limit and
+//      we stay well under it (SEC EDGAR: 10 requests/second published, we use 4). Never
+//      below MIN_GAP_FLOOR_MS, and never for a host with no published limit.
 //   3. Exponential backoff on 429/5xx (honors Retry-After when present).
 //   4. NEVER spoof a browser UA to get around a block. If a source's WAF rejects
 //      our honest client (403 after retries), the job fails with a clear message
@@ -16,6 +19,7 @@ const DEFAULT_UA =
   "spotthemoney.com ingest (Peter Fougerousse <pfouge@gmail.com>)";
 
 const MIN_HOST_GAP_MS = 1500;
+const MIN_GAP_FLOOR_MS = 200;
 const MAX_RETRIES = 3;
 
 const lastRequestAt = new Map<string, number>();
@@ -24,9 +28,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function politeDelay(host: string): Promise<void> {
+async function politeDelay(host: string, minGapMs?: number): Promise<void> {
+  const gap = minGapMs == null || !Number.isFinite(minGapMs) ? MIN_HOST_GAP_MS : Math.max(MIN_GAP_FLOOR_MS, minGapMs);
   const last = lastRequestAt.get(host) ?? 0;
-  const wait = last + MIN_HOST_GAP_MS - Date.now();
+  const wait = last + gap - Date.now();
   if (wait > 0) await sleep(wait);
   lastRequestAt.set(host, Date.now());
 }
@@ -38,6 +43,8 @@ export interface PoliteFetchOptions {
   body?: unknown;
   /** Override the default User-Agent (must still be descriptive + contactable). */
   userAgent?: string;
+  /** Per-host gap for this call, only for hosts with a published rate limit (see header, rule 2). */
+  minGapMs?: number;
 }
 
 async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Promise<Response> {
@@ -45,7 +52,7 @@ async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Pr
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    await politeDelay(u.host);
+    await politeDelay(u.host, opts.minGapMs);
     let res: Response;
     try {
       res = await fetch(u, {

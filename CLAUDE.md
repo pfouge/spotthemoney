@@ -657,3 +657,40 @@ show below ~1300px). What was adopted, all in `web/src/styles/global.css` unless
   `verify-filters` 391 states, 0 mismatches; screenshots at 390px and 1280px, light and dark;
   menu, search and "Show more" exercised. Not verified: real phones, Windows rendering of
   Trebuchet MS (the sandbox has no such font), the live site.
+
+### SESSION STATE 2026-10-05 (later) — fixes after the redesign, history backfill
+
+- **`7651613` (pushed, deployed):** search ranking (exact, title-start, word-start; Congress
+  first), ticker names in the search index, `! Cache-Control` detach lines in
+  `web/public/_headers` (Cloudflare was joining two values and browsers obeyed `max-age=0`),
+  and no future-dated contracts (`flagship.ts` query capped at today; Newest feed drops
+  later-dated items).
+- **Scheduled runs:** by 14:37 UTC on 2026-10-05 neither the 09:17 `ingest` nor the 13:23
+  Congress PTR cron had fired (the day before they fired about 5 hours late). The FEC batching
+  fix, the price-job skip and the freshness job are therefore still unproven in an unattended
+  run. A read-only re-check is scheduled for 20:30 UTC.
+- **History backfill (Peter, 2026-10-05): Congress and insiders back to January 1, contracts
+  to 180 days, donations left at the current window.**
+  - Congress: no code change. `ingest-congress-ptr` dispatched with `window_days=280` and
+    `--limit 400` per run (the job has no time budget; 45-minute job limit). Repeat until a run
+    reports nothing new. Scanned filings stay held for review as before.
+  - Insiders: new on-demand source `sec_form4_history` (`ingest/src/sources/sec_form4.ts`,
+    registered in `ingest/src/index.ts`). It pages each ticker's EDGAR listing 100 at a time
+    back to `SEC_FORM4_HISTORY_SINCE` (default January 1 of the current year), skips stored
+    filings, and stops on a 42-minute budget with `stats.history_complete=false`; re-run until
+    true. Start it with `gh workflow run ingest.yml -f source=sec_form4_history`.
+  - EDGAR listing gotcha: `count` only honours 10/20/40/80/100 and rounds down (35 returned
+    20). The daily pass now asks for 40.
+  - Pacing decision: SEC requests use a 250 ms gap (4/s; SEC publishes 10/s) through a new
+    `minGapMs` option in `ingest/src/lib/http.ts`. Every other host keeps 1.5 s. This also
+    shortens the daily `sec_form4` run.
+  - Verified locally only (the sandbox cannot reach sec.gov): listing-walk unit tests, `tsc`,
+    and an end-to-end run against a fake EDGAR with a real local database (budget stop,
+    resume, daily pass unchanged). `start=`/`count=100` paging was confirmed against the real
+    EDGAR in a browser.
+  - Contracts: NOT done. Finding: `usaspending` stores the newest 1,000 award rows by action
+    date across all federal contracts on each run; it is a rolling sample, not every award.
+    Pages that say "N award actions worth $X in the last 180 days" describe that sample.
+    Widening the window alone would not change what is stored. Needs a decision on what the
+    180-day set should be (e.g. largest awards per month, plus awards to tracked companies).
+    The USAspending API was also returning HTTP 500 on 2026-10-05 ~14:45 UTC.
