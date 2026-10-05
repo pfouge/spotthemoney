@@ -768,3 +768,26 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
   when it stopped on its budget.
 - Tested locally only (fake APIs + local Postgres): resume, failure mid-run, completion,
   budget stop, database guard, site build, `astro check`. Not yet run live.
+
+### Size (market-cap band) filter — 2026-10-05, Peter: "filter by market cap ranges"
+
+- **No price feed** (docs/04 #33 stands). Size is estimated from SEC filings only:
+  shares outstanding (10-Q/10-K cover) × median of the company's latest open-market Form 4
+  prices in its primary ticker (400 days); fallback public float from the latest 10-K;
+  if the two differ by more than 20×, the float wins. Logic and bands: `web/src/lib/capband.ts`
+  (mega ≥ $200B, large ≥ $10B, mid ≥ $2B, small ≥ $300M, micro below).
+- **Data:** migration 0013 `company_size` (RLS on, no public policy). New source
+  `sec_company_size` (`ingest/src/sources/sec_company_size.ts`): the SEC XBRL frames API
+  returns one fact for every filer per quarter in one request (~4,400 rows); 14 requests
+  cover shares (6 quarters) and float (8 quarters). It also runs at the end of the daily
+  `sec_form4` pass, so no workflow change was needed. Multi-class filers (Alphabet, Meta,
+  Berkshire, Visa, NVIDIA in some quarters) have no single shares figure in frames and use
+  float. Funds/ETFs have neither and drop out when a band is selected.
+- **Site:** `/data/heatmap-*.json` now carry `caps` (ticker → band). `Heatmap.astro` has a
+  `data-ctl="cap"` select; `scripts/heatmap.ts` filters on it and keeps it in the URL hash
+  (`#cap=large`). `scripts/verify-filters.mjs` drives the new control and has its own oracle
+  for it. Methodology page explains the estimate.
+- Verified locally only: fake frames API + local DB; build; `astro check` 0 errors;
+  `verify-filters` 427 states, 0 mismatches; screenshot of the bar. The frames API shape was
+  checked against the real SEC in a browser. First live run still to be read — check that
+  obvious names land in the right band before trusting it.

@@ -121,6 +121,8 @@ export interface Flagship {
   counts: Record<string, number>;
   latestByPath: Map<string, string>;   // page path → lastmod (ISO date) for sitemaps
   issueNames: Map<string, string>;     // LDA general issue code → display name (for the charts)
+  /** 10-digit CIK → size figures from SEC filings (company_size, migration 0013); see lib/capband.ts. */
+  companySize: Map<string, { shares: number | null; sharesAsOf: string | null; float: number | null; floatAsOf: string | null }>;
 }
 
 const APPROVED = new Set(["auto_approved", "approved"]);
@@ -134,7 +136,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -203,7 +205,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -302,6 +304,18 @@ async function load(): Promise<Flagship> {
       for (const i of issueRows) if (i.name) model.issueNames.set(i.code, i.name);
     } catch (err) {
       console.warn("[web] chart extras skipped:", (err as Error).message);
+    }
+
+    // Company size for the Size filter. Optional in the same way: without it the filter
+    // simply has nothing to match, the pages still build.
+    try {
+      const sizeRows = await sql<{ cik: string; shares: number | null; shares_as_of: string | null; float: number | null; float_as_of: string | null }[]>`
+        select cik, shares_outstanding::float8 as shares, shares_as_of::text as shares_as_of,
+               public_float::float8 as float, float_as_of::text as float_as_of
+          from company_size`;
+      for (const r of sizeRows) model.companySize.set(r.cik.padStart(10, "0"), { shares: r.shares, sharesAsOf: r.shares_as_of, float: r.float, floatAsOf: r.float_as_of });
+    } catch (err) {
+      console.warn("[web] company size skipped:", (err as Error).message);
     }
 
     model.counts = {

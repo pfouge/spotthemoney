@@ -8,6 +8,7 @@
 //   - congress tile dollars = the TOP of the reported range (Txn.value), insiders = shares × price
 //   - keys are short on purpose: the insiders file is thousands of rows
 import type { Flagship, Txn, Person } from "./flagship";
+import { sizeByTicker } from "./capband";
 
 export const HEATMAP_WINDOW_DAYS = 365;
 
@@ -50,6 +51,8 @@ export interface HeatmapFile<R> {
   kind: "congress" | "insiders";
   builtAt: string;
   windowDays: number;
+  /** ticker → size band (mega/large/mid/small/micro) for tickers in `rows` with a size on file. */
+  caps: Record<string, string>;
   rows: R[];
 }
 
@@ -115,6 +118,9 @@ export function insiderRows(m: Flagship): InsiderRow[] {
   return out;
 }
 
-export function heatmapFile<R>(kind: "congress" | "insiders", m: Flagship, rows: R[]): HeatmapFile<R> {
-  return { kind, builtAt: m.builtAt, windowDays: HEATMAP_WINDOW_DAYS, rows };
+export function heatmapFile<R extends { t: string }>(kind: "congress" | "insiders", m: Flagship, rows: R[]): HeatmapFile<R> {
+  const sizes = sizeByTicker(m);
+  const caps: Record<string, string> = {};
+  for (const r of rows) { const e = sizes.get(r.t.toUpperCase()); if (e) caps[r.t] = e.band; }
+  return { kind, builtAt: m.builtAt, windowDays: HEATMAP_WINDOW_DAYS, caps, rows };
 }

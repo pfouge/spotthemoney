@@ -1,0 +1,71 @@
+// Company size bands for the "Size" filter — estimated from SEC filings only (no price feed;
+// docs/04 #33). See ingest/src/sources/sec_company_size.ts for where the inputs come from.
+//
+//   estimate = shares outstanding (latest 10-Q/10-K cover) × the median of the company's
+//              most recent open-market Form 4 prices (last 400 days)
+//   fallback = public float from the latest 10-K, when there is no single shares figure
+//              (multi-class companies) or no recent Form 4 price
+//   cross-check: when both exist and differ by more than 20×, the float is used — that gap
+//              means a unit mistake or a price from another share class, not a real value.
+//
+// It is an estimate for sorting companies into wide bands, not a market capitalisation.
+import type { Flagship } from "./flagship";
+
+export type CapBand = "mega" | "large" | "mid" | "small" | "micro";
+export const CAP_BANDS: { code: CapBand; label: string; range: string; min: number }[] = [
+  { code: "mega", label: "Mega cap", range: "$200B and up", min: 200e9 },
+  { code: "large", label: "Large cap", range: "$10B – $200B", min: 10e9 },
+  { code: "mid", label: "Mid cap", range: "$2B – $10B", min: 2e9 },
+  { code: "small", label: "Small cap", range: "$300M – $2B", min: 300e6 },
+  { code: "micro", label: "Micro cap", range: "under $300M", min: 0 },
+];
+
+export function bandOf(value: number): CapBand {
+  for (const b of CAP_BANDS) if (value >= b.min) return b.code;
+  return "micro";
+}
+
+export interface SizeInput { shares: number | null; sharesAsOf: string | null; float: number | null; floatAsOf: string | null }
+export interface SizeEstimate { value: number; band: CapBand; basis: "shares" | "float"; asOf: string | null; price: number | null }
+
+function median(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length % 2 ? s[(s.length - 1) / 2]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2;
+}
+
+/** Pure: one company's estimate from its filed figures and its recent Form 4 prices (newest first). */
+export function estimateSize(size: SizeInput, recentPrices: number[]): SizeEstimate | null {
+  const price = recentPrices.length ? median(recentPrices.slice(0, 5)) : null;
+  const byShares = size.shares != null && size.shares > 0 && price != null && price > 0 ? size.shares * price : null;
+  const byFloat = size.float != null && size.float > 0 ? size.float : null;
+  if (byShares != null && byFloat != null) {
+    const ratio = byShares / byFloat;
+    if (ratio > 20 || ratio < 1 / 20) return { value: byFloat, band: bandOf(byFloat), basis: "float", asOf: size.floatAsOf, price: null };
+  }
+  if (byShares != null) return { value: byShares, band: bandOf(byShares), basis: "shares", asOf: size.sharesAsOf, price };
+  if (byFloat != null) return { value: byFloat, band: bandOf(byFloat), basis: "float", asOf: size.floatAsOf, price: null };
+  return null;
+}
+
+/** ticker → estimate, for every tracked security whose company has a size on file. */
+export function sizeByTicker(m: Flagship): Map<string, SizeEstimate> {
+  const cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - 400);
+  const cut = cutoff.toISOString().slice(0, 10);
+  const out = new Map<string, SizeEstimate>();
+  for (const c of m.companies.values()) {
+    const size = c.cik ? m.companySize.get(c.cik.padStart(10, "0")) : undefined;
+    if (!size) continue;
+    // Prices from open-market, non-derivative Form 4 trades in the company's own primary
+    // ticker only: another class or a derivative would price a different security.
+    const primary = c.primaryTicker?.toUpperCase() ?? null;
+    const prices = c.txns
+      .filter((t) => t.source === "sec_form4" && t.isDerivative !== true && (t.code === "P" || t.code === "S") && (t.price ?? 0) > 0 && (t.txnDate ?? "") >= cut
+        && (primary == null || t.securityId == null || m.securities.get(t.securityId)?.ticker.toUpperCase() === primary))
+      .sort((a, b) => (b.txnDate ?? "").localeCompare(a.txnDate ?? ""))
+      .map((t) => t.price!);
+    const est = estimateSize(size, prices);
+    if (!est) continue;
+    for (const sid of c.securityIds) { const s = m.securities.get(sid); if (s) out.set(s.ticker.toUpperCase(), est); }
+  }
+  return out;
+}

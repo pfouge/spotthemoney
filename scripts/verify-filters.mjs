@@ -29,6 +29,7 @@ export async function browserSuite(opts) {
   const kind = root.dataset.kind;
   const files = await Promise.all(root.dataset.src.split(",").map((u) => fetch(u.trim(), { cache: "no-store" }).then((r) => r.json())));
   const rows = files.flatMap((f) => f.rows.map((r) => ({ ...r, k: f.kind })));
+  const caps = Object.assign({}, ...files.map((f) => f.caps ?? {})); // ticker → size band
   for (let i = 0; i < 50 && root.querySelector(".hm-summary .cell") == null; i++) await sleep(100);
 
   // ── independent oracle (the rules as documented in CLAUDE.md / methodology) ──
@@ -41,6 +42,7 @@ export async function browserSuite(opts) {
       if (r.d < cut) return false;
       if (s.who && r.ps !== s.who) return false;
       if (tick.length && !tick.includes(r.t)) return false;
+      if (s.cap !== "all" && caps[r.t] !== s.cap) return false;
       if (r.k === "congress") {
         if (s.cls === "insiders") return false;
         if (!legacyCross && s.cls === "all" && iF && !cF) return false;
@@ -63,13 +65,13 @@ export async function browserSuite(opts) {
   };
 
   // ── drive the real controls ──
-  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: "net", tickers: "" };
+  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: "net", tickers: "", cap: "all" };
   const sel = (k) => root.querySelector(`[data-ctl="${k}"]`);
   const seg = (k) => [...root.querySelectorAll(`[data-seg="${k}"] button`)];
-  const has = { cls: !!sel("cls"), chamber: !!sel("chamber"), party: !!sel("party"), role: !!sel("role"), who: !!sel("who"), codes: seg("codes").length > 0, plan: seg("plan").length > 0 };
+  const has = { cls: !!sel("cls"), chamber: !!sel("chamber"), party: !!sel("party"), role: !!sel("role"), who: !!sel("who"), cap: !!sel("cap"), codes: seg("codes").length > 0, plan: seg("plan").length > 0 };
   const apply = async (s) => {
     root.querySelector('[data-ctl="reset"]').click();
-    for (const k of ["cls", "chamber", "party", "role", "who"]) {
+    for (const k of ["cls", "chamber", "party", "role", "who", "cap"]) {
       if (!has[k] || s[k] === DEFAULTS[k]) continue;
       const el = sel(k); el.value = s[k];
       if (el.value !== s[k]) throw new Error(`control ${k} has no option "${s[k]}"`);
@@ -92,7 +94,7 @@ export async function browserSuite(opts) {
   // state the page actually uses: controls a map does not have stay at their defaults
   const effective = (s) => {
     const e = { ...s };
-    if (!has.cls) e.cls = "all"; if (!has.chamber) e.chamber = "all"; if (!has.party) e.party = "all"; if (!has.role) e.role = "all";
+    if (!has.cls) e.cls = "all"; if (!has.chamber) e.chamber = "all"; if (!has.party) e.party = "all"; if (!has.role) e.role = "all"; if (!has.cap) e.cap = "all";
     if (kind === "congress") { e.codes = "open"; e.plan = "exclude"; }
     return e;
   };
@@ -117,7 +119,7 @@ export async function browserSuite(opts) {
   const whoSample = whoAll.filter((_, i) => i % Math.max(1, Math.floor(whoAll.length / 12)) === 0).slice(0, 12);
   const topTickers = [...new Set(rows.map((r) => r.t))].slice(0, 6);
   const space = {
-    cls: optionsOf("cls"), chamber: optionsOf("chamber"), party: optionsOf("party"), role: optionsOf("role"), who: ["", ...whoSample],
+    cls: optionsOf("cls"), chamber: optionsOf("chamber"), party: optionsOf("party"), role: optionsOf("role"), who: ["", ...whoSample], cap: has.cap ? optionsOf("cap") : ["all"],
     codes: has.codes ? ["open", "all"] : ["open"], plan: has.plan ? ["exclude", "include"] : ["exclude"],
     window: [7, 30, 90, 365], view: ["net", "buy", "sell"], tickers: ["", topTickers[0] ?? "", topTickers.slice(0, 3).join(", ").toLowerCase(), "ZZZZ"],
   };
@@ -140,11 +142,14 @@ export async function browserSuite(opts) {
   root.querySelector('[data-ctl="reset"]').click(); await sleep(0);
   const afterReset = shown(), def = expected(effective(DEFAULTS)); ran++;
   if (afterReset.disclosures !== def.disclosures || afterReset.tickers !== def.tickers) fails.push({ label: "reset", bad: [`page ${afterReset.disclosures}/${afterReset.tickers} ≠ ${def.disclosures}/${def.tickers}`] });
+  // every size band must be reachable: a band no ticker maps to is fine, an unknown code is not
+  const badBands = [...new Set(Object.values(caps))].filter((b) => has.cap && !optionsOf("cap").includes(b));
+  if (badBands.length) fails.push({ label: "size bands", bad: [`data has band(s) with no option: ${badBands.join(", ")}`] });
   await apply({ ...DEFAULTS, window: 365, view: "sell" });
   const hash = location.hash; const hashWant = expected(effective({ ...DEFAULTS, window: 365, view: "sell" }));
   if (root.dataset.primary === "true" && !(hash.includes("w=365") && hash.includes("view=sell"))) fails.push({ label: "hash write", bad: [`hash is "${hash}"`] });
 
-  return { page: location.pathname, kind, rows: rows.length, builtAt: files.map((f) => f.builtAt), controls: has, checks: ran, failed: fails.length, fails: fails.slice(0, 15), hash, hashWant };
+  return { page: location.pathname, kind, rows: rows.length, builtAt: files.map((f) => f.builtAt), controls: has, sized: Object.keys(caps).length, tickersInRows: new Set(rows.map((r) => r.t)).size, checks: ran, failed: fails.length, fails: fails.slice(0, 15), hash, hashWant };
 }
 
 // ── Node driver ──
@@ -168,7 +173,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       }
       if (errors.length) { res.failed += errors.length; res.fails.push({ label: "page errors", bad: errors.slice(0, 3) }); }
       failed += res.failed ?? 1;
-      console.log(`${res.failed ? "✗" : "✓"} ${path}  ${res.kind} map · ${res.rows} rows · ${res.checks} filter states checked · ${res.failed} mismatch(es)`);
+      console.log(`${res.failed ? "✗" : "✓"} ${path}  ${res.kind} map · ${res.rows} rows · ${res.sized}/${res.tickersInRows} tickers sized · ${res.checks} filter states checked · ${res.failed} mismatch(es)`);
       for (const f of res.fails ?? []) console.log("   ", f.label, "→", (f.bad ?? [f.error]).join("; "));
       if (res.error) console.log("   ", res.error);
       await page.close();

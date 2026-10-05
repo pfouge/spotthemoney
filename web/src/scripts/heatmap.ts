@@ -10,7 +10,7 @@ interface CongressRow { t: string; n: string | null; p: string; ps: string | nul
 interface InsiderRow { t: string; n: string | null; p: string; ps: string | null; r: "officer" | "director" | "owner"; ti: string | null; c: string | null; s: Side; v: number; sh: number | null; pr: number | null; pl: boolean; o: string | null; d: string; f: string | null; u: string | null }
 type Row = (CongressRow | InsiderRow) & { k: "congress" | "insiders" };
 const isC = (r: Row): r is CongressRow & { k: "congress" } => r.k === "congress";
-interface File { kind: "congress" | "insiders"; builtAt: string; windowDays: number; rows: Row[] }
+interface File { kind: "congress" | "insiders"; builtAt: string; windowDays: number; caps?: Record<string, string>; rows: Row[] }
 
 interface State {
   cls: "all" | "congress" | "insiders";        // combined map only
@@ -23,6 +23,7 @@ interface State {
   window: number;     // days
   view: "net" | "buy" | "sell";
   tickers: string;    // comma list, "" = all
+  cap: "all" | "mega" | "large" | "mid" | "small" | "micro"; // company size band (estimated from filings)
   side: "tickers" | "filers";
 }
 
@@ -103,16 +104,18 @@ export function initHeatmap(root: HTMLElement): void {
   const q = <T extends Element>(sel: string): T => root.querySelector<T>(sel)!;
   const mapEl = q<HTMLDivElement>(".hm-map");
   const tip = q<HTMLDivElement>(".hm-tip");
-  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: "net", tickers: "", side: "tickers" };
+  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: "net", tickers: "", cap: "all", side: "tickers" };
   const state: State = { ...DEFAULTS };
   let rows: Row[] = []; let builtAt = ""; let maxVal = 1;
+  const caps: Record<string, string> = {};
 
   // hash → state (only when this instance is the page's primary map)
   const primary = root.dataset.primary === "true";
   if (primary && location.hash.length > 1) {
     const h = new URLSearchParams(location.hash.slice(1));
-    for (const k of ["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side"] as const) { const v = h.get(k); if (v != null) (state as unknown as Record<string, string>)[k] = v; }
+    for (const k of ["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap"] as const) { const v = h.get(k); if (v != null) (state as unknown as Record<string, string>)[k] = v; }
     const w = Number(h.get("w")); if ([7, 30, 90, 365].includes(w)) state.window = w;
+    if (!["all", "mega", "large", "mid", "small", "micro"].includes(state.cap)) state.cap = "all";
   }
   const writeHash = (): void => {
     if (!primary) return;
@@ -124,6 +127,7 @@ export function initHeatmap(root: HTMLElement): void {
     if (state.window !== 30) h.set("w", String(state.window));
     if (state.view !== "net") h.set("view", state.view);
     if (state.tickers) h.set("tickers", state.tickers);
+    if (state.cap !== "all") h.set("cap", state.cap);
     if (state.side !== "tickers") h.set("side", state.side);
     const s = h.toString(); history.replaceState(null, "", s ? "#" + s : location.pathname + location.search);
   };
@@ -159,7 +163,7 @@ export function initHeatmap(root: HTMLElement): void {
   };
   function filtered(): Row[] {
     const c = cutoff(); const ts = tickerSet();
-    return rows.filter((r) => r.d >= c && scopeMatch(r) && (!state.who || r.ps === state.who) && (!ts || ts.has(r.t)));
+    return rows.filter((r) => r.d >= c && scopeMatch(r) && (!state.who || r.ps === state.who) && (!ts || ts.has(r.t)) && (state.cap === "all" || caps[r.t] === state.cap));
   }
   function aggregate(sel: Row[]): Node[] {
     const m = new Map<string, Node>();
@@ -299,6 +303,8 @@ export function initHeatmap(root: HTMLElement): void {
   }
   const whoSel = root.querySelector<HTMLSelectElement>('[data-ctl="who"]');
   whoSel?.addEventListener("change", () => { state.who = whoSel.value; render(); });
+  const capSel = root.querySelector<HTMLSelectElement>('[data-ctl="cap"]');
+  capSel?.addEventListener("change", () => { state.cap = capSel.value as State["cap"]; render(); });
   const tickIn = root.querySelector<HTMLInputElement>('[data-ctl="tickers"]');
   let tt: ReturnType<typeof setTimeout>; tickIn?.addEventListener("input", () => { clearTimeout(tt); tt = setTimeout(() => { state.tickers = tickIn.value; render(); }, 180); });
   const resetBtn = root.querySelector<HTMLButtonElement>('[data-ctl="reset"]');
@@ -307,6 +313,7 @@ export function initHeatmap(root: HTMLElement): void {
     ["window", "view", "codes", "plan", "side"].forEach(syncSeg);
     for (const k of ["cls", "chamber", "party", "role"] as const) { const el = sels[k]; if (el) el.value = state[k]; }
     if (whoSel) whoSel.value = state.who; if (tickIn) tickIn.value = state.tickers;
+    if (capSel) capSel.value = state.cap;
     syncVisibility();
   }
   function fillWho(): void {
@@ -330,6 +337,7 @@ export function initHeatmap(root: HTMLElement): void {
     .then((files) => {
       rows = files.flatMap((f) => (f.rows as (CongressRow | InsiderRow)[]).map((r) => ({ ...r, k: f.kind }) as Row));
       builtAt = files.map((f) => f.builtAt).sort().at(-1) ?? "";
+      for (const f of files) Object.assign(caps, f.caps ?? {});
       fillWho(); syncAll(); render(); if (compact) root.classList.add("hm-ready");
     })
     .catch((err: Error) => { mapEl.innerHTML = `<div class="hm-empty">The trade data could not be loaded (${esc(err.message)}). The tables below carry the same rows.</div>`; });

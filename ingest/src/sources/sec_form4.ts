@@ -50,6 +50,7 @@ import { scrubDeep } from "../lib/sanitize.js";
 import { createRunContext } from "../lib/run.js";
 import { getDb, closeDb } from "../lib/db.js";
 import { archiveBytes } from "../lib/archive.js";
+import { ingestSecCompanySize } from "./sec_company_size.js";
 import type { IngestRunResult } from "@stm/shared";
 
 const SOURCE = "sec_form4";
@@ -775,6 +776,18 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
       // One ticker's hard failure quarantines that ticker and continues (does not
       // kill the run).
       ctx.quarantine(ticker, `ticker-level failure: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // Company size (shares outstanding / public float) rides along with the daily pass: same
+  // agency, a dozen requests, and it needs the companies this pass has just written. It has
+  // its own source code (`sec_company_size`) for running by hand. Never fails this run.
+  if (!history) {
+    try {
+      const size = await ingestSecCompanySize();
+      ctx.extra["company_size_rows"] = size.rowsSeen;
+    } catch (err) {
+      ctx.warn(`company size refresh failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

@@ -7,6 +7,7 @@
 //               and 10b5-1 switches (defaults: open-market only, plans excluded)
 // Both: window 7D/30D/90D/1Y, view Net/Buying/Selling, ticker filter, ticker/filer side list.
 // `primary` makes the filter state live in the URL hash (one per page).
+import { CAP_BANDS } from "../lib/capband";
 interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; }
 const { kind, primary = false, height = 560, id = `hm-${kind}`, compact = false } = Astro.props as Props;
 const src = kind === "all" ? "/data/heatmap-congress.json,/data/heatmap-insiders.json" : `/data/heatmap-${kind}.json`;
@@ -61,6 +62,12 @@ const hasInsiders = kind !== "congress";
         <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">No 10b5-1 plans</button><button type="button" data-v="include">With plans</button></div>
       </div>
     )}
+    <div class="ctl"><span class="lbl">Size</span>
+      <select data-ctl="cap" aria-label="Company size" title="Estimated from SEC filings: shares outstanding times the latest insider-reported price, or public float. Not a live market cap.">
+        <option value="all">Any size</option>
+        {CAP_BANDS.map((b) => <option value={b.code}>{b.label} · {b.range}</option>)}
+      </select>
+    </div>
     <div class="ctl"><span class="lbl">Window</span>
       <div class="seg" data-seg="window"><button type="button" data-v="7">7D</button><button type="button" data-v="30" class="on">30D</button><button type="button" data-v="90">90D</button><button type="button" data-v="365">1Y</button></div>
     </div>
