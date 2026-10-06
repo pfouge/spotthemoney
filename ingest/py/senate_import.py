@@ -83,23 +83,46 @@ def load_exports(directory: Path = EXPORT_DIR) -> list[dict[str, Any]]:
     return sorted(by_id.values(), key=lambda e: (e.get("date_iso") or e.get("date_received") or "", e["id"]))
 
 
-def mark_superseded(filings: list[dict[str, Any]]) -> None:
-    """Set superseded_by on every report that has a later amendment for the same filer and report date."""
+def mark_superseded(filings: list[dict[str, Any]], rows_of=None) -> int:
+    """Set superseded_by on the report each amendment replaces. Returns how many amendments
+    could not be tied to one earlier version (left alone, nothing superseded).
+
+    Checked against eFD on 2026-10-06: an amendment is a complete copy of the report with the
+    corrected rows changed (Boozman 12/08/2025: 14 rows, Amendment 1: 14 rows, 13 identical).
+    A senator can also file two separate reports on one day, so "same filer, same report date"
+    is not enough: among several earlier versions the amendment replaces the one whose rows it
+    shares most (`rows_of(filing)` → set of row signatures), or failing that the only one with
+    the same number of rows. An amendment whose original is not in the exports replaces nothing.
+    """
+    rows_of = rows_of or (lambda f: set())
     groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for f in filings:
         date, _n = report_key(f.get("title"))
-        if not date:
-            continue
-        groups.setdefault((fold(f.get("first")), fold(f.get("last")), date), []).append(f)
+        if date:
+            groups.setdefault((fold(f.get("first")), fold(f.get("last")), date), []).append(f)
+    unmatched = 0
     for group in groups.values():
-        if len(group) < 2:
-            continue
-        group.sort(key=lambda f: (report_key(f.get("title"))[1], f.get("date_iso") or "", f["id"]))
-        latest = group[-1]
-        if report_key(latest.get("title"))[1] == 0:
-            continue  # two originals for one date: separate reports, keep both
-        for f in group[:-1]:
-            f["superseded_by"] = latest["id"]
+        amendments = sorted((f for f in group if report_key(f.get("title"))[1] > 0),
+                            key=lambda f: (report_key(f.get("title"))[1], f.get("date_iso") or "", f["id"]))
+        for a in amendments:
+            n = report_key(a.get("title"))[1]
+            earlier = [f for f in group if f is not a and not f.get("superseded_by") and report_key(f.get("title"))[1] < n]
+            if not earlier:
+                continue
+            target = earlier[0] if len(earlier) == 1 else None
+            if target is None:
+                mine = rows_of(a)
+                scored = sorted(((len(mine & rows_of(f)), f) for f in earlier), key=lambda x: -x[0])
+                if scored[0][0] > 0 and scored[0][0] > scored[1][0]:
+                    target = scored[0][1]
+                else:
+                    same = [f for f in earlier if len(rows_of(f)) == len(mine)]
+                    target = same[0] if len(same) == 1 else None
+            if target is None:
+                unmatched += 1
+                continue
+            target["superseded_by"] = a["id"]
+    return unmatched
 
 
 def pick_senator(candidates: list[tuple[int, str]], first: str, last: str) -> Optional[int]:
@@ -162,7 +185,15 @@ def process_senate_exports(conn, Json, job, ctx, *, dry_run: bool, reprocess: bo
         return
     for f in filings:
         f["date_iso"] = normalize.parse_date(f.get("date_received")) or f.get("date_iso")
-    mark_superseded(filings)
+
+    def rows_of(f: dict[str, Any]) -> set:
+        if "_rows" not in f:
+            recs = [] if f.get("kind") == "paper" or not f.get("html") else senate_client.parse_ptr_html(
+                f["html"], member="", source_url=f.get("url") or "")
+            f["_rows"] = {(r.transaction_date, r.owner, r.ticker, r.asset, r.transaction_type, r.amount_min, r.amount_max) for r in recs}
+        return f["_rows"]
+
+    ctx.set_extra("senate_amendments_unmatched", mark_superseded(filings, rows_of))
 
     existing: set[str] = set()
     if conn is not None and not reprocess:
@@ -245,7 +276,12 @@ def _process_one(conn, Json, job, senate_client, f: dict[str, Any], ctx, *, dry_
             d = r.to_dict()
             security_id = job.resolve_security(conn, d.get("ticker"), d.get("asset"), job_asset_type(d.get("asset_type")))
             d["asset_type"] = job_asset_type(d.get("asset_type"))
-            rows.append(job.map_transaction_record(d, filing_id, person_id, security_id, conf, filed_at=filed))
+            row = job.map_transaction_record(d, filing_id, person_id, security_id, conf, filed_at=filed)
+            if report_key(f.get("title"))[1] > 0:
+                # An amendment is dated when the correction was filed, not when the trade was first
+                # disclosed — a lag measured to it would mark the senator late by months or years.
+                row["disclosure_lag_days"] = None
+            rows.append(row)
     written = job.reingest_transactions(conn, filing_id, rows)
     ctx.rows_changed += written + 1
     if superseded_by:

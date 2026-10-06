@@ -72,6 +72,38 @@ def test_amendment_supersedes_the_original_only():
     assert all("superseded_by" not in f for f in fs[1:])
 
 
+def test_amendment_replaces_the_report_it_overlaps_when_two_were_filed_that_day():
+    rows = {A: {("r1",), ("r2",), ("r3",), ("r4",)}, B: {("x1",), ("x2",), ("x3",), ("x4",), ("x5",), ("x6",)},
+            C: {("x1",), ("x2",), ("x3",), ("x4",), ("x5",), ("x6-fixed",)}}
+    fs = [
+        {"id": A, "first": "John", "last": "Boozman", "title": "Periodic Transaction Report for 08/17/2026", "date_iso": "2026-08-17"},
+        {"id": B, "first": "John", "last": "Boozman", "title": "Periodic Transaction Report for 08/17/2026", "date_iso": "2026-08-17"},
+        {"id": C, "first": "John", "last": "Boozman", "title": "Periodic Transaction Report for 08/17/2026 (Amendment 1)", "date_iso": "2026-08-17"},
+    ]
+    assert si.mark_superseded(fs, lambda f: rows[f["id"]]) == 0
+    assert fs[1].get("superseded_by") == C and "superseded_by" not in fs[0] and "superseded_by" not in fs[2]
+
+
+def test_amendment_with_no_clear_original_supersedes_nothing():
+    rows = {A: {("r1",)}, B: {("x1",)}, C: {("z1",), ("z2",)}}
+    fs = [
+        {"id": A, "first": "John", "last": "Boozman", "title": "Periodic Transaction Report for 08/17/2026", "date_iso": "2026-08-17"},
+        {"id": B, "first": "John", "last": "Boozman", "title": "Periodic Transaction Report for 08/17/2026", "date_iso": "2026-08-17"},
+        {"id": C, "first": "John", "last": "Boozman", "title": "Periodic Transaction Report for 08/17/2026 (Amendment 1)", "date_iso": "2026-08-17"},
+    ]
+    assert si.mark_superseded(fs, lambda f: rows[f["id"]]) == 1
+    assert all("superseded_by" not in f for f in fs)
+
+
+def test_second_amendment_replaces_the_first():
+    fs = [
+        {"id": A, "first": "Thomas H", "last": "Tuberville", "title": "Periodic Transaction Report for 11/15/2024 (Amendment 1)", "date_iso": "2026-08-05"},
+        {"id": B, "first": "Thomas H", "last": "Tuberville", "title": "Periodic Transaction Report for 11/15/2024 (Amendment 2)", "date_iso": "2026-08-06"},
+    ]
+    si.mark_superseded(fs)
+    assert fs[0].get("superseded_by") == B and "superseded_by" not in fs[1]
+
+
 def test_two_originals_for_one_date_are_both_kept():
     fs = [
         {"id": A, "first": "Rick", "last": "Scott", "title": "Periodic Transaction Report for 09/15/2026", "date_iso": "2026-09-20"},

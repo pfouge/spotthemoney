@@ -1077,3 +1077,22 @@ Design:
 - Tests: `python3 ingest/py/test_senate_import.py` (10). End-to-end against a local database
   with the fixture: original, amendment, paper filing all correct; re-run processes nothing.
 - Not yet seen: a real eFD report page (the fixture is synthetic). Updates are batches, not daily.
+
+### Senate PTRs: first real read (2026-10-06, ~14:10 UTC)
+
+- Peter accepted the eFD agreement in his Chrome. Read through that session, 1.5 s apart: the
+  site's own report search (PTRs received since 10/01/2025) → **177 reports** (162 electronic,
+  15 paper) from **32 senators**, 1,860 transaction rows, 1,106 with a ticker; all 162 pages
+  fetched, 0 errors, every table has the nine expected columns. Export is 590 KB.
+- Real pages parse with the vendored parser unchanged (checked on Fetterman 08/10/2026). Types
+  seen: Purchase, Sale (Full), Sale (Partial), Exchange. Asset types: Stock, Municipal Security,
+  Corporate Bond, Other, Stock Option, Non-Public Stock, Cryptocurrency.
+- **Amendments are full copies** (Boozman 12/08/2025: 14 rows, Amendment 1: 14 rows, 13
+  identical). 17 amendments in the window: 7 replace a report in the window, 10 amend reports
+  from before October 2025 (their originals are not on file, so nothing is double-counted).
+  A senator can file two reports on one day (13 such days), so `mark_superseded` now picks the
+  earlier version by row overlap; on the real set every amendment matched (0 unmatched).
+  Amendment rows carry no disclosure lag (it would be measured to the correction date).
+- Expected after import: 155 live electronic reports (~1,745 rows), 7 superseded, 15 paper held.
+- The export reaches the repo as one browser download that Peter moves into
+  `ingest/data/senate_ptr/` — tool output is too small a channel for 590 KB.
