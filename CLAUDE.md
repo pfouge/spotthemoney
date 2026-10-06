@@ -911,3 +911,17 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
   files with its own unpacker. The build was 55,761 files at the time — watch the file count too.
 - **Insider history:** the 10:04 UTC backfill run finished its insiders job in 19 minutes and
   the chain stopped re-queuing, which is the completion signal (final count not yet read).
+
+### Second deploy failure, 11:37 UTC 2026-10-06: over 20,000 files (Workers Free)
+
+- With the 25 MiB file fixed, `wrangler deploy` failed on the next limit: "27,889 static asset
+  files, which exceeds the Workers Free limit of 20,000 … per Worker version" (code 10304;
+  Workers Paid allows 100,000). The 04:05 UTC build had 7,394 insider pages (about 17,600 files);
+  the finished insider history brought roughly 12,500 insiders, each with a page **and** an
+  `/embed/insiders/<slug>/` page.
+- **Fix:** `web/src/pages/embed/insiders/[slug].astro` deleted; `VizPerson.astro` offers
+  "Embed this chart" for members of Congress only. Stock and Congress embeds are unchanged.
+  Expected count about 15,400 files.
+- **Headroom is about 4,600 files.** Every new insider adds one page. If the tracked universe
+  grows much, either move to Workers Paid or stop giving a page to insiders with no
+  open-market trades. `wrangler` prints the count it read; the API error states the real one.

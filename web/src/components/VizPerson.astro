@@ -1,6 +1,8 @@
 ---
 // Chart deck for one member or insider: trade timeline, portfolio mix, reporting-lag strip.
-// `embedOnly` renders just the timeline for the slim /embed/ page.
+// `embedOnly` renders just the timeline for the slim /embed/ page. Only members of Congress have
+// one: an embed page per corporate insider doubled the file count and took the build past
+// Cloudflare's 20,000-file limit on the free plan (2026-10-06).
 import Viz from "./Viz.astro";
 import { getFlagship, personPath, type Person } from "../lib/flagship";
 import { timelineSvg, treemapSvg, lagStripSvg, usd, PHONE_W } from "../lib/viz";
@@ -32,7 +34,7 @@ const tlSummary = !yearDots.length ? undefined
     <div class="viz-grid">
       <Viz title="Trade timeline" question="When does this person trade, how big, and in which direction? Every trade in the last 12 months." wide={true}
         legend={[["v-buy", "Bought (above the line)"], ["v-sell", "Sold (below the line)"], ...(hasOther ? [["v-muted", "Other transaction"] as [string, string]] : [])]}
-        svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} embed={path ? `/embed${path}` : null} embedTitle={`${p.name} disclosed trades`} />
+        svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} embed={path && p.isCongress ? `/embed${path}` : null} embedTitle={`${p.name} disclosed trades`} />
       <Viz title="Portfolio mix" question="Which stocks does this person trade most? Tile size is dollars traded, all time on record."
         svg={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`)} svgPhone={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`, 230, PHONE_W)}
         summary={mix.length ? `${p.name} has traded ${mix.length} ${mix.length === 1 ? "stock" : "stocks"} on record; the largest by dollars is ${[...mix].sort((a, b) => b.value - a.value)[0]!.name}.` : undefined} />
