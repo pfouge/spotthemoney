@@ -256,7 +256,12 @@ async function load(): Promise<Flagship> {
       const basis = { shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice: t.security_id != null ? refPrice.get(t.security_id) : null };
       const value = tradeValue(basis) ?? (t.shares != null && t.price != null && t.price > 0 ? null : t.amount_high ?? null);
       t.price = unitPrice(basis) ?? t.price;
-      const txn: Txn = { id: t.id, filingId: t.filing_id, personId: t.person_id, securityId: t.security_id, side: t.side, code: t.txn_code,
+      // Options, warrants and other derivative rows are not purchases or sales of the stock: a put
+      // bought is a bet against it, and the dollars are a premium, not shares × share price. They
+      // stay in the tables, marked "Option · derivative", and out of every buy/sell total
+      // (all of which key on side being buy or sell).
+      const side = f.source === "sec_form4" && t.is_derivative === true && (t.side === "buy" || t.side === "sell") ? "option" : t.side;
+      const txn: Txn = { id: t.id, filingId: t.filing_id, personId: t.person_id, securityId: t.security_id, side, code: t.txn_code,
         isDerivative: t.is_derivative, txnDate: t.txn_date, disclosedAt: t.disclosed_at ?? f.filedAt?.slice(0, 10) ?? null,
         amountLow: t.amount_low, amountHigh: t.amount_high, shares: t.shares, price: t.price, lagDays: t.disclosure_lag_days,
         is10b51: t.is_10b5_1, ownerType: t.owner_type, assetType: t.asset_type, source: f.source, sourceUrl: f.sourceUrl,

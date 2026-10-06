@@ -925,3 +925,18 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
 - **Headroom is about 4,600 files.** Every new insider adds one page. If the tracked universe
   grows much, either move to Workers Paid or stop giving a page to insiders with no
   open-market trades. `wrangler` prints the count it read; the API error states the real one.
+
+### Derivative rows are out of every buy/sell total (2026-10-06, after the Magnetar fix went live)
+
+- Deploy of `6146262` succeeded 11:47 UTC: live `/stocks/crwv/` shows Magnetar at $4.3B (was
+  "$68618B"); heatmap files are 1.8 MiB (24,168 rows, last 90 days) and 7.1 MiB (103,412 older).
+- Peter's follow-up: option rows distort the collective numbers generally. They did — a put
+  bought counted as dollars "bought" of the stock, a call sold as dollars "sold".
+- **Rule:** in `flagship.ts`, a Form 4 row with `is_derivative` and side buy/sell gets side
+  `option`. Every aggregate keys on side buy/sell, so derivative rows drop out of who-is-trading,
+  net buying/selling, the tape, biggest trades and ratios; they stay in the tables as
+  "Option / conversion · derivative" with their value. `insiderRows` leaves them off the heatmap.
+  Methodology says so. The database is unchanged.
+- Not changed: codes F (shares withheld for tax) and D (returned to the issuer) on stock rows
+  still count as "sell" in who-is-trading (`codeToSide` in `sec_form4.ts`); the heatmap's default
+  view and `isSignal` already count only P and S.

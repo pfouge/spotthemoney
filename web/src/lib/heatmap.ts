@@ -101,6 +101,7 @@ export function insiderRows(m: Flagship): InsiderRow[] {
   for (const t of m.txns) {
     if (t.source !== "sec_form4") continue;
     if (!t.isPublished) continue;
+    if (t.isDerivative === true) continue;                // the map is dollars of stock; option and warrant rows are in the tables
     const d = tradeDate(t); if (!d || d < cutoff) continue;
     if (t.securityId == null) continue;
     const s = m.securities.get(t.securityId); if (!s) continue;
