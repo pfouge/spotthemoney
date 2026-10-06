@@ -19,6 +19,12 @@ export interface Coverage {
   tables: Record<string, { month: string; rows: number }[]>;
   totals: Record<string, number>;
   quality: Record<string, number>;
+  /** Largest tables: total size on disk (with indexes and TOAST) and estimated rows. */
+  tableSizes: { table: string; mb: number; rows: number }[];
+  /** Megabytes of stored filing payload (the parsed filing kept as JSON) per source. */
+  payloadMb: Record<string, number>;
+  /** Rows with no ticker, by source and asset type — bonds and funds are expected, "stock" is a miss. */
+  noTicker: { source: string; assetType: string; rows: number }[];
   errors: string[];
 }
 
@@ -32,7 +38,7 @@ const numericStats = (stats: unknown): Record<string, number> => {
 };
 
 async function load(): Promise<Coverage> {
-  const c: Coverage = { builtAt: new Date().toISOString(), connected: false, filings: [], txns: [], runs: [], tables: {}, totals: {}, quality: {}, errors: [] };
+  const c: Coverage = { builtAt: new Date().toISOString(), connected: false, filings: [], txns: [], runs: [], tables: {}, totals: {}, quality: {}, tableSizes: [], payloadMb: {}, noTicker: [], errors: [] };
   const sql = flagshipSql();
   if (!sql) return c;
   c.connected = true;
@@ -100,6 +106,21 @@ async function load(): Promise<Coverage> {
              count(*) filter (where t.person_id is null)::int as "noPerson"
         from transactions t join filings f on f.id = t.filing_id`;
     c.quality = { ...q };
+  });
+  await step("tableSizes", async () => {
+    c.tableSizes = (await sql<{ table: string; mb: number; rows: number }[]>`
+      select c.relname::text as "table", round(pg_total_relation_size(c.oid) / 1048576.0, 1)::float8 as mb, greatest(c.reltuples, 0)::bigint::int as rows
+        from pg_class c join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'public' and c.relkind = 'r' order by pg_total_relation_size(c.oid) desc limit 16`).map((r) => ({ ...r }));
+  });
+  await step("payloadMb", async () => {
+    const rows = await sql<{ source: string; mb: number }[]>`select source::text as source, round(sum(pg_column_size(payload)) / 1048576.0, 1)::float8 as mb from filings group by 1`;
+    for (const r of rows) c.payloadMb[r.source] = r.mb;
+  });
+  await step("noTicker", async () => {
+    c.noTicker = (await sql<{ source: string; assetType: string; rows: number }[]>`
+      select f.source::text as source, coalesce(t.asset_type, 'unknown') as "assetType", count(*)::int as rows
+        from transactions t join filings f on f.id = t.filing_id where t.security_id is null group by 1, 2 order by 1, 3 desc`).map((r) => ({ ...r }));
   });
   return c;
 }

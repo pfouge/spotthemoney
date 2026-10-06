@@ -1011,3 +1011,28 @@ Open, needs the coverage numbers and Peter's decisions: the House gap; a Senate 
 machine can reach eFD; GitHub runners cannot); `--reprocess` is the only way a filing once
 marked needs_ocr gets re-read; the 7-day default window loses filings if runs are skipped
 for a week; late/missing scheduled runs.
+
+### Data audit, part 2: what the coverage report showed (2026-10-06, 13:10 UTC)
+
+Read from live `/data/coverage.json` (build 13:09 UTC):
+
+- **House: ingestion is complete for what can be read.** 409 PTRs filed in 2026 on file = the
+  Clerk index (409). 362 published (all the electronic ones); 47 paper filings held as
+  `needs_ocr` (62 held in all, 12 months; `reviewQueuePending` 62). 113 House filers on file,
+  103 with something published — ten members are invisible until their scans are transcribed.
+  105 published 2026 filings have no ticker row: checked on the member pages, the no-ticker rows
+  are bonds (454), other assets (136), funds (27), crypto (5) and 62 "stock (no ticker)".
+- **Senate: 0 filings.** 100 senators are on the roster with no trades.
+- **Database is 402 MB.** `fec_schedule_a_history` stopped itself at its 400 MB guard
+  (requests 0 on the 12:17 UTC run): 423 of 806 committees have donation history. It was
+  262 MB at 02:00 UTC — the insider history and donations added ~140 MB in ten hours.
+  Supabase's free plan allows 500 MB. This push adds table sizes to the report to see where.
+- **Form 4:** history pass complete (48,730 filings fetched, 896 tickers processed, 0 remaining,
+  5 truncated at the page cap, 131 of 1,027 universe tickers have no SEC CIK). 2,600–6,800
+  filings per month since 2025-10. **The daily `sec_form4` run's last two runs failed** (Oct 5,
+  quarantine limit); the fix (`69b524a`) has not had a daily run since.
+- **Donations daily pass covers 50 of 806 committees per run** (756 deferred), so a committee is
+  refreshed about every 16 days.
+- Quality counters: 10 trades dated after their filing (3 in the future), 20 Form 4 rows whose
+  shares × price exceeds $1T (the price-box rule handles them), 759 rows with no ticker.
+- No scheduled daily run had started by 13:11 UTC on Oct 6.
