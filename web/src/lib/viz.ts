@@ -58,7 +58,7 @@ export function gaugeSvg(d: { buy: number; sell: number; monthly: { label: strin
   if (pts.length >= 2) {
     const top = 112, bot = 208;
     const x = (i: number) => 34 + (i * (W - 50)) / (d.monthly.length - 1 || 1), y = (v: number) => bot - (v / 100) * (bot - top);
-    o += text(0, 98, "Buying share of open-market dollars, by month", "vi vb");
+    o += text(0, 98, "Buying share of open-market dollars, by complete month", "vi vb");
     for (const g of [0, 50, 100]) o += `<line x1="34" x2="${W - 16}" y1="${f1(y(g))}" y2="${f1(y(g))}" class="${g === 0 ? "v-axis" : "v-grid"}"/>` + text(28, y(g) + 4, `${g}%`, "vt", "end");
     let path = "", started = false, lastI = -1;
     d.monthly.forEach((m, i) => { if (m.share == null) { started = false; return; } path += `${started ? "L" : "M"}${f1(x(i))},${f1(y(m.share))}`; started = true; lastI = i; });

@@ -162,7 +162,10 @@ export async function selectNotables(sql: ReturnType<typeof getDb>, sinceIso: st
   };
 
   // largest (top 3)
-  for (const r of rows.filter((x) => x.value != null).slice(0, 3)) {
+  // Joint filers each report the same trade; post it once (same ticker, date and value).
+  const seenTrade = new Set<string>();
+  const distinctTrades = rows.filter((x) => { if (x.value == null) return false; const k = `${x.ticker}|${x.txn_date}|${x.value}`; if (seenTrade.has(k)) return false; seenTrade.add(k); return true; });
+  for (const r of distinctTrades.slice(0, 3)) {
     const t = r.ticker ? ` $${r.ticker}` : "";
     take(r, "largest", `${who(r)} ${verb(r)} ${money(r.value)} of${t} on ${fmtDate(r.txn_date)}, disclosed ${fmtDate(r.disclosed_at ?? r.filed_at)}.`, r.ticker ? tickerUrl(r.ticker) : personUrl(r));
   }

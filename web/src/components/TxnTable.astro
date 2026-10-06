@@ -28,6 +28,7 @@ const flags = (t: Txn) => {
   if (t.is10b51) f.push("10b5-1 plan");
   if (t.ownerType && t.ownerType !== "self") f.push(t.ownerType);
   if (t.isDerivative) f.push("derivative");
+  if (t.jointOf != null) f.push("joint filing");
   if (!t.isPublished) f.push("under review");
   return f;
 };

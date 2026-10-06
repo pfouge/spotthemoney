@@ -14,6 +14,7 @@
 
 import postgres from "postgres";
 import { normalizeOrgName, tradeValue, unitPrice, median } from "@stm/shared";
+import { jointDuplicates, type JointRow } from "./joint";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -92,6 +93,8 @@ export interface Txn {
   source: string; sourceUrl: string | null; filedAt: string | null; isPublished: boolean;
   /** shares × price for Form 4; the top of the range for PTRs. */
   value: number | null;
+  /** Set when another filer's earlier Form 4 already reports this same transaction (lib/joint.ts): the id of that row. */
+  jointOf?: number | null;
 }
 export interface LobbyingRow {
   id: number; registrant: string | null; client: string | null; issueArea: string | null; amount: number | null;
@@ -250,6 +253,7 @@ async function load(): Promise<Flagship> {
     }
     const refPrice = new Map<number, number>();
     for (const [id, xs] of refPrices) { const m = median(xs); if (m != null) refPrice.set(id, m); }
+    const built: Txn[] = [];
     for (const t of txnRows) {
       const f = model.filings.get(t.filing_id);
       if (!f) continue;
@@ -267,10 +271,22 @@ async function load(): Promise<Flagship> {
         is10b51: t.is_10b5_1, ownerType: t.owner_type, assetType: t.asset_type, source: f.source, sourceUrl: f.sourceUrl,
         filedAt: f.filedAt, isPublished: f.isPublished, value };
       f.txnCount++;
+      built.push(txn);
+    }
+    // The same trade reported by several joint filers counts once (lib/joint.ts). The filer's own
+    // page keeps the row as filed; every list that spans filers gets it with side "other", which
+    // takes it out of the buy/sell totals the same way a derivative row is.
+    const joint = jointDuplicates(built.filter((t) => t.source === "sec_form4" && (t.side === "buy" || t.side === "sell")).map((t): JointRow =>
+      ({ id: t.id, filingId: t.filingId, personId: t.personId, securityId: t.securityId, date: t.txnDate, code: t.code, isDerivative: t.isDerivative, shares: t.shares, price: t.price, value: t.value })));
+    for (const own of built) {
+      const jointOf = joint.get(own.id) ?? null;
+      if (jointOf != null) own.jointOf = jointOf;
+      const txn: Txn = jointOf != null ? { ...own, side: "other" } : own;
+      const f = model.filings.get(own.filingId)!;
       model.txns.push(txn);
-      const p = t.person_id != null ? model.people.get(t.person_id) : undefined;
-      if (p) p.txns.push(txn);
-      const s = t.security_id != null ? model.securities.get(t.security_id) : undefined;
+      const p = own.personId != null ? model.people.get(own.personId) : undefined;
+      if (p) p.txns.push(own);
+      const s = own.securityId != null ? model.securities.get(own.securityId) : undefined;
       if (s) {
         s.txns.push(txn);
         if (f.source === "sec_form4") s.insiderTxns.push(txn); else s.congressTxns.push(txn);
@@ -281,6 +297,7 @@ async function load(): Promise<Flagship> {
         }
       }
     }
+    if (joint.size) console.log(`flagship: ${joint.size} Form 4 rows repeat a transaction another filer already reported (joint filings) — counted once`);
     for (const p of model.people.values()) {
       p.filings.sort((a, b) => (b.filedAt ?? "").localeCompare(a.filedAt ?? ""));
       p.lastFiledAt = p.filings[0]?.filedAt ?? null;

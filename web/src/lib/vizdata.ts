@@ -54,7 +54,10 @@ export function gaugeData(txns: Txn[]) {
   const sig = txns.filter((t) => t.isPublished && isInsiderTxn(t) && isSignal(t));
   const cur = split(since(sig, 30));
   const now = new Date(), monthly: { label: string; share: number | null }[] = [];
-  for (let k = 11; k >= 0; k--) {
+  // Twelve complete months. The month in progress is left off: a few days of trades (97% buying
+  // on 2026-10-06, from 33 trades) is not comparable with a full month, and the bar above already
+  // covers the last 30 days.
+  for (let k = 12; k >= 1; k--) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - k, 1)), key = d.toISOString().slice(0, 7);
     const s = split(sig.filter((t) => (when(t) ?? "").startsWith(key)));
     monthly.push({ label: MONTH[d.getUTCMonth()]!, share: s.buy + s.sell > 0 ? (s.buy / (s.buy + s.sell)) * 100 : null });

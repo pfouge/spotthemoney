@@ -940,3 +940,24 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
 - Not changed: codes F (shares withheld for tax) and D (returned to the issuer) on stock rows
   still count as "sell" in who-is-trading (`codeToSide` in `sec_form4.ts`); the heatmap's default
   view and `isSignal` already count only P and S.
+
+### Joint filings counted once; partial month off the trend line (2026-10-06)
+
+- Peter asked whether the insiders "Buy / sell pressure" chart is really that skewed (14.7% buying
+  over 30 days; a 97% point for October; busiest day $7.7B). Checked against the live heatmap
+  files: selling far above buying is real, but two things were wrong.
+- **Joint filers:** funds and trusts that hold a stake together each file a Form 4 for the same
+  trade. Carlyle's Medline sale (26,105,840 shares at $41, 2026-03-10, $1.07B) was on file under
+  seven owners and summed to $7.6B; same pattern for ROL (three Rollins entities) and FANG.
+  `web/src/lib/joint.ts`: Form 4 buy/sell rows from different filers with the same stock, date,
+  code, share count and price, worth $250,000 or more, are one transaction; the earliest filing
+  keeps it. In `flagship.ts` the others get `jointOf` and, in every list that spans filers
+  (`model.txns`, security and company lists), side `other`; the filer's own `p.txns` keeps the row
+  as filed. Off the heatmap; flagged "joint filing" in tables. Build log prints the count.
+  Tests: `npx tsx --test scripts/joint.test.ts`.
+- **Partial month:** `gaugeData` plotted the month in progress (33 trades, mostly Berkshire buying
+  Lennar → 97%). The line is now the last twelve complete months.
+- `x_daily.ts` "largest" skips a trade already taken (same ticker, date, value).
+- Left as is, Peter's call: 10% owners account for about $60B of the $92B of open-market selling
+  in the year (pre-dedupe); officers $13.6B, directors $18.8B. Cluster buys in `x_daily` still
+  count joint filers as distinct insiders.
