@@ -1112,3 +1112,38 @@ Design:
 - To add newer Senate reports later: repeat the browser read (Peter accepts the eFD agreement,
   reports are fetched in his session, one download), save as a new
   `ingest/data/senate_ptr/export-YYYY-MM-DD.json`, push, run the Congress PTR workflow.
+
+### Senate live — and a wrong-person match found on the live site (2026-10-06, 14:15 UTC)
+
+- `786210b` (gate migration 0014) deployed 14:12 UTC: 818 Senate rows on the Congress map from
+  20 senators; home lede and the Senate filter switched over.
+- **Wrong attribution, live:** the reports of the late **Lindsey Graham** (filed Oct 2025 – Jan
+  2026) were attached to **Darline Graham**, his sister, appointed to his seat and sworn in July
+  2026. `pick_senator` matched on surname alone when only one sitting senator had it.
+- The filer "not on the roster" was **Markwayne Mullin** (no longer a senator; Alan Armstrong
+  holds an Oklahoma seat and matched correctly) — not Armstrong, as the previous note said.
+- **Fix:** `pick_senator` now also requires the first names to agree (`first_names_agree`: same
+  name, one the start of the other, a nickname table, or a nickname whose formal name starts
+  with a filer initial). All 30 distinct filers in the first export map to the right roster
+  row in the test; "Lindsey Graham" and "Markwayne Mullin" match nobody and become their own
+  people (no state or party — former members are still not on the roster).
+- Apply with the Congress PTR workflow, `extra_args: --reprocess` (re-attaches the filings and
+  rewrites their rows).
+- Lesson: a seat changes hands. Never match a filer to the roster on surname + seat alone when
+  the filing may predate the current holder.
+
+### 15:20 UTC check: deploy "failures" since the Senate went live; state of the day
+
+- Every deploy since 14:11 UTC shows **failure**, but the site is updated each time: the failing
+  step is the post-deploy link check, on one page — `/stocks/-- amcr/`. A Senate exchange row's
+  ticker cell reads "-- AMCR" (one side has no symbol) and went through as a ticker.
+  `senate_import.clean_ticker` now takes the cell's single valid symbol or none, and the import
+  deletes securities whose ticker contains a space or starts with "--" once no row uses them.
+  Needs the Congress PTR workflow with `--reprocess` (same run that applies the Graham fix).
+- **Still unpushed at 15:18 UTC: the Lindsey/Darline Graham fix** — the wrong attribution is live.
+- Donations history: running, past the old 400 MB stop — 508 of 806 committees, database 422 MB.
+- No scheduled run fired on Oct 6: `ingest` (09:17 UTC) and Congress PTR (13:23 UTC) both
+  absent by 15:18 UTC; the only Congress run was the manual one at 14:04. `sec_form4` daily has
+  therefore not run since its two failures on Oct 5.
+- The "cancelled" run conclusions seen all day are deploy jobs replaced by a newer deploy
+  (concurrency group `deploy-web`), not errors.

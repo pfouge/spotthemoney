@@ -125,11 +125,48 @@ def mark_superseded(filings: list[dict[str, Any]], rows_of=None) -> int:
     return unmatched
 
 
+# Legal first names on eFD against the names senators go by on the roster.
+_NICKNAMES = {
+    "tommy": "thomas", "tom": "thomas", "jim": "james", "jimmy": "james", "bill": "william", "billy": "william",
+    "mike": "michael", "ted": "edward", "ed": "edward", "bob": "robert", "rob": "robert", "dick": "richard",
+    "rick": "richard", "chuck": "charles", "jack": "john", "joe": "joseph", "ben": "benjamin", "dan": "daniel",
+    "dave": "david", "pete": "peter", "pat": "patrick", "liz": "elizabeth", "beth": "elizabeth", "maggie": "margaret",
+    "peggy": "margaret", "katie": "katherine", "kate": "katherine", "cindy": "cynthia", "debbie": "deborah",
+    "jeff": "jeffrey", "greg": "gregory", "steve": "steven", "tony": "anthony", "andy": "andrew", "bernie": "bernard",
+    "josh": "joshua", "ron": "ronald", "don": "donald", "tim": "timothy", "chris": "christopher", "mitch": "mitchell",
+}
+
+
+def first_names_agree(efd_first: str, roster_given: list[str]) -> bool:
+    """Could the eFD first name ("A. Mitchell", "Rafael E", "Thomas H") be this roster person
+    ("Mitch", "Ted", "Tommy")? True on a shared name, a name that is the start of the other
+    (three letters or more), a known nickname, or a nickname whose formal name starts with one
+    of the filer's initials (Ted = Edward, filed as "Rafael E")."""
+    mine = [t for t in fold(efd_first).split(" ") if t]
+    theirs = [t for t in roster_given if t]
+    if not mine or not theirs:
+        return False
+    for a in mine:
+        for b in theirs:
+            if len(a) > 1 and len(b) > 1:
+                if a == b or (min(len(a), len(b)) >= 3 and (a.startswith(b) or b.startswith(a))):
+                    return True
+                if _NICKNAMES.get(a) == b or _NICKNAMES.get(b) == a or (_NICKNAMES.get(a) and _NICKNAMES.get(a) == _NICKNAMES.get(b)):
+                    return True
+            formal = _NICKNAMES.get(b)
+            if len(a) == 1 and formal and formal.startswith(a):
+                return True
+    return False
+
+
 def pick_senator(candidates: list[tuple[int, str]], first: str, last: str) -> Optional[int]:
     """Choose the roster row for a filer. candidates = (person_id, full_name) of sitting senators.
 
-    Surname must be present in the roster name; a shared surname (two Scotts) is settled by the
-    first name or its initial. Returns None when nothing, or more than one row, fits.
+    The surname must be in the roster name AND the first names must agree. Surname alone is not
+    enough: on 2026-10-06 the first import gave the late Lindsey Graham's reports to Darline
+    Graham, who was appointed to his seat in July 2026 — same surname, same state. Returns None
+    when nobody fits or more than one person does; the caller then keeps the filer as their own
+    person rather than guess.
     """
     want = surname_tokens(last)
     if not want:
@@ -138,17 +175,10 @@ def pick_senator(candidates: list[tuple[int, str]], first: str, last: str) -> Op
     for pid, full in candidates:
         tokens = [t for t in fold(full).split(" ") if t not in _SUFFIXES]
         if all(w in tokens for w in want):
-            hits.append((pid, tokens))
-    if len(hits) == 1:
-        return hits[0][0]
-    if not hits:
-        return None
-    f_tokens = fold(first).split(" ")
-    exact = [pid for pid, tokens in hits if f_tokens and f_tokens[0] in tokens]
-    if len(exact) == 1:
-        return exact[0]
-    initial = [pid for pid, tokens in hits if f_tokens and tokens and tokens[0][:1] == f_tokens[0][:1]]
-    return initial[0] if len(initial) == 1 else None
+            given = [t for t in tokens if t not in want]
+            if first_names_agree(first, given):
+                hits.append(pid)
+    return hits[0] if len(hits) == 1 else None
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -223,6 +253,19 @@ def process_senate_exports(conn, Json, job, ctx, *, dry_run: bool, reprocess: bo
                 conn.rollback()
             ctx.quarantine(f"senate:{rid}", f"{type(exc).__name__}: {exc}")
 
+    # Securities created from a malformed ticker cell and no longer referenced by any row.
+    if conn is not None and not dry_run:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                delete from securities s
+                 where (position(' ' in s.ticker) > 0 or left(s.ticker, 2) = '--')
+                   and not exists (select 1 from transactions t where t.security_id = s.id)
+                """
+            )
+            ctx.set_extra("senate_bad_tickers_removed", cur.rowcount)
+        conn.commit()
+
 
 def _process_one(conn, Json, job, senate_client, f: dict[str, Any], ctx, *, dry_run: bool, archive) -> None:
     rid, url = f["id"], f.get("url") or f"{SENATE_BASE}/search/view/{f.get('kind', 'ptr')}/{f['id']}/"
@@ -274,6 +317,7 @@ def _process_one(conn, Json, job, senate_client, f: dict[str, Any], ctx, *, dry_
     if not conf["defer_transactions_to_ocr"] and not superseded_by:
         for r in records:
             d = r.to_dict()
+            d["ticker"] = clean_ticker(d.get("ticker"))
             security_id = job.resolve_security(conn, d.get("ticker"), d.get("asset"), job_asset_type(d.get("asset_type")))
             d["asset_type"] = job_asset_type(d.get("asset_type"))
             row = job.map_transaction_record(d, filing_id, person_id, security_id, conf, filed_at=filed)
@@ -296,6 +340,21 @@ def _process_one(conn, Json, job, senate_client, f: dict[str, Any], ctx, *, dry_
                 )
         ctx.bump("senate_needs_ocr")
     conn.commit()
+
+
+_TICKER = re.compile(r"^[A-Z][A-Z0-9]{0,5}([.\-][A-Z0-9]{1,3})?$")
+
+
+def clean_ticker(text: Optional[str]) -> Optional[str]:
+    """The ticker cell as one usable symbol, or None.
+
+    An exchange row lists what was given up and what was received; when only one side has a
+    symbol eFD shows "-- AMCR", which went through as the ticker "-- AMCR" and produced a page
+    at /stocks/-- amcr/ (the deploy's link check failed on it, 2026-10-06). Exactly one valid
+    symbol in the cell is used; none, or two different ones, means no ticker.
+    """
+    symbols = {t for t in (text or "").upper().split() if _TICKER.match(t)}
+    return symbols.pop() if len(symbols) == 1 else None
 
 
 # eFD's "Asset Type" column is free text ("Stock", "Corporate Bond", "Stock Option", …); the rest

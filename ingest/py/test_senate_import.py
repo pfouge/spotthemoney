@@ -114,15 +114,40 @@ def test_two_originals_for_one_date_are_both_kept():
 
 
 ROSTER = [(1, "Tommy Tuberville"), (2, "Rick Scott"), (3, "Tim Scott"), (4, "Mitch McConnell"), (5, "Ben Ray Luján"),
-          (6, "John Kennedy"), (7, "Shelley Moore Capito"), (8, "Chris Van Hollen")]
+          (6, "John Kennedy"), (7, "Shelley Moore Capito"), (8, "Chris Van Hollen"), (9, "Darline Graham"), (10, "Ted Cruz"),
+          (11, "Bill Hagerty"), (12, "Jim Justice"), (13, "Mike Rounds"), (14, "Angus S. King, Jr."), (15, "Katie Boyd Britt"),
+          (16, "Jim Banks"), (17, "Tim Sheehy"), (18, "Chris Coons"), (19, "Ron Wyden"), (20, "Alan Armstrong"),
+          (21, "John W. Hickenlooper"), (22, "Cory A. Booker"), (23, "Gary C. Peters"), (24, "David McCormick"),
+          (25, "Jerry Moran"), (26, "Bernie Moreno"), (27, "Richard Blumenthal"), (28, "Susan M. Collins"),
+          (29, "John R. Curtis"), (30, "Mark R. Warner"), (31, "Sheldon Whitehouse"), (32, "Tina Smith"),
+          (33, "John Fetterman"), (34, "John Boozman")]
 
 
-def test_pick_senator_by_surname():
+def test_pick_senator_by_surname_and_first_name():
     assert si.pick_senator(ROSTER, "Thomas H", "Tuberville") == 1
     assert si.pick_senator(ROSTER, "A. Mitchell", "McConnell, Jr.") == 4
     assert si.pick_senator(ROSTER, "Ben Ray", "Lujan") == 5
     assert si.pick_senator(ROSTER, "Shelley M", "Capito") == 7
     assert si.pick_senator(ROSTER, "Christopher", "Van Hollen") == 8
+
+
+def test_every_filer_in_the_first_export_finds_the_right_senator():
+    want = {("Armstrong", "Alan"): 20, ("BLUMENTHAL", "RICHARD"): 27, ("Banks", "James"): 16, ("Blumenthal", "Richard"): 27,
+            ("Booker", "Cory A"): 22, ("Boozman", "John"): 34, ("Britt", "Katie"): 15, ("Capito", "Shelley M"): 7,
+            ("Collins", "Susan M"): 28, ("Coons", "Christopher A"): 18, ("Cruz", "Rafael E"): 10, ("Curtis", "John R"): 29,
+            ("Fetterman", "John"): 33, ("Hagerty, IV", "William F"): 11, ("Hickenlooper", "John W"): 21,
+            ("Justice, II", "James Conley"): 12, ("King, Jr.", "Angus S"): 14, ("McConnell, Jr.", "A. Mitchell"): 4,
+            ("McCormick", "David H"): 24, ("Moran,", "Jerry"): 25, ("Moreno", "Bernie"): 26, ("Peters", "Gary C"): 23,
+            ("Rounds", "M. Michael"): 13, ("Scott", "Rick"): 2, ("Sheehy", "Timothy P"): 17, ("Smith", "Tina"): 32,
+            ("Tuberville", "Thomas H"): 1, ("Warner", "Mark R"): 30, ("Whitehouse", "Sheldon"): 31, ("Wyden", "Ron L"): 19}
+    got = {k: si.pick_senator(ROSTER, k[1], k[0]) for k in want}
+    assert got == want, {k: (got[k], want[k]) for k in want if got[k] != want[k]}
+
+
+def test_a_successor_with_the_same_surname_is_not_the_filer():
+    # Lindsey Graham's reports must not land on Darline Graham, appointed to his seat in July 2026.
+    assert si.pick_senator(ROSTER, "Lindsey", "Graham") is None
+    assert si.pick_senator(ROSTER, "Darline", "Graham") == 9
 
 
 def test_pick_senator_shared_surname_uses_first_name():
@@ -132,8 +157,18 @@ def test_pick_senator_shared_surname_uses_first_name():
 
 def test_pick_senator_returns_none_when_unsure():
     assert si.pick_senator(ROSTER, "Pat", "Toomey") is None           # not a sitting senator
+    assert si.pick_senator(ROSTER, "Markwayne", "Mullin") is None      # left the Senate
     assert si.pick_senator(ROSTER, "Xavier", "Scott") is None          # two Scotts, neither fits
     assert si.pick_senator(ROSTER, "Rick", "") is None
+    assert si.pick_senator([(1, "John Kennedy"), (2, "John Kennedy")], "John", "Kennedy") is None
+
+
+def test_clean_ticker_takes_one_symbol_or_none():
+    assert si.clean_ticker("AAPL") == "AAPL"
+    assert si.clean_ticker("-- AMCR") == "AMCR"
+    assert si.clean_ticker("brk.b") == "BRK.B"
+    assert si.clean_ticker("BERY AMCR") is None
+    assert si.clean_ticker("--") is None and si.clean_ticker(None) is None and si.clean_ticker("") is None
 
 
 def test_asset_type_mapping():
