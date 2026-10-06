@@ -9,6 +9,10 @@ import {
   nameCandidates,
   slugify,
   fullNameFor,
+  isSameMember,
+  findMember,
+  type Legislator,
+  type UnlinkedFiler,
 } from "./congress_roster.js";
 
 test("chamberForTermType maps rep/sen and rejects unknowns", () => {
@@ -77,4 +81,50 @@ test("slugify: collapses runs of punctuation and trims hyphens", () => {
 test("fullNameFor prefers official_full, falls back to first+last", () => {
   assert.equal(fullNameFor({ first: "Mark", last: "Green", official_full: "Mark E. Green" }), "Mark E. Green");
   assert.equal(fullNameFor({ first: "Mark", last: "Green" }), "Mark Green");
+});
+
+// ── former members ────────────────────────────────────────────────────────
+const leg = (first: string, last: string, type: "rep" | "sen", state: string, party: string, start: string, end: string, extra: Partial<Legislator["name"]> = {}, district?: number): Legislator =>
+  ({ id: { bioguide: `${last[0]}${first.length}${state}` }, name: { first, last, official_full: `${first} ${last}`, ...extra }, terms: [{ type, state, party, start, end, district }] });
+const ROSTER: Legislator[] = [
+  leg("Marjorie", "Greene", "rep", "GA", "Republican", "2025-01-03", "2026-01-05", { official_full: "Marjorie Taylor Greene" }, 14),
+  leg("Markwayne", "Mullin", "sen", "OK", "Republican", "2023-01-03", "2026-03-23"),
+  leg("Lindsey", "Graham", "sen", "SC", "Republican", "2021-01-03", "2026-07-11"),
+  leg("Darline", "Graham", "sen", "SC", "Republican", "2026-07-14", "2027-01-03"),
+  leg("Kevin", "Mullin", "rep", "CA", "Democrat", "2025-01-03", "2027-01-03", {}, 15),
+  leg("Rich", "McCormick", "rep", "GA", "Republican", "2025-01-03", "2027-01-03", { official_full: "Richard McCormick" }, 7),
+  leg("Dave", "McCormick", "sen", "PA", "Republican", "2025-01-03", "2031-01-03", { official_full: "David McCormick" }),
+  leg("Sheila", "Cherfilus-McCormick", "rep", "FL", "Democrat", "2025-01-03", "2026-04-21", {}, 20),
+  leg("Bob", "Graham", "sen", "FL", "Democrat", "1999-01-06", "2005-01-03"),
+];
+const filer = (fullName: string, chamber: "house" | "senate", state: string | null = null, district: string | null = null): UnlinkedFiler => ({ id: 1, fullName, chamber, state, district });
+const TODAY = "2026-10-06";
+
+test("former members are found by name and chamber", () => {
+  assert.equal(findMember(filer("Marjorie Taylor Greene", "house", "GA", "14"), ROSTER, TODAY)?.name.last, "Greene");
+  assert.equal(findMember(filer("Markwayne Mullin", "senate"), ROSTER, TODAY)?.terms[0]!.state, "OK");
+  assert.equal(findMember(filer("Lindsey Graham", "senate"), ROSTER, TODAY)?.name.first, "Lindsey");
+});
+
+test("a successor in the same seat is a different person", () => {
+  assert.equal(isSameMember(filer("Lindsey Graham", "senate", "SC"), ROSTER[3]!), false);
+  assert.equal(findMember(filer("Darline Graham", "senate"), ROSTER, TODAY)?.name.first, "Darline");
+});
+
+test("the name as filed reaches the roster's shorter name", () => {
+  assert.equal(findMember(filer("Richard Dean Dr McCormick", "house", "GA", "7"), ROSTER, TODAY)?.name.first, "Rich");
+  assert.equal(findMember(filer("David H McCormick", "senate"), ROSTER, TODAY)?.name.first, "Dave");
+});
+
+test("chamber, state and age of the last term all have to fit", () => {
+  assert.equal(findMember(filer("Markwayne Mullin", "house"), ROSTER, TODAY), null);            // wrong chamber
+  assert.equal(findMember(filer("Marjorie Taylor Greene", "house", "FL"), ROSTER, TODAY), null); // wrong state
+  assert.equal(findMember(filer("Bob Graham", "senate"), ROSTER, TODAY), null);                  // left in 2005
+  assert.equal(findMember(filer("Pat Nobody", "senate"), ROSTER, TODAY), null);
+});
+
+test("an ambiguous name matches nobody", () => {
+  const two = [...ROSTER, leg("Lindsey", "Graham", "sen", "NC", "Democrat", "2025-01-03", "2027-01-03")];
+  assert.equal(findMember(filer("Lindsey Graham", "senate"), two, TODAY), null);
+  assert.equal(findMember(filer("Lindsey Graham", "senate", "SC"), two, TODAY)?.terms[0]!.state, "SC");
 });

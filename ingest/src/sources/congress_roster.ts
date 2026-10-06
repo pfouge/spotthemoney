@@ -22,6 +22,9 @@ import type { IngestRunResult } from "@stm/shared";
 
 const SOURCE = "congress_roster";
 const DEFAULT_URL = "https://unitedstates.github.io/congress-legislators/legislators-current.json";
+const HISTORICAL_URL = "https://unitedstates.github.io/congress-legislators/legislators-historical.json";
+/** A filer is only looked for among members whose last term ended this recently. */
+export const FORMER_MEMBER_YEARS = 4;
 
 export type Chamber = "house" | "senate";
 
@@ -116,6 +119,48 @@ export function fullNameFor(name: LegislatorName): string {
   return name.official_full?.trim() || `${name.first} ${name.last}`.trim();
 }
 
+// ── former members ────────────────────────────────────────────────────────
+// legislators-current.json holds sitting members only, so a filer who has left Congress never
+// got a party, state or Bioguide ID: Marjorie Taylor Greene (resigned 2026-01-05), Markwayne
+// Mullin (left the Senate 2026-03-23) and the late Lindsey Graham all showed with no party on
+// 2026-10-06. Filers the current roster did not reach are looked up among everyone whose last
+// term ended within FORMER_MEMBER_YEARS, in legislators-historical.json.
+
+/** A `people` row that filed reports but has no Bioguide ID yet. */
+export interface UnlinkedFiler { id: number; fullName: string; chamber: Chamber; state: string | null; district: string | null }
+
+const NAME_SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "v", "dr", "hon", "mr", "mrs", "ms"]);
+const nameTokens = (s: string | undefined): string[] => foldName(s ?? "").split(" ").filter((t) => t && !NAME_SUFFIXES.has(t));
+
+/**
+ * Is this legislator the filer? Same chamber (last term), same state when the filer row has
+ * one, every surname token present in the filed name, and a first name that agrees — equal
+ * to, or the start of / started by (3+ letters), the legislator's first name, nickname or
+ * the first word of the official name. A shared surname and seat is never enough: seats
+ * change hands (Darline Graham holds Lindsey Graham's).
+ */
+export function isSameMember(filer: UnlinkedFiler, leg: Legislator): boolean {
+  const term = currentTerm(leg.terms ?? []);
+  if (!term || chamberForTermType(term.type) !== filer.chamber) return false;
+  if (filer.state && term.state && filer.state !== term.state) return false;
+  const filed = nameTokens(filer.fullName);
+  const surname = nameTokens(leg.name.last);
+  if (!surname.length || !surname.every((t) => filed.includes(t))) return false;
+  const given = filed.filter((t) => !surname.includes(t));
+  const theirs = [leg.name.first, leg.name.nickname, leg.name.official_full?.trim().split(/\s+/)[0]].flatMap((n) => nameTokens(n)).filter((t) => !surname.includes(t));
+  return given.some((a) => theirs.some((b) => a.length > 1 && b.length > 1 && (a === b || (Math.min(a.length, b.length) >= 3 && (a.startsWith(b) || b.startsWith(a))))));
+}
+
+/** The one legislator who is this filer, or null when nobody — or more than one — fits. */
+export function findMember(filer: UnlinkedFiler, legislators: Legislator[], today: string, years = FORMER_MEMBER_YEARS): Legislator | null {
+  const cutoff = `${Number(today.slice(0, 4)) - years}${today.slice(4)}`;
+  const hits = legislators.filter((l) => {
+    const end = currentTerm(l.terms ?? [])?.end;
+    return (!end || end >= cutoff) && isSameMember(filer, l);
+  });
+  return hits.length === 1 ? hits[0]! : null;
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // DB-backed ingest (untested offline; the pure helpers above carry the test coverage).
 // ──────────────────────────────────────────────────────────────────────────
@@ -160,6 +205,7 @@ async function findUnlinkedFilerBySeat(
   chamber: Chamber,
   state: string | null,
   district: string | null,
+  termStart: string | null = null,
 ): Promise<number | null> {
   if (!state) return null;
   const rows = await sql<{ id: number; full_name: string }[]>`
@@ -171,6 +217,11 @@ async function findUnlinkedFilerBySeat(
        and r.state = ${state}
        and (${chamber} = 'senate' or r.district is not distinct from ${district})
        and (r.valid_to is null or r.valid_to >= current_date)
+       -- A seat changes hands: a filer whose reports all predate this member's term is the
+       -- predecessor (Lindsey Graham's reports are not Darline Graham's), not a duplicate.
+       and (${termStart}::date is null
+            or not exists (select 1 from filings f where f.filer_person_id = p.id)
+            or exists (select 1 from filings f where f.filer_person_id = p.id and f.filed_at::date >= ${termStart}::date))
      order by p.id
   `;
   const last = foldName(name.last);
@@ -198,6 +249,7 @@ async function resolvePerson(
   chamber: Chamber,
   state: string | null = null,
   district: string | null = null,
+  termStart: string | null = null,
 ): Promise<{ personId: number; created: boolean }> {
   // Rule 1: already linked by bioguide_id.
   const [byBioguide] = await sql<{ id: number }[]>`
@@ -205,7 +257,7 @@ async function resolvePerson(
   `;
   if (byBioguide) {
     // Rule 1b: a duplicate filer row for the same seat → merge it into the linked row.
-    const dup = await findUnlinkedFilerBySeat(sql, name, chamber, state, district);
+    const dup = await findUnlinkedFilerBySeat(sql, name, chamber, state, district, termStart);
     if (dup != null && dup !== byBioguide.id) {
       await mergePerson(sql, dup, byBioguide.id);
       ctx.extra.merged_duplicates = ((ctx.extra.merged_duplicates as number) ?? 0) + 1;
@@ -236,7 +288,7 @@ async function resolvePerson(
   }
 
   // Rule 2b: the seat (see findUnlinkedFilerBySeat) when the name as filed differs.
-  const bySeat = await findUnlinkedFilerBySeat(sql, name, chamber, state, district);
+  const bySeat = await findUnlinkedFilerBySeat(sql, name, chamber, state, district, termStart);
   if (bySeat != null) {
     await sql`update people set bioguide_id = ${bioguide}, updated_at = now() where id = ${bySeat}`;
     ctx.extra.matched_by_seat = ((ctx.extra.matched_by_seat as number) ?? 0) + 1;
@@ -350,14 +402,77 @@ export async function ingestCongressRoster(): Promise<IngestRunResult> {
       const party = term.party ?? null;
       const validFrom = term.start ?? null;
 
-      const { personId } = await resolvePerson(sql, ctx, bioguide, member.name, chamber, state, district);
+      const { personId } = await resolvePerson(sql, ctx, bioguide, member.name, chamber, state, district, validFrom);
       await upsertCongressRole(sql, ctx, personId, chamber, state, district, party, validFrom);
     } catch (err) {
       ctx.quarantine(bioguide, err instanceof Error ? err.message : String(err));
     }
   }
 
+  try {
+    await linkUnlinkedFilers(sql, ctx, legislators);
+  } catch (err) {
+    // Never fail the roster over the former-member pass; the next run tries again.
+    ctx.extra.former_members_error = 1;
+    console.error(`congress_roster: former-member pass failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   return { source: SOURCE, rowsSeen: ctx.rowsSeen, rowsChanged: ctx.rowsChanged, status: "success", stats: ctx.stats() };
+}
+
+/**
+ * Filers with reports on file and still no Bioguide ID after the current roster: match each
+ * against current + recently departed members and attach ID, party, state, district and the
+ * term's dates (a term that has ended closes the role). The historical file (≈1.3 MB) is
+ * fetched only when there is someone to look up.
+ */
+async function linkUnlinkedFilers(sql: Sql, ctx: RunContext, current: Legislator[]): Promise<void> {
+  const filers = await sql<{ id: number; full_name: string; chamber: Chamber; state: string | null; district: string | null }[]>`
+    select distinct on (p.id) p.id, p.full_name, r.chamber::text as chamber, r.state, r.district
+      from people p
+      join person_roles r on r.person_id = p.id and r.role_kind = 'congress' and r.chamber is not null
+     where p.bioguide_id is null
+       and exists (select 1 from filings f where f.filer_person_id = p.id and f.source in ('house_ptr', 'senate_ptr'))
+     order by p.id, r.id desc
+  `;
+  ctx.extra.unlinked_filers = filers.length;
+  if (!filers.length) return;
+
+  const historical = await fetchJson<Legislator[]>(process.env.CONGRESS_ROSTER_HISTORICAL_URL ?? HISTORICAL_URL);
+  ctx.extra.historical_rows = historical.length;
+  const everyone = [...current, ...historical];
+  const today = new Date().toISOString().slice(0, 10);
+  let linked = 0, merged = 0, unmatched = 0;
+
+  for (const f of filers) {
+    const filer: UnlinkedFiler = { id: f.id, fullName: f.full_name, chamber: f.chamber, state: f.state, district: f.district };
+    const leg = findMember(filer, everyone, today);
+    if (!leg) { unmatched++; console.log(`congress_roster: no member found for filer "${f.full_name}" (${f.chamber}${f.state ? ", " + f.state : ""})`); continue; }
+    const term = currentTerm(leg.terms)!;
+    const bioguide = leg.id.bioguide;
+    const [owner] = await sql<{ id: number }[]>`select id from people where bioguide_id = ${bioguide} limit 1`;
+    let personId = f.id;
+    if (owner && owner.id !== f.id) {
+      await mergePerson(sql, f.id, owner.id);   // the roster already has this member: fold the filer row in
+      personId = owner.id;
+      merged++;
+    } else {
+      await sql`update people set bioguide_id = ${bioguide}, updated_at = now() where id = ${f.id}`;
+      linked++;
+    }
+    const ended = term.end && term.end < today ? term.end : null;
+    await sql`
+      update person_roles
+         set party = ${term.party ?? null}, state = ${term.state ?? null}, district = ${districtForTerm(term)},
+             valid_from = coalesce(${term.start ?? null}::date, valid_from), valid_to = ${ended}::date
+       where id = (select id from person_roles where person_id = ${personId} and role_kind = 'congress' and chamber = ${f.chamber} order by id desc limit 1)
+    `;
+    ctx.rowsChanged++;
+    console.log(`congress_roster: filer "${f.full_name}" is ${fullNameFor(leg.name)} (${bioguide}, ${term.party ?? "?"}-${term.state ?? "?"}${ended ? ", left " + ended : ""})`);
+  }
+  ctx.extra.former_members_linked = linked;
+  ctx.extra.former_members_merged = merged;
+  ctx.extra.unlinked_filers_unmatched = unmatched;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

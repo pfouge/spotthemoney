@@ -299,8 +299,10 @@ def resolve_person(conn, member: str, chamber: str, state_district: Optional[str
             """
             select p.id from people p
               join person_roles r on r.person_id = p.id and r.role_kind = 'congress' and r.chamber = %s
-             where lower(p.full_name) = lower(%s) and (r.valid_to is null or r.valid_to >= current_date)
-             order by p.id limit 1
+             where lower(p.full_name) = lower(%s)
+             -- a sitting member first; a former member (role closed by congress_roster) still
+             -- resolves to their own row instead of spawning a duplicate on --reprocess
+             order by (r.valid_to is null or r.valid_to >= current_date) desc, p.id limit 1
             """,
             (chamber, name),
         )

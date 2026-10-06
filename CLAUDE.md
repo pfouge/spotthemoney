@@ -1147,3 +1147,38 @@ Design:
   therefore not run since its two failures on Oct 5.
 - The "cancelled" run conclusions seen all day are deploy jobs replaced by a newer deploy
   (concurrency group `deploy-web`), not errors.
+
+### Former members get their party; why scheduled runs look missing (2026-10-06, ~15:50 UTC)
+
+**Scheduled runs.** Nothing is broken or disabled (all workflows `active`, GitHub status
+operational). GitHub starts this repo's scheduled runs hours after the cron time, every day:
+
+| Workflow (cron, UTC) | Oct 2 | Oct 3 | Oct 4 | Oct 5 |
+|---|---|---|---|---|
+| ingest (09:17) | 15:28 | 14:10 | 14:40 | 18:25 |
+| Congress PTR (13:23) | 18:18 | 17:08 | 17:23 | 21:08 |
+| x-daily (15:47) | 20:01 | 18:45 | — | 22:12 |
+
+So "no run by 15:18 UTC" on Oct 6 is the usual 5–9 hour delay, not a missed run. GitHub documents
+schedule events as best-effort (delayed, sometimes dropped, under load). The only way to run at
+a set time is to trigger `workflow_dispatch` from outside GitHub (dispatched runs start within
+seconds — every manual run today did). Also: `ingest` has ended in **failure** on each of those
+four days.
+
+**Former members** (`congress_roster.ts`, `linkUnlinkedFilers`). The roster file holds sitting
+members only. After the normal pass, filers that have reports but no Bioguide ID are looked up
+in current + `legislators-historical.json` (fetched only when needed; last term within 4 years):
+same chamber, same state if the filer row has one, surname present, first names agree
+(`isSameMember` / `findMember`, unique match only). A match gets the Bioguide ID, party, state,
+district and term dates; an ended term closes the role (`valid_to`). If the roster already has
+that member, the filer row is merged into it. Checked in the dataset: Greene (R-GA-14, left
+2026-01-05), Mullin (R-OK, left 2026-03-23), Lindsey Graham (R-SC, died 2026-07-11) are present.
+- `findUnlinkedFilerBySeat` now skips a filer whose reports all predate the member's term start
+  (a predecessor in the same seat with the same surname is not a duplicate).
+- Because roles can now be closed: `resolve_person` (Python) matches an exact name in the
+  chamber whether or not the role is active (active first), and `resolve_senator` tries sitting
+  senators, then former ones — otherwise `--reprocess` would create a second person.
+- Tests: `npx tsx --test ingest/src/sources/congress_roster.test.ts` (14). End to end on a local
+  database with fixture rosters: the three former members linked with party and closed roles,
+  Lindsey Graham not merged into Darline Graham, an unknown filer left alone.
+- Run with: Actions → ingest → source `congress_roster`.

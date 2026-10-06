@@ -190,12 +190,23 @@ def resolve_senator(conn, job, first: str, last: str, ctx) -> int:
             """
             select p.id, p.full_name from people p
               join person_roles r on r.person_id = p.id and r.role_kind = 'congress' and r.chamber = 'senate'
-             where r.valid_to is null or r.valid_to >= current_date
              order by (p.bioguide_id is null), p.id
             """
         )
-        candidates = [(r[0], r[1]) for r in cur.fetchall()]
-    pid = pick_senator(candidates, first, last)
+        everyone = cur.fetchall()
+        cur.execute(
+            """
+            select p.id from people p
+              join person_roles r on r.person_id = p.id and r.role_kind = 'congress' and r.chamber = 'senate'
+             where r.valid_to is null or r.valid_to >= current_date
+            """
+        )
+        sitting = {r[0] for r in cur.fetchall()}
+    # Sitting senators first; then anyone who has held a Senate role (a former senator whose
+    # role congress_roster has closed). Both need surname and first name to agree.
+    pid = pick_senator([(r[0], r[1]) for r in everyone if r[0] in sitting], first, last)
+    if pid is None:
+        pid = pick_senator([(r[0], r[1]) for r in everyone if r[0] not in sitting], first, last)
     if pid is not None:
         return pid
     ctx.bump("senate_people_not_on_roster")
