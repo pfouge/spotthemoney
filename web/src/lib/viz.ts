@@ -16,6 +16,7 @@ const f1 = (n: number) => n.toFixed(1);
 
 export function usd(v: number): string {
   const a = Math.abs(v), s = v < 0 ? "-" : "";
+  if (a >= 1e12) return `${s}$${(a / 1e12).toFixed(a >= 1e13 ? 0 : 1)}T`;
   if (a >= 1e9) return `${s}$${(a / 1e9).toFixed(a >= 1e10 ? 0 : 1)}B`;
   if (a >= 1e6) return `${s}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M`;
   if (a >= 1e3) return `${s}$${Math.round(a / 1e3)}K`;

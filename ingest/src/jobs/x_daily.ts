@@ -130,7 +130,11 @@ export async function selectNotables(sql: ReturnType<typeof getDb>, sinceIso: st
              s.ticker::text as ticker, c.name as company_name, t.side::text as side, t.txn_code,
              t.txn_date::text as txn_date, t.disclosed_at::text as disclosed_at, f.filed_at::text as filed_at,
              t.disclosure_lag_days as lag_days,
-             case when t.shares is not null and t.price is not null then (t.shares * t.price)::float8
+             -- Derivative rows carry no dollar figure here: some filers put the row total in the
+             -- price box, and shares × that is nonsense (shared/tradevalue.ts). Nothing above $1T.
+             case when coalesce(t.is_derivative, false) then null
+                  when t.shares is not null and t.price is not null then
+                    case when (t.shares * t.price) <= 1e12 then (t.shares * t.price)::float8 end
                   else t.amount_high::float8 end as value,
              (select min(f2.filed_at)::text from filings f2 where f2.filer_person_id = p.id) as first_filing_at
         from transactions t
@@ -179,7 +183,7 @@ export async function selectNotables(sql: ReturnType<typeof getDb>, sinceIso: st
     with buys as (
       select s.ticker::text as ticker, t.person_id, t.filing_id, f.filed_at, (t.shares * t.price)::float8 as value
         from transactions t join filings f on f.id = t.filing_id join securities s on s.id = t.security_id
-       where f.is_published and f.source = 'sec_form4' and t.txn_code = 'P' and t.review in ('auto_approved','approved')
+       where f.is_published and f.source = 'sec_form4' and t.txn_code = 'P' and not coalesce(t.is_derivative, false) and t.review in ('auto_approved','approved')
          and f.filed_at >= now() - interval '30 days'
     )
     select ticker, count(distinct person_id)::int as buyers, coalesce(sum(value),0)::float8 as total,

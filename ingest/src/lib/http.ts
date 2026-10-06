@@ -21,6 +21,10 @@ const DEFAULT_UA =
 const MIN_HOST_GAP_MS = 1500;
 const MIN_GAP_FLOOR_MS = 200;
 const MAX_RETRIES = 3;
+// A server may answer 429 with "Retry-After: 3600". Sleeping that long inside a job only
+// gets the job killed by its timeout (the FEC history pass, 2026-10-06). Past this limit the
+// request fails at once and the caller decides what to do.
+const MAX_RETRY_AFTER_MS = 90_000;
 
 const lastRequestAt = new Map<string, number>();
 
@@ -45,6 +49,8 @@ export interface PoliteFetchOptions {
   userAgent?: string;
   /** Per-host gap for this call, only for hosts with a published rate limit (see header, rule 2). */
   minGapMs?: number;
+  /** Fail a 429 at once instead of backing off — for callers that pace themselves. */
+  noRetryOn429?: boolean;
 }
 
 async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Promise<Response> {
@@ -78,6 +84,9 @@ async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Pr
       const retryAfter = Number(res.headers.get("retry-after"));
       const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : backoffMs(attempt);
       lastError = new Error(`HTTP ${res.status} from ${u.host}${u.pathname}`);
+      if (wait > MAX_RETRY_AFTER_MS || (res.status === 429 && opts.noRetryOn429)) {
+        throw new Error(`HTTP ${res.status} from ${u.host}${u.pathname} (retry-after ${Math.round(wait / 1000)}s — not waiting)`);
+      }
       if (attempt < MAX_RETRIES) await sleep(wait);
       continue;
     }

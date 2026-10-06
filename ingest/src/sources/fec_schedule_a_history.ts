@@ -17,10 +17,16 @@
 // Only sort=-contribution_receipt_date is used: sorting by amount timed out at the FEC
 // even for a single member committee (HTTP 504, 2026-10-05).
 //
-// BUDGET: the key allows 1,000 calls an hour and the daily job uses some of them, so a run
-// stops at FEC_HISTORY_MAX_REQUESTS (default 600) or FEC_HISTORY_MAX_MINUTES (default 30)
-// and reports "partial"; re-run (at most hourly) until it reports success. A 429 stops it
-// the same way.
+// BUDGET AND PACING (rewritten 2026-10-06): the key allows 1,000 calls in any rolling hour.
+// The first version sent 600 requests in the first 15 minutes of each ~47-minute backfill
+// cycle, so two cycles put ~1,200 in one hour; the FEC answered 429 with a long Retry-After,
+// the HTTP client slept on it, and the job was killed by its 45-minute timeout — which also
+// ended the backfill chain. Now:
+//   - one request every FEC_GAP_MS (3.7 s = 973 an hour at most, whatever the cycle timing);
+//   - a run lasts FEC_HISTORY_MAX_MINUTES (default 36) and reports "partial" until done;
+//   - a 429 (the daily job shares the key) is not retried by the HTTP client: the pass waits
+//     five minutes and tries again while its time budget lasts, so a rate-limited cycle
+//     takes its full time instead of spinning the chain.
 //
 // DATABASE GUARD: receipts are the one table here that can outgrow the database plan. The
 // pass refuses to start, and stops between committees, once pg_database_size exceeds
@@ -38,6 +44,8 @@ import type { IngestRunResult } from "@stm/shared";
 const SOURCE = "fec_schedule_a_history";
 const BASE_URL = `${process.env.FEC_API_BASE ?? "https://api.open.fec.gov/v1"}/schedules/schedule_a/`;
 const PER_PAGE = 100;
+const FEC_GAP_MS = 3700;
+const RATE_LIMIT_PAUSE_MS = Number(process.env.FEC_HISTORY_429_PAUSE_MS ?? 5 * 60_000);
 export const FEC_HISTORY_FLOOR = "2025-10-01";
 
 interface Cursor { last_index?: string | number | null; last_contribution_receipt_date?: string | null }
@@ -88,8 +96,8 @@ export async function ingestFecScheduleAHistory(): Promise<IngestRunResult> {
   const floor = process.env.FEC_HISTORY_SINCE ?? FEC_HISTORY_FLOOR;
   const fullCap = Number(process.env.FEC_HISTORY_FULL_CAP ?? 3000);
   const slicePages = Number(process.env.FEC_HISTORY_SLICE_PAGES ?? 2);
-  const maxRequests = Number(process.env.FEC_HISTORY_MAX_REQUESTS ?? 600);
-  const maxMinutes = Number(process.env.FEC_HISTORY_MAX_MINUTES ?? 30);
+  const maxRequests = Number(process.env.FEC_HISTORY_MAX_REQUESTS ?? 900);
+  const maxMinutes = Number(process.env.FEC_HISTORY_MAX_MINUTES ?? 36);
   const maxDbMb = Number(process.env.FEC_HISTORY_MAX_DB_MB ?? 400);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -116,6 +124,7 @@ export async function ingestFecScheduleAHistory(): Promise<IngestRunResult> {
   let full = 0;
   let sampled = 0;
   let failedCommittees = 0;
+  let rateLimited = 0;
   let sizeMb = await dbMb();
   const sizeAtStart = sizeMb;
   const outOfBudget = () => requests >= maxRequests || Date.now() - startedAt > maxMinutes * 60_000;
@@ -124,16 +133,25 @@ export async function ingestFecScheduleAHistory(): Promise<IngestRunResult> {
 
   /** Fetch one page and store it. Returns the page, or null when the run must stop. */
   async function pull(committee: { id: number; fec_id: string }, minDate: string, maxDate: string, cursor?: Cursor): Promise<Page | "failed" | null> {
-    if (outOfBudget()) { stopped = "budget reached"; return null; }
     let data: Page;
-    try {
-      requests++;
-      data = await fetchJson<Page>(url(key!, committee.fec_id, minDate, maxDate, cursor));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("429")) { stopped = "rate limited (429)"; return null; }
-      ctx.quarantine(`${SOURCE}:${committee.fec_id}`, message);
-      return "failed";
+    for (;;) {
+      if (outOfBudget()) { stopped = rateLimited > 0 ? "rate limited (429)" : "budget reached"; return null; }
+      try {
+        requests++;
+        data = await fetchJson<Page>(url(key!, committee.fec_id, minDate, maxDate, cursor), { minGapMs: FEC_GAP_MS, noRetryOn429: true });
+        break;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("HTTP 429")) {
+          rateLimited++;
+          const left = maxMinutes * 60_000 - (Date.now() - startedAt);
+          if (left <= 0) { stopped = "rate limited (429)"; return null; }
+          await new Promise((r) => setTimeout(r, Math.min(RATE_LIMIT_PAUSE_MS, left)));
+          continue;
+        }
+        ctx.quarantine(`${SOURCE}:${committee.fec_id}`, message);
+        return "failed";
+      }
     }
     const batch: { committee_id: number; donor_name: string | null; donor_employer: string | null; donor_state: string | null; amount: number | null; donated_at: string; source_ref: string }[] = [];
     for (const r of data.results ?? []) {
@@ -215,7 +233,7 @@ export async function ingestFecScheduleAHistory(): Promise<IngestRunResult> {
   sizeMb = await dbMb();
   const remaining = todo.length - done;
   console.log(`${SOURCE}: ${done} committee(s) done this run (${full} in full, ${sampled} sampled), ${remaining} of ${totalCommittees} still to do, ` +
-    `${requests} requests, ${stopped ? `stopped: ${stopped}` : "finished"}; database ${sizeMb} MB`);
+    `${requests} requests${rateLimited ? `, ${rateLimited} rate-limit pause(s)` : ""}, ${stopped ? `stopped: ${stopped}` : "finished"}; database ${sizeMb} MB`);
 
   ctx.extra["history_since"] = floor;
   ctx.extra["committees_total"] = totalCommittees;
@@ -225,6 +243,7 @@ export async function ingestFecScheduleAHistory(): Promise<IngestRunResult> {
   ctx.extra["committees_failed"] = failedCommittees;
   ctx.extra["committees_remaining"] = remaining;
   ctx.extra["requests"] = requests;
+  ctx.extra["rate_limited_429"] = rateLimited;
   ctx.extra["stopped"] = stopped;
   ctx.extra["db_size_mb_start"] = sizeAtStart;
   ctx.extra["db_size_mb"] = sizeMb;

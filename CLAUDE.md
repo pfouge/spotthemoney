@@ -855,3 +855,39 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
   - Anything above $6 trillion is discarded.
 - Not verified: SNDK and STX show mega; plausible only if their 2026 share prices are very
   high — no price source here to check against.
+
+### Backfill state at 02:30 UTC, 2026-10-06 — lobbying done, donations pass fixed
+
+- **Lobbying history: complete.** Eight cycles (18:01 → 01:15 UTC); the last one ended early
+  and the chain did not re-queue it. Live `/lobbying/`: 55,894 filings for 2026 reporting
+  $3.39B (was 2,133 / $37M as a sample). Ran keyless (~600 pages a cycle) — `LDA_API_KEY`
+  is not set or not accepted.
+- **Donations history: stalled, fixed in code.** The 00:42 UTC job was cancelled by its
+  45-minute timeout: 600 requests in the first 15 minutes of each ~47-minute cycle put
+  ~1,200 calls in one hour, the FEC answered 429 with a long Retry-After, and `lib/http`
+  slept on it. Fixes: `lib/http.ts` no longer waits on a Retry-After above 90 s (and has a
+  `noRetryOn429` option); `fec_schedule_a_history` paces at one request per 3.7 s (973/hour
+  ceiling), runs 36 minutes, and on a 429 pauses five minutes and retries inside its budget.
+  The cancelled job also ended the backfill chain (nothing reported "partial").
+- **Insider history: fell out of the chain during GitHub's Actions outage** (its job was
+  cancelled while queued at 20:55 UTC, so it never reported "partial"). One manual run at
+  21:43 UTC; none since. Restarted 02:30 UTC via `backfill.yml` defaults.
+- **Market-cap bands after the rule fix:** NOVT mid, NTES unbanded — confirmed live. Congress
+  map 378 of 797 tickers banded; JPM, XOM, GS still unbanded until their insider filings load.
+- GitHub's unauthenticated API allows ~60 calls an hour from the browser; the checks were
+  hitting that. Job logs sometimes do not render in the hidden browser window.
+
+### Trade values: a row total in the Form 4 price box (2026-10-06)
+
+- **Symptom:** `/stocks/crwv` showed Magnetar Financial LLC selling "$68618B". Cause: on its
+  CoreWeave call-option sales (e.g. accession 0001104659-26-097430, 2026-08-12) Magnetar put the
+  total premium for the row in "price per share" (627,486 options, "price" $12,502,658.55 =
+  $19.925 each). `flagship.ts` multiplied shares × price, squaring the quantity.
+- **Rule, in `shared/src/tradevalue.ts` (tests: `npx tsx --test scripts/tradevalue.test.ts`):**
+  the price box holds the row total when a derivative's price is over 3× the stock's typical
+  price (median of its open-market insider trades; over $25,000 when there is none), or a stock
+  row's price is over 50× that median. Then value = the box, displayed price = box ÷ units. Any
+  value above $1 trillion is dropped. The database keeps the numbers exactly as filed.
+- `flagship.ts` applies it once when building the model, so every chart, table and heatmap gets
+  the corrected value and per-unit price. `x_daily.ts` gives derivative rows no dollar value
+  and leaves them out of cluster buys. `viz.ts` `usd()` now prints trillions as "T".

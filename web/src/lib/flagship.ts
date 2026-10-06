@@ -13,7 +13,7 @@
 // pages render their empty-state reason lines instead of blank tables.
 
 import postgres from "postgres";
-import { normalizeOrgName } from "@stm/shared";
+import { normalizeOrgName, tradeValue, unitPrice, median } from "@stm/shared";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -240,10 +240,22 @@ async function load(): Promise<Flagship> {
         }
       }
     }
+    // Typical share price per security (median of open-market insider trades): the yardstick
+    // that tells a per-share price from a row total typed into the price box (shared/tradevalue).
+    const refPrices = new Map<number, number[]>();
+    for (const t of txnRows) {
+      if (t.security_id == null || t.is_derivative === true || !(t.txn_code === "P" || t.txn_code === "S") || !(t.price != null && t.price > 0)) continue;
+      if (model.filings.get(t.filing_id)?.source !== "sec_form4") continue;
+      const xs = refPrices.get(t.security_id); if (xs) xs.push(t.price); else refPrices.set(t.security_id, [t.price]);
+    }
+    const refPrice = new Map<number, number>();
+    for (const [id, xs] of refPrices) { const m = median(xs); if (m != null) refPrice.set(id, m); }
     for (const t of txnRows) {
       const f = model.filings.get(t.filing_id);
       if (!f) continue;
-      const value = t.shares != null && t.price != null && t.price > 0 ? t.shares * t.price : t.amount_high ?? null;
+      const basis = { shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice: t.security_id != null ? refPrice.get(t.security_id) : null };
+      const value = tradeValue(basis) ?? (t.shares != null && t.price != null && t.price > 0 ? null : t.amount_high ?? null);
+      t.price = unitPrice(basis) ?? t.price;
       const txn: Txn = { id: t.id, filingId: t.filing_id, personId: t.person_id, securityId: t.security_id, side: t.side, code: t.txn_code,
         isDerivative: t.is_derivative, txnDate: t.txn_date, disclosedAt: t.disclosed_at ?? f.filedAt?.slice(0, 10) ?? null,
         amountLow: t.amount_low, amountHigh: t.amount_high, shares: t.shares, price: t.price, lagDays: t.disclosure_lag_days,
