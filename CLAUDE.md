@@ -1096,3 +1096,19 @@ Design:
 - Expected after import: 155 live electronic reports (~1,745 rows), 7 superseded, 15 paper held.
 - The export reaches the repo as one browser download that Peter moves into
   `ingest/data/senate_ptr/` — tool output is too small a channel for 590 KB.
+
+### Senate PTRs loaded (2026-10-06, 14:04 UTC run 37475856200) — awaiting approval
+
+- Export file verified after Peter's push (`f8f8d87`): 590,312 bytes, hash equal to the one
+  computed in the browser. Local dry run and the live run agree exactly:
+  **177 filings** (months match the eFD list), 15 paper held as needs_ocr, 7 superseded by an
+  amendment, 155 with rows, **1,791 rows** (1,143 buys, 646 sells, 2 exchanges; 1,044 with a
+  ticker; 33 options), 0 quarantined, 0 unmatched amendments. Published: 0 (no gate yet).
+- 31 senators matched to the roster; **1 filer not on the roster: Alan Armstrong** — created as
+  a new person with no state or party. Check the roster job picks him up.
+- `db/migrations/0014_senate_ptr_gate.sql` adds the `senate_ptr` publish gate and publishes.
+  **Pushing it is Peter's approval of the source.** After that the site's House-only wording
+  switches off by itself (`senateShown`).
+- To add newer Senate reports later: repeat the browser read (Peter accepts the eFD agreement,
+  reports are fetched in his session, one download), save as a new
+  `ingest/data/senate_ptr/export-YYYY-MM-DD.json`, push, run the Congress PTR workflow.
