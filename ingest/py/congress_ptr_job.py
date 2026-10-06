@@ -58,7 +58,7 @@ sys.path.insert(0, str(VENDOR))
 os.environ.setdefault("CONGRESS_PTR_USER_AGENT", "spotthemoney.com ingest (Peter Fougerousse <pfouge@gmail.com>)")
 
 SOURCE_CODE = "congress_ptr"
-SOURCE_LABEL = "Congressional PTR filings (House Clerk PDF; Senate pending #21)"
+SOURCE_LABEL = "Congressional PTR filings (House Clerk PDF; Senate eFD from saved exports)"
 SOURCE_CADENCE = "daily"
 QUARANTINE_LIMIT = 50
 MIN_HOST_GAP_S = 1.5
@@ -596,6 +596,11 @@ def main(argv: Optional[list[str]] = None) -> int:
                     conn.rollback()
                 ctx.quarantine(f"house:{f.doc_id}", f"{type(exc).__name__}: {exc}")
         ctx.set_extra("filings_processed", processed)
+        # Senate: no fetcher here — reports saved from a browser session and committed under
+        # ingest/data/senate_ptr/ are loaded by senate_import.py (see that file for why).
+        import senate_import  # type: ignore
+        senate_import.process_senate_exports(conn, Json, sys.modules[__name__], ctx, dry_run=args.dry_run,
+                                             reprocess=args.reprocess, archive=archive)
         # Publish on autopilot (migration 0009): house_ptr passed Peter's sample review on
         # 2026-09-28, so new high-confidence filings go public with the run. Scanned PTRs
         # (needs_ocr → confidence 0.3, review pending) never qualify and stay held.

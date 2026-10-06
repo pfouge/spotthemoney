@@ -8,6 +8,8 @@
 // Both: window 7D/30D/90D/1Y, view Net/Buying/Selling, ticker filter, ticker/filer side list.
 // `primary` makes the filter state live in the URL hash (one per page).
 import { CAP_BANDS } from "../lib/capband";
+import { getFlagship, senateShown } from "../lib/flagship";
+const hasSenate = senateShown(await getFlagship());
 interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; }
 const { kind, primary = false, height = 560, id = `hm-${kind}`, compact = false } = Astro.props as Props;
 const src = kind === "all" ? "/data/heatmap-congress.json,/data/heatmap-insiders.json" : `/data/heatmap-${kind}.json`;
@@ -29,7 +31,7 @@ const hasInsiders = kind !== "congress";
         <select data-ctl="chamber" aria-label="Chamber">
           <option value="all">Both chambers</option>
           <option value="house">House</option>
-          <option value="senate">Senate (not yet included)</option>
+          <option value="senate">{hasSenate ? "Senate" : "Senate (not yet included)"}</option>
         </select>
         <select data-ctl="party" aria-label="Party">
           <option value="all">Any party</option>

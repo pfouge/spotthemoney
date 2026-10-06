@@ -7,7 +7,7 @@ import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
-import { getFlagship, securityPath, companyPath, personPath, withinDays, num, plural, money, sum } from "../../lib/flagship";
+import { getFlagship, securityPath, companyPath, personPath, withinDays, num, plural, money, sum, senateShown } from "../../lib/flagship";
 import { datasetLd, SOURCES, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizStock from "../../components/VizStock.astro";
@@ -26,6 +26,7 @@ export async function getStaticPaths() {
 
 const { id } = Astro.props as { id: number };
 const model = await getFlagship();
+const hasSenate = senateShown(model);
 const s = model.securities.get(id)!;
 const siblings = [...model.securities.values()].filter((x) => x.ticker.toLowerCase() === s.ticker.toLowerCase());
 const txns = siblings.flatMap((x) => x.txns).sort((a, b) => (b.disclosedAt ?? "").localeCompare(a.disclosedAt ?? ""));
@@ -62,7 +63,7 @@ const ld = datasetLd({ name: `${s.ticker} insider and congressional transactions
   <h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1>
   {company && cpath && <p class="lede">Company profile, contracts and lobbying: <a href={cpath}>{company.name}</a></p>}
 
-  <Answer text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR Form 4; House Clerk PTRs" />
+  <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: SEC EDGAR Form 4; House Clerk and Senate eFD PTRs" : "Sources: SEC EDGAR Form 4; House Clerk PTRs"} />
   <ReviewNote show={underReview} what="Some rows on this page" />
 
   <section class="datastrip">
@@ -82,7 +83,7 @@ const ld = datasetLd({ name: `${s.ticker} insider and congressional transactions
   <AdSlot label="Advertisement" />
 
   <h2>Congressional trades</h2>
-  <TxnTable model={model} txns={congress} showPerson emptyReason="No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)." />
+  <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
 
   {insiders.size > 0 && (
     <>

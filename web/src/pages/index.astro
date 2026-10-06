@@ -7,12 +7,13 @@ import Heatmap from "../components/Heatmap.astro";
 import AdSlot from "../components/AdSlot.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { getLatestIBondRate, getYieldCurve } from "../lib/db";
-import { getFlagship, withinDays, num, money, plural } from "../lib/flagship";
+import { getFlagship, withinDays, num, money, plural, senateShown } from "../lib/flagship";
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
 import VizHome from "../components/VizHome.astro";
 
 const model = await getFlagship();
+const hasSenate = senateShown(model);
 const pub = model.txns.filter((t) => t.isPublished);
 const c30 = pub.filter((t) => t.source !== "sec_form4" && withinDays(t.txnDate ?? t.disclosedAt, 30));
 const i30 = pub.filter((t) => t.source === "sec_form4" && withinDays(t.txnDate ?? t.disclosedAt, 30));
@@ -51,7 +52,7 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   <section class="hero hero-map">
     <p class="eyebrow">Congress <span class="x">&times;</span> Corporate insiders</p>
     <h1>Who's buying. Who's selling. As disclosed.</h1>
-    <p class="lede">House members and corporate insiders on one map — the STOCK Act trades and Form 4s we have read so far, sized by dollars, colored by direction, filterable, and linked to the filing. Senate trades are not included yet; <a href="/methodology/#coverage">see what is covered</a>.</p>
+    <p class="lede">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map — the STOCK Act trades and Form 4s we have read so far, sized by dollars, colored by direction, filterable, and linked to the filing. {hasSenate ? "" : "Senate trades are not included yet; "}<a href="/methodology/#coverage">{hasSenate ? "See what is covered" : "see what is covered"}</a>.</p>
   </section>
 
   <div class="hm-switch" role="tablist" aria-label="Choose a heatmap">

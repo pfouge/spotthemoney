@@ -384,6 +384,12 @@ async function load(): Promise<Flagship> {
 }
 
 let _model: Promise<Flagship> | null = null;
+/** True once at least one Senate report is public — pages switch their House-only wording on this. */
+export function senateShown(m: Flagship): boolean {
+  for (const f of m.filings.values()) if (f.source === "senate_ptr" && f.isPublished) return true;
+  return false;
+}
+
 export function getFlagship(): Promise<Flagship> {
   if (!_model) _model = load();
   return _model;

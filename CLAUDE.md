@@ -1046,3 +1046,34 @@ Read from live `/data/coverage.json` (build 13:09 UTC):
   lobbying 59 MB (104,757), raw_documents 37 MB, transactions 28 MB (128,112), contracts 4 MB.
   About 97 MB is outside the public tables (not traced).
 - The site still displays donations for the last 90 days only; the stored history has no page yet.
+
+### Senate PTRs: import from saved browser exports (2026-10-06, built, not yet run on real data)
+
+Peter: "we need to fix this now" (Senate missing). Constraints that shaped it:
+- eFD (efdsearch.senate.gov) sits behind bot protection; datacenter IPs and non-browser clients
+  are refused. The vendored IIF client gets through by impersonating Chrome's TLS fingerprint —
+  **not used here and not to be built** (project no-spoofing policy, docs/04 #21).
+- The site loads normally in Peter's own Chrome. It requires accepting a statutory agreement
+  (5 U.S.C. app. § 105(c): no commercial use except news and communications media disseminating
+  to the general public; no credit rating; no solicitation). **Peter accepts that himself**;
+  whether the site fits the media exception is his call.
+
+Design:
+- Reports are read in his browser session, and saved as
+  `ingest/data/senate_ptr/export-YYYY-MM-DD.json` (`filings[]`: id, first, last, filer, title,
+  url, date_received, kind ptr|paper, html). Later export files win per report id.
+- `ingest/py/senate_import.py` (called from `congress_ptr_job.py` after the House loop, no
+  workflow change): one `filings` row per report (source `senate_ptr`, external_id = eFD uuid),
+  rows parsed by the vendored `senate_client.parse_ptr_html` (parser only). Paper → `needs_ocr`,
+  no rows. An amendment ("… (Amendment N)") supersedes earlier versions of the same filer +
+  report date: those keep `payload.superseded_by` and lose their rows. Senators are matched to
+  the roster by surname, first name settling shared surnames (`pick_senator`); no match falls
+  back to `resolve_person` (stat `senate_people_not_on_roster`). eFD's free-text asset type is
+  mapped to the short codes (`job_asset_type`). Already-stored reports are skipped.
+- `senate_ptr` has **no publish gate row**: rows stay unpublished until Peter approves the source
+  (`node scripts/sample-source.mjs senate_ptr --approve`, or a gate migration).
+- Web: `senateShown(model)` flips the House-only wording (home lede, map's Senate option,
+  Congress/stock source notes, methodology) once a Senate report is public.
+- Tests: `python3 ingest/py/test_senate_import.py` (10). End-to-end against a local database
+  with the fixture: original, amendment, paper filing all correct; re-run processes nothing.
+- Not yet seen: a real eFD report page (the fixture is synthetic). Updates are batches, not daily.

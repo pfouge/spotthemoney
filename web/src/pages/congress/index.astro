@@ -8,12 +8,13 @@ import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import Heatmap from "../../components/Heatmap.astro";
-import { getFlagship, withinDays, num, plural, personPath, securityPath, roleLabel, avg, isLate, CONGRESS_DEADLINE_DAYS } from "../../lib/flagship";
+import { getFlagship, withinDays, num, plural, personPath, securityPath, roleLabel, avg, isLate, CONGRESS_DEADLINE_DAYS, senateShown } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizCongress from "../../components/VizCongress.astro";
 
 const model = await getFlagship();
+const hasSenate = senateShown(model);
 const all = model.txns.filter((t) => t.source !== "sec_form4");
 const members = [...model.people.values()].filter((p) => p.isCongress);
 const withRows = members.filter((p) => p.txns.length > 0);
@@ -43,7 +44,7 @@ const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act P
   <h1>Congressional stock trades</h1>
   <p class="lede">Periodic transaction reports as filed, with the days-to-report on every row and a link to the original document.</p>
 
-  <Answer text={answer} updated={lastUpdated} sourceNote="Source: House Clerk PTRs (Senate pending)" />
+  <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: House Clerk PTRs; Senate eFD PTRs" : "Source: House Clerk PTRs (Senate pending)"} />
   <ReviewNote show={underReview} what="Congressional rows" />
   {pendingOcr > 0 && <p class="note">{plural(pendingOcr, "filing is", "filings are")} scanned PDFs awaiting human review and show no rows yet.</p>}
 
