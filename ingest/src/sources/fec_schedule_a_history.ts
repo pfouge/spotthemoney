@@ -30,7 +30,7 @@
 //
 // DATABASE GUARD: receipts are the one table here that can outgrow the database plan. The
 // pass refuses to start, and stops between committees, once pg_database_size exceeds
-// FEC_HISTORY_MAX_DB_MB (default 400). It then reports success with stats.stopped set, so
+// FEC_HISTORY_MAX_DB_MB (default 6000). It then reports success with stats.stopped set, so
 // an automated chain does not keep calling it — raise the limit deliberately or not at all.
 //
 // The key must never appear in a log line, error or stat (lib/http errors carry host+path).
@@ -98,7 +98,9 @@ export async function ingestFecScheduleAHistory(): Promise<IngestRunResult> {
   const slicePages = Number(process.env.FEC_HISTORY_SLICE_PAGES ?? 2);
   const maxRequests = Number(process.env.FEC_HISTORY_MAX_REQUESTS ?? 900);
   const maxMinutes = Number(process.env.FEC_HISTORY_MAX_MINUTES ?? 36);
-  const maxDbMb = Number(process.env.FEC_HISTORY_MAX_DB_MB ?? 400);
+  // The project is on Supabase Pro (8 GB included); 400 MB was a free-plan guard and stopped the
+  // pass half way on 2026-10-06. 6,000 MB leaves room below the included disk.
+  const maxDbMb = Number(process.env.FEC_HISTORY_MAX_DB_MB ?? 6000);
   const today = new Date().toISOString().slice(0, 10);
 
   if (!key) {

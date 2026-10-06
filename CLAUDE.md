@@ -1036,3 +1036,13 @@ Read from live `/data/coverage.json` (build 13:09 UTC):
 - Quality counters: 10 trades dated after their filing (3 in the future), 20 Form 4 rows whose
   shares × price exceeds $1T (the price-box rule handles them), 759 rows with no ticker.
 - No scheduled daily run had started by 13:11 UTC on Oct 6.
+
+### Database plan and size (2026-10-06, 13:20 UTC)
+
+- **The Supabase project is on the Pro plan ($25/month, 8 GB disk included)** — Peter, 2026-10-06.
+  The 400 MB guard in `fec_schedule_a_history.ts` was written for the free plan's 500 MB and
+  stopped donations history at 423 of 806 committees. Default is now 6,000 MB.
+- Sizes at 401 MB total: donations 96 MB (464,131 rows), filings 74 MB (Form 4 payload 48 MB),
+  lobbying 59 MB (104,757), raw_documents 37 MB, transactions 28 MB (128,112), contracts 4 MB.
+  About 97 MB is outside the public tables (not traced).
+- The site still displays donations for the last 90 days only; the stored history has no page yet.
