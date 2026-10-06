@@ -41,6 +41,9 @@ function db() {
   return _sql;
 }
 
+/** The build's database connection (null when DATABASE_URL is not set) — for lib/coverage.ts. */
+export function flagshipSql() { return db(); }
+
 // ── types ────────────────────────────────────────────────────────────────────────────────
 export interface Role {
   kind: "congress" | "insider";
@@ -274,6 +277,10 @@ async function load(): Promise<Flagship> {
       // stay in the tables, marked "Option · derivative", and out of every buy/sell total
       // (all of which key on side being buy or sell).
       const side = f.source === "sec_form4" && t.is_derivative === true && (t.side === "buy" || t.side === "sell") ? "option" : t.side;
+      // A trade cannot be dated after the report that discloses it (one House row read 2026-12-26
+      // on a filing from 2026-02-09). Such a date is a typo or a misread: drop it, keep the row.
+      const filedDay = f.filedAt?.slice(0, 10) ?? t.disclosed_at;
+      if (t.txn_date && filedDay && t.txn_date > filedDay) { t.txn_date = null; t.disclosure_lag_days = null; }
       const txn: Txn = { id: t.id, filingId: t.filing_id, personId: t.person_id, securityId: t.security_id, side, code: t.txn_code,
         isDerivative: t.is_derivative, txnDate: t.txn_date, disclosedAt: t.disclosed_at ?? f.filedAt?.slice(0, 10) ?? null,
         amountLow: t.amount_low, amountHigh: t.amount_high, shares: t.shares, price: t.price, lagDays: t.disclosure_lag_days,

@@ -8,8 +8,19 @@ import { getFlagship, CONGRESS_DEADLINE_DAYS, num } from "../lib/flagship";
 import { SITE_URL, SOURCES } from "../lib/seo";
 import { formatDate } from "../lib/format";
 import Answer from "../components/Answer.astro";
+import { getCoverage, filingMonths, latestStat } from "../lib/coverage";
 
 const model = await getFlagship();
+const cov = await getCoverage();
+const house = filingMonths(cov, "house_ptr", 13).reverse();
+const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+const thisYear = new Date().getUTCFullYear();
+const houseYear = cov.filings.filter((f) => f.source === "house_ptr" && f.month.startsWith(String(thisYear)));
+const houseIndex = latestStat(cov, "house_ptr", `index_ptrs_${thisYear}`);
+const form4 = cov.filings.filter((f) => f.source === "sec_form4");
+const senate = cov.filings.filter((f) => f.source === "senate_ptr");
+const span = (rows: { month: string; rows: number }[] | undefined) => { const r = (rows ?? []).filter((x) => x.month !== "none"); return r.length ? `${num(sum(r.map((x) => x.rows)))} rows, ${r[0]!.month} to ${r[r.length - 1]!.month}` : "none on file"; };
+const monthLabel = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 const description = "How Spot the Money collects, filters and presents public disclosures: sources, update cadence, the publishing bar, late-filer rules and flag definitions.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/methodology/#page`, name: "Methodology", url: `${SITE_URL}/methodology/`, description, dateModified: model.builtAt.slice(0, 10), isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
@@ -62,6 +73,28 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
 
   <h2 id="corrections">Corrections</h2>
   <p>Errors are fixed within five working days of a report; see <a href="/corrections/">the corrections page</a>.</p>
+
+  <h2 id="coverage">What is covered, and what is not</h2>
+  <p>These counts are rebuilt with every update of the site, straight from the database; the same figures, by source and month, are in <a href="/data/coverage.json">/data/coverage.json</a>.</p>
+  <ul>
+    <li><strong>House trades.</strong> {num(sum(houseYear.map((f) => f.filings)))} periodic transaction reports filed in {thisYear} are on file here{houseIndex != null ? <span>; the House Clerk's {thisYear} index lists {num(houseIndex)}</span> : null}. {num(sum(houseYear.map((f) => f.published)))} of ours are shown; {num(sum(houseYear.map((f) => f.filings - f.published)))} are held back, mostly scanned or handwritten reports that software cannot read reliably and a person has not yet transcribed. A member who files only on paper will be missing from the maps and tables until then.</li>
+    <li><strong>Senate trades.</strong> {senate.length ? `${num(sum(senate.map((f) => f.filings)))} reports on file.` : "None. The Senate's disclosure site blocks automated readers, and no Senate report has been ingested yet. Every \"Congress\" figure on this site is House only."}</li>
+    <li><strong>Corporate insiders.</strong> {num(sum(form4.map((f) => f.filings)))} Form 4 filings on file, {form4.filter((f) => f.month !== "none").length ? `filed ${form4.filter((f) => f.month !== "none")[0]!.month} onward` : ""}, for the tracked tickers only ({num(model.counts.securities ?? 0)} securities) — not every public company.</li>
+    <li><strong>Lobbying.</strong> {span(cov.tables.lobbying)} (by reporting quarter).</li>
+    <li><strong>Contracts.</strong> {span(cov.tables.contracts)} — the largest awards each month plus awards to followed companies, not every federal contract.</li>
+    <li><strong>Donations.</strong> {span(cov.tables.donations)} — itemized receipts of tracked committees only.</li>
+  </ul>
+  {house.length > 0 && (
+    <div class="table-wrap">
+      <table class="data">
+        <caption>House periodic transaction reports by month filed</caption>
+        <thead><tr><th>Month filed</th><th class="num">On file</th><th class="num">Shown</th><th class="num">Held for review</th><th class="num">Of those, paper filings</th></tr></thead>
+        <tbody>
+          {house.map((f) => <tr><td>{monthLabel(f.month)}</td><td class="num">{num(f.filings)}</td><td class="num">{num(f.published)}</td><td class="num">{num(f.filings - f.published)}</td><td class="num">{num(f.paper)}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
+  )}
 
   <h2 id="status">Data status</h2>
   <p class="mono small">people {num(model.counts.people ?? 0)} · companies {num(model.counts.companies ?? 0)} · securities {num(model.counts.securities ?? 0)} · filings {num(model.counts.filings ?? 0)} · transactions {num(model.counts.txns ?? 0)} · lobbying {num(model.counts.lobbying ?? 0)} · contracts {num(model.counts.contracts ?? 0)} · built {model.builtAt}</p>

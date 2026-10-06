@@ -978,3 +978,36 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
   (`owned_after`: n-th row of a filing = n-th payload entry, share count cross-checked).
   A same-filer repeat is also taken out of that filer's own page totals.
 - Table flag is "also in another filing" (covers both cases).
+
+### Data audit, part 1: coverage report and what it is for (2026-10-06, ~12:40 UTC)
+
+Peter, after the 30-day Congress view showed 6 members: "stop and take a holistic view of the
+way you ingest data … and the filtering." Measured against the sources (House Clerk index via
+his local Congress PTR tool; live `/data/heatmap-congress.json`):
+
+- **Senate: zero rows.** Known and documented (docs/04 #21, methodology), but the home page said
+  "every STOCK Act trade" and the map offered a Senate filter. The Senate eFD listing shows at
+  least 100 PTRs from 27 senators since March 2026.
+- **House: 250 of 409** PTRs filed in 2026 have ticker rows on the map (362 electronic, 47
+  paper per the Clerk index). Where the other ~160 are (held as needs_ocr, parsed with no
+  ticker, never fetched) could not be told from outside the database — hence this report.
+- **Buys vs sells is not skewed for Congress:** 1,787 buys ($98M) vs 1,948 sells ($131M) over
+  the year. The 30-day view was 46 trades because the window used the **trade** date and
+  members have 45 days to file; by filing date the same 30 days hold 292 trades by 15 members.
+- One trade dated 2026-12-26 on a filing from 2026-02-09.
+
+Changes in this push:
+- `web/src/lib/coverage.ts` + `/data/coverage.json`: per source and month — filings on file,
+  published, pending review, needs_ocr, paper, with rows, with ticker rows; transaction rows by
+  side; last six runs per source (numeric stats only, e.g. `index_ptrs_2026`); row counts for
+  lobbying / contracts / donations; data-quality counters. **Read this file first in any future
+  data question.** Summary at `/methodology/#coverage`.
+- Heatmap windows (7D/30D/90D/1Y) now count by **disclosure date** (`r.f ?? r.d`), in the
+  client, the verifier oracle and the recent/older file split.
+- `flagship.ts`: a trade date after its filing date is dropped (row kept).
+- Home lede no longer claims every STOCK Act trade; Senate filter option says "not yet included".
+
+Open, needs the coverage numbers and Peter's decisions: the House gap; a Senate route (his
+machine can reach eFD; GitHub runners cannot); `--reprocess` is the only way a filing once
+marked needs_ocr gets re-read; the 7-day default window loses filings if runs are skipped
+for a week; late/missing scheduled runs.

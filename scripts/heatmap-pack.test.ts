@@ -31,8 +31,8 @@ test("split: every row lands in exactly one file, recent ones in the recent file
   assert.equal(f.counts.recent + f.counts.older, rows.length);
   assert.deepEqual(all(f).map(key).sort(), rows.map(key).sort());
   const cut = "2026-07-08"; // 90 days before 2026-10-06
-  assert.ok(unpack(JSON.parse(f.recent)).every((r) => r.d >= cut));
-  assert.ok(unpack(JSON.parse(f.older)).every((r) => r.d < cut));
+  assert.ok(unpack(JSON.parse(f.recent)).every((r) => (r.f ?? r.d) >= cut));
+  assert.ok(unpack(JSON.parse(f.older)).every((r) => (r.f ?? r.d) < cut));
   const recent = JSON.parse(f.recent);
   assert.equal(recent.recentDays, RECENT_DAYS); assert.equal(recent.older, "/data/heatmap-insiders-older.json");
 });

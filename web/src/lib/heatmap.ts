@@ -148,12 +148,14 @@ export interface InsidersFiles { recent: string; older: string; windowDays: numb
 
 export function splitInsiders(rows: InsiderRow[], builtAt: string, head: Omit<HeatmapFile<InsiderRow>, "rows">, maxBytes = MAX_FILE_BYTES): InsidersFiles {
   const recentCut = daysBefore(builtAt, RECENT_DAYS);
-  const recentRows = rows.filter((r) => r.d >= recentCut);
+  // Split on the date the map's window uses: disclosure date, trade date when there is none.
+  const key = (r: InsiderRow) => r.f ?? r.d;
+  const recentRows = rows.filter((r) => key(r) >= recentCut);
   const capsFor = (rs: InsiderRow[]) => { const c: Record<string, string> = {}; for (const r of rs) { const b = head.caps[r.t]; if (b) c[r.t] = b; } return c; };
   let days = head.windowDays, olderRows: InsiderRow[] = [], older = "";
   for (;; days -= 30) {
     const cut = daysBefore(builtAt, days);
-    olderRows = rows.filter((r) => r.d < recentCut && r.d >= cut);
+    olderRows = rows.filter((r) => key(r) < recentCut && r.d >= cut);
     older = JSON.stringify({ ...head, windowDays: days, caps: capsFor(olderRows), part: "older", ...pack(olderRows) });
     if (Buffer.byteLength(older) <= maxBytes || days - 30 <= RECENT_DAYS) break;
   }

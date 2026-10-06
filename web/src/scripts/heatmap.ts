@@ -138,6 +138,9 @@ export function initHeatmap(root: HTMLElement): void {
   };
 
   // ── filters ──
+  // The window counts a trade from the day it was disclosed (filed), not the day it happened:
+  // members of Congress have 45 days to report, so "the last 30 days" by trade date is always
+  // nearly empty (6 members on 2026-10-06 against 15 by filing date).
   const cutoff = (): string => { const d = new Date(); d.setUTCDate(d.getUTCDate() - state.window); return d.toISOString().slice(0, 10); };
   const tickerSet = (): Set<string> | null => { const t = state.tickers.split(/[,\s]+/).map((x) => x.trim().toUpperCase()).filter(Boolean); return t.length ? new Set(t) : null; };
   const partyOf = (pa: string | null): "dem" | "rep" | "ind" | null => {
@@ -168,7 +171,7 @@ export function initHeatmap(root: HTMLElement): void {
   };
   function filtered(): Row[] {
     const c = cutoff(); const ts = tickerSet();
-    return rows.filter((r) => r.d >= c && scopeMatch(r) && (!state.who || r.ps === state.who) && (!ts || ts.has(r.t)) && (state.cap === "all" || caps[r.t] === state.cap));
+    return rows.filter((r) => (r.f ?? r.d) >= c && scopeMatch(r) && (!state.who || r.ps === state.who) && (!ts || ts.has(r.t)) && (state.cap === "all" || caps[r.t] === state.cap));
   }
   function aggregate(sel: Row[]): Node[] {
     const m = new Map<string, Node>();
@@ -278,7 +281,7 @@ export function initHeatmap(root: HTMLElement): void {
   }
   function renderLegend(): void {
     const R = isDark() ? RAMPS.dark : RAMPS.light; const el = q(".hm-legend");
-    const size = kind === "congress" ? "Tile size = top of the reported range, summed" : kind === "insiders" ? "Tile size = shares × price, summed" : "Tile size = $ disclosed (Congress: top of range; insiders: shares × price)";
+    const size = kind === "congress" ? "Window = date disclosed · tile size = top of the reported range, summed" : kind === "insiders" ? "Window = date disclosed · tile size = shares × price, summed" : "Window = date disclosed · tile size = $ disclosed (Congress: top of range; insiders: shares × price)";
     if (state.view === "net") el.innerHTML = `<span><span class="sw" style="background:${R.hiG}"></span>Net buying</span><span><span class="sw" style="background:${R.hiR}"></span>Net selling</span><span>${size} · color intensity = how one-sided</span>`;
     else { const c = state.view === "buy" ? R.hiG : R.hiR, w = state.view === "buy" ? "buying" : "selling"; el.innerHTML = `<span><span class="sw" style="background:${c}"></span>${w} volume</span><span>${size} · intensity = $ ${w}</span>`; }
     const stamp = q(".hm-stamp"); if (stamp) stamp.textContent = builtAt ? `Data as of ${builtAt.slice(0, 10)} · ${rows.length.toLocaleString("en-US")} disclosed trades${older === "loaded" || older === "none" ? ` in the last ${fullDays} days` : older === "loading" ? " · loading older trades…" : older === "failed" ? " · older insider trades could not be loaded" : kind === "insiders" ? ` in the last ${recentDays} days` : ` · insider trades older than ${recentDays} days load with 1Y`}` : "";

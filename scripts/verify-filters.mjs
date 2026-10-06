@@ -52,7 +52,7 @@ export async function browserSuite(opts) {
     const tick = s.tickers.split(/[,\s]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
     const cF = s.chamber !== "all" || s.party !== "all", iF = s.role !== "all";
     const sel = rows.filter((r) => {
-      if (r.d < cut) return false;
+      if ((r.f ?? r.d) < cut) return false; // the window is by disclosure date
       if (s.who && r.ps !== s.who) return false;
       if (tick.length && !tick.includes(r.t)) return false;
       if (s.cap !== "all" && caps[r.t] !== s.cap) return false;
