@@ -1,10 +1,11 @@
-// /data/heatmap-insiders.json — rows for the corporate insider heatmap (see lib/heatmap.ts).
+// /data/heatmap-insiders.json — the last 90 days of rows for the corporate insider heatmap,
+// packed (see lib/heatmap.ts and lib/heatmap-pack.ts). The rest of the year is in
+// /data/heatmap-insiders-older.json, which the map fetches when the 1Y window is chosen.
 import type { APIRoute } from "astro";
 import { getFlagship } from "../../lib/flagship";
-import { insiderRows, heatmapFile } from "../../lib/heatmap";
+import { insidersFiles } from "../../lib/heatmap";
 
 export const GET: APIRoute = async () => {
   const m = await getFlagship();
-  const body = JSON.stringify(heatmapFile("insiders", m, insiderRows(m)));
-  return new Response(body, { headers: { "content-type": "application/json; charset=utf-8" } });
+  return new Response(insidersFiles(m).recent, { headers: { "content-type": "application/json; charset=utf-8" } });
 };

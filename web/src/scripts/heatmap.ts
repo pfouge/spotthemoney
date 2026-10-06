@@ -10,7 +10,8 @@ interface CongressRow { t: string; n: string | null; p: string; ps: string | nul
 interface InsiderRow { t: string; n: string | null; p: string; ps: string | null; r: "officer" | "director" | "owner"; ti: string | null; c: string | null; s: Side; v: number; sh: number | null; pr: number | null; pl: boolean; o: string | null; d: string; f: string | null; u: string | null }
 type Row = (CongressRow | InsiderRow) & { k: "congress" | "insiders" };
 const isC = (r: Row): r is CongressRow & { k: "congress" } => r.k === "congress";
-interface File { kind: "congress" | "insiders"; builtAt: string; windowDays: number; caps?: Record<string, string>; rows: Row[] }
+import { unpack, type Packed } from "../lib/heatmap-pack";
+interface File { kind: "congress" | "insiders"; builtAt: string; windowDays: number; recentDays?: number; older?: string | null; caps?: Record<string, string>; v?: number; rows: unknown[] }
 
 interface State {
   cls: "all" | "congress" | "insiders";        // combined map only
@@ -107,6 +108,10 @@ export function initHeatmap(root: HTMLElement): void {
   const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: "net", tickers: "", cap: "all", side: "tickers" };
   const state: State = { ...DEFAULTS };
   let rows: Row[] = []; let builtAt = ""; let maxVal = 1;
+  // The insiders file holds the last `recentDays`; the rest of the year is a second file,
+  // fetched the first time a longer window is asked for (root.dataset.older tracks it).
+  let fullDays = 365, recentDays = 365; let olderSrcs: string[] = [];
+  let older: "none" | "idle" | "loading" | "loaded" | "failed" = "none";
   const caps: Record<string, string> = {};
 
   // hash → state (only when this instance is the page's primary map)
@@ -194,6 +199,7 @@ export function initHeatmap(root: HTMLElement): void {
 
   // ── render ──
   function render(): void {
+    needOlder();
     const sel = filtered(); const nodes = aggregate(sel);
     maxVal = Math.max(1, ...nodes.map((d) => d.value));
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
@@ -275,7 +281,7 @@ export function initHeatmap(root: HTMLElement): void {
     const size = kind === "congress" ? "Tile size = top of the reported range, summed" : kind === "insiders" ? "Tile size = shares × price, summed" : "Tile size = $ disclosed (Congress: top of range; insiders: shares × price)";
     if (state.view === "net") el.innerHTML = `<span><span class="sw" style="background:${R.hiG}"></span>Net buying</span><span><span class="sw" style="background:${R.hiR}"></span>Net selling</span><span>${size} · color intensity = how one-sided</span>`;
     else { const c = state.view === "buy" ? R.hiG : R.hiR, w = state.view === "buy" ? "buying" : "selling"; el.innerHTML = `<span><span class="sw" style="background:${c}"></span>${w} volume</span><span>${size} · intensity = $ ${w}</span>`; }
-    const stamp = q(".hm-stamp"); if (stamp) stamp.textContent = builtAt ? `Data as of ${builtAt.slice(0, 10)} · ${rows.length.toLocaleString("en-US")} disclosed trades in the last 365 days` : "";
+    const stamp = q(".hm-stamp"); if (stamp) stamp.textContent = builtAt ? `Data as of ${builtAt.slice(0, 10)} · ${rows.length.toLocaleString("en-US")} disclosed trades${older === "loaded" || older === "none" ? ` in the last ${fullDays} days` : older === "loading" ? " · loading older trades…" : older === "failed" ? " · older insider trades could not be loaded" : kind === "insiders" ? ` in the last ${recentDays} days` : ` · insider trades older than ${recentDays} days load with 1Y`}` : "";
   }
 
   // ── controls ──
@@ -332,11 +338,26 @@ export function initHeatmap(root: HTMLElement): void {
   addEventListener("themechange", () => render());
 
   // ── load ──
+  const getFile = (u: string): Promise<File> => fetch(u, { headers: { accept: "application/json" } }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<File>; });
+  const rowsOf = (f: File): Row[] => ((f.v === 2 ? unpack(f as unknown as Packed) : f.rows) as (CongressRow | InsiderRow)[]).map((r) => ({ ...r, k: f.kind }) as Row);
+  /** Called by render(): a window longer than the recent file needs the older rows. */
+  function needOlder(): void {
+    if (older !== "idle" || state.window <= recentDays) return;
+    older = "loading"; root.dataset.older = older;
+    Promise.all(olderSrcs.map(getFile))
+      .then((files) => { for (const f of files) { rows = rows.concat(rowsOf(f)); Object.assign(caps, f.caps ?? {}); } older = "loaded"; })
+      .catch(() => { older = "failed"; })
+      .finally(() => { root.dataset.older = older; fillWho(); render(); });
+  }
   mapEl.innerHTML = `<div class="hm-empty">Loading disclosed trades…</div>`;
-  Promise.all(srcs.map((u) => fetch(u, { headers: { accept: "application/json" } }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<File>; })))
+  Promise.all(srcs.map(getFile))
     .then((files) => {
-      rows = files.flatMap((f) => (f.rows as (CongressRow | InsiderRow)[]).map((r) => ({ ...r, k: f.kind }) as Row));
+      rows = files.flatMap(rowsOf);
       builtAt = files.map((f) => f.builtAt).sort().at(-1) ?? "";
+      fullDays = Math.max(...files.map((f) => f.windowDays || 365));
+      olderSrcs = files.map((f) => f.older).filter((u): u is string => !!u);
+      if (olderSrcs.length) { older = "idle"; recentDays = Math.min(...files.filter((f) => f.older).map((f) => f.recentDays || 90)); }
+      root.dataset.older = older;
       for (const f of files) Object.assign(caps, f.caps ?? {});
       fillWho(); syncAll(); render(); if (compact) root.classList.add("hm-ready");
     })

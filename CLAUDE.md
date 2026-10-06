@@ -891,3 +891,23 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
 - `flagship.ts` applies it once when building the model, so every chart, table and heatmap gets
   the corrected value and per-unit price. `x_daily.ts` gives derivative rows no dollar value
   and leaves them out of cluster buys. `viz.ts` `usd()` now prints trillions as "T".
+
+### Deploys failed 04:49–11:13 UTC, 2026-10-06: insiders heatmap file over 25 MiB
+
+- **Symptom:** every deploy (backfill runs and the push of `b1706a1`) failed at "Deploy to
+  Cloudflare Workers": `Asset too large … data/heatmap-insiders.json with a size of 41.4 MiB`.
+  Cloudflare's limit is 25 MiB per static asset. The insider history pass had filled a year of
+  Form 4 rows; the site stayed on the 04:05 UTC build until this fix.
+- **Fix:** the insiders rows are packed (`web/src/lib/heatmap-pack.ts`: each ticker, filer and
+  filing written once, a row is a short array; lossless) and split by age —
+  `/data/heatmap-insiders.json` holds the last 90 days, `/data/heatmap-insiders-older.json` the
+  rest of the year, fetched by `scripts/heatmap.ts` only when the 1Y window is chosen
+  (`root.dataset.older`: none / idle / loading / loaded / failed). Estimate for the live data:
+  about 4 MiB and 11 MiB.
+- **Guard:** `splitInsiders` cuts the older file's far end a month at a time if it would pass
+  20 MiB, and the build log prints both sizes (`heatmap-insiders: N rows in the last 90 days …`).
+  A shorter 1Y map, never a failed deploy.
+- Tests: `npx tsx --test scripts/heatmap-pack.test.ts`; `scripts/verify-filters.mjs` reads both
+  files with its own unpacker. The build was 55,761 files at the time — watch the file count too.
+- **Insider history:** the 10:04 UTC backfill run finished its insiders job in 19 minutes and
+  the chain stopped re-queuing, which is the completion signal (final count not yet read).

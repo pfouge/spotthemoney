@@ -9,6 +9,7 @@
 //   - keys are short on purpose: the insiders file is thousands of rows
 import type { Flagship, Txn, Person } from "./flagship";
 import { sizeByTicker } from "./capband";
+import { pack, type Packed } from "./heatmap-pack";
 
 export const HEATMAP_WINDOW_DAYS = 365;
 
@@ -123,4 +124,51 @@ export function heatmapFile<R extends { t: string }>(kind: "congress" | "insider
   const caps: Record<string, string> = {};
   for (const r of rows) { const e = sizes.get(r.t.toUpperCase()); if (e) caps[r.t] = e.band; }
   return { kind, builtAt: m.builtAt, windowDays: HEATMAP_WINDOW_DAYS, caps, rows };
+}
+
+// ── the insiders files ─────────────────────────────────────────────────────────────────────
+// A year of Form 4 rows is too much for one file: as plain objects it was 41 MiB (Cloudflare
+// refuses assets over 25 MiB — every deploy failed on 2026-10-06) and no phone should download
+// it to draw a 30-day map. So the rows are packed (lib/heatmap-pack.ts) and split by age:
+//   /data/heatmap-insiders.json        the last RECENT_DAYS — all the 7D/30D/90D views need
+//   /data/heatmap-insiders-older.json  the rest of the year, fetched when 1Y is chosen
+// If the older file would still be too big to deploy, its far end is cut a month at a time
+// until it fits — a shorter map beats a failed deploy — and `windowDays` says what was kept.
+
+export const RECENT_DAYS = 90;
+/** Cloudflare's ceiling for one static asset is 25 MiB; stay well under it. */
+export const MAX_FILE_BYTES = 20 * 1024 * 1024;
+export const OLDER_PATH = "/data/heatmap-insiders-older.json";
+
+const daysBefore = (iso: string, days: number): string => { const d = new Date(iso); d.setUTCDate(d.getUTCDate() - days); return d.toISOString().slice(0, 10); };
+
+export interface InsidersFiles { recent: string; older: string; windowDays: number; counts: { recent: number; older: number }; bytes: { recent: number; older: number } }
+
+export function splitInsiders(rows: InsiderRow[], builtAt: string, head: Omit<HeatmapFile<InsiderRow>, "rows">, maxBytes = MAX_FILE_BYTES): InsidersFiles {
+  const recentCut = daysBefore(builtAt, RECENT_DAYS);
+  const recentRows = rows.filter((r) => r.d >= recentCut);
+  const capsFor = (rs: InsiderRow[]) => { const c: Record<string, string> = {}; for (const r of rs) { const b = head.caps[r.t]; if (b) c[r.t] = b; } return c; };
+  let days = head.windowDays, olderRows: InsiderRow[] = [], older = "";
+  for (;; days -= 30) {
+    const cut = daysBefore(builtAt, days);
+    olderRows = rows.filter((r) => r.d < recentCut && r.d >= cut);
+    older = JSON.stringify({ ...head, windowDays: days, caps: capsFor(olderRows), part: "older", ...pack(olderRows) });
+    if (Buffer.byteLength(older) <= maxBytes || days - 30 <= RECENT_DAYS) break;
+  }
+  const recent = JSON.stringify({ ...head, windowDays: days, recentDays: RECENT_DAYS, older: olderRows.length ? OLDER_PATH : null, caps: capsFor(recentRows), ...pack(recentRows) });
+  return { recent, older, windowDays: days, counts: { recent: recentRows.length, older: olderRows.length }, bytes: { recent: Buffer.byteLength(recent), older: Buffer.byteLength(older) } };
+}
+
+let insidersMemo: { builtAt: string; files: InsidersFiles } | null = null;
+/** Both insiders files for this build (computed once; the two /data routes each take one). */
+export function insidersFiles(m: Flagship): InsidersFiles {
+  if (insidersMemo?.builtAt === m.builtAt) return insidersMemo.files;
+  const rows = insiderRows(m);
+  const { rows: _rows, ...head } = heatmapFile("insiders", m, rows);
+  const files = splitInsiders(rows, m.builtAt, head);
+  const mib = (n: number) => (n / 1048576).toFixed(1);
+  console.log(`heatmap-insiders: ${files.counts.recent} rows in the last ${RECENT_DAYS} days (${mib(files.bytes.recent)} MiB), ${files.counts.older} older rows back to ${files.windowDays} days (${mib(files.bytes.older)} MiB)`);
+  if (files.windowDays < HEATMAP_WINDOW_DAYS) console.warn(`heatmap-insiders: the year did not fit in ${mib(MAX_FILE_BYTES)} MiB — older file cut to ${files.windowDays} days`);
+  insidersMemo = { builtAt: m.builtAt, files };
+  return files;
 }

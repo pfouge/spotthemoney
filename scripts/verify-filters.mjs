@@ -28,7 +28,20 @@ export async function browserSuite(opts) {
   if (!root) return { page: location.pathname, error: "no heatmap on page" };
   const kind = root.dataset.kind;
   const files = await Promise.all(root.dataset.src.split(",").map((u) => fetch(u.trim(), { cache: "no-store" }).then((r) => r.json())));
-  const rows = files.flatMap((f) => f.rows.map((r) => ({ ...r, k: f.kind })));
+  // The insiders file is packed (web/src/lib/heatmap-pack.ts); this is a second, independent reader.
+  const unpack = (f) => {
+    if (f.v !== 2) return f.rows;
+    const DAY = 86400000, b = Math.round(Date.parse(f.base + "T00:00:00Z") / DAY), iso = (n) => new Date(n * DAY).toISOString().slice(0, 10);
+    return f.rows.map((x) => {
+      const tk = f.tk[x[0]], pp = f.pp[x[1]], fl = f.fl[x[2]];
+      return { t: tk[0], n: tk[1], p: pp[0], ps: pp[1], r: pp[2], ti: pp[3], c: x[3], s: ["buy", "sell", "other"][x[4]], v: x[5] ?? x[6] * x[7], sh: x[6], pr: x[7], pl: x[8] === 1,
+        o: f.ow[x[9]] ?? null, d: iso(b + x[10]), f: fl[1] != null ? iso(b + fl[1]) : null, u: fl[0] == null ? null : /^https?:/.test(fl[0]) ? fl[0] : "https://www.sec.gov/Archives/edgar/data/" + fl[0] };
+    });
+  };
+  // Rows older than 90 days live in a second file the page fetches on demand; the oracle takes both up front.
+  const olderFiles = await Promise.all(files.filter((f) => f.older).map((f) => fetch(f.older, { cache: "no-store" }).then((r) => r.json())));
+  files.push(...olderFiles);
+  const rows = files.flatMap((f) => unpack(f).map((r) => ({ ...r, k: f.kind })));
   const caps = Object.assign({}, ...files.map((f) => f.caps ?? {})); // ticker → size band
   for (let i = 0; i < 50 && root.querySelector(".hm-summary .cell") == null; i++) await sleep(100);
 
@@ -84,6 +97,7 @@ export async function browserSuite(opts) {
     }
     if (s.tickers) { const t = sel("tickers"); t.value = s.tickers; t.dispatchEvent(new Event("input", { bubbles: true })); await sleep(260); }
     await sleep(0);
+    for (let i = 0; i < 200 && root.dataset.older === "loading"; i++) await sleep(50); // 1Y pulls the older file
   };
   // same rounding as fmtUSD in web/src/scripts/heatmap.ts
   const usd = (v) => { const a = Math.abs(v); return a >= 1e9 ? "$" + (v / 1e9).toFixed(a >= 1e10 ? 0 : 1) + "B" : a >= 1e6 ? "$" + (v / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "M" : a >= 1e3 ? "$" + Math.round(v / 1e3) + "K" : "$" + Math.round(v); };
