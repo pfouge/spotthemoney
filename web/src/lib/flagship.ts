@@ -161,13 +161,22 @@ async function load(): Promise<Flagship> {
           from filings
          where review in ('auto_approved','approved') and confidence >= 0.9
            and source in ('sec_form4','house_ptr','senate_ptr')`,
-      sql<{ id: number; filing_id: number; person_id: number | null; security_id: number | null; side: string; txn_code: string | null; is_derivative: boolean | null; txn_date: string | null; disclosed_at: string | null; amount_low: number | null; amount_high: number | null; shares: number | null; price: number | null; disclosure_lag_days: number | null; is_10b5_1: boolean | null; owner_type: string | null; asset_type: string | null }[]>`
+      sql<{ id: number; filing_id: number; person_id: number | null; security_id: number | null; side: string; txn_code: string | null; is_derivative: boolean | null; txn_date: string | null; disclosed_at: string | null; amount_low: number | null; amount_high: number | null; shares: number | null; price: number | null; disclosure_lag_days: number | null; is_10b5_1: boolean | null; owner_type: string | null; asset_type: string | null; owned_after: number | null }[]>`
+        -- owned_after: "shares owned following the transaction" from the stored Form 4 payload. Rows are
+        -- written in payload order, so the n-th row of a filing is the n-th payload entry; the share
+        -- count is checked so a mismatch gives null rather than a wrong holding (used by lib/joint.ts).
+        with t as (select x.*, (row_number() over (partition by x.filing_id order by x.id) - 1)::int as ord from transactions x)
         select t.id, t.filing_id, t.person_id, t.security_id, t.side::text as side, t.txn_code, t.is_derivative,
                t.txn_date::text as txn_date, t.disclosed_at::text as disclosed_at,
                t.amount_low::float8 as amount_low, t.amount_high::float8 as amount_high,
                t.shares::float8 as shares, t.price::float8 as price, t.disclosure_lag_days,
-               t.is_10b5_1, t.owner_type, t.asset_type
-          from transactions t join filings f on f.id = t.filing_id
+               t.is_10b5_1, t.owner_type, t.asset_type,
+               case when f.source = 'sec_form4'
+                     and (f.payload->'transactions'->t.ord->>'shares') ~ '^[0-9]+(\\.[0-9]+)?$'
+                     and (f.payload->'transactions'->t.ord->>'shares')::float8 = t.shares::float8
+                     and (f.payload->'transactions'->t.ord->>'sharesOwnedAfter') ~ '^[0-9]+(\\.[0-9]+)?$'
+                    then (f.payload->'transactions'->t.ord->>'sharesOwnedAfter')::float8 end as owned_after
+          from t join filings f on f.id = t.filing_id
          where t.review in ('auto_approved','approved') and t.confidence >= 0.9
            and f.review in ('auto_approved','approved') and f.confidence >= 0.9
          order by coalesce(t.disclosed_at, f.filed_at::date) desc, t.id desc`,
@@ -253,7 +262,7 @@ async function load(): Promise<Flagship> {
     }
     const refPrice = new Map<number, number>();
     for (const [id, xs] of refPrices) { const m = median(xs); if (m != null) refPrice.set(id, m); }
-    const built: Txn[] = [];
+    const built: Txn[] = []; const ownedAfter = new Map<number, number | null>();
     for (const t of txnRows) {
       const f = model.filings.get(t.filing_id);
       if (!f) continue;
@@ -271,13 +280,14 @@ async function load(): Promise<Flagship> {
         is10b51: t.is_10b5_1, ownerType: t.owner_type, assetType: t.asset_type, source: f.source, sourceUrl: f.sourceUrl,
         filedAt: f.filedAt, isPublished: f.isPublished, value };
       f.txnCount++;
-      built.push(txn);
+      built.push(txn); ownedAfter.set(txn.id, t.owned_after);
     }
-    // The same trade reported by several joint filers counts once (lib/joint.ts). The filer's own
+    // The same trade reported in more than one filing counts once (lib/joint.ts). The filer's own
     // page keeps the row as filed; every list that spans filers gets it with side "other", which
     // takes it out of the buy/sell totals the same way a derivative row is.
     const joint = jointDuplicates(built.filter((t) => t.source === "sec_form4" && (t.side === "buy" || t.side === "sell")).map((t): JointRow =>
-      ({ id: t.id, filingId: t.filingId, personId: t.personId, securityId: t.securityId, date: t.txnDate, code: t.code, isDerivative: t.isDerivative, shares: t.shares, price: t.price, value: t.value })));
+      ({ id: t.id, filingId: t.filingId, personId: t.personId, securityId: t.securityId, date: t.txnDate, code: t.code, isDerivative: t.isDerivative, shares: t.shares, price: t.price, value: t.value, ownedAfter: ownedAfter.get(t.id) ?? null })));
+    const byId = new Map(built.map((t) => [t.id, t]));
     for (const own of built) {
       const jointOf = joint.get(own.id) ?? null;
       if (jointOf != null) own.jointOf = jointOf;
@@ -285,7 +295,8 @@ async function load(): Promise<Flagship> {
       const f = model.filings.get(own.filingId)!;
       model.txns.push(txn);
       const p = own.personId != null ? model.people.get(own.personId) : undefined;
-      if (p) p.txns.push(own);
+      // A filer's own page shows what they filed — unless the repeat is their own second filing.
+      if (p) p.txns.push(jointOf != null && byId.get(jointOf)?.personId === own.personId ? txn : own);
       const s = own.securityId != null ? model.securities.get(own.securityId) : undefined;
       if (s) {
         s.txns.push(txn);
@@ -297,7 +308,7 @@ async function load(): Promise<Flagship> {
         }
       }
     }
-    if (joint.size) console.log(`flagship: ${joint.size} Form 4 rows repeat a transaction another filer already reported (joint filings) — counted once`);
+    if (joint.size) console.log(`flagship: ${joint.size} Form 4 rows repeat a transaction already reported in an earlier filing (joint filings) — counted once`);
     for (const p of model.people.values()) {
       p.filings.sort((a, b) => (b.filedAt ?? "").localeCompare(a.filedAt ?? ""));
       p.lastFiledAt = p.filings[0]?.filedAt ?? null;

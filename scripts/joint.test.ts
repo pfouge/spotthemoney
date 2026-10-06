@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { jointDuplicates, type JointRow } from "../web/src/lib/joint.ts";
 
 const row = (id: number, filingId: number, personId: number, o: Partial<JointRow> = {}): JointRow =>
-  ({ id, filingId, personId, securityId: 7, date: "2026-03-10", code: "S", isDerivative: false, shares: 26105840, price: 41, value: 26105840 * 41, ...o });
+  ({ id, filingId, personId, securityId: 7, date: "2026-03-10", code: "S", isDerivative: false, shares: 26105840, price: 41, value: 26105840 * 41, ownedAfter: 100000000, ...o });
 
 test("the same sale under seven reporting owners counts once", () => {
   const rows = Array.from({ length: 7 }, (_, i) => row(100 + i, 50 + i, 900 + i));
@@ -17,11 +17,23 @@ test("the earliest filing keeps the transaction, whatever the row order", () => 
   assert.deepEqual([...d.entries()].sort(), [[2, 1], [3, 1]]);
 });
 test("two identical lots reported by each of two joint filers: the first filer keeps both", () => {
-  const d = jointDuplicates([row(1, 10, 1), row(2, 10, 1), row(3, 11, 2), row(4, 11, 2)]);
+  const d = jointDuplicates([row(1, 10, 1), row(2, 10, 1, { ownedAfter: 73894160 }), row(3, 11, 2), row(4, 11, 2, { ownedAfter: 73894160 })]);
   assert.deepEqual([...d.keys()].sort(), [3, 4]);
 });
-test("one filer repeating a lot is not a duplicate", () => {
+test("one filer repeating a lot inside one filing is not a duplicate", () => {
   assert.equal(jointDuplicates([row(1, 10, 1), row(2, 10, 1)]).size, 0);
+});
+test("the same filer reporting the trade again in a second filing counts once", () => {
+  assert.deepEqual([...jointDuplicates([row(1, 10, 1), row(2, 11, 1)]).entries()], [[2, 1]]);
+  // …but not when the filings give no holding to match on
+  assert.equal(jointDuplicates([row(1, 10, 1, { ownedAfter: null }), row(2, 11, 1, { ownedAfter: null })]).size, 0);
+});
+test("equal slices sold from separate accounts (different holdings after) are separate trades", () => {
+  const o = { shares: 1925, price: 1318.8441, value: 1925 * 1318.8441 };
+  assert.equal(jointDuplicates([row(1, 10, 1, { ...o, ownedAfter: 5000 }), row(2, 11, 1, { ...o, ownedAfter: 7200 }), row(3, 12, 2, { ...o, ownedAfter: 900 })]).size, 0);
+});
+test("different filers with no holding on file still count once", () => {
+  assert.equal(jointDuplicates([row(1, 10, 1, { ownedAfter: null }), row(2, 11, 2, { ownedAfter: null })]).size, 1);
 });
 test("different price, shares, date, code or stock are different trades", () => {
   const base = row(1, 10, 1);

@@ -961,3 +961,20 @@ Peter, ~17:15 UTC: pull lobbying in full back to October 2025 and extend donatio
 - Left as is, Peter's call: 10% owners account for about $60B of the $92B of open-market selling
   in the year (pre-dedupe); officers $13.6B, directors $18.8B. Cluster buys in `x_daily` still
   count joint filers as distinct insiders.
+
+### Joint filings, second pass: match on holdings after the trade (2026-10-06, ~12:30 UTC)
+
+- `6f66363` live 12:11 UTC: year of open-market insider selling fell from $92.4B to $75.9B,
+  busiest day from $7.7B (Mar 10) to $3.8B (Sep 16).
+- That $3.8B was still double: SGF FANG Holdings' 9,079,675 FANG shares at $205.26 sit in two
+  consecutive accessions (…037009, …037010) under the **same** filer, which the first rule (different
+  filers only) skipped. Eight such groups, about $2.1B over the year. But the same shape can be
+  real: W. Nicholas Howley's TDG rows repeat 1,925 shares at one average price across three
+  filings, which may be three accounts each selling an equal slice.
+- **Rule now** (`lib/joint.ts`): rows are one trade when stock, date, code, shares, price **and
+  shares owned after the transaction** match across different filings, value $250,000 or more.
+  Different filers with no holding on file still merge; the same filer merges only when a
+  holding is on file. `flagship.ts` reads the holding from the stored Form 4 payload
+  (`owned_after`: n-th row of a filing = n-th payload entry, share count cross-checked).
+  A same-filer repeat is also taken out of that filer's own page totals.
+- Table flag is "also in another filing" (covers both cases).

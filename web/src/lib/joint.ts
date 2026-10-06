@@ -7,7 +7,13 @@
 // The first filing received keeps it; the rest are marked joint and left out of every total
 // that spans filers (they still show, with their value, on each filer's own page).
 //
-// Small identical trades by unrelated insiders do happen (two directors each buying 1,000
+// The match also needs the same "shares owned after the transaction": joint filers report one
+// holding, while separate accounts that each sold an equal slice (three family trusts selling
+// 1,925 shares apiece at one average price) report their own. With that, a repeat by the same
+// filer in a second filing is caught too — SGF FANG Holdings' 9,079,675 Diamondback shares on
+// 2026-09-16 sit in two consecutive accessions. Rows in one filing are never merged.
+//
+// Small identical trades by unrelated insiders do happen (two new directors each buying 1,000
 // shares in an offering), so only rows worth JOINT_MIN_VALUE or more are matched.
 
 export const JOINT_MIN_VALUE = 250_000;
@@ -16,6 +22,8 @@ export interface JointRow {
   id: number; filingId: number; personId: number | null; securityId: number | null;
   date: string | null; code: string | null; isDerivative: boolean | null;
   shares: number | null; price: number | null; value: number | null;
+  /** Shares owned after the transaction, as filed; null when the filing gives none. */
+  ownedAfter: number | null;
 }
 
 /** Map of duplicate row id → the id of the row that keeps the transaction. */
@@ -24,14 +32,18 @@ export function jointDuplicates(rows: JointRow[]): Map<number, number> {
   for (const r of rows) {
     if (r.personId == null || r.securityId == null || !r.date || !r.code) continue;
     if (!(r.shares != null && r.shares > 0) || !(r.price != null && r.price > 0) || !((r.value ?? 0) >= JOINT_MIN_VALUE)) continue;
-    const key = [r.securityId, r.date, r.code, r.isDerivative === true ? 1 : 0, r.shares, r.price].join("|");
+    const key = [r.securityId, r.date, r.code, r.isDerivative === true ? 1 : 0, r.shares, r.price, r.ownedAfter ?? "none"].join("|");
     const g = groups.get(key); if (g) g.push(r); else groups.set(key, [r]);
   }
   const out = new Map<number, number>();
   for (const g of groups.values()) {
-    if (new Set(g.map((r) => r.personId)).size < 2) continue;
+    if (new Set(g.map((r) => r.filingId)).size < 2) continue;
     const first = g.reduce((a, b) => (b.filingId < a.filingId || (b.filingId === a.filingId && b.id < a.id) ? b : a));
-    for (const r of g) if (r.personId !== first.personId) out.set(r.id, first.id);
+    for (const r of g) {
+      if (r.filingId === first.filingId) continue;
+      // Another filer: the same trade. The same filer again: only with a holding on file to match on.
+      if (r.personId !== first.personId || r.ownedAfter != null) out.set(r.id, first.id);
+    }
   }
   return out;
 }
