@@ -1245,3 +1245,54 @@ and the pages cover advertising now, before AdSense is switched on.
 members and merged 1 duplicate — no member on the Congress map lacks a party; the scheduled
 `ingest` at 15:55 UTC was fully green (daily `sec_form4` fix confirmed); donations history is
 complete (806 of 806 committees, 924,040 receipts; database about 500 MB of 8 GB).
+
+### Built-in sharing (2026-10-08) — Peter: "Built-in sharing now"
+
+Peter's choices: every channel offered plus TikTok; pages, charts **and single trades** are
+shareable; link previews keep the one site-wide image for now (per-member and per-stock preview
+cards are on the roadmap, `docs/03` "Additions — 2026-10-08").
+
+- **One dialog, four kinds of button.** `#shareDlg` in `BaseLayout.astro`, run by
+  `web/src/scripts/share.ts`. Any element with `data-share` opens it:
+  `page` (the button in every answer block — so every page with an answer block is shareable
+  with no per-page work), `chart` (in every `Viz.astro` card), `trade` (the last column of
+  `TxnTable.astro`), `map` ("Share this view" under the trade map; the link keeps the filter hash).
+- **Channels:** Copy link; the phone's own share sheet ("More apps…", only where the browser has
+  one); X, WhatsApp, Reddit, LinkedIn, Facebook, email; Copy text; Copy embed code (charts that
+  have one); Save image (charts). **All are plain links built in the browser at click time — no
+  SDK, pixel or third-party script, and nothing records a share.** The privacy page says so
+  (date bumped to 2026-10-08); keep it true. Network names are text chips on purpose: no brand
+  logos are drawn.
+- **TikTok has no way to receive a link from a website** (no web share URL; checked 2026-10-08).
+  Its chip hands over what TikTok does take: on a chart it makes the image (phone: opens the
+  share sheet with the image file; desktop: downloads it) and copies the caption; elsewhere it
+  copies the caption and says so.
+- **Chart image.** `chartPng` copies the visible inline SVG, writes each element's computed
+  colours onto the copy, and draws it on a 1200-wide canvas with the chart title, page title,
+  legend, "spotthemoney.com" and the date. Follows the current theme. The trade map is HTML,
+  not SVG, so it has a link but no image.
+- **Anchors.** Every chart card has an id (`chartId(title)` → `#chart-weekly-flow`; pass `id` to
+  `Viz` if two cards on one page ever share a title — the verifier fails on repeats). Every
+  trade row has `id="t<transaction id>"` on its first appearance in a page (tracked in
+  `Astro.locals.txnAnchors`; the preset feeds on `/insiders/` repeat rows). A shared trade link
+  goes to the **filer's own page** at that row (`data-share-path`), falling back to the stock
+  page, then the current page. Rows and charts highlight on arrival (`:target`).
+  Known limit: tables show the newest 200 rows, so a link to an older trade of a very active
+  filer opens the page without a highlighted row.
+- **Wording.** `web/src/lib/sharetext.ts` `tradeSentence` builds the pre-filled line from the
+  labels the row already shows ("Jane Doe sold $1M–$5M of NVDA on Sep 3, 2026; disclosed Sep 20,
+  2026, 17 days later."). Option, exchange and other rows are never called buys or sells; no
+  motive is stated. Under-review rows have no share button. Page shares use the page title;
+  chart shares use the chart title + page title, with the chart's summary sentence as the
+  longer text. Tests: `npx tsx --test scripts/sharetext.test.ts` (7).
+- **Verifier:** `node scripts/verify-share.mjs <base-url>` (Playwright; axe-core optional) —
+  222 checks: each button kind opens the dialog with the canonical link, every network link
+  carries it, copy/caption/embed reach the clipboard, Save image yields a 1200-wide PNG, shared
+  chart and trade links land on screen, the map link keeps `w=90`, row and chart anchors are
+  unique, focus returns to the button, the dialog passes axe, and opening the menu contacts no
+  other host. Runs against the live site too.
+- Without JavaScript the buttons are hidden (`html:not(.js) [data-share]`).
+- Verified on the local build only: `astro check` 0 errors, `verify-share` 222/222,
+  `verify-a11y` clean, `verify-live --all`, `verify-filters` 427 states / 0 mismatches, 37 unit
+  tests, screenshots (desktop light, phone dark) and one saved chart image looked at.
+  Not tested: real phones' share sheets, the networks' own preview rendering.

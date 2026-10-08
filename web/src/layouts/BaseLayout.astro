@@ -92,6 +92,36 @@ const current = (href: string) => (path === href ? "page" : undefined);
         <div class="search-results" id="searchResults" role="listbox"></div>
       </div>
     </dialog>
+    <dialog class="share-dlg" id="shareDlg" aria-labelledby="shareTitle">
+      <div class="share-box">
+        <div class="share-top">
+          <h2 id="shareTitle">Share</h2>
+          <button type="button" class="icon-btn" id="shareClose" aria-label="Close share menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <p class="share-what" id="shareWhat"></p>
+        <div class="share-link">
+          <input id="shareUrl" type="text" readonly aria-label="Link to share" />
+          <button type="button" class="share-primary" data-share-act="copy" autofocus>Copy link</button>
+        </div>
+        <div class="share-grid">
+          <button type="button" data-share-act="native" hidden>More apps…</button>
+          <a data-share-net="x" target="_blank" rel="noopener">X</a>
+          <a data-share-net="whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+          <a data-share-net="reddit" target="_blank" rel="noopener">Reddit</a>
+          <a data-share-net="linkedin" target="_blank" rel="noopener">LinkedIn</a>
+          <a data-share-net="facebook" target="_blank" rel="noopener">Facebook</a>
+          <a data-share-net="email">Email</a>
+          <button type="button" data-share-act="tiktok">TikTok</button>
+        </div>
+        <div class="share-grid share-extra">
+          <button type="button" data-share-act="caption">Copy text</button>
+          <button type="button" data-share-act="image" hidden>Save image</button>
+          <button type="button" data-share-act="embed" hidden>Copy embed code</button>
+        </div>
+        <p class="share-status" id="shareStatus" role="status" aria-live="polite"></p>
+        <p class="share-note">These are ordinary links. Nothing is sent to any of these services unless you choose one.</p>
+      </div>
+    </dialog>
     <Tape />
 
     <main id="main" tabindex="-1">
@@ -130,6 +160,9 @@ const current = (href: string) => (path === href ? "page" : undefined);
     </script>
     <script>
       import "../scripts/viz";
+    </script>
+    <script>
+      import "../scripts/share";
     </script>
   </body>
 </html>

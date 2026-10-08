@@ -409,6 +409,7 @@ main :is(p, li, dd) a:not([class]), main :is(p, li, dd) a.mono { text-decoration
 .viz-wide { grid-column: 1 / -1; }
 .viz-grid:not(:has(*)) { display: none; }
 .viz-head h3 { margin: 0; font-size: 1.12rem; }
+.viz-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .viz-q { margin: 0.25rem 0 0.7rem; color: var(--ink-soft); font-size: 14px; line-height: 1.45; }
 .viz-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.95rem; font-size: 12.5px; color: var(--ink-soft); margin: 0 0 0.55rem; }
 .viz-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
@@ -478,3 +479,38 @@ html.dark .tape .tb { color: #0B6B55; } html.dark .tape .ts { color: #B2331E; }
 /* slim /embed/ pages */
 body.embed { background: var(--surface); padding: 12px 14px; } body.embed .viz { border: 0; padding: 0; }
 .embed-foot { font-size: 12.5px; color: var(--ink-soft); margin: 8px 0 0; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* ── Sharing (scripts/share.ts). Buttons need JS, so they are hidden without it. ───────────── */
+html:not(.js) [data-share] { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.share-btn { display: inline-flex; align-items: center; gap: 6px; flex: none; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: transparent; color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.share-btn:hover { background: var(--chip); }
+.share-btn-quiet { border-color: transparent; color: var(--ink-soft); padding: 0 8px; height: 30px; }
+.share-btn-quiet:hover { color: var(--ink); }
+.answer-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+table.data th.rs, table.data td.rs { width: 1%; padding: 0 6px 0 0; text-align: right; position: relative; }
+.row-share { width: 32px; height: 32px; border: 0; border-radius: var(--r-pill); background: transparent; cursor: pointer; position: relative; vertical-align: middle; }
+.row-share::before { content: ""; position: absolute; inset: 8px; background: var(--ink-soft); -webkit-mask: var(--share-icon) center / contain no-repeat; mask: var(--share-icon) center / contain no-repeat; }
+.row-share:hover { background: var(--chip); } .row-share:hover::before { background: var(--ink); }
+:root { --share-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7'/%3E%3C/svg%3E"); }
+/* A shared link lands on its row or chart: mark it, and keep it clear of the sticky header. */
+table.data tr[id], figure.viz[id] { scroll-margin-top: 96px; }
+table.data tr:target td { background: color-mix(in srgb, var(--signal) 12%, transparent); }
+figure.viz:target { outline: 2px solid var(--signal); outline-offset: 4px; }
+.share-dlg { border: 0; padding: 0; background: transparent; color: var(--ink); width: min(460px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); margin: 12vh auto auto; overflow: visible; }
+.share-dlg::backdrop { background: rgba(12,13,14,.45); }
+.share-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow); padding: 14px 18px 16px; max-height: calc(100dvh - 24px); overflow-y: auto; }
+.share-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.share-top h2 { margin: 0; font-size: 1.15rem; }
+.share-what { margin: 2px 0 12px; font-size: 14px; color: var(--ink-soft); max-width: none; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.share-link { display: flex; gap: 8px; }
+.share-link input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface-alt); color: var(--ink); font: inherit; font-size: 13.5px; }
+.share-primary { flex: none; height: 40px; padding: 0 16px; border: 0; border-radius: var(--r-sm); background: var(--ink); color: var(--bg); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.share-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 12px; }
+.share-grid > a, .share-grid > button { display: flex; align-items: center; justify-content: center; height: 40px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: transparent; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.share-grid > a:hover, .share-grid > button:hover { background: var(--chip); color: var(--ink); }
+.share-grid > [hidden] { display: none; }
+.share-extra { padding-top: 12px; border-top: 1px solid var(--line); }
+.share-status { min-height: 1.4em; margin: 10px 0 0; font-size: 13.5px; color: var(--ink); max-width: none; }
+.share-note { margin: 4px 0 0; font-size: 12px; color: var(--ink-soft); max-width: none; }
+@media (max-width: 640px) { .share-dlg { margin: auto auto 12px; } }

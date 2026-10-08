@@ -3,6 +3,7 @@
 // legend, the build-time SVG (lib/viz.ts) and a one-sentence reading of it in plain text —
 // the sentence is what search engines and answer engines can quote, since they cannot read
 // the picture. Renders NOTHING when there is no chart to show (empty SVG and no slot use).
+import { chartId } from "../lib/sharetext";
 interface Props {
   title: string;
   question?: string;
@@ -24,15 +25,17 @@ interface Props {
 }
 const { title, question, svg = "", svgNarrow = "", svgPhone = "", legend = [], summary, wide = false, embed = null, embedTitle, id, show } = Astro.props;
 const visible = show ?? svg !== "";
+// Every chart card has an anchor so the Share button can link straight to it.
+const anchor = id ?? chartId(title);
 const site = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
 const snippet = embed
   ? `<iframe src="${site}${embed}" width="640" height="360" loading="lazy" style="border:0;max-width:100%" title="${(embedTitle ?? title).replace(/"/g, "&quot;")} — Spot the Money"></iframe>\n<p>Source: <a href="${site}${embed.replace(/^\/embed/, "")}">Spot the Money</a></p>`
   : "";
 ---
 {visible && (
-  <figure class:list={["viz", { "viz-wide": wide }]} id={id}>
+  <figure class:list={["viz", { "viz-wide": wide }]} id={anchor}>
     <figcaption class="viz-head">
-      <h3>{title}</h3>
+      <div class="viz-top"><h3>{title}</h3><button type="button" class="share-btn share-btn-quiet" data-share="chart" aria-label={`Share this chart: ${title}`}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg><span>Share</span></button></div>
       {question && <p class="viz-q">{question}</p>}
     </figcaption>
     {legend.length > 0 && (

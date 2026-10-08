@@ -10,7 +10,7 @@ import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import Answer from "../components/Answer.astro";
 
-const POLICY_UPDATED = "2026-10-07";
+const POLICY_UPDATED = "2026-10-08";
 const description = "What Spot the Money collects about visitors and what it does not: no accounts, no sign-up forms, cookieless analytics, and how advertising and embedded charts work.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/privacy/#page`, name: "Privacy policy", url: `${SITE_URL}/privacy/`, description, dateModified: POLICY_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
@@ -36,6 +36,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <h2 id="third-parties">Charts and advertising from other companies</h2>
   <p><strong>TradingView.</strong> The share price and price chart on stock pages are widgets served by TradingView. They load only when that part of the page comes into view. When they load, your browser connects to TradingView directly, so TradingView receives your IP address and browser details and may set its own cookies. Its handling of that data is described in <a href="https://www.tradingview.com/privacy-policy/" rel="noopener nofollow">TradingView's privacy policy</a>.</p>
   <p><strong>Advertising.</strong> The site is free and may show advertising through Google AdSense. When ads are shown, Google and its advertising partners use cookies and similar identifiers to serve and measure ads, including ads based on your earlier visits to this and other websites. Where the law requires your consent for that, you will be asked before those cookies are set. You can turn off personalised advertising from Google in <a href="https://adssettings.google.com/" rel="noopener nofollow">Google's Ads Settings</a>, and from many other advertising companies at <a href="https://optout.aboutads.info/" rel="noopener nofollow">aboutads.info</a> or <a href="https://optout.networkadvertising.org/" rel="noopener nofollow">the NAI opt-out page</a>. How Google uses information from sites that show its ads is explained in <a href="https://policies.google.com/technologies/partner-sites" rel="noopener nofollow">Google's own notice</a>. Advertisers have no say over what the site publishes, and nobody can pay to appear in, or be removed from, the records shown here.</p>
+  <p><strong>Share buttons.</strong> The Share menu on pages, charts and trades is made of ordinary links, with no tracking code from any social network. Nothing is sent to X, WhatsApp, Reddit, LinkedIn, Facebook, TikTok or your email program unless you choose one, and from then on that service's own privacy policy applies. We do not record what you share or with whom.</p>
   <p><strong>Links to sources.</strong> Rows link to the original filing on a government website. Those sites have their own privacy practices.</p>
 
   <h2 id="share">Who we share information with</h2>

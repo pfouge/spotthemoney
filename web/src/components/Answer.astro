@@ -1,14 +1,19 @@
 ---
 // The answer-first block (roadmap B.3): two plain-language sentences an answer engine can
 // quote, then the "last updated" stamp. Rendered ABOVE every table on entity pages.
+// It also carries the page's Share button (scripts/share.ts), so every page with an answer
+// block is shareable without each page template having to place one.
 import { formatDate } from "../lib/format";
 interface Props { text: string; updated: string | null; sourceNote?: string }
 const { text, updated, sourceNote } = Astro.props;
 ---
 <section class="answer" data-answer>
   <p class="answer-text">{text}</p>
-  <p class="answer-meta">
-    <span>Last updated {updated ? formatDate(updated) : "—"}</span>
-    {sourceNote && <span> · {sourceNote}</span>}
-  </p>
+  <div class="answer-foot">
+    <p class="answer-meta">
+      <span>Last updated {updated ? formatDate(updated) : "—"}</span>
+      {sourceNote && <span> · {sourceNote}</span>}
+    </p>
+    <button type="button" class="share-btn" data-share="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg><span>Share</span></button>
+  </div>
 </section>
