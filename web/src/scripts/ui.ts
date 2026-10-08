@@ -86,3 +86,24 @@ initTheme();
 initMenu();
 initSearch();
 initAnswerMore();
+
+// Sideways-scrolling strips (figure rows, chips, wide charts on phones) must be reachable from
+// the keyboard: a region that overflows and holds nothing focusable becomes a Tab stop itself,
+// so arrow keys can scroll it. Re-checked on resize and when a strip's content changes.
+const SCROLLERS = ".datastrip, .summary, .viz-body, .feeds, .tablewrap, .hm-bar, .strip-compact";
+function markScrollers(): void {
+  for (const el of document.querySelectorAll<HTMLElement>(SCROLLERS)) {
+    const overflows = el.scrollWidth > el.clientWidth + 1;
+    const hasStop = !!el.querySelector("a[href], button, select, input, [tabindex]:not([tabindex='-1'])");
+    if (overflows && !hasStop) { el.tabIndex = 0; el.dataset.scrollStop = "1"; }
+    else if (el.dataset.scrollStop) { el.removeAttribute("tabindex"); delete el.dataset.scrollStop; }
+  }
+}
+markScrollers();
+addEventListener("load", markScrollers);
+let scrollerTimer = 0;
+addEventListener("resize", () => { clearTimeout(scrollerTimer); scrollerTimer = window.setTimeout(markScrollers, 150); });
+if ("MutationObserver" in window) {
+  const mo = new MutationObserver(() => { clearTimeout(scrollerTimer); scrollerTimer = window.setTimeout(markScrollers, 150); });
+  for (const el of document.querySelectorAll(".summary, .hm-bar")) mo.observe(el, { childList: true });
+}

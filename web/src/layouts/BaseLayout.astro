@@ -4,7 +4,7 @@ import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
 import Wordmark from "../components/Wordmark.astro";
 
-import { fitTitle, fitDescription } from "../lib/seo";
+import { fitTitle, fitDescription, CONTACT_EMAIL } from "../lib/seo";
 import Tape from "../components/Tape.astro";
 
 // title / description: a string, or preferred wording first with shorter fallbacks after it
@@ -13,7 +13,7 @@ import Tape from "../components/Tape.astro";
 interface Props { title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean }
 const { noindex = false } = Astro.props;
 const title = fitTitle(Astro.props.title);
-const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: every disclosed trade on one heatmap, updated daily, free.");
+const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: disclosed trades on one heatmap, updated daily, free.");
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
 const ogImage = `${siteUrl}/og.png`;
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
@@ -59,6 +59,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <Analytics />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site" id="siteHeader">
       <div class="container">
         <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="siteMenu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
@@ -66,8 +67,8 @@ const current = (href: string) => (path === href ? "page" : undefined);
           <Mark size={28} />
           <Wordmark height={11} />
         </a>
-        <button class="search-pill" type="button" data-search-open aria-haspopup="dialog" aria-label="Search members, insiders and tickers">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>Search members, insiders, tickers</span><kbd>/</kbd>
+        <button class="search-pill" type="button" data-search-open aria-haspopup="dialog" aria-label="Search members, insiders, tickers">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>Search members, insiders, tickers</span><kbd aria-hidden="true">/</kbd>
         </button>
         <nav class="site" id="siteMenu" aria-label="Primary">
           <a href="/congress/" aria-current={current("/congress/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M3 10h18M12 3l9 5H3z"/></svg><span>Congress</span><i class="chev" aria-hidden="true">›</i></a>
@@ -93,7 +94,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
     </dialog>
     <Tape />
 
-    <main>
+    <main id="main" tabindex="-1">
       <div class="container">
         <slot />
       </div>
@@ -110,7 +111,17 @@ const current = (href: string) => (path === href ? "page" : undefined);
           disclosures that may lag actual events. Spot the Money provides transparency and historical
           information only — no buy/sell recommendations, no trade execution.
         </p>
-        <p>© {year} spotthemoney.com · Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, FEC, USAspending, Senate LDA · <a href="/methodology/">Methodology</a> · <a href="/corrections/">Corrections</a> · <a href="/llms.txt">llms.txt</a></p>
+        <p>Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, Senate eFD, FEC, USAspending, Senate LDA. An independent site, not affiliated with any government body, campaign or broker.</p>
+        <nav class="foot-links" aria-label="About this site">
+          <a href="/about/">About</a>
+          <a href="/methodology/">Methodology</a>
+          <a href="/corrections/">Corrections</a>
+          <a href="/terms/">Terms</a>
+          <a href="/privacy/">Privacy</a>
+          <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
+          <a href="/llms.txt">llms.txt</a>
+        </nav>
+        <p>© {year} spotthemoney.com</p>
       </div>
     </footer>
 

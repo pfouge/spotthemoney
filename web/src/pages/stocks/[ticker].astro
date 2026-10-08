@@ -51,8 +51,8 @@ const answer = txns.length === 0
   : `${s.ticker} (${name}) has ${plural(yIns.length, "disclosed insider transaction")} from ${plural(insiders.size, "insider")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "sale")}, about ${money(sum(yIns.map((t) => t.value)))} at reported prices) and ${plural(yCon.length, "congressional trade")} from ${plural(members.size, "member")} of Congress. The most recent disclosure was filed ${formatDate(txns[0]!.filedAt)}.`;
 
 const description = fitDescription([
-  `${s.ticker} (${name}) insider trades and congressional stock trades: every SEC Form 4 and STOCK Act disclosure, with dates, values and source links.`,
-  `${s.ticker} insider trades and congressional stock trades: every SEC Form 4 and STOCK Act disclosure, with dates, values and source links.`,
+  `${s.ticker} (${name}) insider trades and congressional stock trades: SEC Form 4 and STOCK Act disclosures on record, with dates, values and source links.`,
+  `${s.ticker} insider trades and congressional stock trades: SEC Form 4 and STOCK Act disclosures on record, with dates, values and source links.`,
 ]);
 const ld = datasetLd({ name: `${s.ticker} insider and congressional transactions`, path, description, dateModified: lastUpdated.slice(0, 10),
   keywords: [s.ticker, name, "insider trading", "Form 4", "congressional stock trades", "STOCK Act"], sources: [SOURCES.edgar, SOURCES.house], parentCatalogPath: "/stocks/" });

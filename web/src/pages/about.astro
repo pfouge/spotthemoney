@@ -1,0 +1,53 @@
+---
+// /about/ — who runs the site, how it is paid for, how to reach us, the accessibility
+// statement, and credits for everything on the site that is not ours (font, charts, roster).
+// Keep the credits list true: add a line whenever a third-party asset or service is added.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
+import Answer from "../components/Answer.astro";
+
+// Date this page's text last changed — update it when the wording does.
+const PAGE_UPDATED = "2026-10-07";
+
+const description = "Who runs Spot the Money, how it is funded, how to get in touch, and what the site is and is not: an independent, free reference to public U.S. disclosure records.";
+const ld = { "@context": "https://schema.org", "@type": "AboutPage", "@id": `${SITE_URL}/about/#page`, name: "About Spot the Money", url: `${SITE_URL}/about/`, description, dateModified: PAGE_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
+---
+<BaseLayout title="About | Spot the Money" description={description} section="About">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "About", path: "/about/" }]} />
+  <p class="eyebrow">About</p>
+  <h1>About Spot the Money</h1>
+  <p class="lede">A free reference to who is buying and selling stock in Congress and in company boardrooms, and to the money that moves through Washington, built on public records and linked to its sources.</p>
+
+  <Answer text={`Spot the Money is an independent, free website operated by a Wyoming limited liability company that republishes public U.S. disclosure records with a link to each source. It is not a government site, gives no investment advice, and can be reached at ${CONTACT_EMAIL}.`} updated={PAGE_UPDATED} sourceNote="About" />
+
+  <div class="prose">
+  <h2 id="what">What this is</h2>
+  <p>Members of Congress and company insiders must report their stock trades. Campaigns must report their donors, lobbyists their clients, and agencies their contracts. Those reports are public, but they sit in separate government systems in formats that are hard to read. Spot the Money gathers them once a day, shows them as filed, and links every row to the original document. What is covered, what is not yet covered, and each rule used to total the figures are written down in the <a href="/methodology/">Methodology</a>.</p>
+
+  <h2 id="who">Who runs it</h2>
+  <p>spotthemoney.com is an independent project operated by a Wyoming limited liability company. It is not a government website and is not affiliated with or endorsed by any agency, member of Congress, political party, campaign, company or broker. It takes no position on any person, party or stock: the same rules are applied to every filer.</p>
+
+  <h2 id="money">How it is paid for</h2>
+  <p>The site is free to read, with no account and no paywall. It may carry advertising to cover its costs. Advertisers have no say in what is published, and nobody can pay to appear in, be ranked in, or be removed from the records. The site sells nothing, recommends no trades and executes none.</p>
+
+  <h2 id="contact">Contact</h2>
+  <p>Write to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> for questions, press, data requests and privacy requests. If a figure looks wrong, the <a href="/corrections/">Corrections</a> page explains what to send and what happens next.</p>
+
+  <h2 id="accessibility">Accessibility</h2>
+  <p>The site is built to be usable with a keyboard and a screen reader and in light or dark colours: pages have a skip link and a visible focus outline, controls are labelled, and charts carry a text summary. Some parts are harder to use than we would like, in particular the large trade map and the embedded share-price charts, which are another company's widget. If something does not work for you, write to us and say which page and which tool you use; we will fix what we can and send you the information another way.</p>
+
+  <h2 id="credits">Credits and licences</h2>
+  <ul>
+    <li><strong>Records.</strong> U.S. government sources: SEC EDGAR, the House Clerk, the Senate's financial disclosure and lobbying systems, the Federal Election Commission, USAspending, the Treasury and the Bureau of Labor Statistics. Limits on reusing some of them are in the <a href="/terms/#reuse">Terms</a>.</li>
+    <li><strong>Roster of members.</strong> Names, parties, states and terms come from the public-domain <a href="https://github.com/unitedstates/congress-legislators" rel="noopener">congress-legislators</a> project.</li>
+    <li><strong>Share-price charts.</strong> Widgets by <a href="https://www.tradingview.com/" rel="noopener nofollow">TradingView</a>, shown with its branding as its terms require.</li>
+    <li><strong>Typeface.</strong> Outfit, used under the SIL Open Font License; the <a href="/fonts/OUTFIT-LICENSE.txt">licence text</a> is published with the font.</li>
+    <li><strong>Logo and charts.</strong> Made for this site. The site uses no stock photography and no photographs of the people named in the records.</li>
+  </ul>
+
+  <p>See also the <a href="/terms/">Terms of use</a> and the <a href="/privacy/">Privacy policy</a>.</p>
+  </div>
+  <JsonLd data={ld} />
+</BaseLayout>

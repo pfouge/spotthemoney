@@ -46,7 +46,7 @@ const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", 
   { name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "Treasury par yield curve", path: "/rates/treasury-yields/" }, { name: "TIPS real yield curve", path: "/rates/tips/" },
   { name: "Campaign contributions to tracked committees", path: "/donations/" }, { name: "Federal lobbying filings", path: "/lobbying/" }, { name: "Largest federal contract awards", path: "/contracts/" }, { name: "Newest disclosures feed", path: "/disclosures/" },
 ] });
-const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling — every disclosed trade on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
+const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling — disclosed trades on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
 ---
 <BaseLayout title="Congress & Insider Stock Trades Heatmap | Spot the Money" section="Heatmap">
   <section class="hero hero-map">
@@ -55,13 +55,13 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
     <p class="lede">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map — the STOCK Act trades and Form 4s we have read so far, sized by dollars, colored by direction, filterable, and linked to the filing. {hasSenate ? "" : "Senate trades are not included yet; "}<a href="/methodology/#coverage">{hasSenate ? "See what is covered" : "see what is covered"}</a>.</p>
   </section>
 
-  <div class="hm-switch" role="tablist" aria-label="Choose a heatmap">
-    <div class="seg" id="hmSwitch">
+  <div class="hm-switch">
+    <div class="seg" id="hmSwitch" role="tablist" aria-label="Choose a heatmap">
       <button type="button" class="on" data-pane="all" role="tab" aria-selected="true">All insiders</button>
       <button type="button" data-pane="congress" role="tab" aria-selected="false">Congress</button>
       <button type="button" data-pane="insiders" role="tab" aria-selected="false">Corporate insiders</button>
     </div>
-    <a class="hm-more" id="hmMore" href="/congress/">Congress: late filers, most active members, every filing &rarr;</a>
+    <a class="hm-more" id="hmMore" href="/congress/">Congress: late filers, most active members, filings as they arrive &rarr;</a>
   </div>
   <div class="hm-pane" data-pane="all"><Heatmap kind="all" primary={true} /></div>
   <div class="hm-pane" data-pane="congress" hidden><Heatmap kind="congress" id="hm-congress-home" /></div>
@@ -100,8 +100,8 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
     const sw = document.getElementById("hmSwitch");
     const more = document.getElementById("hmMore") as HTMLAnchorElement | null;
     const links: Record<string, [string, string]> = {
-      all: ["/congress/", "Congress: late filers, most active members, every filing →"],
-      congress: ["/congress/", "Full Congress page: late filers, most active members, every filing →"],
+      all: ["/congress/", "Congress: late filers, most active members, filings as they arrive →"],
+      congress: ["/congress/", "Full Congress page: late filers, most active members, filings as they arrive →"],
       insiders: ["/insiders/", "Full Insiders page: cluster buys, CEO purchases, officer sales →"],
     };
     sw?.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {

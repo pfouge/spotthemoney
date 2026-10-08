@@ -1,0 +1,75 @@
+---
+// /terms/ — the rules for using and reusing the site. Structure follows nsnexplorer.com's
+// terms; the reuse section carries the two statutory limits that travel with this data
+// (5 U.S.C. § 13107(c) for congressional reports, 52 U.S.C. § 30111(a)(4) for FEC filings).
+// Update TERMS_UPDATED and the text together. Not reviewed by a lawyer yet.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
+import Answer from "../components/Answer.astro";
+
+const TERMS_UPDATED = "2026-10-07";
+const description = "The terms for using Spot the Money: what the site is, what it is not (investment advice), how its data may be reused, and the limits of our responsibility.";
+const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/terms/#page`, name: "Terms of use", url: `${SITE_URL}/terms/`, description, dateModified: TERMS_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
+---
+<BaseLayout title="Terms of use | Spot the Money" description={description} section="Terms">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Terms", path: "/terms/" }]} />
+  <p class="eyebrow">About <span class="x">/</span> Terms</p>
+  <h1>Terms of use</h1>
+  <p class="lede">The rules for using this site and reusing what it publishes.</p>
+  <Answer text="Spot the Money republishes public U.S. government records as information, not investment advice, and every figure should be checked against its linked source before it is relied on. Figures may be quoted with a credit and a link, within the legal limits on reusing congressional and FEC records." updated={TERMS_UPDATED} sourceNote="Terms of use" />
+
+  <div class="prose">
+  <h2 id="short">The short version</h2>
+  <p>Spot the Money is a free reference site that republishes public U.S. government records. It is information, not advice. Check any figure against the linked source before you rely on it. You may quote and reuse what you find here with a credit and a link, within the limits the law puts on some of the underlying records. By using the site you agree to these terms; if you do not agree, please do not use it.</p>
+
+  <h2 id="what">What the site is</h2>
+  <p>spotthemoney.com collects records filed with the U.S. Securities and Exchange Commission, the House and Senate, the Federal Election Commission, the Treasury and other federal sources, and presents them with links to the originals. How the records are gathered, filtered and totalled is set out in the <a href="/methodology/">Methodology</a>. The site is independent. It is not a government website and is not affiliated with or endorsed by any agency, member of Congress, campaign, company or broker.</p>
+
+  <h2 id="advice">Not investment advice</h2>
+  <p>Nothing on this site is investment, financial, legal or tax advice, or an offer or recommendation to buy, sell or hold any security. We are not a broker, dealer or investment adviser and we do not execute trades. A disclosed trade is a historical fact about a filing. It is not a statement about why the person traded, what they knew, or what a share price will do, and appearing on this site does not suggest that anyone did anything wrong. Decisions you make are your own; consider speaking to a licensed adviser.</p>
+
+  <h2 id="accuracy">Accuracy and timing</h2>
+  <p>We work to show each record as it was filed, but the site can be wrong, incomplete or out of date. Filings reach us after the events they describe, sometimes weeks later; some are amended afterwards; scanned and paper filings are held until they are read by hand; and congressional reports give amounts as ranges, not exact figures. Totals and charts are our own arithmetic on those records. The original filing is the authority, and each row links to it. If you find an error, see <a href="/corrections/">Corrections</a>.</p>
+
+  <h2 id="use">Acceptable use</h2>
+  <p>You may browse, search, link to and share the site freely. Please do not: interfere with the site or try to get around its security; crawl it at a rate that strains it (an automated reader should identify itself and keep to a modest pace); present the site's pages as your own service; or use anything here to break the law, to harass anyone, or to mislead people about what a record shows. If you need the data in volume, write to us first. We may limit or block access that breaks these rules.</p>
+
+  <h2 id="reuse">Reusing the data</h2>
+  <p>The underlying records are public. You are welcome to quote figures, tables and charts from this site, including in news reports, research and commentary, with a credit to spotthemoney.com and a link to the page you used. Embeddable charts may be placed on other sites unaltered, with their source line intact.</p>
+  <p>Two kinds of record carry legal limits that apply to you as well as to us, and reuse is your responsibility:</p>
+  <ul>
+    <li><strong>Congressional financial disclosure reports.</strong> Federal law (5 U.S.C. § 13107(c)) makes it unlawful to obtain or use these reports for an unlawful purpose; for a commercial purpose, other than by news and communications media for dissemination to the general public; to determine or establish anyone's credit rating; or to solicit money for any political, charitable or other purpose.</li>
+    <li><strong>Federal Election Commission filings.</strong> Federal law (52 U.S.C. § 30111(a)(4)) forbids selling information copied from these reports, or using it to solicit contributions or for commercial purposes, apart from using a political committee's own name and address to solicit that committee.</li>
+  </ul>
+
+  <h2 id="third-party">Other sites and services</h2>
+  <p>Pages link to government sources and include share-price charts served by TradingView. We do not control those services and are not responsible for their content, accuracy or availability. Share prices in those charts are delayed and are not part of our records.</p>
+
+  <h2 id="ads">Advertising</h2>
+  <p>The site may show advertising to cover its costs. Ads are labelled, are chosen by the advertising network and not by us, and are not endorsements. Advertisers have no influence over what is published. How advertising uses data is covered in the <a href="/privacy/">Privacy policy</a>.</p>
+
+  <h2 id="ip">What belongs to whom</h2>
+  <p>Government records are not ours and we claim no rights in them. The site's name, logo, design, text, charts and code are ours. Apart from the reuse allowed above, please do not copy the site as a whole or use its name or logo in a way that suggests we are behind something we are not.</p>
+
+  <h2 id="disclaimer">No warranty</h2>
+  <p>The site is provided "as is" and "as available", without warranties of any kind, express or implied, including warranties of accuracy, completeness, merchantability, fitness for a particular purpose and non-infringement. We do not promise that it will be uninterrupted, error-free or current.</p>
+
+  <h2 id="liability">Limit of liability</h2>
+  <p>To the fullest extent the law allows, the operator of spotthemoney.com and the people who work on it are not liable for any indirect, incidental, special, consequential or punitive damages, or for any trading or investment loss, lost profit or lost data, arising from your use of the site or reliance on anything in it. Our total liability for any claim relating to the site is limited to US$100. Some jurisdictions do not allow some of these limits, so parts of this section may not apply to you.</p>
+
+  <h2 id="indemnity">Your responsibility for misuse</h2>
+  <p>If you use the site or its data in breach of these terms or of the law, and a claim is brought against the operator because of it, you agree to cover the resulting losses and reasonable costs.</p>
+
+  <h2 id="changes">Changes</h2>
+  <p>We may change the site or these terms. The date at the top shows the latest version; continuing to use the site after a change means you accept it.</p>
+
+  <h2 id="law">Governing law</h2>
+  <p>spotthemoney.com is operated by a Wyoming limited liability company. These terms are governed by the laws of the State of Wyoming and applicable U.S. federal law, and disputes are to be brought in the state or federal courts located in Wyoming, unless the law where you live gives you a right that cannot be waived. If a court finds part of these terms unenforceable, the rest stays in effect.</p>
+
+  <h2 id="contact">Contact</h2>
+  <p>Questions about these terms: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. See also the <a href="/privacy/">Privacy policy</a> and <a href="/about/">About</a>.</p>
+  </div>
+  <JsonLd data={ld} />
+</BaseLayout>

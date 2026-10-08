@@ -83,7 +83,7 @@ const hasInsiders = kind !== "congress";
   <div class="summary hm-summary" aria-live="polite"></div>
 
   <div class="hm-main">
-    <div class="hm-map" style={`height:${height}px`} role="img" aria-label="Treemap of tickers sized by dollars disclosed"></div>
+    <div class="hm-map" style={`height:${height}px`} role="group" aria-label="Trade map: one tile per ticker, sized by dollars disclosed. Each tile links to that ticker's page."></div>
     <aside class="hm-side" style={`height:${height}px`}>
       <div class="hm-side-head">
         <h3 class="hm-side-title">Most traded</h3>
@@ -97,7 +97,7 @@ const hasInsiders = kind !== "congress";
     <div class="hm-legend"></div>
     <div class="hm-stamp mono"></div>
   </div>
-  <div class="hm-tip" role="tooltip"></div>
+  <div class="hm-tip" aria-hidden="true"></div>
 </section>
 
 <script>

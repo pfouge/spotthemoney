@@ -1,0 +1,175 @@
+# History backfill — runs the three "history pass" sources side by side and re-starts itself
+# until each one reports it is finished. Added 2026-10-05 (Peter: history back to 2025-10-01).
+#
+# Each source stops itself on a time/request budget and prints "(partial)" when there is more
+# to do, "(success)" when it has caught up:
+#   sec_form4_history        SEC Form 4 filings for every tracked ticker   (~42 min a run)
+#   senate_lda_history       every Senate LDA filing posted since the floor (~42 min a run)
+#   fec_schedule_a_history   FEC receipts per committee, capped             (<=30 min, <=600 calls)
+# The last job starts the next run with only the sources that still have work, and counts
+# `remaining` down so a source that never finishes cannot loop forever. Start it once from
+# the Actions tab (Run workflow); stop it by cancelling the run that is in progress.
+#
+# Different hosts, so the three jobs run in parallel. The site is redeployed after each run.
+
+name: backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: "History sources to run (space-separated)"
+        required: false
+        default: "sec_form4_history senate_lda_history fec_schedule_a_history"
+      remaining:
+        description: "How many more times this may restart itself"
+        required: false
+        default: "30"
+
+concurrency:
+  group: backfill
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  ASTRO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: node db/migrate.mjs
+
+  insiders:
+    needs: migrate
+    if: contains(github.event.inputs.sources, 'sec_form4_history')
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    outputs:
+      more: ${{ steps.run.outputs.more }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Run sec_form4_history
+        id: run
+        run: |
+          set -o pipefail
+          npm run ingest -- sec_form4_history 2>&1 | tee run.log
+          if grep -q "sec_form4_history: .*(partial)" run.log; then echo "more=true" >> "$GITHUB_OUTPUT"; fi
+
+  lobbying:
+    needs: migrate
+    if: contains(github.event.inputs.sources, 'senate_lda_history')
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    outputs:
+      more: ${{ steps.run.outputs.more }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      LDA_API_KEY: ${{ secrets.LDA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Run senate_lda_history
+        id: run
+        run: |
+          set -o pipefail
+          npm run ingest -- senate_lda_history 2>&1 | tee run.log
+          if grep -q "senate_lda_history: .*(partial)" run.log; then echo "more=true" >> "$GITHUB_OUTPUT"; fi
+
+  donations:
+    needs: migrate
+    if: contains(github.event.inputs.sources, 'fec_schedule_a_history')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      more: ${{ steps.run.outputs.more }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Run fec_schedule_a_history
+        id: run
+        run: |
+          set -o pipefail
+          npm run ingest -- fec_schedule_a_history 2>&1 | tee run.log
+          if grep -q "fec_schedule_a_history: .*(partial)" run.log; then echo "more=true" >> "$GITHUB_OUTPUT"; fi
+
+  # Rebuild + deploy from the refreshed database (same pipeline as a push to main).
+  deploy:
+    needs: [migrate, insiders, lobbying, donations]
+    if: always() && needs.migrate.result == 'success'
+    uses: ./.github/workflows/deploy.yml
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # Start the next run with whatever still has work. A job that failed outright is NOT
+  # retried here — a red run stops the chain so the cause gets looked at.
+  again:
+    needs: [insiders, lobbying, donations, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REMAINING: ${{ github.event.inputs.remaining }}
+    steps:
+      - name: Decide
+        run: |
+          next=""
+          [ "${{ needs.insiders.outputs.more }}" = "true" ] && next="$next sec_form4_history"
+          [ "${{ needs.lobbying.outputs.more }}" = "true" ] && next="$next senate_lda_history"
+          [ "${{ needs.donations.outputs.more }}" = "true" ] && next="$next fec_schedule_a_history"
+          next="$(echo $next)"
+          left=$(( ${REMAINING:-0} - 1 ))
+          {
+            echo "### Backfill"
+            echo "- insiders: ${{ needs.insiders.result }} (more: ${{ needs.insiders.outputs.more || 'no' }})"
+            echo "- lobbying: ${{ needs.lobbying.result }} (more: ${{ needs.lobbying.outputs.more || 'no' }})"
+            echo "- donations: ${{ needs.donations.result }} (more: ${{ needs.donations.outputs.more || 'no' }})"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$next" ]; then echo "- nothing left to run — backfill finished or stopped" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ "$left" -lt 0 ]; then echo "- restart limit reached; still to do: $next" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          echo "- starting the next run for: $next (restarts left: $left)" >> "$GITHUB_STEP_SUMMARY"
+          gh workflow run backfill.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}" -f sources="$next" -f remaining="$left"

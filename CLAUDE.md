@@ -1182,3 +1182,66 @@ that member, the filer row is merged into it. Checked in the dataset: Greene (R-
   database with fixture rosters: the three former members linked with party and closed roles,
   Lindsey Graham not merged into Darline Graham, an unknown filer left alone.
 - Run with: Actions → ingest → source `congress_roster`.
+
+### Legal, privacy and trust basics (2026-10-07) — Peter: "do 2, look at NSNExplorer.com for ideas"
+
+Not reviewed by a lawyer. Peter's answers: operator is "a Wyoming limited liability company"
+(same wording as nsnexplorer.com; no company name published), contact address
+`contact@spotthemoney.com` (**Peter sets up the forwarding** — until he does, mail to it bounces),
+and the pages cover advertising now, before AdSense is switched on.
+
+- **New pages:** `/privacy/`, `/terms/`, `/about/` (`web/src/pages/*.astro`; in the sitemap and
+  `llms.txt`). Each has the answer block and a dated constant (`POLICY_UPDATED`, `TERMS_UPDATED`,
+  `PAGE_UPDATED`) — change the date whenever the wording changes. Structure follows
+  nsnexplorer.com's pages; the text is written for what this site does.
+- **One contact address:** `CONTACT_EMAIL` in `web/src/lib/seo.ts` (footer, the three pages,
+  corrections, `llms.txt`). `corrections@` is no longer used. The ingest user-agent strings still
+  carry Peter's Gmail address (they identify the crawler to SEC and others) — unchanged.
+- **Footer:** About · Methodology · Corrections · Terms · Privacy · Contact · llms.txt, plus a
+  not-affiliated line. **Corrections page:** the draft "Use of this site" paragraph now points
+  to Terms; the "Draft — needs review" note on the corrections policy itself is still there.
+- **What the privacy page promises — keep these true:** no accounts, forms or email list; the
+  site sets no cookies; one localStorage key (`theme`); Cloudflare Web Analytics only; TradingView
+  widgets load from TradingView on stock pages; ads may be shown through Google AdSense with
+  consent asked "where the law requires it"; requests answered within 30 days; future email
+  alerts or accounts will be opt-in with unsubscribe and deletion.
+  **Before setting `PUBLIC_AD_CLIENT`:** turn on Google's consent message (AdSense → Privacy &
+  messaging) for EEA/UK/Swiss visitors, or the consent sentence is false. **Before adding any
+  third-party script, form or account feature:** update the privacy page and its date first.
+- **Third-party services (the audit):** Cloudflare (hosting, Web Analytics), Supabase (database,
+  public records only, no visitor data), GitHub (code, scheduled jobs), TradingView (widgets on
+  `/stocks/<ticker>/`), Google AdSense (off), self-hosted Outfit font (OFL). Nothing else loads
+  from another host.
+- **Reuse limits stated in Terms:** 5 U.S.C. § 13107(c) (congressional disclosure reports) and
+  52 U.S.C. § 30111(a)(4) (FEC filings). Liability cap US$100; Wyoming law and courts.
+- **Unsupported claims removed:** "every disclosed trade" / "every STOCK Act disclosure" /
+  "every Form 4" in the default description, home JSON-LD, member, insider and stock page
+  descriptions and two link labels — the site holds back scanned filings and tracks a set of
+  tickers, so "every" was not true. `VizCongress` no longer says "Senate filings are not yet
+  covered" once Senate reports are public. Ad slots now carry a visible "Advertisement" label.
+- **Accessibility pass.** New `scripts/verify-a11y.mjs` (axe-core, WCAG 2 A/AA, one page of each
+  type × light/dark × desktop/phone, plus the skip link). First run: 202 findings; now 0. Fixed:
+  skip link + `<main id="main">`; text colours `--green-ink` / `--red-ink` (the fill green was
+  4.29:1 as text; use the `-ink` tokens for any green/red TEXT); heatmap tile text is pure
+  black or white (the softer inks fell to 4.2:1 on mid greens) and every tile has an
+  `aria-label` (ticker, dollars, direction, trades); the map is a `group`, not an `img`; charts
+  with links inside are `role="group"` (`linked()` in `viz.ts`); hover tooltips are
+  `aria-hidden` (pointer-only; the facts are in labels and chart summaries); links inside running
+  text are underlined; sideways-scrolling strips with nothing focusable become a Tab stop
+  (`markScrollers` in `ui.ts`); the home map switch's tablist no longer contains a link; the
+  search button's label matches its visible text; under-review rows are no longer dimmed.
+  Run: `npm i --no-save playwright axe-core`, then
+  `node scripts/verify-a11y.mjs http://127.0.0.1:4321` (or the live URL). **Install every
+  `--no-save` tool in ONE npm command** (`playwright axe-core @astrojs/check typescript`): a
+  second `npm i --no-save` removes the first set, and `astro check` then hangs on a prompt.
+- Not covered by the check: TradingView and ad frames (excluded — not ours), real screen-reader
+  use, the trade map's keyboard order (tiles are in size order, there can be hundreds).
+  Provenance of the header/menu line icons is not recorded; the About page credits only the
+  logo and charts as made for the site.
+- Verified on the local build only: `astro check` 0 errors, 233-page build, `verify-live --all`,
+  `verify-filters` (427 states, 0 mismatches), `verify-a11y` clean, 30 unit tests, screenshots.
+
+**State carried over from 2026-10-06 (not written down then):** roster run linked 3 former
+members and merged 1 duplicate — no member on the Congress map lacks a party; the scheduled
+`ingest` at 15:55 UTC was fully green (daily `sec_form4` fix confirmed); donations history is
+complete (806 of 806 committees, 924,040 receipts; database about 500 MB of 8 GB).

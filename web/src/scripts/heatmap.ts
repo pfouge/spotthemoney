@@ -55,8 +55,10 @@ const RAMPS = {
 };
 const isDark = () => document.documentElement.classList.contains("dark");
 function bestInk(fill: string): { c: string; sh: string } {
+  // Pure black or white, whichever contrasts more: on any fill the better of the two is at
+  // least 4.58:1 (WCAG AA needs 4.5); the softer ink colours fell to 4.2 on mid greens.
   const l = lum(fill); const cd = (l + 0.05) / 0.05, cl = 1.05 / (l + 0.05);
-  return cd >= cl ? { c: "#0A0B0C", sh: "0 1px 0 rgba(255,255,255,.22)" } : { c: "#F4F4F2", sh: "0 1px 2px rgba(0,0,0,.55)" };
+  return cd >= cl ? { c: "#000000", sh: "0 1px 0 rgba(255,255,255,.22)" } : { c: "#FFFFFF", sh: "0 1px 2px rgba(0,0,0,.55)" };
 }
 
 // ── squarified treemap (Bruls, Huizing, van Wijk) ─────────────────────────────────────────
@@ -221,6 +223,8 @@ export function initHeatmap(root: HTMLElement): void {
         if (w > 34 && h > 20) { const fs = Math.max(11, Math.min(18, Math.sqrt(w * h) / 9)); html += `<div class="tk" style="font-size:${fs}px">${esc(d.ticker)}</div>`; }
         if (w > 52 && h > 40) html += `<div class="amt" style="font-size:${Math.max(11, Math.min(13, w / 8))}px">${fmtUSD(d.value)}</div>`;
         a.innerHTML = html;
+        // Small tiles show no text, and no tile shows direction in words: say both for screen readers.
+        a.setAttribute("aria-label", `${d.ticker} ${fmtUSD(d.value)} disclosed${d.name ? `, ${d.name}` : ""}, ${d.buy > d.sell ? "net buying" : d.sell > d.buy ? "net selling" : "buying and selling equal"}, ${d.trades} trade${d.trades === 1 ? "" : "s"}`);
         a.addEventListener("mousemove", (e) => showTip(e, d));
         a.addEventListener("mouseleave", () => { tip.style.opacity = "0"; });
         mapEl.appendChild(a);

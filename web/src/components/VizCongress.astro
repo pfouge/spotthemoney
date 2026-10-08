@@ -3,7 +3,7 @@
 // and how long they take to report.
 import Viz from "./Viz.astro";
 import VizFlow from "./VizFlow.astro";
-import { getFlagship, CONGRESS_DEADLINE_DAYS } from "../lib/flagship";
+import { getFlagship, senateShown, CONGRESS_DEADLINE_DAYS } from "../lib/flagship";
 import { pairBarsSvg, tileMapSvg, histogramSvg, usd, PHONE_W } from "../lib/viz";
 import { congressTxns, partySplit, stateVolumes, lagStats, isInsiderTxn } from "../lib/vizdata";
 const model = await getFlagship();
@@ -21,7 +21,7 @@ const top = [...st.vol.entries()].sort((a, b) => b[1] - a[1])[0];
       <VizFlow txns={all} who="members of Congress" />
       <Viz title="Party and chamber" question="Do Democrats and Republicans trade differently? Dollars bought and sold by each group in the last year."
         legend={[["v-buy", "Bought"], ["v-sell", "Sold"]]} svg={pairBarsSvg(party)} svgPhone={pairBarsSvg(party, false, PHONE_W)}
-        summary={party.length ? `${party.map((p) => `${p.label} bought ${usd(p.buy)} and sold ${usd(p.sell)}`).join("; ")}. Amounts are the top of each disclosed range. Senate filings are not yet covered.` : undefined} />
+        summary={party.length ? `${party.map((p) => `${p.label} bought ${usd(p.buy)} and sold ${usd(p.sell)}`).join("; ")}. Amounts are the top of each disclosed range.${senateShown(model) ? "" : " Senate filings are not yet covered."}` : undefined} />
       <Viz title="Trading by state" question="Which states' members trade the most? Each tile is one state, shaded by dollars traded in the last year."
         svg={tileMapSvg(st.vol, "traded by this state's members", st.detail)} svgPhone={tileMapSvg(st.vol, "traded by this state's members", st.detail, PHONE_W)}
         summary={top ? `Members from ${st.vol.size} states disclosed trades in the last year. ${top[0]} leads with ${usd(top[1])}.` : undefined} />

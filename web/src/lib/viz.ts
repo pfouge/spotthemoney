@@ -25,6 +25,8 @@ export function usd(v: number): string {
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const dayNum = (iso: string) => Math.floor(Date.parse(iso.slice(0, 10) + "T00:00:00Z") / 86400000);
 const isoOf = (n: number) => new Date(n * 86400000).toISOString().slice(0, 10);
+// A chart with links inside is a labelled group: role="img" would hide the links from screen readers.
+const linked = (svg: string): string => (svg.includes("<a ") ? svg.replace('role="img"', 'role="group"') : svg);
 const open = (w: number, h: number, label: string, cls = "") => `<svg class="vz ${cls}" viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="${esc(label)}">`;
 const text = (x: number, y: number, s: string, cls = "vt", anchor = "start", extra = "") => `<text x="${f1(x)}" y="${f1(y)}" class="${cls}" text-anchor="${anchor}"${extra}>${esc(s)}</text>`;
 /** Approximate width of a label in the 11px mono face, for "does it fit" decisions. */
@@ -137,7 +139,7 @@ export function pairBarsSvg(rows: { label: string; buy: number; sell: number; hr
       o += `<rect x="${lw}" y="${y + 15}" width="${f1(ws)}" height="13" rx="3" class="v-sell"${tip(`${r.label}|▼ sold ${usd(r.sell)}`)}/>` + text(lw + ws + 5, y + 26, `▼ ${usd(r.sell)}`);
     }
   });
-  return o + "</svg>";
+  return linked(o + "</svg>");
 }
 
 // ── 07 / 21 state tile map ──────────────────────────────────────────────────────────────
@@ -223,7 +225,7 @@ export function scatterSvg(points: { label: string; x: number; y: number; size: 
   dots.forEach((d, i) => {
     const { p, X, Y, R } = d;
     const dot = `<circle cx="${f1(X)}" cy="${f1(Y)}" r="${f1(R)}" class="v-one ring" fill-opacity=".78" stroke-width="2"${tip(`${p.label}|Insiders net ${p.x >= 0 ? "bought" : "sold"} ${usd(Math.abs(p.x))}|Congress net ${p.y >= 0 ? "bought" : "sold"} ${usd(Math.abs(p.y))}`)}/>`;
-    o += p.href ? `<a href="${esc(p.href)}">${dot}</a>` : dot;
+    o += p.href ? `<a href="${esc(p.href)}" aria-label="${esc(p.label)}">${dot}</a>` : dot;
     if (i >= 10) return;
     // a label goes in the first free spot beside, above or below its dot; no free spot, no label (the tooltip still names it)
     const w = tw(p.label);
@@ -238,7 +240,7 @@ export function scatterSvg(points: { label: string; x: number; y: number; size: 
   });
   o += labels + text(cx, H - 6, W < 500 ? "insiders: net selling  ←→  net buying (log)" : "corporate insiders: net selling  ←→  net buying (log scale)", "vt", "middle");
   o += text(12, cy, "Congress: selling ←→ buying", "vt", "middle", ` transform="rotate(-90 12 ${cy})"`);
-  return o + "</svg>";
+  return linked(o + "</svg>");
 }
 
 // ── 11 leaderboards · 15 agencies ───────────────────────────────────────────────────────
@@ -252,7 +254,7 @@ export function rankBarsSvg(rows: { label: string; value: number; valueLabel: st
     const y = i * 28 + 4, w = Math.max(4, (r.value / mx) * room), lab = text(0, y + 15, fit(r.label, lw - 8), "vi");
     o += (r.href ? `<a href="${esc(r.href)}">${lab}</a>` : lab) + `<rect x="${lw}" y="${y + 2}" width="${f1(w)}" height="16" rx="3" class="v-one"${tip(`${r.label}|${r.valueLabel}`)}/>` + text(lw + w + 6, y + 15, r.valueLabel);
   });
-  return o + "</svg>";
+  return linked(o + "</svg>");
 }
 
 // ── 15 column bars (lobbying by quarter) ────────────────────────────────────────────────
@@ -336,7 +338,7 @@ export function treemapSvg(items: { name: string; value: number; label: string; 
     else { place(list.slice(0, k), x, y, w, h * f); place(list.slice(k), x, y + h * f, w, h * (1 - f)); }
   };
   place(live, 0, 0, W, height);
-  return o + "</svg>";
+  return linked(o + "</svg>");
 }
 
 // ── 18 reporting-lag strip ──────────────────────────────────────────────────────────────

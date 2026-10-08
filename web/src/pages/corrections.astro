@@ -5,11 +5,11 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
-import { SITE_URL } from "../lib/seo";
+import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import Answer from "../components/Answer.astro";
 
 // Date this policy text last changed — update it when the wording does.
-const POLICY_UPDATED = "2026-09-27";
+const POLICY_UPDATED = "2026-10-07";
 
 const description = "How to report an error on Spot the Money and what happens next: a fix or an explanation within five working days and a public corrections log.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/corrections/#page`, name: "Corrections", url: `${SITE_URL}/corrections/`, description, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
@@ -19,11 +19,11 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p class="eyebrow">About <span class="x">/</span> Corrections</p>
   <h1>Corrections</h1>
   <p class="lede">If a figure here is wrong, we want to know, and we will say so in public when we fix it.</p>
-  <Answer text="To report an error on Spot the Money, email corrections@spotthemoney.com with the page URL and the figure you believe is wrong. Reports are answered with a fix or an explanation within five working days, and material corrections are logged publicly on this page." updated={POLICY_UPDATED} sourceNote="Corrections policy" />
+  <Answer text={`To report an error on Spot the Money, email ${CONTACT_EMAIL} with the page URL and the figure you believe is wrong. Reports are answered with a fix or an explanation within five working days, and material corrections are logged publicly on this page.`} updated={POLICY_UPDATED} sourceNote="Corrections policy" />
   <p class="note"><strong>Draft — needs review.</strong> This policy is published in draft while it is reviewed; the commitments below are already honoured.</p>
 
   <h2>How to report</h2>
-  <p>Email <a href="mailto:corrections@spotthemoney.com">corrections@spotthemoney.com</a> with the page URL, the figure you believe is wrong, and — if you have it — the filing or record that shows the correct value. Reports from the person or organisation named on the page are handled first.</p>
+  <p>Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> with the page URL, the figure you believe is wrong, and — if you have it — the filing or record that shows the correct value. Reports from the person or organisation named on the page are handled first.</p>
 
   <h2>What happens next</h2>
   <p>We acknowledge every report, then within <strong>five working days</strong> either correct the page, or explain why the figure stands (usually: it matches the filing as submitted, and the filing itself has not been amended). Corrections that change a published number are listed below with the date; a filing that is later amended by its filer is not a correction by us, but the amended figure replaces the original on the next daily update.</p>
@@ -35,6 +35,6 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p class="empty-reason">No corrections yet.</p>
 
   <h2>Use of this site</h2>
-  <p class="disclaimer"><strong>Draft — needs review.</strong> Everything on spotthemoney.com is information about public records and is provided for transparency and historical reference. Nothing here is investment, legal or tax advice, an offer or a recommendation to buy or sell any security, or a statement about any person's intent; disclosures can lag the events they describe and can be amended. You are responsible for verifying any figure against the linked source before relying on it. Reuse with attribution to spotthemoney.com is welcome.</p>
+  <p>The rules for using and reusing what is published here, and the limits of what it can tell you, are in the <a href="/terms/">Terms of use</a>. What the site does and does not collect about visitors is in the <a href="/privacy/">Privacy policy</a>.</p>
   <JsonLd data={ld} />
 </BaseLayout>

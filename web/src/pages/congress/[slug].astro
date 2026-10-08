@@ -40,8 +40,8 @@ const answer = txns.length === 0
   : `${p.name} (${title}) disclosed ${plural(thisYear.length, "trade")} in ${year} and ${plural(txns.length, "trade")} in total on record, filed on average ${avgLag == null ? "—" : Math.round(avgLag)} days after the trade; ${plural(late.length, "was late", "were late")} against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline. Disclosed ranges add up to between ${money(sum(txns.map((t) => t.amountLow)))} and ${money(sum(txns.map((t) => t.amountHigh)))}, most often in ${tickers.slice(0, 3).map((s) => s.ticker).join(", ") || "assets without a ticker"}.`;
 
 const description = fitDescription([
-  `${p.name} (${title}): every STOCK Act stock trade disclosure, with trade and filing dates, amount ranges and a link to each filing.`,
-  `${p.name}: every STOCK Act stock trade disclosure, with trade and filing dates, amount ranges and a link to each filing.`,
+  `${p.name} (${title}): STOCK Act stock trade disclosures on record, with trade and filing dates, amount ranges and a link to each filing.`,
+  `${p.name}: STOCK Act stock trade disclosures on record, with trade and filing dates, amount ranges and a link to each filing.`,
   `${p.name}: STOCK Act stock trade disclosures with dates, amounts and filing links.`,
 ]);
 // A member with no published trades has nothing to rank or cite: keep the page for

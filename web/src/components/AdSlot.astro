@@ -3,13 +3,15 @@
 // Renders a responsive AdSense unit when the repo variable PUBLIC_AD_CLIENT (ca-pub-…) is set,
 // and NOTHING otherwise — no placeholder text on the live site. Ads sit between panels, never
 // inside a data table (docs/06). `slot` is the AdSense ad-unit id; when omitted the unit is an
-// auto-format responsive unit and AdSense picks the size.
+// auto-format responsive unit and AdSense picks the size. Every unit carries a visible
+// "Advertisement" label (the terms page says ads are labelled).
 interface Props { slot?: string; label?: string; }
 const { slot, label = "Advertisement" } = Astro.props as Props;
 const adClient = import.meta.env.PUBLIC_AD_CLIENT;
 ---
 {adClient && (
   <aside class="ad-slot" aria-label={label}>
+    <p class="ad-label">{label}</p>
     <script is:inline async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`} crossorigin="anonymous"></script>
     <ins class="adsbygoogle" style="display:block" data-ad-client={adClient} data-ad-slot={slot} data-ad-format="auto" data-full-width-responsive="true"></ins>
     <script is:inline>(adsbygoogle = window.adsbygoogle || []).push({});</script>

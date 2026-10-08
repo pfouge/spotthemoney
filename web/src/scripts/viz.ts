@@ -4,7 +4,7 @@
 function initTooltip(): void {
   const tipEl = document.createElement("div");
   tipEl.className = "viz-tip";
-  tipEl.setAttribute("role", "tooltip");
+  tipEl.setAttribute("aria-hidden", "true"); // pointer-only aid; the chart's text summary carries the same facts
   document.body.appendChild(tipEl);
   let current: Element | null = null;
   const show = (el: Element, x: number, y: number): void => {

@@ -124,6 +124,9 @@ export function dataCatalogLd(opts: { path: string; name: string; description: s
   };
 }
 
+// The one public contact address (privacy, terms, corrections, llms.txt, footer).
+export const CONTACT_EMAIL = "contact@spotthemoney.com";
+
 export const SOURCES = {
   edgar: { name: "SEC EDGAR Form 4 filings", url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4" },
   house: { name: "U.S. House Clerk financial disclosures", url: "https://disclosures-clerk.house.gov/FinancialDisclosure" },

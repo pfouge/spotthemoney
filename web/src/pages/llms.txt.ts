@@ -2,7 +2,7 @@
 // (roadmap B.2), generated at build so the section list and counts stay true.
 import type { APIRoute } from "astro";
 import { getFlagship, num } from "../lib/flagship";
-import { SITE_URL } from "../lib/seo";
+import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 
 export const GET: APIRoute = async () => {
   const m = await getFlagship();
@@ -43,7 +43,8 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [Methodology](${SITE_URL}/methodology/): sources, cadence, publishing bar, lag and late rules, flag definitions, matching rules.
 - [Corrections](${SITE_URL}/corrections/): how to report an error; five-working-day response.
 - Structured data: JSON-LD (Person, Organization, Dataset, DataCatalog, BreadcrumbList) on every page listed above.
-- Contact: pfouge@gmail.com. Built ${m.builtAt}.
+- [About](${SITE_URL}/about/), [Terms](${SITE_URL}/terms/), [Privacy](${SITE_URL}/privacy/).
+- Contact: ${CONTACT_EMAIL}. Built ${m.builtAt}.
 `;
   return new Response(body, { headers: { "content-type": "text/plain; charset=utf-8" } });
 };

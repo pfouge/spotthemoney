@@ -34,6 +34,9 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/disclosures/", lastmod: day(latestTxn, built), changefreq: "hourly", priority: 0.8 },
     { loc: "/methodology/", lastmod: built, changefreq: "monthly", priority: 0.5 },
     { loc: "/corrections/", lastmod: built, changefreq: "monthly", priority: 0.3 },
+    { loc: "/about/", lastmod: built, changefreq: "monthly", priority: 0.3 },
+    { loc: "/terms/", lastmod: built, changefreq: "yearly", priority: 0.2 },
+    { loc: "/privacy/", lastmod: built, changefreq: "yearly", priority: 0.2 },
   ];
 
   const insiders: SitemapUrl[] = [];

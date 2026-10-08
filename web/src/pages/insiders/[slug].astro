@@ -42,8 +42,8 @@ const answer = txns.length === 0
   : `${p.name}, ${title}, has disclosed ${plural(txns.length, "transaction")} in ${tickers.map((s) => s.ticker).slice(0, 3).join(", ")}${tickers.length > 3 ? ` and ${tickers.length - 3} more` : ""} since ${formatDate(p.firstFiledAt)}: ${plural(buys.length, "purchase")} (${plural(openMarketBuys.length, "open-market buy")}) and ${plural(sells.length, "sale")}, worth about ${money(sum(txns.map((t) => t.value)))} at the reported prices. The latest was filed ${formatDate(p.lastFiledAt)}${latest?.lagDays != null ? `, ${latest.lagDays} day${latest.lagDays === 1 ? "" : "s"} after the trade` : ""}${lateCount ? `; ${plural(lateCount, "filing was late", "filings were late")} against the 2-business-day Form 4 deadline` : ""}.`;
 
 const description = fitDescription([
-  `${p.name} (${title}): every SEC Form 4 insider transaction, with dates, shares, prices and a link to each filing.`,
-  `${p.name}: every SEC Form 4 insider transaction, with dates, shares, prices and a link to each filing.`,
+  `${p.name} (${title}): SEC Form 4 insider transactions on record, with dates, shares, prices and a link to each filing.`,
+  `${p.name}: SEC Form 4 insider transactions on record, with dates, shares, prices and a link to each filing.`,
 ]);
 const ld = personLd({ name: p.name, path, jobTitle: role?.officerTitle ?? (role?.isDirector ? "Director" : "Corporate insider"), worksFor: company ? { name: company.name, path: cpath } : null, description,
   sameAs: p.cik ? [`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${p.cik}&type=4`] : [] });
