@@ -3,7 +3,9 @@
 // to go out of date: every label they quote is listed in `ui` and every rule's file in `covers`.
 import type { Guide } from "./types";
 import type { GuideCtx } from "./ctx";
-import { table } from "./html";
+import { table, ext } from "./html";
+import { citation, CITE_STYLES } from "../cite";
+import { CONTACT_EMAIL } from "../seo";
 
 const U = "2026-10-08";
 
@@ -54,7 +56,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
 <p>To show decisions and leave out mechanics. Most Form 4 rows are pay arriving, options being exercised or tax being withheld; and many sales follow a schedule fixed long before. The starting view keeps open-market purchases and sales that were not made under a plan. Both switches are one click from the full picture. See ${`<a href="/guides/form-4-transaction-codes/">transaction codes</a>`} and ${`<a href="/guides/rule-10b5-1-trading-plans/">10b5-1 plans</a>`}.</p>
 <p>Three kinds of row are never on the map: options and other derivatives, a trade already counted from another filing, and anything without a ticker.</p>` },
       { id: "share", h: "How do I share or save a view?", html: `
-<p>Use "Share this view" under the map. The link carries your filters, so whoever opens it sees the same map. Every chart on the site has its own Share button with a "Save image" option, and each row in a table of trades has a share icon that links straight to that trade.</p>
+<p>Use "Share this view" under the map. The link carries your filters, so whoever opens it sees the same map. Every chart on the site has its own Share button with a "Save image" option, and each row in a table of trades has a share icon that links straight to that trade. The same menu writes a citation for you in four styles; see ${`<a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a>`}.</p>
 <p>To find a person or a stock directly, press <kbd>/</kbd> or use the search box at the top of any page.</p>` },
     ],
     faqs: [
@@ -140,4 +142,75 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
     ui: [],
     facts: ["stockAct"],
   }),
+  // ───────────────────────────────────────────────────────────────────────────────────────
+  () => {
+    // The examples are produced by the same code as the Cite menu (lib/cite.ts), so they cannot
+    // show a format the menu does not produce.
+    const sample = { title: "Late congressional trade disclosures", url: "https://spotthemoney.com/guides/late-congressional-trade-disclosures/", updated: U, accessed: U };
+    const examples = CITE_STYLES.map((st) => [st.label, citation(st.key, sample).html]);
+    return {
+      slug: "how-to-cite-and-reuse", group: "site", updated: U,
+      title: "How to cite and reuse Spot the Money",
+      seoTitle: ["How to Cite and Reuse Spot the Money Data", "How to Cite Spot the Money"],
+      description: ["How to credit Spot the Money in an article, paper or post, how to cite the original government filing, and the legal limits on reusing congressional and FEC records.", "How to credit Spot the Money, cite the original filing, and stay within the legal limits on reusing the records."],
+      answer: "You may quote figures, tables and charts from Spot the Money with a credit to spotthemoney.com and a link to the page you used; every page, chart and trade has a Cite button that writes the citation for you. For anything that matters, cite the original government filing as well, which every row links to.",
+      keyFacts: [
+        "Credit line: \"Source: Spot the Money (spotthemoney.com)\", linked to the page.",
+        "The Cite button gives the citation in plain, APA, MLA and Chicago form with today's date filled in.",
+        "The government filing is the authority; this site is the compilation.",
+        "Federal law limits commercial use of congressional reports and of FEC donor details.",
+        "Charts can be embedded or saved as images with the site name on them.",
+      ],
+      sections: [
+        { id: "credit", h: "How should I credit the site?", html: `
+<p>Name the site and link to the page the figure came from. In running text, "according to Spot the Money" with a link is enough. Under a chart or table, use <strong>Source: Spot the Money (spotthemoney.com)</strong>.</p>
+<p>Link to the specific page, not the home page. Pages are rebuilt as new filings arrive, so say when you looked: a total you quote today may be different next week.</p>` },
+        { id: "cite-button", h: "How do I get a formatted citation?", html: `
+<p>Use the "Cite" button at the top of any page. It opens a small panel with the citation in four styles, each with the page's last-updated date and today's date already filled in, and a "Copy citation" button. Charts and single trades have the same panel behind their Share buttons, with a link that goes straight to that chart or that row.</p>
+<p>The four styles look like this:</p>
+${table(["Style", "Example"], examples)}
+<p>Copying keeps the italics when you paste into a word processor. A citation for a single trade also names the original filing and gives its address.</p>` },
+        { id: "original", h: "Should I cite this site or the original filing?", html: `
+<p>Both, when the claim matters. The filing made with the government is the record; this site reads it, adds it up by stated rules and links back to it. If you report that a member of Congress sold a stock, the member's own report is the source and this site is where you found it.</p>
+<p>Every row in every table has a link to its filing in the last column: the Form 4 on the SEC's EDGAR system, or the periodic transaction report on the House Clerk's or the Senate's site. The "Sources and method" section at the foot of each member, insider, stock and company page lists how many filings from each source are behind the page, the dates they span, and where to read them.</p>
+<p>Totals, rankings and charts are this site's arithmetic. Cite those to this site, and read the <a href="/methodology/">methodology</a> for the rules used, especially for <a href="/guides/congress-trade-amount-ranges/">congressional amounts</a>, which are tops of ranges.</p>` },
+        { id: "charts", h: "Can I use the charts and tables?", html: `
+<p>Yes, with the credit. Three ways are built in:</p>
+<ul>
+<li><strong>Link.</strong> Each chart's Share button gives a link that opens the page at that chart.</li>
+<li><strong>Image.</strong> "Save image" in the same menu downloads the chart as a picture with its title, legend, the site name and the date.</li>
+<li><strong>Embed.</strong> Charts on member and stock pages offer embed code that shows the live chart on your own site with a source line.</li>
+</ul>
+<p>Please do not crop out the site name or alter the figures. If you rebuild a chart from the numbers, credit the site as the source of the data.</p>` },
+        { id: "limits", h: "Are there legal limits on reuse?", html: `
+<p>Yes, two, and they apply to anyone who uses the records, not only to this site:</p>
+<ul>
+<li><strong>Congressional financial disclosure reports</strong> may not be used for a commercial purpose (news and media reporting to the general public is excepted), to establish anyone's credit rating, or to solicit money (${ext("https://www.law.cornell.edu/uscode/text/5/13107", "5 U.S.C. § 13107(c)")}).</li>
+<li><strong>Information copied from FEC reports</strong> may not be sold or used to solicit contributions or for commercial purposes (${ext("https://www.fec.gov/updates/sale-or-use-contributor-information/", "FEC guidance")}). This site publishes donation totals only, never individual donors.</li>
+</ul>
+<p>SEC filings, lobbying reports, contract records and Treasury rates carry no comparable restriction. The full reuse terms are in the <a href="/terms/#reuse">terms of use</a>. This is a summary, not legal advice.</p>` },
+        { id: "bulk", h: "What if I need the data in bulk?", html: `
+<p>Write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and say what you are working on. Please do not crawl the site at a rate that strains it. Journalists and researchers can also ask for the rule behind any figure, or for help tracing a number to its filings.</p>
+<p>The government sources are open to everyone and are listed, with links, in the <a href="/methodology/#sources">methodology</a>.</p>` },
+        { id: "errors", h: "What if the figure I cited is later corrected?", html: `
+<p>Filings are amended and this site fixes its own mistakes. A correction that changes a published number is logged on the <a href="/corrections/">corrections page</a> with its date. Because pages change, the access date in your citation is what shows which version you saw.</p>` },
+      ],
+      faqs: [
+        { q: "How do I cite Spot the Money?", a: "Credit \"Spot the Money (spotthemoney.com)\" and link to the page you used. The Cite button on every page gives a ready-made citation in plain, APA, MLA and Chicago style with the access date filled in." },
+        { q: "Can I use Spot the Money charts in an article?", a: "Yes, with a credit and a link. Each chart can be linked, saved as an image that carries the site name, or embedded on member and stock pages." },
+        { q: "Is Spot the Money data free to reuse?", a: "Figures may be quoted and reused with a credit and a link. Federal law separately limits commercial use of congressional disclosure reports and of donor details from FEC reports." },
+        { q: "Should I cite the original filing or Spot the Money?", a: "Cite the original government filing for the fact of a trade, and this site for totals, rankings and charts it computed. Every row links to its filing." },
+      ],
+      sources: [
+        { name: "5 U.S.C. § 13107, public access to congressional reports and limits on their use", url: "https://www.law.cornell.edu/uscode/text/5/13107" },
+        { name: "FEC: sale or use of contributor information", url: "https://www.fec.gov/updates/sale-or-use-contributor-information/" },
+        { name: "52 U.S.C. § 30111", url: "https://www.law.cornell.edu/uscode/text/52/30111" },
+      ],
+      related: ["what-disclosure-data-cannot-tell-you", "congress-trade-amount-ranges", "how-to-use-the-trade-map", "campaign-donations-fec-data"],
+      seeLive: [{ label: "Terms of use: reusing the data", href: "/terms/#reuse" }, { label: "Methodology", href: "/methodology/" }, { label: "Corrections", href: "/corrections/" }],
+      covers: ["web/src/lib/cite.ts", "web/src/scripts/share.ts", "web/src/components/SourcePanel.astro", "web/src/pages/terms.astro"],
+      ui: [{ text: "<span>Cite</span>", on: "/congress/" }, { text: "Copy citation", on: "/congress/" }, { text: ">Chicago<", on: "/congress/" }, { text: "Save image", on: "/congress/" }, { text: "Sources and method", on: "/stocks/aapl/" }],
+      facts: [],
+    };
+  },
 ];

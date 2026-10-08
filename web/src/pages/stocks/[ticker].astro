@@ -1,6 +1,7 @@
 ---
 // Ticker page: /stocks/<ticker>/ — insider and congressional activity in one security.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
@@ -97,8 +98,9 @@ const ld = datasetLd({ name: `${s.ticker} insider and congressional transactions
     </>
   )}
 
-  <h2>Sources and method</h2>
-  <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk (and Senate eFD when live). Values use the reported price for Form 4 and the disclosed range for Congress. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  <h2 id="sources">Sources and method</h2>
+  <SourcePanel model={model} txns={txns} edgarId={s.ticker} />
+  <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures are shown as filed and may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>

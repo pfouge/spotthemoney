@@ -3,6 +3,7 @@
 // federal contracts and lobbying (exact normalized-name match on USAspending recipient /
 // LDA client; a miss simply shows the reason line).
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
@@ -10,7 +11,7 @@ import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, companyPath, personPath, securityPath, withinDays, num, plural, money, sum, roleLabel } from "../../lib/flagship";
-import { organizationLd, fitDescription } from "../../lib/seo";
+import { organizationLd, fitDescription, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizStock from "../../components/VizStock.astro";
 
@@ -103,7 +104,9 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </div>
   )}
 
-  <h2>Sources and method</h2>
+  <h2 id="sources">Sources and method</h2>
+  <SourcePanel model={model} txns={c.txns} edgarId={c.cik ?? c.primaryTicker}
+    extra={[{ name: "USAspending, federal contract awards", records: c.contracts.length, unit: c.contracts.length === 1 ? "award" : "awards", href: SOURCES.usaspending.url, linkLabel: "USAspending" }, { name: "Lobbying disclosure filings", records: c.lobbying.length, unit: c.lobbying.length === 1 ? "filing" : "filings", href: SOURCES.lda.url, linkLabel: "LDA.gov search" }]} />
   <p>Insiders and their transactions come from SEC EDGAR Form 4 filings for this issuer. Contracts and lobbying are matched by exact normalized name (suffixes like Inc./Corp. ignored) to USAspending recipients and LDA clients — a conservative match that misses subsidiaries on purpose. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no recommendation is made or implied.</p>
   <JsonLd data={ld} />

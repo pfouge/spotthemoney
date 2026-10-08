@@ -1,6 +1,7 @@
 ---
 // Politician profile: /congress/<slug>/ — one page per member with STOCK Act PTR filings.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
@@ -95,9 +96,10 @@ const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? 
     </div>
   )}
 
-  <h2>Sources and method</h2>
+  <h2 id="sources">Sources and method</h2>
+  <SourcePanel model={model} txns={txns} filings={p.filings} />
   <p>
-    Rows are parsed from the member's periodic transaction reports (House Clerk PDFs; Senate eFD reports when that feed is live).
+    Rows are parsed from the member's periodic transaction reports (House Clerk PDFs for representatives, Senate eFD reports for senators).
     Members report dollar ranges, not exact amounts, so "value" shows the range as filed. "Lag" is the filing date minus the
     trade date; the STOCK Act requires filing within {CONGRESS_DEADLINE_DAYS} days. Owner shows whether the holding is the member's,
     a spouse's, a dependent's or joint. Filings we could not read automatically are held for human review and shown with zero rows until then.

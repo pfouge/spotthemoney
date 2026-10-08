@@ -100,7 +100,12 @@ export function datasetLd(opts: { name: string; path: string; description: strin
     url: `${SITE_URL}${opts.path}`,
     description: opts.description,
     dateModified: opts.dateModified,
-    license: "https://creativecommons.org/licenses/by/4.0/",
+    // Reuse terms are the site's own (credit + link, within the statutory limits on congressional
+    // and FEC records), not a Creative Commons licence — Peter, 2026-10-08.
+    license: `${SITE_URL}/terms/#reuse`,
+    usageInfo: `${SITE_URL}/guides/how-to-cite-and-reuse/`,
+    creditText: `${SITE_NAME} (spotthemoney.com)`,
+    citation: `${SITE_NAME}. ${opts.name}. ${SITE_URL}${opts.path}`,
     isAccessibleForFree: true,
     creator: PUBLISHER,
     publisher: PUBLISHER,

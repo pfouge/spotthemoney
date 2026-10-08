@@ -14,7 +14,7 @@ const PAGE_UPDATED = "2026-10-07";
 const description = "Who runs Spot the Money, how it is funded, how to get in touch, and what the site is and is not: an independent, free reference to public U.S. disclosure records.";
 const ld = { "@context": "https://schema.org", "@type": "AboutPage", "@id": `${SITE_URL}/about/#page`, name: "About Spot the Money", url: `${SITE_URL}/about/`, description, dateModified: PAGE_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
-<BaseLayout title="About | Spot the Money" description={description} section="About">
+<BaseLayout title="About | Spot the Money" description={description} section="About" modified={PAGE_UPDATED}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "About", path: "/about/" }]} />
   <p class="eyebrow">About</p>
   <h1>About Spot the Money</h1>

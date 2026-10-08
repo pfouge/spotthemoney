@@ -10,7 +10,9 @@ import Tape from "../components/Tape.astro";
 // title / description: a string, or preferred wording first with shorter fallbacks after it
 // (see fitTitle / fitDescription). noindex: pages that exist for navigation but have no data
 // yet (a member with no filings on record) — kept out of search and out of the sitemap.
-interface Props { title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean }
+// modified: ISO date the page's content last changed, for citation metadata; defaults to the
+// build date, which is right for data pages (they are rebuilt whenever the data changes).
+interface Props { title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean; modified?: string | null }
 const { noindex = false } = Astro.props;
 const title = fitTitle(Astro.props.title);
 const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: disclosed trades on one heatmap, updated daily, free.");
@@ -18,6 +20,9 @@ const siteUrl = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").
 const ogImage = `${siteUrl}/og.png`;
 const canonical = new URL(Astro.url.pathname, siteUrl).toString();
 const year = new Date().getFullYear();
+const modified = (Astro.props.modified ?? new Date().toISOString()).slice(0, 10);
+// The title as a citation should carry it: without the site-name suffix.
+const citeTitle = title.replace(/\s*[|–—-]\s*Spot the Money\s*$/i, "").trim() || title;
 const path = Astro.url.pathname;
 const current = (href: string) => (path === href ? "page" : undefined);
 ---
@@ -30,6 +35,18 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={noindex ? "noindex, follow" : "index, follow, max-snippet:-1, max-image-preview:large"} />
+    <meta name="author" content="Spot the Money" />
+    <link rel="license" href={`${siteUrl}/terms/#reuse`} />
+    <meta name="citation_title" content={citeTitle} />
+    <meta name="citation_author" content="Spot the Money" />
+    <meta name="citation_publication_date" content={modified.replace(/-/g, "/")} />
+    <meta name="citation_public_url" content={canonical} />
+    <meta name="dcterms.title" content={citeTitle} />
+    <meta name="dcterms.creator" content="Spot the Money" />
+    <meta name="dcterms.publisher" content="Spot the Money" />
+    <meta name="dcterms.modified" content={modified} />
+    <meta name="dcterms.rights" content={`${siteUrl}/terms/#reuse`} />
+    <meta property="article:modified_time" content={modified} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:title" content={title} />
@@ -119,6 +136,17 @@ const current = (href: string) => (path === href ? "page" : undefined);
           <button type="button" data-share-act="image" hidden>Save image</button>
           <button type="button" data-share-act="embed" hidden>Copy embed code</button>
         </div>
+        <div class="share-cite" id="shareCite">
+          <h3 id="citeHeading">Cite</h3>
+          <div class="seg seg-sm" role="group" aria-label="Citation style">
+            <button type="button" data-cite-style="plain" class="on" aria-pressed="true">Plain</button><button type="button" data-cite-style="apa" aria-pressed="false">APA</button><button type="button" data-cite-style="mla" aria-pressed="false">MLA</button><button type="button" data-cite-style="chicago" aria-pressed="false">Chicago</button>
+          </div>
+          <p class="cite-text" id="citeText" tabindex="0" aria-labelledby="citeHeading"></p>
+          <div class="cite-row">
+            <button type="button" class="share-primary" data-share-act="cite">Copy citation</button>
+            <a href="/guides/how-to-cite-and-reuse/">How to cite and reuse</a>
+          </div>
+        </div>
         <p class="share-status" id="shareStatus" role="status" aria-live="polite"></p>
         <p class="share-note">These are ordinary links. Nothing is sent to any of these services unless you choose one.</p>
       </div>
@@ -148,6 +176,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
           <a href="/guides/">Guides</a>
           <a href="/faq/">FAQ</a>
           <a href="/methodology/">Methodology</a>
+          <a href="/guides/how-to-cite-and-reuse/">How to cite</a>
           <a href="/corrections/">Corrections</a>
           <a href="/terms/">Terms</a>
           <a href="/privacy/">Privacy</a>

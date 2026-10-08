@@ -14,7 +14,7 @@ const POLICY_UPDATED = "2026-10-08";
 const description = "What Spot the Money collects about visitors and what it does not: no accounts, no sign-up forms, cookieless analytics, and how advertising and embedded charts work.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/privacy/#page`, name: "Privacy policy", url: `${SITE_URL}/privacy/`, description, dateModified: POLICY_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
-<BaseLayout title="Privacy policy | Spot the Money" description={description} section="Privacy">
+<BaseLayout title="Privacy policy | Spot the Money" description={description} section="Privacy" modified={POLICY_UPDATED}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Privacy", path: "/privacy/" }]} />
   <p class="eyebrow">About <span class="x">/</span> Privacy</p>
   <h1>Privacy policy</h1>

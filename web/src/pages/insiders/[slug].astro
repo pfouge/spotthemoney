@@ -2,6 +2,7 @@
 // Insider profile: /insiders/<slug>/ — one page per person with an insider role (Form 4 filer).
 // Answer-first (roadmap B.3), then the transactions, then sources, last-updated, disclaimer.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
@@ -92,7 +93,8 @@ const ld = personLd({ name: p.name, path, jobTitle: role?.officerTitle ?? (role?
     </div>
   )}
 
-  <h2>Sources and method</h2>
+  <h2 id="sources">Sources and method</h2>
+  <SourcePanel model={model} txns={txns} filings={p.filings} edgarId={p.cik} />
   <p>
     Every row comes from the reporting owner's Form 4 as filed with the SEC (EDGAR ownership XML), read daily.
     "Value" is shares × the reported price; code P is an open-market purchase, S a sale, M an option exercise, A a grant.

@@ -84,7 +84,7 @@ const flags = (t: Txn) => {
               <td class="num strong">{amountLabel(t)}</td>
               <td class="flags">{flags(t).map((f) => <span class={`flag ${f.replace(/\W+/g, "-")}`}>{f}</span>)}</td>
               <td>{href ? <a href={href} rel="noopener nofollow" target="_blank">{sourceLabel(t)} ↗</a> : sourceLabel(t)}</td>
-              <td class="rs">{line && <button type="button" class="row-share" data-share="trade" data-share-text={line} data-share-path={home !== here ? home : undefined} data-share-id={`t${t.id}`} aria-label="Share this trade"></button>}</td>
+              <td class="rs">{line && <button type="button" class="row-share" data-share="trade" data-share-text={line} data-share-path={home !== here ? home : undefined} data-share-id={`t${t.id}`} data-share-date={(t.disclosedAt ?? "").slice(0, 10) || undefined} aria-label="Share or cite this trade"></button>}</td>
             </tr>
           );
         })}

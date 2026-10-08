@@ -31,7 +31,7 @@ const ld = [
   { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}${path}#faq`, mainEntity: g.faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
 ];
 ---
-<BaseLayout title={g.seoTitle.map((t) => `${t} | Spot the Money`).concat(g.seoTitle)} description={g.description} section="Guides">
+<BaseLayout title={g.seoTitle.map((t) => `${t} | Spot the Money`).concat(g.seoTitle)} description={g.description} section="Guides" modified={g.updated}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Guides", path: "/guides/" }, { name: g.title, path }]} />
   <p class="eyebrow">Guides <span class="x">/</span> {group.label}</p>
   <article class="guide">

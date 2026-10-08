@@ -1,0 +1,80 @@
+---
+// "Sources for this page": which official records the page is built from, how many filings and
+// rows from each, the dates they span, and where to read the originals. Counts cover everything
+// on record for the page's subject, including rows beyond a table's display limit.
+// `extra` adds sources that are not filings of trades (contracts, lobbying on company pages).
+import type { Flagship, Txn, Filing } from "../lib/flagship";
+import { num } from "../lib/flagship";
+import { SOURCES, edgarFilingUrl } from "../lib/seo";
+import { formatDate } from "../lib/format";
+
+interface Extra { name: string; records: number; unit: string; href: string; linkLabel: string }
+interface Props {
+  model: Flagship;
+  txns: Txn[];
+  /** Filings to count even when they have no rows on the page (a person's held or empty filings). */
+  filings?: Filing[];
+  /** EDGAR identifier (CIK or ticker) for a link to this subject's own Form 4 list. */
+  edgarId?: string | null;
+  extra?: Extra[];
+}
+const { model, txns, filings = [], edgarId = null } = Astro.props;
+const extra = (Astro.props.extra ?? []).filter((e) => e.records > 0);
+
+const NAMES: Record<string, string> = { sec_form4: "SEC EDGAR, Form 4", house_ptr: "House Clerk, periodic transaction reports", senate_ptr: "Senate eFD, periodic transaction reports" };
+const official = (source: string): { href: string; label: string } =>
+  source === "sec_form4"
+    ? edgarId
+      ? { href: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(edgarId)}&type=4&dateb=&owner=include&count=40`, label: "Form 4 list on EDGAR" }
+      : { href: SOURCES.edgar.url, label: "EDGAR" }
+    : source === "house_ptr" ? { href: SOURCES.house.url, label: "House Clerk search" } : { href: SOURCES.senate.url, label: "Senate eFD search" };
+
+interface Row { source: string; filings: Map<number, Filing | null>; rows: number; held: number }
+const by = new Map<string, Row>();
+const row = (source: string): Row => { let r = by.get(source); if (!r) by.set(source, (r = { source, filings: new Map(), rows: 0, held: 0 })); return r; };
+for (const t of txns) { const r = row(t.source); r.rows++; if (!r.filings.has(t.filingId)) r.filings.set(t.filingId, model.filings.get(t.filingId) ?? null); }
+for (const f of filings) { const r = row(f.source); if (!r.filings.has(f.id)) { r.filings.set(f.id, f); if (f.txnCount === 0) r.held++; } }
+const order = ["house_ptr", "senate_ptr", "sec_form4"];
+const rows = [...by.values()].sort((a, b) => order.indexOf(a.source) - order.indexOf(b.source)).map((r) => {
+  const dated = [...r.filings.values()].filter((f): f is Filing => !!f && !!f.filedAt).sort((a, b) => (a.filedAt! < b.filedAt! ? -1 : 1));
+  const newest = dated.at(-1) ?? null;
+  const newestUrl = newest ? (r.source === "sec_form4" ? edgarFilingUrl(newest.sourceUrl) : newest.sourceUrl) : null;
+  return { ...r, name: NAMES[r.source] ?? r.source, count: r.filings.size, first: dated[0]?.filedAt ?? null, last: newest?.filedAt ?? null, newestUrl, link: official(r.source) };
+});
+const held = rows.reduce((n, r) => n + r.held, 0);
+---
+{(rows.length > 0 || extra.length > 0) && (
+  <div class="source-panel" data-sources>
+    <div class="tablewrap">
+      <table class="data">
+        <caption class="sr-only">Official sources behind this page</caption>
+        <thead><tr><th>Source</th><th class="num">Filings</th><th class="num">Rows</th><th>First filed</th><th>Newest filed</th><th>Read the originals</th></tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr>
+              <th scope="row">{r.name}</th>
+              <td class="num">{num(r.count)}</td>
+              <td class="num">{num(r.rows)}</td>
+              <td>{r.first ? formatDate(r.first.slice(0, 10)) : "—"}</td>
+              <td>{r.last ? (r.newestUrl ? <a href={r.newestUrl} rel="noopener nofollow">{formatDate(r.last.slice(0, 10))}</a> : formatDate(r.last.slice(0, 10))) : "—"}</td>
+              <td><a href={r.link.href} rel="noopener nofollow">{r.link.label}</a></td>
+            </tr>
+          ))}
+          {extra.map((e) => (
+            <tr>
+              <th scope="row">{e.name}</th>
+              <td class="num">{num(e.records)} {e.unit}</td>
+              <td class="num">—</td><td>—</td><td>—</td>
+              <td><a href={e.href} rel="noopener nofollow">{e.linkLabel}</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="source-note">
+      Site built {formatDate(model.builtAt)}. Every row in the tables above links to its own filing.
+      {held > 0 && <> {num(held)} {held === 1 ? "filing on record has" : "filings on record have"} no rows shown: scanned or paper reports waiting to be read, or reports with nothing to list.</>}
+      {" "}To quote a figure, use the Cite button at the top of the page; see <a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a>.
+    </p>
+  </div>
+)}

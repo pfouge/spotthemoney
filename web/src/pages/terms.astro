@@ -9,11 +9,11 @@ import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import Answer from "../components/Answer.astro";
 
-const TERMS_UPDATED = "2026-10-07";
+const TERMS_UPDATED = "2026-10-08";
 const description = "The terms for using Spot the Money: what the site is, what it is not (investment advice), how its data may be reused, and the limits of our responsibility.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/terms/#page`, name: "Terms of use", url: `${SITE_URL}/terms/`, description, dateModified: TERMS_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
-<BaseLayout title="Terms of use | Spot the Money" description={description} section="Terms">
+<BaseLayout title="Terms of use | Spot the Money" description={description} section="Terms" modified={TERMS_UPDATED}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Terms", path: "/terms/" }]} />
   <p class="eyebrow">About <span class="x">/</span> Terms</p>
   <h1>Terms of use</h1>
@@ -38,6 +38,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
 
   <h2 id="reuse">Reusing the data</h2>
   <p>The underlying records are public. You are welcome to quote figures, tables and charts from this site, including in news reports, research and commentary, with a credit to spotthemoney.com and a link to the page you used. Embeddable charts may be placed on other sites unaltered, with their source line intact.</p>
+  <p>Every page, chart and trade has a Cite button that writes the credit for you; <a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a> has examples.</p>
   <p>Two kinds of record carry legal limits that apply to you as well as to us, and reuse is your responsibility:</p>
   <ul>
     <li><strong>Congressional financial disclosure reports.</strong> Federal law (5 U.S.C. § 13107(c)) makes it unlawful to obtain or use these reports for an unlawful purpose; for a commercial purpose, other than by news and communications media for dissemination to the general public; to determine or establish anyone's credit rating; or to solicit money for any political, charitable or other purpose.</li>

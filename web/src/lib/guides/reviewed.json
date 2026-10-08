@@ -49,10 +49,19 @@
       "web/src/pages/rates/i-bonds.astro": "38861b560781c256"
     }
   },
+  "how-to-cite-and-reuse": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
+      "web/src/scripts/share.ts": "56931901139ea42c",
+      "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
+      "web/src/pages/terms.astro": "38c1d466fe26c7a7"
+    }
+  },
   "how-to-read-a-congressional-trade-report": {
     "reviewed": "2026-10-08",
     "covers": {
-      "web/src/components/TxnTable.astro": "6761782b13a0bc4d",
+      "web/src/components/TxnTable.astro": "0fa1a05a633f1f10",
       "ingest/py/senate_import.py": "b2717cb2bd239da8"
     }
   },
@@ -63,7 +72,7 @@
       "web/src/scripts/heatmap.ts": "3f5bbe08bf8bbfca",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
-      "web/src/scripts/share.ts": "5c53403b2812f7ba"
+      "web/src/scripts/share.ts": "56931901139ea42c"
     }
   },
   "insider-buying-vs-insider-selling": {
@@ -102,14 +111,14 @@
     "reviewed": "2026-10-08",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/components/TxnTable.astro": "6761782b13a0bc4d"
+      "web/src/components/TxnTable.astro": "0fa1a05a633f1f10"
     }
   },
   "ten-percent-owners-and-joint-filings": {
     "reviewed": "2026-10-08",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "6761782b13a0bc4d"
+      "web/src/components/TxnTable.astro": "0fa1a05a633f1f10"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -130,7 +139,7 @@
       "web/src/lib/joint.ts": "1781ca3686529507",
       "shared/src/tradevalue.ts": "fa250c11636cb867",
       "web/src/lib/coverage.ts": "848dc9f0b01c472b",
-      "web/src/pages/terms.astro": "c8506288d29ce683"
+      "web/src/pages/terms.astro": "38c1d466fe26c7a7"
     }
   },
   "what-is-form-4": {

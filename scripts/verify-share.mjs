@@ -33,6 +33,8 @@ async function dialogState(page) {
       url: d.querySelector("#shareUrl").value, status: d.querySelector("#shareStatus").textContent,
       nets: Object.fromEntries([...d.querySelectorAll("[data-share-net]")].map((a) => [a.dataset.shareNet, a.getAttribute("href")])),
       image: vis('[data-share-act="image"]'), embed: vis('[data-share-act="embed"]'),
+      cite: d.querySelector("#citeText")?.textContent ?? "", citeHtml: d.querySelector("#citeText")?.innerHTML ?? "",
+      style: d.querySelector("[data-cite-style].on")?.dataset.citeStyle ?? "", focus: document.activeElement?.dataset?.shareAct ?? "",
       canonical: document.querySelector('link[rel="canonical"]')?.href ?? "",
     };
   });
@@ -61,7 +63,7 @@ for (const [w, h, label] of [[1280, 900, "desktop"], [390, 844, "phone"]]) {
     const where = `/about/ page share [${label}]`;
     await page.goto(base + "/about/", { waitUntil: "load" });
     const before = new Set(outside);
-    const btn = page.locator('.answer [data-share="page"]');
+    const btn = page.locator('.answer [data-share="page"]:not([data-share-focus])');
     if (ok((await btn.count()) === 1, `${where}: no Share button in the answer block`)) {
       await btn.click();
       const s = await dialogState(page);
@@ -86,6 +88,26 @@ for (const [w, h, label] of [[1280, 900, "desktop"], [390, 844, "phone"]]) {
       }
       await closeDialog(page);
       ok(await page.evaluate(() => document.activeElement?.matches('[data-share="page"]')), `${where}: focus did not return to the Share button`);
+      // Cite: the button beside Share opens the same dialog at the citation
+      const cite = page.locator('.answer [data-share-focus="cite"]');
+      if (ok((await cite.count()) === 1, `${where}: no Cite button in the answer block`)) {
+        await cite.click();
+        let c = await dialogState(page);
+        ok(c.open && c.heading === "Cite this page" && c.focus === "cite", `${where}: Cite opened as "${c.heading}" with focus on "${c.focus}"`);
+        ok(c.style === "plain" && c.cite.includes(c.url) && c.cite.includes("Spot the Money") && /updated [A-Z][a-z]+ \d{1,2}, \d{4}/.test(c.cite) && /accessed [A-Z][a-z]+ \d{1,2}, \d{4}/.test(c.cite), `${where}: plain citation is "${c.cite}"`);
+        for (const [st, re] of [["apa", /^Spot the Money\. \(\d{4}, [A-Z][a-z]+ \d{1,2}\)\. .+ Retrieved [A-Z][a-z]+ \d{1,2}, \d{4}, from https?:/], ["mla", /^“.+” Spot the Money, \d{1,2} [A-Z][a-z]+\.? \d{4}, https?:.+ Accessed \d{1,2} [A-Z][a-z]+\.? \d{4}\.$/], ["chicago", /^Spot the Money\. “.+” Last modified [A-Z][a-z]+ \d{1,2}, \d{4}\. Accessed .+ https?:.+\.$/]]) {
+          await page.locator(`[data-cite-style="${st}"]`).click();
+          c = await dialogState(page);
+          ok(c.style === st && re.test(c.cite) && c.cite.includes(c.url), `${where}: ${st} citation is "${c.cite}"`);
+          if (st !== "chicago") ok(c.citeHtml.includes("<em>"), `${where}: ${st} citation has no italics`);
+        }
+        await page.locator('[data-share-act="cite"]').click();
+        await page.waitForFunction(() => document.getElementById("shareStatus").textContent.startsWith("Citation"));
+        const copied = await page.evaluate(() => navigator.clipboard.readText()).catch(() => null);
+        ok(copied === null || copied === c.cite, `${where}: copied citation is "${copied}"`);
+        await page.locator('[data-cite-style="plain"]').click();
+        await closeDialog(page);
+      }
       ok([...outside].every((x) => before.has(x)), `${where}: opening the menu contacted ${[...outside].filter((x) => !before.has(x)).join(", ")}`);
     }
   }
@@ -106,6 +128,7 @@ for (const [w, h, label] of [[1280, 900, "desktop"], [390, 844, "phone"]]) {
     const s = await dialogState(page);
     ok(s.open && s.heading === "Share this chart", `${where}: dialog heading "${s.heading}"`);
     ok(s.url === `${s.canonical}#${figId}`, `${where}: link is "${s.url}", expected …#${figId}`);
+    ok(s.cite.includes(`#${figId}`) && s.cite.includes("Spot the Money"), `${where}: chart citation is "${s.cite}"`);
     ok(s.embed === hasEmbed, `${where}: embed button ${s.embed ? "shown" : "hidden"} but the chart ${hasEmbed ? "has" : "has no"} embed code`);
     checkNets(where, s);
     if (ok(s.image, `${where}: no Save image button for a chart that is drawn`)) {
@@ -130,6 +153,16 @@ for (const [w, h, label] of [[1280, 900, "desktop"], [390, 844, "phone"]]) {
     ok(await page.evaluate((id) => { const el = document.getElementById(id); if (!el || !el.matches(":target")) return false; const r = el.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; }, figId), `${where}: #${figId} is not on screen after opening the shared link`);
   }
 
+  // 2b. the sources panel on a member page lists at least one official source with counts
+  if (member) {
+    const where = `${member} sources panel [${label}]`;
+    await page.goto(base + member, { waitUntil: "load" });
+    const rows = await page.evaluate(() => [...document.querySelectorAll("[data-sources] tbody tr")].map((r) => ({ name: r.cells[0].textContent.trim(), filings: Number(r.cells[1].textContent.replace(/[^0-9]/g, "")), link: r.cells[5].querySelector("a")?.href ?? "" })));
+    const tableRows = await page.evaluate(() => document.querySelectorAll("table.txns tbody tr").length);
+    ok(rows.length > 0 && rows.every((r) => r.name && r.filings > 0 && /^https:\/\//.test(r.link)), `${where}: ${JSON.stringify(rows).slice(0, 200)}`);
+    ok(tableRows === 0 || rows.length > 0, `${where}: trades are shown but no source is listed`);
+  }
+
   // 3. single trade
   {
     const where = `/congress/ trade share [${label}]`;
@@ -145,6 +178,9 @@ for (const [w, h, label] of [[1280, 900, "desktop"], [390, 844, "phone"]]) {
       const u = new URL(s.url);
       ok(u.hash === `#${row.id}` && (!row.path || u.pathname === row.path), `${where}: link is "${s.url}" (row ${row.id}, page ${row.path})`);
       checkNets(where, s);
+      // a trade's citation names the original filing, with the row's own source link
+      const srcHref = await btn.evaluate((b) => b.closest("tr").querySelector('a[target="_blank"]')?.href ?? null);
+      ok(s.cite.includes(s.url) && (!srcHref || (s.cite.includes("Original filing: ") && s.cite.includes(srcHref))), `${where}: trade citation is "${s.cite}" (source ${srcHref})`);
       await closeDialog(page);
       await page.goto(`${base}${u.pathname}${u.hash}`, { waitUntil: "load" });
       ok(await page.evaluate((id) => { const el = document.getElementById(id); if (!el || el.tagName !== "TR" || !el.matches(":target")) return false; const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }, row.id), `${where}: row ${row.id} is not on screen at ${u.pathname}${u.hash}`);

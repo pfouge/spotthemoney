@@ -1359,3 +1359,43 @@ would ask about gets a paragraph in the right guide (or a new guide) in the same
 - Verified on the local build only: `astro check` 0 errors, 254 pages / 287 files in the seed
   build (+22 pages), `verify-guides` clean, `verify-live --all`, `verify-a11y` (24 pages ×
   4, now including four guide pages), `verify-share` 222/222, `verify-filters`, 37 unit tests.
+
+### Citation and source features (2026-10-08) — Peter: "Citation and source features now"
+
+Peter's choices: all four features; formats plain + APA, MLA, Chicago; the data licence label
+points to the Terms page instead of Creative Commons.
+
+- **Cite.** `web/src/lib/cite.ts` (`citation(style, input)` → text + HTML with italics; tests
+  `npx tsx --test scripts/cite.test.ts`, 8). The share dialog has a "Cite" block: style switch,
+  the citation, "Copy citation" (copies rich text so italics survive in a word processor).
+  Every answer block has a **Cite** button beside Share (`data-share-focus="cite"` opens the
+  dialog at the citation, headed "Cite this page"). Charts and trades get the same block
+  through their Share buttons. A citation gives the page's last-updated date
+  (`data-updated` on the answer block; a trade uses its disclosure date) and today as the
+  access date. **A trade's citation also names the original filing** with the row's source link.
+- **Sources panel.** `SourcePanel.astro` under "Sources and method" on member, insider, stock
+  and company pages: per official source, filings and rows on record, first and newest filing
+  date (newest linked), and a link to the originals (EDGAR Form 4 list by CIK or ticker; House
+  Clerk and Senate eFD search pages, which have no per-member address). Company pages add
+  contracts and lobbying counts. It counts everything on record, not only the rows displayed.
+- **Guide.** `/guides/how-to-cite-and-reuse/` (20th guide; footer link "How to cite"; linked
+  from Terms). Its example table is produced by `cite.ts`, so it cannot show a format the menu
+  does not produce.
+- **For search and answer engines.** Every page: `citation_title` / `citation_author` /
+  `citation_publication_date` / `citation_public_url`, `dcterms.*`, `article:modified_time`,
+  `<link rel="license">`. `BaseLayout` takes an optional `modified` date (guides, privacy, terms
+  and about pass theirs; data pages use the build date). Dataset JSON-LD gained `usageInfo`,
+  `creditText` and `citation`. `llms.txt` states how to attribute.
+- **Licence label changed:** Dataset JSON-LD said CC BY 4.0, which the Terms do not grant.
+  It now points to `/terms/#reuse`. Not legal advice; for the lawyer's read with the Terms.
+- Stale wording fixed on the way: member and stock pages said Senate reports appear "when
+  that feed is live".
+- The guide check did its job twice in this change: five guides flagged STALE (TxnTable,
+  share.ts, terms.astro), each re-read; the trade-map guide gained a sentence about citing.
+- `verify-share` now also checks the Cite button, all four formats, the copied citation, the
+  original filing in a trade citation, and the sources panel (250 checks).
+- Not done: archived copies of filings are not offered (the `raw-filings` bucket is private,
+  and Senate reports carry use limits); no BibTeX/RIS; citations for the trade map view use the
+  page title, not the filter state.
+- Verified on the local build only: `astro check` 0 errors, `verify-guides` (20 guides),
+  `verify-share` 250/250, `verify-live --all`, `verify-a11y`, `verify-filters`, 45 unit tests.

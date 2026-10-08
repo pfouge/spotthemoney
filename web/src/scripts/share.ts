@@ -3,6 +3,8 @@
 //   data-share="chart"  one chart card  → link to its anchor, optional image and embed code
 //   data-share="trade"  one table row   → link to the filer's page at that row (#t<id>)
 //   data-share="map"    the trade map   → link that keeps the current filters (the URL hash)
+// The same dialog holds the citation (lib/cite.ts: plain, APA, MLA, Chicago). A button with
+// data-share-focus="cite" (the Cite button in the answer block) opens it at the citation.
 //
 // Rules:
 // - No third-party script, pixel or SDK. Each network is an ordinary link built here, opened only
@@ -12,8 +14,18 @@
 // - TikTok and Instagram take pictures and captions, not links: for those the menu saves the
 //   chart as an image and copies the caption.
 
+import { citation, type CiteStyle } from "../lib/cite";
+
 type Kind = "page" | "chart" | "trade" | "map";
-interface Ctx { kind: Kind; url: string; title: string; text: string; embed: string; fig: HTMLElement | null; }
+interface Ctx {
+  kind: Kind; url: string; title: string; text: string; embed: string; fig: HTMLElement | null;
+  /** ISO date a citation gives as "updated": the page's answer block, or a trade's disclosure date. */
+  updated: string | null;
+  /** The government filing behind a single trade (its row's source link). */
+  original: { label: string; url: string } | null;
+  /** Opened from a Cite button: the dialog starts at the citation. */
+  cite: boolean;
+}
 
 const SITE = "Spot the Money";
 const q = <T extends Element>(sel: string, root: ParentNode = document): T | null => root.querySelector<T>(sel);
@@ -27,14 +39,20 @@ const pageDesc = (): string => q<HTMLMetaElement>('meta[name="description"]')?.c
 const clean = (s: string | null | undefined): string => (s ?? "").replace(/\s+/g, " ").trim();
 const clip = (s: string, n: number): string => (s.length <= n ? s : s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…");
 
+/** When the page's data was last updated: the answer block's date, else the page's own metadata. */
+function pageUpdated(): string | null {
+  return q<HTMLElement>("[data-answer][data-updated]")?.dataset.updated || q<HTMLMetaElement>('meta[name="dcterms.modified"]')?.content || null;
+}
+
 function contextFor(btn: HTMLElement): Ctx {
   const kind = (btn.dataset.share || "page") as Kind;
   const base = canonical();
+  const common = { updated: pageUpdated(), original: null, cite: btn.dataset.shareFocus === "cite" };
   if (kind === "chart") {
     const fig = btn.closest<HTMLElement>("figure.viz");
     const name = clean(fig?.querySelector("h3")?.textContent);
     return {
-      kind, fig, url: fig?.id ? `${base}#${fig.id}` : base,
+      ...common, kind, fig, url: fig?.id ? `${base}#${fig.id}` : base,
       title: name ? `${name} — ${pageTitle()}` : pageTitle(),
       text: clean(fig?.querySelector(".viz-sum")?.textContent) || clean(fig?.querySelector(".viz-q")?.textContent),
       embed: fig?.querySelector(".viz-embed code")?.textContent ?? "",
@@ -44,12 +62,14 @@ function contextFor(btn: HTMLElement): Ctx {
     const id = btn.dataset.shareId || btn.closest("tr")?.id || "";
     const path = btn.dataset.sharePath;
     const page = path ? new URL(path, base).toString() : base;
-    return { kind, fig: null, url: id ? `${page}#${id}` : page, title: clean(btn.dataset.shareText) || pageTitle(), text: "", embed: "" };
+    const src = btn.closest("tr")?.querySelector<HTMLAnchorElement>('a[target="_blank"][rel~="nofollow"]');
+    const original = src ? { label: clean(src.textContent).replace(/\s*↗$/, ""), url: src.href } : null;
+    return { ...common, updated: btn.dataset.shareDate || common.updated, original, kind, fig: null, url: id ? `${page}#${id}` : page, title: clean(btn.dataset.shareText) || pageTitle(), text: "", embed: "" };
   }
   if (kind === "map") {
-    return { kind, fig: null, url: base + location.hash, title: `Trade map — ${pageTitle()}`, text: pageDesc(), embed: "" };
+    return { ...common, kind, fig: null, url: base + location.hash, title: `Trade map — ${pageTitle()}`, text: pageDesc(), embed: "" };
   }
-  return { kind: "page", fig: null, url: base, title: pageTitle(), text: pageDesc(), embed: "" };
+  return { ...common, kind: "page", fig: null, url: base, title: pageTitle(), text: pageDesc(), embed: "" };
 }
 
 /** Title, the longer reading when there is one, then the link: what gets pasted as a caption. */
@@ -66,6 +86,17 @@ function networkUrl(net: string, c: Ctx): string {
     case "email": return `mailto:?subject=${e(clip(c.title, 140))}&body=${e(caption(c))}`;
     default: return c.url;
   }
+}
+
+/** Copy with italics where the destination accepts rich text (a word processor), plain text elsewhere. */
+async function copyRich(text: string, html: string, fallbackField?: HTMLInputElement | null): Promise<boolean> {
+  try {
+    if (typeof ClipboardItem === "function" && navigator.clipboard?.write) {
+      await navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([text], { type: "text/plain" }), "text/html": new Blob([html], { type: "text/html" }) })]);
+      return true;
+    }
+  } catch { /* fall back to plain text */ }
+  return copyText(text, fallbackField);
 }
 
 async function copyText(text: string, fallbackField?: HTMLInputElement | null): Promise<boolean> {
@@ -164,12 +195,22 @@ function initShare(): void {
   const what = q<HTMLElement>("#shareWhat", dlg)!, field = q<HTMLInputElement>("#shareUrl", dlg)!, status = q<HTMLElement>("#shareStatus", dlg)!, heading = q<HTMLElement>("#shareTitle", dlg)!;
   const act = (name: string) => q<HTMLButtonElement>(`[data-share-act="${name}"]`, dlg);
   let ctx: Ctx | null = null;
+  let style: CiteStyle = "plain";
+  const citeText = q<HTMLElement>("#citeText", dlg), citeBox = q<HTMLElement>("#shareCite", dlg);
+  const today = (): string => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const currentCitation = () => (ctx ? citation(style, { title: ctx.title, url: ctx.url, updated: ctx.updated, accessed: today(), original: ctx.original }) : { text: "", html: "" });
+  const renderCitation = (): void => {
+    if (citeText) citeText.innerHTML = currentCitation().html;
+    for (const b of dlg.querySelectorAll<HTMLButtonElement>("[data-cite-style]")) { const on = b.dataset.citeStyle === style; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); }
+  };
   const say = (msg: string): void => { status.textContent = msg; };
   const canNative = typeof navigator.share === "function";
 
   const open = (btn: HTMLElement): void => {
     ctx = contextFor(btn);
-    heading.textContent = ctx.kind === "chart" ? "Share this chart" : ctx.kind === "trade" ? "Share this trade" : ctx.kind === "map" ? "Share this view" : "Share this page";
+    const noun = ctx.kind === "chart" ? "this chart" : ctx.kind === "trade" ? "this trade" : ctx.kind === "map" ? "this view" : "this page";
+    heading.textContent = `${ctx.cite ? "Cite" : "Share"} ${noun}`;
+    renderCitation();
     what.textContent = ctx.title; field.value = ctx.url; say("");
     for (const a of dlg.querySelectorAll<HTMLAnchorElement>("[data-share-net]")) a.href = networkUrl(a.dataset.shareNet!, ctx);
     const nat = act("native"), image = act("image"), embed = act("embed");
@@ -177,6 +218,8 @@ function initShare(): void {
     if (image) image.hidden = !hasChartImage(ctx.fig);
     if (embed) embed.hidden = !ctx.embed;
     if (!dlg.open) dlg.showModal();
+    // Opened from a Cite button: start at the citation, not at the link.
+    if (ctx.cite && citeBox) { citeBox.scrollIntoView({ block: "nearest" }); act("cite")?.focus(); }
   };
 
   document.addEventListener("click", (e) => {
@@ -186,12 +229,17 @@ function initShare(): void {
   q("#shareClose", dlg)?.addEventListener("click", () => dlg.close());
   dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
   field.addEventListener("focus", () => field.select());
+  dlg.addEventListener("click", (e) => {
+    const b = (e.target as Element | null)?.closest?.<HTMLButtonElement>("[data-cite-style]");
+    if (b) { style = b.dataset.citeStyle as CiteStyle; renderCitation(); say(""); }
+  });
 
   dlg.addEventListener("click", async (e) => {
     const b = (e.target as Element | null)?.closest?.<HTMLButtonElement>("[data-share-act]");
     if (!b || !ctx) return;
     const c = ctx, name = b.dataset.shareAct;
     if (name === "copy") say((await copyText(c.url, field)) ? "Link copied." : "Could not copy. Select the link above and copy it.");
+    else if (name === "cite") { const cit = currentCitation(); say((await copyRich(cit.text, cit.html, field)) ? "Citation copied." : "Could not copy. Select the citation above and copy it."); }
     else if (name === "caption") say((await copyText(caption(c), field)) ? "Text and link copied." : "Could not copy the text.");
     else if (name === "embed") say((await copyText(c.embed, field)) ? "Embed code copied. Paste it into your page's HTML." : "Could not copy the embed code.");
     else if (name === "native") { try { await navigator.share({ title: c.title, text: c.title, url: c.url }); } catch { /* closed without sharing */ } }

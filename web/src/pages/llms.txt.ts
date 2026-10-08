@@ -19,8 +19,10 @@ export const GET: APIRoute = async () => {
 > recommends or executes trades.
 
 Every page opens with a two-sentence plain-language answer that can be quoted, followed by the
-tables and the source links. Figures should be attributed to spotthemoney.com and linked to the
-page URL. Methodology, definitions and the corrections policy: ${SITE_URL}/methodology/ and
+tables and the source links. Figures should be attributed to "Spot the Money (spotthemoney.com)" and linked to the
+page URL, with the date accessed; the original government filing linked on each row is the
+authority for an individual trade. How to cite and the legal limits on reuse:
+${SITE_URL}/guides/how-to-cite-and-reuse/. Methodology, definitions and the corrections policy: ${SITE_URL}/methodology/ and
 ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 
 ## Rates Hub (U.S. Treasury, BLS)
