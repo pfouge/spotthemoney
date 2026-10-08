@@ -1,0 +1,98 @@
+---
+// /guides/<slug>/ — one guide. Order on the page: the two-sentence answer, the key facts, the
+// sections (question headings, each opening with its answer), the guide's own questions and
+// answers, where to see it live, related guides, primary sources. Article + FAQPage JSON-LD.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getGuides, guidePath, GROUPS, type Guide } from "../../lib/guides";
+import { SITE_URL } from "../../lib/seo";
+
+export async function getStaticPaths() {
+  const guides = await getGuides();
+  return guides.map((g) => ({ params: { slug: g.slug }, props: { g, all: guides } }));
+}
+interface Props { g: Guide; all: Guide[] }
+const { g, all } = Astro.props;
+const group = GROUPS.find((x) => x.key === g.group)!;
+const path = guidePath(g.slug);
+const related = g.related.map((s) => all.find((x) => x.slug === s)!).filter(Boolean);
+const FIRST_PUBLISHED = "2026-10-08";
+const ld = [
+  {
+    "@context": "https://schema.org", "@type": "Article", "@id": `${SITE_URL}${path}#article`, headline: g.title, description: g.description.at(-1),
+    datePublished: FIRST_PUBLISHED, dateModified: g.updated, inLanguage: "en-US", articleSection: group.label,
+    mainEntityOfPage: `${SITE_URL}${path}`, image: `${SITE_URL}/og.png`,
+    author: { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: "Spot the Money", url: `${SITE_URL}/about/` },
+    publisher: { "@type": "Organization", "@id": `${SITE_URL}/#organization`, name: "Spot the Money", logo: { "@type": "ImageObject", url: `${SITE_URL}/mark.svg` } },
+    citation: g.sources.map((s) => ({ "@type": "CreativeWork", name: s.name, url: s.url })),
+  },
+  { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}${path}#faq`, mainEntity: g.faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) },
+];
+---
+<BaseLayout title={g.seoTitle.map((t) => `${t} | Spot the Money`).concat(g.seoTitle)} description={g.description} section="Guides">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Guides", path: "/guides/" }, { name: g.title, path }]} />
+  <p class="eyebrow">Guides <span class="x">/</span> {group.label}</p>
+  <article class="guide">
+    <h1>{g.title}</h1>
+    <Answer text={g.answer} updated={g.updated} sourceNote={`Guide · ${group.label}`} />
+
+    <section class="guide-facts" aria-labelledby="in-brief">
+      <h2 id="in-brief">In brief</h2>
+      <ul>{g.keyFacts.map((k) => <li>{k}</li>)}</ul>
+    </section>
+
+    <nav class="guide-toc" aria-label="On this page">
+      <strong>On this page</strong>
+      <ol>
+        {g.sections.map((s) => <li><a href={`#${s.id}`}>{s.h}</a></li>)}
+        <li><a href="#questions">Questions and answers</a></li>
+        {g.sources.length > 0 && <li><a href="#sources">Sources</a></li>}
+      </ol>
+    </nav>
+
+    <div class="prose guide-body">
+      {g.sections.map((s) => (
+        <section>
+          <h2 id={s.id}>{s.h}</h2>
+          <Fragment set:html={s.html} />
+        </section>
+      ))}
+
+      <section>
+        <h2 id="questions">Questions and answers</h2>
+        <div class="faq-list">
+          {g.faqs.map((f) => (
+            <div class="faq-item">
+              <h3>{f.q}</h3>
+              <p>{f.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section class="guide-live">
+        <h2 id="see-it-live">See it on this site</h2>
+        <ul>{g.seeLive.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+      </section>
+
+      {related.length > 0 && (
+        <section>
+          <h2 id="related">Related guides</h2>
+          <ul>{related.map((r) => <li><a href={guidePath(r.slug)}>{r.title}</a></li>)}</ul>
+        </section>
+      )}
+
+      {g.sources.length > 0 && (
+        <section>
+          <h2 id="sources">Sources</h2>
+          <ul>{g.sources.map((s) => <li><a href={s.url} rel="noopener">{s.name}</a></li>)}</ul>
+        </section>
+      )}
+    </div>
+
+    <p class="disclaimer"><strong>Not investment advice.</strong> This guide explains public records and how this site presents them. It makes no recommendation to buy or sell anything. <a href="/guides/">All guides</a> · <a href="/faq/">All questions</a> · <a href="/corrections/">Report an error</a></p>
+  </article>
+  <JsonLd data={ld} />
+</BaseLayout>

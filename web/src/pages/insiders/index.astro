@@ -3,6 +3,7 @@
 // buys ≥ $25k, officer sales ≥ $100k, top buys/sells this week and month), each an anchor on
 // this page so it is one indexable URL set per feed (#cluster-buys etc.).
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
@@ -119,4 +120,5 @@ const feeds = [
   <p>Code P is an open-market purchase — the signal most readers care about, because an insider chose to spend cash. S is a sale (often pre-scheduled under a Rule 10b5-1 plan; flagged when the filing says so). M is an option exercise and A a grant; both are shown but never counted as buys. Values are shares × the reported price. Every row links to the filing on EDGAR. Method details: <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public disclosures shown as filed; they may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
+  <SectionFaq section="insiders" />
 </BaseLayout>

@@ -3,6 +3,7 @@
 // each so the hub itself answers "what do safe U.S. yields pay today" (it was 79 words of
 // navigation before the 2026-10-04 SEO audit).
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -63,4 +64,5 @@ const description = hasData
   <p class="disclaimer">Not investment advice. Rates are shown as published by the U.S. Treasury and can change at the next reset or business day.</p>
 
   <JsonLd data={dataCatalogLd({ path: "/rates/", name: "Rates Hub", description: "Official U.S. safe-yield data: I-Bond rates, TIPS real yields, and the Treasury yield curve, updated daily.", datasets: [{ name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "TIPS real yield curve", path: "/rates/tips/" }, { name: "U.S. Treasury par yield curve", path: "/rates/treasury-yields/" }] })} />
+  <SectionFaq section="rates" />
 </BaseLayout>

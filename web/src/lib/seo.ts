@@ -133,7 +133,7 @@ export const SOURCES = {
   senate: { name: "U.S. Senate electronic financial disclosures", url: "https://efdsearch.senate.gov/search/" },
   fec: { name: "FEC campaign finance data (OpenFEC)", url: "https://www.fec.gov/data/" },
   usaspending: { name: "USAspending.gov award data", url: "https://www.usaspending.gov/" },
-  lda: { name: "Senate Lobbying Disclosure Act filings", url: "https://lda.senate.gov/" },
+  lda: { name: "Senate Lobbying Disclosure Act filings", url: "https://lda.gov/system/public/" },
   treasury: { name: "U.S. Treasury daily yield curve rates", url: "https://home.treasury.gov/resource-center/data-chart-center/interest-rates" },
   fiscaldata: { name: "Treasury Fiscal Data — I Bonds interest rates", url: "https://fiscaldata.treasury.gov/datasets/i-bonds-interest-rates/" },
   bls: { name: "BLS Consumer Price Index (CPI-U)", url: "https://www.bls.gov/cpi/" },

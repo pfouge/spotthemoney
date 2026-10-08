@@ -1296,3 +1296,66 @@ cards are on the roadmap, `docs/03` "Additions — 2026-10-08").
   `verify-a11y` clean, `verify-live --all`, `verify-filters` 427 states / 0 mismatches, 37 unit
   tests, screenshots (desktop light, phone dark) and one saved chart image looked at.
   Not tested: real phones' share sheets, the networks' own preview rendering.
+
+### Guides and FAQ (2026-10-08) — Peter: "FAQ and beginner guides now"
+
+Peter's choices: all four subject areas; 15 or more guides, "well SEO and GEO optimized with
+internal linking and external linking"; FAQ answers also on the section pages; reader is a
+retail investor; and **"when we change the site the necessary guide pages are also altered to
+fit the changes."**
+
+**STANDING RULE — guides move with the site.** After ANY change under `web/`, `ingest/` or
+`shared/`, build, serve and run `node scripts/verify-guides.mjs http://127.0.0.1:4321` with the
+other verifiers. If it reports STALE or LABEL: read the named guide against the change, fix
+its wording (and set its `updated` date) if what it describes is now different, then
+`node scripts/verify-guides.mjs --accept <slug>` and ship `reviewed.json` in the same push.
+Never `--accept` without reading. A change that adds a feature, filter, source or rule a reader
+would ask about gets a paragraph in the right guide (or a new guide) in the same push.
+
+- **What exists.** 19 guides at `/guides/<slug>/` (Congress 5, insiders 6, Washington money 3,
+  rates 3, using the site 2; about 14,400 words), a hub at `/guides/`, `/faq/` (70 questions,
+  grouped), and a "Common questions" block at the foot of `/congress/`, `/insiders/`,
+  `/stocks/`, `/washington/`, `/rates/` (`SectionFaq.astro`). "Guides" is in the header menu;
+  Guides and FAQ are in the footer, the sitemap, the search index and `llms.txt`.
+- **Guides are data, not pages.** `web/src/lib/guides/`: `types.ts` (the model, and the
+  explanation of the three keep-in-step mechanisms), `congress.ts`, `insiders.ts`,
+  `washington.ts`, `rates.ts`, `site.ts` (the text), `ctx.ts` (live values), `facts.ts` (dated
+  outside facts), `index.ts`, `html.ts`, `reviewed.json`. One renderer:
+  `pages/guides/[slug].astro`. The FAQ page and section blocks reuse the guides' own answers,
+  so they cannot disagree with them.
+- **Three mechanisms that keep them true:**
+  1. *Live values* (`ctx.ts`): the 45-day deadline, the Form 4 late rule, market-cap bands, the
+     joint-filing threshold, counts, held paper filings and the current I-Bond rate are read
+     from the code and database at build time. Never type one of these into a guide.
+  2. *`covers`* on each guide: the files (or `file#symbol`, one declaration) whose behaviour it
+     describes. `verify-guides` hashes them (line endings ignored) against `reviewed.json`.
+  3. *`ui`* on each guide: on-screen labels it quotes, and the page they must be on (36 today,
+     mostly the trade map's filters).
+  Plus *`facts.ts`*: nine outside facts, each with `asOf`, `recheckBy` and a source URL.
+  `verify-guides` fails when one is past due. **First due: `tradingBan`, 2026-11-20** (status
+  of the congressional stock-trading bill); then `fecLimits` 2027-02-15.
+- **`scripts/verify-guides.mjs <base-url>`** — STALE, LABEL, LINK (113 internal links and their
+  anchors), FACT, SHAPE (≥450 words, ≥4 sections, ≥3 questions, ≥4 internal links, ≥2 outside
+  sources, Article + FAQPage markup). `--external` also requests every outside link (not run
+  here: the sandbox cannot reach most of those hosts). Reads `/data/guides.json`, so it runs
+  against the live site too. Self-tested: changing `JOINT_MIN_VALUE` or
+  `CONGRESS_DEADLINE_DAYS` flags the right guides; a CRLF copy of a covered file does not.
+- **SEO / answer-engine structure of every guide:** two-sentence answer block first; "In brief"
+  facts; question headings whose first sentence answers them; tables for codes and ranges; the
+  guide's own Q&A; "See it on this site" links; related guides; primary sources; Article +
+  FAQPage JSON-LD (FAQPage also on `/faq/`; the section blocks carry none, on purpose).
+  Titles ≤ 60 and descriptions ≤ 155 characters via `fitTitle` / `fitDescription`.
+- **Facts were checked on 2026-10-08** by two research sweeps against primary sources, with a
+  lead re-check of three (House roll call 280, Senate vote 253, FEC limits). Things worth
+  knowing: no trading ban is law — H.R. 7008 passed the House 232–198 on 2026-07-22 and failed
+  cloture 53–47 on 2026-09-30; insiders of foreign private issuers file Section 16 reports
+  since 2026-03-18; `lda.senate.gov` now redirects to `lda.gov` (the ingest already uses `lda.gov`; the
+  site's source link was updated to match). Not confirmed
+  against a primary page: TreasuryDirect (blocks automated readers) — the I-Bond formula and
+  rules are stated from the regulation and the rate comes from our own database.
+- **Editorial rules for guides:** state what a filing shows, never why someone traded; no
+  advice; on contested questions (a trading ban, 10b5-1 plans) give each side's case as its
+  supporters make it; every outside claim has a primary source in `sources`.
+- Verified on the local build only: `astro check` 0 errors, 254 pages / 287 files in the seed
+  build (+22 pages), `verify-guides` clean, `verify-live --all`, `verify-a11y` (24 pages ×
+  4, now including four guide pages), `verify-share` 222/222, `verify-filters`, 37 unit tests.

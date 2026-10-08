@@ -1,0 +1,25 @@
+---
+// A short "Common questions" block for a section page (/congress/, /insiders/, /stocks/,
+// /washington/, /rates/). The questions and answers are the guides' own (lib/guides), so a
+// change to a guide changes this block too. Each answer links to the guide it comes from.
+// No FAQPage markup here: the guide and /faq/ carry it, and the same Q&A marked up on several
+// pages adds nothing.
+import { getGuides, sectionFaqs, guidePath } from "../lib/guides";
+interface Props { section: "congress" | "insiders" | "stocks" | "washington" | "rates"; limit?: number }
+const { section, limit = 5 } = Astro.props;
+const items = sectionFaqs(await getGuides(), section, limit);
+---
+{items.length > 0 && (
+  <section class="section-faq" aria-labelledby="common-questions">
+    <h2 id="common-questions">Common questions</h2>
+    <div class="faq-list">
+      {items.map((f) => (
+        <div class="faq-item">
+          <h3>{f.q}</h3>
+          <p>{f.a} <a class="faq-more" href={guidePath(f.guide.slug)}>{f.guide.title}&nbsp;→</a></p>
+        </div>
+      ))}
+    </div>
+    <p class="faq-all"><a href="/guides/">All guides</a> · <a href="/faq/">All questions and answers</a></p>
+  </section>
+)}

@@ -1,0 +1,143 @@
+{
+  "campaign-donations-fec-data": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/pages/donations/index.astro": "7d2efa618c35ed5b",
+      "ingest/src/sources/fec_committees.ts": "cc44ff73d4057cf9"
+    }
+  },
+  "congress-stock-trading-rules": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/flagship.ts#CONGRESS_DEADLINE_DAYS": "6b21178f64487085"
+    }
+  },
+  "congress-trade-amount-ranges": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/heatmap.ts": "9726eae1fadb943d",
+      "web/src/lib/flagship.ts#amountLabel": "7d01b7656a5f74e6"
+    }
+  },
+  "federal-contracts-usaspending": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "ingest/src/sources/usaspending.ts": "7e00ec5f0f888855",
+      "web/src/pages/contracts/index.astro": "e6a1ba4fb401497f"
+    }
+  },
+  "form-4-transaction-codes": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "ingest/src/sources/sec_form4.ts#codeToSide": "a70d9d73ad943dd3",
+      "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
+      "web/src/lib/flagship.ts#sideLabel": "a6bf1853f54b5be4"
+    }
+  },
+  "house-and-senate-disclosure-differences": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "ingest/py/senate_import.py": "b2717cb2bd239da8",
+      "ingest/py/congress_ptr_job.py": "24230c183929a304",
+      "web/src/lib/coverage.ts": "848dc9f0b01c472b"
+    }
+  },
+  "how-i-bond-rates-work": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/ibond.ts": "25119c31f8a07e82",
+      "web/src/pages/rates/i-bonds.astro": "38861b560781c256"
+    }
+  },
+  "how-to-read-a-congressional-trade-report": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/components/TxnTable.astro": "6761782b13a0bc4d",
+      "ingest/py/senate_import.py": "b2717cb2bd239da8"
+    }
+  },
+  "how-to-use-the-trade-map": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/components/Heatmap.astro": "97be9dc8a052b571",
+      "web/src/scripts/heatmap.ts": "3f5bbe08bf8bbfca",
+      "web/src/lib/heatmap.ts": "9726eae1fadb943d",
+      "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
+      "web/src/scripts/share.ts": "5c53403b2812f7ba"
+    }
+  },
+  "insider-buying-vs-insider-selling": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
+      "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
+      "web/src/components/VizFlow.astro": "c60219a0038ce83c",
+      "web/src/pages/insiders/index.astro": "2b12bea699a2bf7c"
+    }
+  },
+  "insider-options-and-derivatives": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "shared/src/tradevalue.ts": "fa250c11636cb867",
+      "web/src/lib/heatmap.ts#insiderRows": "5ea1f074f10967b6",
+      "web/src/lib/flagship.ts#sideLabel": "a6bf1853f54b5be4"
+    }
+  },
+  "late-congressional-trade-disclosures": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
+      "web/src/lib/flagship.ts#CONGRESS_DEADLINE_DAYS": "6b21178f64487085",
+      "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11"
+    }
+  },
+  "lobbying-disclosure-reports": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "ingest/src/sources/senate_lda.ts": "04e83544d9137a8b",
+      "web/src/pages/lobbying/index.astro": "ab4c08506fe5bdb8"
+    }
+  },
+  "rule-10b5-1-trading-plans": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
+      "web/src/components/TxnTable.astro": "6761782b13a0bc4d"
+    }
+  },
+  "ten-percent-owners-and-joint-filings": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/joint.ts": "1781ca3686529507",
+      "web/src/components/TxnTable.astro": "6761782b13a0bc4d"
+    }
+  },
+  "tips-real-yields-and-breakeven-inflation": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/pages/rates/tips.astro": "b2a859abe7321b3f"
+    }
+  },
+  "treasury-yield-curve-explained": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/pages/rates/treasury-yields.astro": "245531c625728488"
+    }
+  },
+  "what-disclosure-data-cannot-tell-you": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/joint.ts": "1781ca3686529507",
+      "shared/src/tradevalue.ts": "fa250c11636cb867",
+      "web/src/lib/coverage.ts": "848dc9f0b01c472b",
+      "web/src/pages/terms.astro": "c8506288d29ce683"
+    }
+  },
+  "what-is-form-4": {
+    "reviewed": "2026-10-08",
+    "covers": {
+      "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11",
+      "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5"
+    }
+  }
+}

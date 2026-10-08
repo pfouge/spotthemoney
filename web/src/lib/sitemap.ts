@@ -6,6 +6,7 @@
 
 import { getFlagship, personPath, companyPath, securityPath } from "./flagship";
 import { SITE_URL } from "./seo";
+import { getGuides, guidePath } from "./guides";
 
 export interface SitemapUrl { loc: string; lastmod: string; changefreq?: string; priority?: number }
 export interface ChildSitemap { name: string; urls: SitemapUrl[] }
@@ -16,6 +17,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   const model = await getFlagship();
   const built = model.builtAt.slice(0, 10);
   const latestTxn = model.txns[0]?.filedAt ?? model.builtAt;
+  const guides = await getGuides();
 
   const pages: SitemapUrl[] = [
     { loc: "/", lastmod: built, changefreq: "daily", priority: 1 },
@@ -37,6 +39,9 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/about/", lastmod: built, changefreq: "monthly", priority: 0.3 },
     { loc: "/terms/", lastmod: built, changefreq: "yearly", priority: 0.2 },
     { loc: "/privacy/", lastmod: built, changefreq: "yearly", priority: 0.2 },
+    { loc: "/guides/", lastmod: guides.map((g) => g.updated).sort().at(-1) ?? built, changefreq: "weekly", priority: 0.7 },
+    { loc: "/faq/", lastmod: guides.map((g) => g.updated).sort().at(-1) ?? built, changefreq: "weekly", priority: 0.6 },
+    ...guides.map((g) => ({ loc: guidePath(g.slug), lastmod: g.updated, changefreq: "monthly" as const, priority: 0.6 })),
   ];
 
   const insiders: SitemapUrl[] = [];

@@ -2,6 +2,7 @@
 // /washington/ — hub for the money-in-politics sources: donations (FEC), lobbying (LDA),
 // federal contracts (USAspending). Each has its own collection page.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SectionFaq from "../../components/SectionFaq.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -38,4 +39,5 @@ const cards = [
   </div>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no inference of wrongdoing is made or implied by any figure on these pages.</p>
   <JsonLd data={dataCatalogLd({ path: "/washington/", name: "Money in Washington", description, datasets: cards.map((c) => ({ name: c.title, path: c.path })) })} />
+  <SectionFaq section="washington" />
 </BaseLayout>

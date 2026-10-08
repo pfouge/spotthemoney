@@ -1,6 +1,7 @@
 ---
 // /stocks/ — every tracked ticker with its 12-month insider + congressional activity.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SectionFaq from "../../components/SectionFaq.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -34,4 +35,5 @@ const description = "Every tracked stock with its insider trades (SEC Form 4) an
   )}
   <p class="disclaimer"><strong>Not investment advice.</strong> Public disclosures shown as filed.</p>
   <JsonLd data={dataCatalogLd({ path: "/stocks/", name: "Insider and congressional activity by ticker", description, datasets: rows.slice(0, 500).map((r) => ({ name: `${r.s.ticker} insider and congressional transactions`, path: securityPath(r.s) })) })} />
+  <SectionFaq section="stocks" />
 </BaseLayout>

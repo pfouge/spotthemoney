@@ -30,7 +30,7 @@ async function firstLink(page, index, prefix) {
   }, prefix);
 }
 const probe = await browser.newPage();
-const pages = ["/", "/congress/", "/insiders/", "/disclosures/", "/stocks/", "/companies/", "/washington/", "/donations/", "/lobbying/", "/contracts/", "/rates/", "/methodology/", "/corrections/", "/about/", "/terms/", "/privacy/"];
+const pages = ["/", "/congress/", "/insiders/", "/disclosures/", "/stocks/", "/companies/", "/washington/", "/donations/", "/lobbying/", "/contracts/", "/rates/", "/methodology/", "/corrections/", "/about/", "/terms/", "/privacy/", "/guides/", "/faq/", "/guides/form-4-transaction-codes/", "/guides/how-to-use-the-trade-map/"];
 for (const [index, prefix] of [["/congress/", "/congress/"], ["/insiders/", "/insiders/"], ["/stocks/", "/stocks/"], ["/companies/", "/companies/"]]) {
   const p = await firstLink(probe, index, prefix);
   if (p) pages.push(p);

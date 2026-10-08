@@ -1,0 +1,52 @@
+---
+// /guides/ — the hub: every guide, grouped. Guides are data (lib/guides); see types.ts for how
+// they are kept in step with the site.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getGuides, byGroup, guidePath, wordCount } from "../../lib/guides";
+import { SITE_URL } from "../../lib/seo";
+
+const guides = await getGuides();
+const groups = byGroup(guides);
+const updated = guides.map((g) => g.updated).sort().at(-1) ?? null;
+const faqCount = guides.reduce((n, g) => n + g.faqs.length, 0);
+const description = "Plain-language guides to congressional stock trades, SEC Form 4 insider filings, campaign donations, lobbying, federal contracts and Treasury rates.";
+const answer = `${guides.length} plain-language guides explain the public records on this site: how members of Congress and company insiders disclose stock trades, what donation, lobbying and contract filings show, and how Treasury rates work. Each guide answers one question, links to the official source, and is checked against the site whenever the site changes.`;
+const ld = [
+  { "@context": "https://schema.org", "@type": "CollectionPage", "@id": `${SITE_URL}/guides/#page`, name: "Guides", url: `${SITE_URL}/guides/`, description, dateModified: updated, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } },
+  { "@context": "https://schema.org", "@type": "ItemList", itemListElement: guides.map((g, i) => ({ "@type": "ListItem", position: i + 1, name: g.title, url: `${SITE_URL}${guidePath(g.slug)}` })) },
+];
+const minutes = (n: number) => Math.max(2, Math.round(n / 220));
+---
+<BaseLayout title={["Guides: Congress Trades, Insider Filings, Rates | Spot the Money", "Guides | Spot the Money"]} description={description} section="Guides">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Guides", path: "/guides/" }]} />
+  <p class="eyebrow">Guides</p>
+  <h1>Guides</h1>
+  <p class="lede">How to read the filings behind this site, written for investors and not for lawyers.</p>
+  <Answer text={answer} updated={updated} sourceNote={`${guides.length} guides · ${faqCount} questions answered`} />
+  <nav class="feeds" aria-label="Guide topics">
+    {groups.map((g) => <a href={`#${g.key}`}>{g.label}</a>)}
+    <a href="/faq/">All questions</a>
+  </nav>
+  {groups.map((g) => (
+    <section class="guide-group" aria-labelledby={g.key}>
+      <h2 id={g.key}>{g.label}</h2>
+      <p class="guide-blurb">{g.blurb}</p>
+      <ul class="guide-cards">
+        {g.guides.map((x) => (
+          <li>
+            <a class="guide-card" href={guidePath(x.slug)}>
+              <strong>{x.title}</strong>
+              <span>{x.description.at(-1)}</span>
+              <em>{minutes(wordCount(x))} min read</em>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+  <p class="disclaimer"><strong>Not investment advice.</strong> The guides explain public records and how this site presents them. They make no recommendations.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

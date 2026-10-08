@@ -1,0 +1,47 @@
+---
+// /faq/ — every question the guides answer, in one place, grouped by topic. The answers are
+// the guides' own text (lib/guides), so this page cannot drift from them.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { getGuides, byGroup, guidePath } from "../lib/guides";
+import { SITE_URL } from "../lib/seo";
+
+const guides = await getGuides();
+const groups = byGroup(guides);
+const all = guides.flatMap((g) => g.faqs.map((f) => ({ ...f, guide: g })));
+const updated = guides.map((g) => g.updated).sort().at(-1) ?? null;
+const slug = (q: string) => q.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 70);
+const description = "Short answers to common questions about congressional stock trades, insider filings, campaign donations, lobbying, federal contracts and Treasury rates.";
+const answer = `${all.length} short answers about the public records on this site, from whether members of Congress can trade stocks to what a Form 4 code means and how I Bond rates are set. Each answer links to a full guide and to the official source.`;
+const ld = { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}/faq/#page`, name: "Frequently asked questions", url: `${SITE_URL}/faq/`, dateModified: updated, mainEntity: all.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) };
+---
+<BaseLayout title={["FAQ: Congress Trades, Insider Filings and Rates | Spot the Money", "FAQ | Spot the Money"]} description={description} section="FAQ">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "FAQ", path: "/faq/" }]} />
+  <p class="eyebrow">Guides <span class="x">/</span> FAQ</p>
+  <h1>Frequently asked questions</h1>
+  <p class="lede">Short answers first. Each one links to the guide that explains it in full.</p>
+  <Answer text={answer} updated={updated} sourceNote={`${all.length} questions`} />
+  <nav class="feeds" aria-label="Question topics">
+    {groups.map((g) => <a href={`#${g.key}`}>{g.label}</a>)}
+    <a href="/guides/">All guides</a>
+  </nav>
+  <div class="prose">
+    {groups.map((g) => (
+      <section aria-labelledby={g.key}>
+        <h2 id={g.key}>{g.label}</h2>
+        <div class="faq-list">
+          {g.guides.flatMap((x) => x.faqs.map((f) => (
+            <div class="faq-item" id={slug(f.q)}>
+              <h3>{f.q}</h3>
+              <p>{f.a} <a class="faq-more" href={guidePath(x.slug)}>{x.title}&nbsp;→</a></p>
+            </div>
+          )))}
+        </div>
+      </section>
+    ))}
+  </div>
+  <p class="disclaimer"><strong>Not investment advice.</strong> These answers explain public records and how this site presents them. Something missing or wrong? <a href="/corrections/">Tell us</a>.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
