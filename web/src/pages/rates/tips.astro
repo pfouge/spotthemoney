@@ -1,6 +1,8 @@
 ---
 // /rates/tips/ — TIPS real yields from Treasury's daily real yield curve (no FRED key needed;
 // resolves open decision #4). Breakeven inflation = nominal par yield − real yield per tenor.
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
@@ -52,6 +54,7 @@ const description = hasData
       </section>
 
       <h2>Every maturity</h2>
+      <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "tips-real-yields.csv")} note="every day held, one column per maturity" />
       <div class="tablewrap">
         <table class="data">
           <thead><tr><th>Maturity</th><th class="num">Real yield</th><th class="num">1d</th><th class="num">1m</th><th class="num">YTD</th><th class="num">Nominal</th><th class="num">Breakeven</th></tr></thead>
@@ -73,5 +76,5 @@ const description = hasData
   <h2>How to read TIPS yields</h2>
   <p>A TIPS real yield is what the bond pays <em>on top of</em> inflation: the principal is adjusted with CPI-U and the coupon is paid on the adjusted principal. The <strong>breakeven inflation rate</strong> is the nominal Treasury yield of the same maturity minus the real yield — roughly the average inflation at which a TIPS and a regular Treasury would return the same. Treasury publishes these par real yields each business day for the 5-, 7-, 10-, 20- and 30-year points.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Official U.S. Treasury data, shown as published.</p>
-  <JsonLd data={datasetLd({ name: "TIPS real yield curve (daily)", path: "/rates/tips/", description, dateModified: real?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["TIPS", "real yield", "breakeven inflation", "Treasury"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
+  <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "tips-real-yields.csv")?.path], name: "TIPS real yield curve (daily)", path: "/rates/tips/", description, dateModified: real?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["TIPS", "real yield", "breakeven inflation", "Treasury"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>

@@ -149,7 +149,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
     const sample = { title: "Late congressional trade disclosures", url: "https://spotthemoney.com/guides/late-congressional-trade-disclosures/", updated: U, accessed: U };
     const examples = CITE_STYLES.map((st) => [st.label, citation(st.key, sample).html]);
     return {
-      slug: "how-to-cite-and-reuse", group: "site", updated: U,
+      slug: "how-to-cite-and-reuse", group: "site", updated: "2026-10-09",
       title: "How to cite and reuse Spot the Money",
       seoTitle: ["How to Cite and Reuse Spot the Money Data", "How to Cite Spot the Money"],
       description: ["How to credit Spot the Money in an article, paper or post, how to cite the original government filing, and the legal limits on reusing congressional and FEC records.", "How to credit Spot the Money, cite the original filing, and stay within the legal limits on reusing the records."],
@@ -160,6 +160,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
         "The government filing is the authority; this site is the compilation.",
         "Federal law limits commercial use of congressional reports and of FEC donor details.",
         "Charts can be embedded or saved as images with the site name on them.",
+        "Trades, lobbying filings, contract awards and rates can be downloaded as free CSV files from the downloads page.",
       ],
       sections: [
         { id: "credit", h: "How should I credit the site?", html: `
@@ -189,9 +190,15 @@ ${table(["Style", "Example"], examples)}
 <li><strong>Information copied from FEC reports</strong> may not be sold or used to solicit contributions or for commercial purposes (${ext("https://www.fec.gov/updates/sale-or-use-contributor-information/", "FEC guidance")}). This site publishes donation totals only, never individual donors.</li>
 </ul>
 <p>SEC filings, lobbying reports, contract records and Treasury rates carry no comparable restriction. The full reuse terms are in the <a href="/terms/#reuse">terms of use</a>. This is a summary, not legal advice.</p>` },
-        { id: "bulk", h: "What if I need the data in bulk?", html: `
-<p>Write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and say what you are working on. Please do not crawl the site at a rate that strains it. Journalists and researchers can also ask for the rule behind any figure, or for help tracing a number to its filings.</p>
-<p>The government sources are open to everyone and are listed, with links, in the <a href="/methodology/#sources">methodology</a>.</p>` },
+        { id: "bulk", h: "Can I download the data?", html: `
+<p>Yes. The <a href="/downloads/">downloads page</a> lists every file, free and without signing up. They are plain CSV files that open in Excel, Google Sheets or any statistics package, and they hold the same rows the pages show, each with a link to its original filing.</p>
+<ul>
+<li><strong>One member or one ticker.</strong> Use the "Download CSV" link above the trade table on a member's page or a stock's page. A member's file holds every trade on record, including those beyond the newest 200 the page lists.</li>
+<li><strong>Everything at once.</strong> The downloads page has one file with every congressional trade, insider transactions cut into one file per quarter, lobbying filings per quarter, federal contract awards, the roster of members with their committee seats, and Treasury and I bond rates.</li>
+<li><strong>What the columns mean.</strong> The downloads page explains every column. Congressional rows carry a low and a high amount, never an exact value; Form 4 rows carry shares, price and value.</li>
+</ul>
+<p>The files are rebuilt whenever the site is, usually once a day, and their addresses do not change, so a script can fetch the same address each day. Please fetch a file at most once a day and do not crawl the pages instead.</p>
+<p>There is no file of campaign donations: this site holds a recent sample of receipts and never lists individual donors. The limits on reuse described above apply to downloaded files exactly as they do to the pages; the files with congressional trades fall under 5 U.S.C. § 13107(c). For anything the files do not cover, write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>` },
         { id: "errors", h: "What if the figure I cited is later corrected?", html: `
 <p>Filings are amended and this site fixes its own mistakes. A correction that changes a published number is logged on the <a href="/corrections/">corrections page</a> with its date. Because pages change, the access date in your citation is what shows which version you saw.</p>` },
       ],
@@ -199,6 +206,8 @@ ${table(["Style", "Example"], examples)}
         { q: "How do I cite Spot the Money?", a: "Credit \"Spot the Money (spotthemoney.com)\" and link to the page you used. The Cite button on every page gives a ready-made citation in plain, APA, MLA and Chicago style with the access date filled in." },
         { q: "Can I use Spot the Money charts in an article?", a: "Yes, with a credit and a link. Each chart can be linked, saved as an image that carries the site name, or embedded on member and stock pages." },
         { q: "Is Spot the Money data free to reuse?", a: "Figures may be quoted and reused with a credit and a link. Federal law separately limits commercial use of congressional disclosure reports and of donor details from FEC reports." },
+        { q: "Can I download congressional stock trades as a CSV file?", a: "Yes. Spot the Money offers free CSV files with no sign-up: one with every congressional trade on record, one per member, and one per ticker, each row with a link to the original report. Federal law bars commercial use of congressional disclosure reports other than by news media.", on: ["congress"] },
+        { q: "Is there a free download of insider trading (Form 4) data?", a: "Yes. The downloads page has Form 4 transactions as free CSV files, one per quarter plus a file for the last 90 days, and one file per ticker. Each row has the insider, the transaction code, shares, price, value and a link to the filing on SEC EDGAR.", on: ["insiders"] },
         { q: "Should I cite the original filing or Spot the Money?", a: "Cite the original government filing for the fact of a trade, and this site for totals, rankings and charts it computed. Every row links to its filing." },
       ],
       sources: [
@@ -207,9 +216,9 @@ ${table(["Style", "Example"], examples)}
         { name: "52 U.S.C. § 30111", url: "https://www.law.cornell.edu/uscode/text/52/30111" },
       ],
       related: ["what-disclosure-data-cannot-tell-you", "congress-trade-amount-ranges", "how-to-use-the-trade-map", "campaign-donations-fec-data"],
-      seeLive: [{ label: "Terms of use: reusing the data", href: "/terms/#reuse" }, { label: "Methodology", href: "/methodology/" }, { label: "Corrections", href: "/corrections/" }],
-      covers: ["web/src/lib/cite.ts", "web/src/scripts/share.ts", "web/src/components/SourcePanel.astro", "web/src/pages/terms.astro"],
-      ui: [{ text: "<span>Cite</span>", on: "/congress/" }, { text: "Copy citation", on: "/congress/" }, { text: ">Chicago<", on: "/congress/" }, { text: "Save image", on: "/congress/" }, { text: "Sources and method", on: "/stocks/aapl/" }],
+      seeLive: [{ label: "Free CSV downloads", href: "/downloads/" }, { label: "Terms of use: reusing the data", href: "/terms/#reuse" }, { label: "Methodology", href: "/methodology/" }, { label: "Corrections", href: "/corrections/" }],
+      covers: ["web/src/lib/cite.ts", "web/src/scripts/share.ts", "web/src/components/SourcePanel.astro", "web/src/pages/terms.astro", "web/src/lib/downloads.ts", "web/src/lib/csv.ts", "web/src/pages/downloads/index.astro", "web/src/components/DownloadCsv.astro"],
+      ui: [{ text: "<span>Cite</span>", on: "/congress/" }, { text: "Copy citation", on: "/congress/" }, { text: ">Chicago<", on: "/congress/" }, { text: "Save image", on: "/congress/" }, { text: "Sources and method", on: "/stocks/aapl/" }, { text: "Download CSV", on: "/congress/" }, { text: "Free CSV downloads", on: "/downloads/" }, { text: "congress-trades.csv", on: "/downloads/" }],
       facts: [],
     };
   },

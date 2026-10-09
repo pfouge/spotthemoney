@@ -1448,3 +1448,58 @@ Peter said to go ahead without the usual questions; the choices below are mine a
   `verify-live --all`, `verify-a11y` 96 checks, `verify-share` 250, `verify-filters`, 66 unit
   tests. The committee job ran locally against the real files: 230 committees, 3,895 seats,
   531 members, none unmatched. Not verified: the job on GitHub Actions, live data.
+
+### Free CSV downloads (2026-10-09) — Peter: "now Free CSV downloads"
+
+No questions were asked (Peter: "just do it"); the choices below are mine and can be changed.
+
+- **Hub at `/downloads/`** (footer link "Downloads", in the sitemap, search and `llms.txt`): every
+  site-wide file with rows, size and newest date; how to get one member's or one ticker's file;
+  a column dictionary; format notes; reuse limits (5 U.S.C. § 13107(c) for congressional rows).
+- **Files** (all static, built with the site, no sign-up, nothing recorded):
+  `congress-trades.csv`, `congress-members.csv`, `congress-committee-assignments.csv`,
+  `insider-trades-latest.csv` (90 days) and `insider-trades-<period>.csv`,
+  `lobbying-<period>.csv`, `federal-contracts.csv`, `treasury-yields.csv`,
+  `tips-real-yields.csv`, `i-bond-rates.csv`, `cpi-u.csv`; plus
+  `/downloads/congress/<slug>.csv` per member with trades and `/downloads/stocks/<ticker>.csv`
+  per ticker with trades (same rows as the stock page, sibling securities included).
+- **One catalogue:** `web/src/lib/downloads.ts` (`getDownloads()` → `files`, `member`, `stock`)
+  feeds the hub, the endpoints (`pages/downloads/[file].csv.ts`, `congress/[slug].csv.ts`,
+  `stocks/[ticker].csv.ts`), the `DownloadCsv.astro` link and Dataset `distribution` markup
+  (`datasetLd({ downloads })`). A file with no rows is not built and not linked.
+- **Writer:** `web/src/lib/csv.ts` — RFC 4180, CRLF, UTF-8 BOM (Excel), and a leading
+  apostrophe on any text cell that starts with `= + - @` so a name from a filing can never run
+  as a formula. Numbers plain, dates `YYYY-MM-DD`, `true`/`false`, blank for missing.
+- **Size and count limits:** big sets are cut by quarter of disclosure, an over-size quarter by
+  month, an over-size month into parts (`MAX_ROWS` 50,000 ≈ 15 MB; Cloudflare's limit is
+  25 MiB a file). No file per corporate insider: that would add thousands of files against the
+  20,000-file cap. Insider pages link to the file of the ticker they file most for. Expect
+  roughly 1,100 new files on live data (about 900 tickers, 135 members, 40 site-wide).
+- **Deliberately not offered:** campaign donations (the site holds a recent sample, not totals,
+  and FEC sale-and-use limits cover donor details), market prices, anything not on a page.
+  Rows flagged "under review" are included with `under_review = true`, as on the pages.
+- **Download links** sit above the table on: member pages, stock pages, company pages (ticker
+  file), insider pages (ticker file), `/congress/`, `/insiders/`, `/lobbying/`, `/contracts/`,
+  and the three rates pages.
+- **Words changed elsewhere:** Terms (`#reuse`, date 2026-10-09) and Privacy (new "Downloads"
+  sentence, date 2026-10-09); Methodology `#downloads`; guide `how-to-cite-and-reuse` — the
+  "bulk data" section is now "Can I download the data?", two new FAQs, new covers and labels.
+- **New verifier:** `node scripts/verify-downloads.mjs <base-url> [--sample N]` (no browser):
+  every listed file downloads, parses, has the stated row count and stays under 20 MB; trade
+  files share one header and are well-formed; member and ticker files match their pages;
+  totals agree with `congress-members.csv` and `/llms.txt`; pages that should link do; no
+  donor or contact columns; no formula cells. Tests: `scripts/csv.test.ts`,
+  `scripts/downloads.test.ts`.
+- Also fixed: the comparison table said "41th" (live on Lloyd Doggett's page); `ordinal()` in
+  `profile.ts`. `seo.ts` reads `import.meta.env?.` so the libraries load in unit tests.
+  `verify-a11y` now includes `/downloads/` (25 pages).
+- Live check of the member pages (`020368c`, 2026-10-09): header facts, jump links, stocks,
+  by-year, owners, comparison (135 members), related members, 4 questions with matching FAQ
+  data all present on `/congress/lloyd-doggett/`. Committees not yet shown: the roster job had
+  not run since the migration.
+- Not done: no JSON or Excel versions; no per-insider files; no "download this filtered map
+  view"; no `X-Robots-Tag` on the files (the `_headers` pattern for `*.csv` is unconfirmed on
+  Cloudflare, so it was left out rather than guessed).
+- Verified on the local build only: `astro check` 0 errors, `verify-downloads` 1,261 checks,
+  `verify-guides` (20 guides, 9 re-read and accepted), `verify-live --all`, `verify-profile`
+  755, `verify-a11y` 100, `verify-share` 250, `verify-filters`, 74 unit tests.

@@ -1,0 +1,123 @@
+---
+// /downloads/ — the free CSV files: every site-wide file with its row count, size and newest
+// date, how to get one member's or one ticker's file, what each column means, and the legal
+// limits that travel with some of the data. Everything here comes from lib/downloads.ts.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getDownloads, byteSize, sizeLabel, GROUP_LABEL, type Group, type DownloadFile } from "../../lib/downloads";
+import { getFlagship, num } from "../../lib/flagship";
+import { SITE_URL, SITE_NAME, PUBLISHER, fitDescription } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+
+const d = await getDownloads();
+const model = await getFlagship();
+const groups = (["congress", "insiders", "washington", "rates"] as Group[]).map((g) => ({ g, files: d.files.filter((f) => f.group === g) })).filter((x) => x.files.length);
+const updated = d.files.reduce<string | null>((a, f) => (f.updated && (!a || f.updated > a) ? f.updated : a), null) ?? model.builtAt.slice(0, 10);
+const exampleMember = [...d.member.values()].sort((a, b) => b.rows - a.rows)[0];
+const exampleStock = [...d.stock.values()].sort((a, b) => b.rows - a.rows)[0];
+// One column list per kind of file (every trade file shares its columns).
+const kinds: [DownloadFile["kind"], string][] = [["trades", "Trade files"], ["members", "Members of Congress"], ["seats", "Committee assignments"], ["lobbying", "Lobbying filings"], ["contracts", "Federal contracts"]];
+const dict = kinds.map(([kind, label]) => ({ kind, label, file: d.files.find((f) => f.kind === kind) ?? (kind === "trades" ? exampleMember : undefined) })).filter((x) => x.file);
+const rateFiles = d.files.filter((f) => f.kind === "rates");
+const description = fitDescription([
+  "Free CSV downloads of congressional stock trades, SEC insider transactions, lobbying filings, federal contracts and Treasury rates. No sign-up.",
+  "Free CSV downloads: congressional trades, insider transactions, lobbying, federal contracts and Treasury rates.",
+]);
+const answer = `The trades, lobbying filings, contract awards and rates on Spot the Money can be downloaded as CSV files, free and without signing up: ${num(d.files.length)} site-wide files, plus one file for each of ${num(d.member.size)} members of Congress and ${num(d.stock.size)} tickers with trades on record. The files are rebuilt with the site each day and hold the same rows the pages show, each with a link to the original filing.`;
+const ld = {
+  "@context": "https://schema.org", "@type": "DataCatalog", "@id": `${SITE_URL}/downloads/#catalog`, name: `${SITE_NAME} CSV downloads`, url: `${SITE_URL}/downloads/`, description,
+  isAccessibleForFree: true, license: `${SITE_URL}/terms/#reuse`, publisher: PUBLISHER, dateModified: updated,
+  dataset: d.files.map((f) => ({ "@type": "Dataset", name: f.title, description: f.about, license: `${SITE_URL}/terms/#reuse`, isAccessibleForFree: true, creator: PUBLISHER, ...(f.updated ? { dateModified: f.updated } : {}),
+    distribution: { "@type": "DataDownload", encodingFormat: "text/csv", contentUrl: `${SITE_URL}${f.path}` } })),
+};
+---
+<BaseLayout title={["Free CSV Downloads: Congress Trades, Insider Trades, Rates", "Free CSV Downloads | Spot the Money"]} description={description} section="Downloads" modified={updated}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Downloads", path: "/downloads/" }]} />
+  <h1>Free CSV downloads</h1>
+  <p class="lede">The data behind the pages, as plain spreadsheet files. No account, no email, no charge.</p>
+  <Answer text={answer} updated={updated} sourceNote="Rebuilt with every site update" />
+
+  <nav class="jump" aria-label="On this page">
+    <span>On this page</span>
+    {groups.map((x) => <a href={`#${x.g}`}>{GROUP_LABEL[x.g]}</a>)}
+    <a href="#one-member-or-ticker">One member or ticker</a><a href="#columns">Columns</a><a href="#format">Format</a><a href="#reuse">Reuse limits</a>
+  </nav>
+
+  {groups.map((x) => (
+    <section aria-labelledby={x.g}>
+      <h2 id={x.g}>{GROUP_LABEL[x.g]}</h2>
+      <ul class="files" data-downloads={x.g}>
+        {x.files.map((f) => (
+          <li data-file={f.path} data-rows={f.rows}>
+            <a class="dl-name" href={f.path} download={f.name} type="text/csv">{f.name}</a>
+            <span class="file-what"><strong>{f.title}.</strong> {f.about}</span>
+            <span class="file-meta">{num(f.rows)} {f.rows === 1 ? "row" : "rows"} · {sizeLabel(byteSize(f))}{f.updated ? ` · newest ${formatDate(f.updated)}` : ""}</span>
+          </li>
+        ))}
+      </ul>
+      {x.g === "insiders" && <p class="section-note">Insider transactions are cut by the quarter in which they were disclosed so that each file opens in a spreadsheet. The "last 90 days" file overlaps the newest quarters. A row marked <code>also_in_another_filing</code> repeats a transaction another filer already reported; count it once.</p>}
+      {x.g === "washington" && <p class="section-note">Campaign donations are not offered as a file. This site holds a recent sample of receipts, not totals, and federal law restricts copying donor details from FEC reports. The <a href="/donations/">donations page</a> shows the aggregates.</p>}
+      {x.g === "rates" && <p class="section-note">Rates are U.S. Treasury and Bureau of Labor Statistics figures, which are in the public domain.</p>}
+    </section>
+  ))}
+
+  <section aria-labelledby="one-member-or-ticker">
+    <h2 id="one-member-or-ticker">One member or one ticker</h2>
+    <p>Every <a href="/congress/">member of Congress</a> with trades on record and every <a href="/stocks/">ticker</a> with trades has its own file. Use the "Download CSV" link above the trade table on that page, or build the address yourself:</p>
+    <ul>
+      <li><code>{SITE_URL}/downloads/congress/<em>member-page-name</em>.csv</code>{exampleMember && <> — for example <a href={exampleMember.path} download={exampleMember.name}>{exampleMember.name}</a> ({num(exampleMember.rows)} rows)</>}</li>
+      <li><code>{SITE_URL}/downloads/stocks/<em>ticker</em>.csv</code>{exampleStock && <> — for example <a href={exampleStock.path} download={exampleStock.name}>{exampleStock.name}</a> ({num(exampleStock.rows)} rows)</>}</li>
+    </ul>
+    <p>The member page name is the last part of the member's page address. Corporate insiders do not have a file each; an insider's transactions are in the file of the ticker they report for, and in the quarterly insider files. A member's file holds every trade on record, including those beyond the newest 200 the page shows.</p>
+  </section>
+
+  <section aria-labelledby="columns">
+    <h2 id="columns">What the columns mean</h2>
+    <p class="section-note">The first line of every file is the column names below. Trade files all share one set of columns, so files can be stacked.</p>
+    {dict.map((x) => (
+      <details class="dict" open={x.kind === "trades"} data-dict={x.kind}>
+        <summary>{x.label} <span>{x.file!.columns.length} columns</span></summary>
+        <div class="tablewrap">
+          <table class="data wrap">
+            <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+            <tbody>{x.file!.columns.map((c) => <tr><th scope="row"><code>{c.key}</code></th><td>{c.about}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </details>
+    ))}
+    {rateFiles.map((f) => (
+      <details class="dict" data-dict={f.name}>
+        <summary>{f.title} <span>{f.columns.length} columns</span></summary>
+        <div class="tablewrap">
+          <table class="data wrap">
+            <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+            <tbody>{f.columns.map((c) => <tr><th scope="row"><code>{c.key}</code></th><td>{c.about}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </details>
+    ))}
+  </section>
+
+  <section aria-labelledby="format">
+    <h2 id="format">Format</h2>
+    <ul>
+      <li>Comma-separated, UTF-8, one header line. The files open directly in Excel, Google Sheets and Numbers, and load in pandas or R without options.</li>
+      <li>Dates are <code>YYYY-MM-DD</code>. Dollar amounts and share counts are plain numbers with no symbols. Yes/no columns hold <code>true</code> or <code>false</code>. A blank cell means the report did not give that value.</li>
+      <li>Congressional reports give a dollar range, never an exact amount: use <code>amount_low</code> and <code>amount_high</code>. The <code>value</code> column is filled for Form 4 rows only.</li>
+      <li>A text cell that begins with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> is written with a leading apostrophe so a spreadsheet cannot run it as a formula.</li>
+      <li>The files are rebuilt whenever the site is, usually once a day. The addresses do not change, so a script can fetch the same file each day. Please fetch a file at most once a day.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="reuse">
+    <h2 id="reuse">Limits on reuse</h2>
+    <p>You may use these files with a credit to Spot the Money (spotthemoney.com) and a link. The records themselves are public government documents, and we claim no rights in them. One limit comes with the data and applies to you as much as to us:</p>
+    <ul>
+      <li><strong>Congressional trades.</strong> Federal law (5 U.S.C. § 13107(c)) makes it unlawful to obtain or use congressional financial disclosure reports for an unlawful purpose; for a commercial purpose, other than by news and communications media for dissemination to the general public; to determine or establish anyone's credit rating; or to solicit money for any political, charitable or other purpose. The files that hold congressional rows are <code>congress-trades.csv</code>, the per-member files, and the per-ticker files.</li>
+    </ul>
+    <p>The full terms are in <a href="/terms/#reuse">Reusing the data</a>; <a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a> has citation examples. A filing can be amended after we read it, so check a row against its <code>filing_url</code> before relying on it. Nothing here is investment advice. Found an error? <a href="/corrections/">Tell us</a>.</p>
+  </section>
+  <JsonLd data={ld} />
+</BaseLayout>

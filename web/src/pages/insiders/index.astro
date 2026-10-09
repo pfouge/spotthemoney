@@ -2,6 +2,8 @@
 // Insiders hub: newest Form 4 rows + the preset feeds from docs/07 §8 (cluster buys, CEO/CFO
 // buys ≥ $25k, officer sales ≥ $100k, top buys/sells this week and month), each an anchor on
 // this page so it is one indexable URL set per feed (#cluster-buys etc.).
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
@@ -50,7 +52,7 @@ const answer = all.length === 0
   : `${plural(week.length, "insider transaction")} were disclosed in the last 7 days and ${plural(month.length, "transaction")} in the last 30, across ${plural(new Set(month.map((t) => t.securityId)).size, "ticker")} in the tracked set. Over 30 days insiders made ${plural(month.filter((t) => t.code === "P").length, "open-market purchase")} against ${plural(month.filter((t) => t.side === "sell").length, "sale")}${buyRatio != null ? ` (buy/sell ratio ${buyRatio.toFixed(2)})` : ""}; ${clusters.length ? `${plural(clusters.length, "ticker")} had a cluster buy of three or more insiders` : "no ticker had a three-insider cluster buy"}.`;
 const description = "Newest SEC Form 4 insider trades with preset feeds: cluster buys, CEO and CFO purchases, large officer sales, and the biggest buys and sells this week.";
 const ld = [
-  datasetLd({ name: "Corporate insider transactions (SEC Form 4)", path: "/insiders/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["insider trading", "Form 4", "cluster buys", "CEO purchases"], sources: [SOURCES.edgar], parentCatalogPath: "/" }),
+  datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "insider-trades-latest.csv")?.path], name: "Corporate insider transactions (SEC Form 4)", path: "/insiders/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["insider trading", "Form 4", "cluster buys", "CEO purchases"], sources: [SOURCES.edgar], parentCatalogPath: "/" }),
 ];
 const feeds = [
   { id: "cluster-buys", title: "Cluster buys (30 days)", note: "Three or more distinct insiders bought the same stock on the open market within 30 days." },
@@ -86,6 +88,7 @@ const feeds = [
   <VizInsiders />
 
   <h2 id="newest">Newest disclosures</h2>
+  <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "insider-trades-latest.csv")} note="every Form 4 row disclosed in the last 90 days; earlier quarters are on the downloads page" />
   <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved Form 4 rows yet — the daily sec_form4 job fills this table (see the ingest status in the footer of the methodology page)." />
 
   <AdSlot label="Advertisement" />

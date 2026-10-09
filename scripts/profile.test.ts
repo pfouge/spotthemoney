@@ -2,7 +2,7 @@
 //   npx tsx --test scripts/profile.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { memberProfile, peerStats, sameState, sameStocks, seatGroups, memberQa, medianOf, pct, ownerLabel, stateName, seatName, partyName } from "../web/src/lib/profile";
+import { ordinal, memberProfile, peerStats, sameState, sameStocks, seatGroups, memberQa, medianOf, pct, ownerLabel, stateName, seatName, partyName } from "../web/src/lib/profile";
 import type { Flagship, Person, Txn, Security, Seat } from "../web/src/lib/flagship";
 
 let nextId = 1;
@@ -102,4 +102,8 @@ test("seatGroups and memberQa", () => {
   assert.match(qa[3]!.a, /House Committee on Ways and Means \(Ranking Member\) and House Committee on Agriculture/);
   for (const f of qa) assert.doesNotMatch(f.a, /because|in order to|ahead of|suspicious/i);
   assert.deepEqual(memberQa(a, memberProfile(m, { ...a, txns: [] }), seats, { chamber: "house", range: "", longDate: (d) => d }), []);
+});
+
+test("ordinal: 1st, 2nd, 3rd, 11th-13th, 21st, 41st, 112th", () => {
+  assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22, 41, 103, 112, 1001].map(ordinal), ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "41st", "103rd", "112th", "1,001st"]);
 });

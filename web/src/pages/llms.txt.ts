@@ -38,6 +38,11 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
 - [Newest disclosures](${SITE_URL}/disclosures/): one feed across every source, newest first.
 
+## Free CSV downloads (no sign-up; same rows as the pages; column meanings on the page)
+- [All downloads](${SITE_URL}/downloads/): congressional trades, insider transactions by quarter, lobbying, federal contracts, Treasury rates.
+- One member: ${SITE_URL}/downloads/congress/<slug>.csv · One ticker: ${SITE_URL}/downloads/stocks/<ticker>.csv
+- Reuse limits (congressional reports: 5 U.S.C. § 13107(c)): ${SITE_URL}/terms/#reuse
+
 ## Entity pages
 - Insider: ${SITE_URL}/insiders/<slug>/ — Person; Form 4 transactions with shares, price, value, lag, 10b5-1 flag, EDGAR link.
 - Member of Congress: ${SITE_URL}/congress/<slug>/ — Person; PTR trades with ranges, owner, days-to-report, late flag, filing link.

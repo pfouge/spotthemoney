@@ -217,3 +217,10 @@ export function partyName(party: string | null | undefined): string | null {
   const p = party.toLowerCase();
   return p === "d" || p.startsWith("dem") ? "Democrat" : p === "r" || p.startsWith("rep") ? "Republican" : p === "i" || p.startsWith("ind") ? "Independent" : party;
 }
+
+/** 1st, 2nd, 3rd, 4th, 11th, 21st, 112th … */
+export function ordinal(n: number): string {
+  const t = n % 100, u = n % 10;
+  const suffix = t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th";
+  return `${n.toLocaleString("en-US")}${suffix}`;
+}

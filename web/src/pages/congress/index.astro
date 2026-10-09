@@ -1,5 +1,7 @@
 ---
 // Congress hub: newest STOCK Act disclosures, most active members, late filers, most-traded tickers.
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
@@ -37,7 +39,7 @@ const answer = all.length === 0
   ? `No congressional trades have met the publishing bar yet. House periodic transaction reports are parsed daily from the Clerk's disclosures; Senate reports are pending a separate decision. ${plural(members.length, "member")} and ${plural(model.filings.size - model.txns.filter((t) => t.source === "sec_form4").length, "filing")} are on record so far.`
   : `${plural(withRows.length, "member")} of Congress have ${plural(all.length, "disclosed trade")} on record, ${num(month.length)} of them disclosed in the last 30 days. The average filing came ${avgLagAll == null ? "—" : Math.round(avgLagAll)} days after the trade against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline, and ${plural(all.filter(isLate).length, "trade was", "trades were")} filed late. House filings only until the Senate feed is live.`;
 const description = "Newest STOCK Act stock trades by members of Congress: most active traders, late filers against the 45-day deadline and most-traded tickers.";
-const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act PTRs)", path: "/congress/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["congress stock trades", "STOCK Act", "periodic transaction report", "late filers"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
+const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")?.path], name: "Congressional stock trade disclosures (STOCK Act PTRs)", path: "/congress/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["congress stock trades", "STOCK Act", "periodic transaction report", "late filers"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
 ---
 <BaseLayout title={`Congress Stock Trades ${year} — Newest Disclosures`} description={description} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }]} />
@@ -59,6 +61,7 @@ const ld = datasetLd({ name: "Congressional stock trade disclosures (STOCK Act P
   <VizCongress />
 
   <h2 id="newest">Newest disclosures</h2>
+  <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")} note="every congressional trade on record" />
   <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet — the daily congress-ptr job fills this table." />
 
   <AdSlot label="Advertisement" />

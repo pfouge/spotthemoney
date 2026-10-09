@@ -25,7 +25,7 @@ export const GET: APIRoute = async () => {
   }
   for (const [title, sub, url] of [
     ["Congress trades", "Every disclosed trade by members", "/congress/"], ["Insider trades", "Form 4 filings", "/insiders/"],
-    ["Newest disclosures", "Latest filings", "/disclosures/"], ["Lobbying", "Senate LDA filings", "/lobbying/"],
+    ["Newest disclosures", "Latest filings", "/disclosures/"], ["Free CSV downloads", "Download the data", "/downloads/"], ["Lobbying", "Senate LDA filings", "/lobbying/"],
     ["Federal contracts", "USAspending awards", "/contracts/"], ["Campaign donations", "FEC receipts", "/donations/"],
     ["Treasury yields", "Yield curve", "/rates/treasury-yields/"], ["I-Bonds", "Current rate and next reset", "/rates/i-bonds/"], ["TIPS", "Real yields", "/rates/tips/"],
     ["Methodology", "How the numbers are built", "/methodology/"], ["Guides", "How to read the filings", "/guides/"], ["FAQ", "Short answers to common questions", "/faq/"],

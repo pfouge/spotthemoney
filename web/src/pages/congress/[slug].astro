@@ -4,6 +4,8 @@
 // answer → headline figures → most-traded stocks → charts → year by year and whose trades →
 // comparison with other members → committees → every trade → filings → related members →
 // questions → sources. The figures come from lib/profile.ts, which is unit-tested.
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
@@ -16,7 +18,7 @@ import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDay
 import { personLd, fitDescription, SITE_URL } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizPerson from "../../components/VizPerson.astro";
-import { memberProfile, peerStats, sameState, sameStocks, seatGroups, seatTitle, memberQa, stateName, seatName, partyName } from "../../lib/profile";
+import { ordinal, memberProfile, peerStats, sameState, sameStocks, seatGroups, seatTitle, memberQa, stateName, seatName, partyName } from "../../lib/profile";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -40,6 +42,7 @@ const tickers = [...new Set(txns.map((t) => t.securityId).filter((x): x is numbe
 const title = roleLabel(p, model.companies);
 const pendingOcr = p.filings.filter((f) => f.txnCount === 0).length;
 
+const downloads = await getDownloads();
 const prof = memberProfile(model, p);
 const peers = peerStats(model);
 const seats = model.seats.get(p.id) ?? [];
@@ -204,7 +207,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
         <table class="data wrap">
           <thead><tr><th>Measure</th><th class="num">{p.name}</th><th class="num">All members with trades</th></tr></thead>
           <tbody>
-            <tr><th scope="row">Trades on record</th><td class="num">{num(prof.trades)}{rank ? ` (${num(rank)}${rank === 1 ? "st" : rank === 2 ? "nd" : rank === 3 ? "rd" : "th"} of ${num(peers.members)})` : ""}</td><td class="num">{peers.medianTrades == null ? "—" : `${num(Math.round(peers.medianTrades))} for the middle member`}</td></tr>
+            <tr><th scope="row">Trades on record</th><td class="num">{num(prof.trades)}{rank ? ` (${ordinal(rank)} of ${num(peers.members)})` : ""}</td><td class="num">{peers.medianTrades == null ? "—" : `${num(Math.round(peers.medianTrades))} for the middle member`}</td></tr>
             <tr><th scope="row">Median days from trade to report</th><td class="num">{prof.medianLag == null ? "—" : Math.round(prof.medianLag)}</td><td class="num">{peers.medianLag == null ? "—" : Math.round(peers.medianLag)}</td></tr>
             <tr><th scope="row">Trades reported after {CONGRESS_DEADLINE_DAYS} days</th><td class="num">{prof.lateShare == null ? "—" : `${prof.lateShare}%`}</td><td class="num">{peers.lateShare == null ? "—" : `${peers.lateShare}%`}</td></tr>
           </tbody>
@@ -235,6 +238,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
   )}
 
   <h2 id="trades">Disclosed trades</h2>
+  <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
   <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />
 
   <AdSlot label="Advertisement" />

@@ -20,10 +20,10 @@
     }
   },
   "federal-contracts-usaspending": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "ingest/src/sources/usaspending.ts": "7e00ec5f0f888855",
-      "web/src/pages/contracts/index.astro": "e6a1ba4fb401497f"
+      "web/src/pages/contracts/index.astro": "95beb595812f2dd5"
     }
   },
   "form-4-transaction-codes": {
@@ -43,28 +43,32 @@
     }
   },
   "how-i-bond-rates-work": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/lib/ibond.ts": "25119c31f8a07e82",
-      "web/src/pages/rates/i-bonds.astro": "38861b560781c256"
+      "web/src/pages/rates/i-bonds.astro": "08070848d2f2b3e9"
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "56931901139ea42c",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
-      "web/src/pages/terms.astro": "38c1d466fe26c7a7"
+      "web/src/pages/terms.astro": "a484ae29c77788c9",
+      "web/src/lib/downloads.ts": "9615a082e44d7f02",
+      "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
+      "web/src/pages/downloads/index.astro": "85ffe40974311c2a",
+      "web/src/components/DownloadCsv.astro": "73f952882951a423"
     }
   },
   "how-to-read-a-congressional-trade-report": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/components/TxnTable.astro": "0fa1a05a633f1f10",
       "ingest/py/senate_import.py": "b2717cb2bd239da8",
-      "web/src/lib/profile.ts": "849f1e073bf02b48",
-      "web/src/pages/congress/[slug].astro": "2b08ed84880247c7"
+      "web/src/lib/profile.ts": "bd5d636516362e3f",
+      "web/src/pages/congress/[slug].astro": "8eca50cc199c21ca"
     }
   },
   "how-to-use-the-trade-map": {
@@ -78,12 +82,12 @@
     }
   },
   "insider-buying-vs-insider-selling": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
       "web/src/components/VizFlow.astro": "c60219a0038ce83c",
-      "web/src/pages/insiders/index.astro": "2b12bea699a2bf7c"
+      "web/src/pages/insiders/index.astro": "a6a4ce96a6f16882"
     }
   },
   "insider-options-and-derivatives": {
@@ -103,10 +107,10 @@
     }
   },
   "lobbying-disclosure-reports": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "04e83544d9137a8b",
-      "web/src/pages/lobbying/index.astro": "ab4c08506fe5bdb8"
+      "web/src/pages/lobbying/index.astro": "821bcff1723a3fc9"
     }
   },
   "rule-10b5-1-trading-plans": {
@@ -124,24 +128,24 @@
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
-      "web/src/pages/rates/tips.astro": "b2a859abe7321b3f"
+      "web/src/pages/rates/tips.astro": "fef1b796e0596b4f"
     }
   },
   "treasury-yield-curve-explained": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
-      "web/src/pages/rates/treasury-yields.astro": "245531c625728488"
+      "web/src/pages/rates/treasury-yields.astro": "902e9b53aa828b6d"
     }
   },
   "what-disclosure-data-cannot-tell-you": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "shared/src/tradevalue.ts": "fa250c11636cb867",
       "web/src/lib/coverage.ts": "848dc9f0b01c472b",
-      "web/src/pages/terms.astro": "38c1d466fe26c7a7"
+      "web/src/pages/terms.astro": "a484ae29c77788c9"
     }
   },
   "what-is-form-4": {

@@ -1,6 +1,8 @@
 ---
 // Insider profile: /insiders/<slug>/ — one page per person with an insider role (Form 4 filer).
 // Answer-first (roadmap B.3), then the transactions, then sources, last-updated, disclaimer.
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
@@ -48,6 +50,12 @@ const description = fitDescription([
 ]);
 const ld = personLd({ name: p.name, path, jobTitle: role?.officerTitle ?? (role?.isDirector ? "Director" : "Corporate insider"), worksFor: company ? { name: company.name, path: cpath } : null, description,
   sameAs: p.cik ? [`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${p.cik}&type=4`] : [] });
+// CSV: insiders have no file each (file-count limit); offer the file of the ticker they file most for.
+const tickerCounts = new Map<number, number>();
+for (const t of txns) if (t.securityId != null) tickerCounts.set(t.securityId, (tickerCounts.get(t.securityId) ?? 0) + 1);
+const topSecurity = [...tickerCounts].sort((a, b) => b[1] - a[1])[0]?.[0];
+const topTicker = topSecurity != null ? model.securities.get(topSecurity)?.ticker : null;
+const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowerCase()) : undefined;
 ---
 <BaseLayout title={[...(company ? [`${p.name} Insider Trades at ${company.name}`] : []), ...(primary ? [`${p.name} Insider Trades (${primary.ticker})`] : []), `${p.name} Insider Trades`]} description={description} noindex={txns.length === 0} section="Insiders">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Insiders", path: "/insiders/" }, { name: p.name, path }]} />
@@ -68,6 +76,7 @@ const ld = personLd({ name: p.name, path, jobTitle: role?.officerTitle ?? (role?
   <VizPerson person={p} />
 
   <h2>Transactions</h2>
+  <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
   <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet — the filings below may be amendments, holdings-only reports, or rows still under review." />
 
   <AdSlot label="Advertisement" />

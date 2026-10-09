@@ -2,6 +2,8 @@
 // Company page: /companies/<slug>/ — insiders, their transactions, and the same company's
 // federal contracts and lobbying (exact normalized-name match on USAspending recipient /
 // LDA client; a miss simply shows the reason line).
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
@@ -72,6 +74,7 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   )}
 
   <h2>Insider transactions</h2>
+  <DownloadCsv file={c.primaryTicker ? (await getDownloads()).stock.get(c.primaryTicker.toLowerCase()) : undefined} note="insider and congressional rows for this ticker" />
   <TxnTable model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
 
   <AdSlot label="Advertisement" />

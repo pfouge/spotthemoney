@@ -1,4 +1,6 @@
 ---
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import { getYieldCurve, getSeriesYearToDate, getCurveFrames } from "../../lib/db";
@@ -91,6 +93,7 @@ const description = hasData
       <AdSlot label="Advertisement" />
 
       <h2>Every maturity</h2>
+      <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")} note="every day held, one column per maturity" />
       <div class="tablewrap">
         <table class="data">
           <thead>
@@ -162,7 +165,7 @@ const description = hasData
   </p>
 
   <AdSlot label="Advertisement" />
-  <JsonLd data={datasetLd({ name: "U.S. Treasury par yield curve (daily)", path: "/rates/treasury-yields/", description, dateModified: curve?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["Treasury yields", "yield curve", "10-year Treasury", "2s10s spread"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
+  <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")?.path], name: "U.S. Treasury par yield curve (daily)", path: "/rates/treasury-yields/", description, dateModified: curve?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["Treasury yields", "yield curve", "10-year Treasury", "2s10s spread"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
 
 

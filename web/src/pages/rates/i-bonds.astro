@@ -1,4 +1,6 @@
 ---
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -85,6 +87,8 @@ const description = hasData
 
   <AdSlot label="Advertisement" />
 
+  <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "i-bond-rates.csv")} label="Download I bond rate history (CSV)" note="composite, fixed and inflation rates by period" />
+
   <h2>I-Bond value calculator</h2>
   <p class="lede">Estimate what a Series I bond is worth over time at the current rate.</p>
 
@@ -121,7 +125,7 @@ const description = hasData
   </p>
 
   <AdSlot label="Advertisement" />
-  <JsonLd data={datasetLd({ name: "Series I savings bond rates", path: "/rates/i-bonds/", description, dateModified: rate?.effectiveDate ?? new Date().toISOString().slice(0, 10), keywords: ["I-Bond", "I bond rate", "savings bonds", "inflation"], sources: [SOURCES.fiscaldata, SOURCES.bls], parentCatalogPath: "/rates/" })} />
+  <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "i-bond-rates.csv")?.path], name: "Series I savings bond rates", path: "/rates/i-bonds/", description, dateModified: rate?.effectiveDate ?? new Date().toISOString().slice(0, 10), keywords: ["I-Bond", "I bond rate", "savings bonds", "inflation"], sources: [SOURCES.fiscaldata, SOURCES.bls], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
 
 <script>

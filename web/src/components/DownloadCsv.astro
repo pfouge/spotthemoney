@@ -1,0 +1,19 @@
+---
+// A "Download CSV" link for one file from the catalogue (lib/downloads.ts). Renders nothing
+// when the file does not exist (no rows), so a page never links to a missing file.
+// Plain link with the download attribute: no script, nothing recorded.
+import type { DownloadFile } from "../lib/downloads";
+import { byteSize, sizeLabel } from "../lib/downloads";
+interface Props { file: DownloadFile | undefined | null; label?: string; note?: string }
+const { file, label = "Download CSV", note } = Astro.props;
+const n = file?.rows ?? 0;
+---
+{file && n > 0 && (
+  <p class="dl-row" data-download>
+    <a class="dl" href={file.path} download={file.name} type="text/csv">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+      <span>{label}</span>
+    </a>
+    <span class="dl-meta">{n.toLocaleString("en-US")} {n === 1 ? "row" : "rows"} · {sizeLabel(byteSize(file))}{note ? ` · ${note}` : ""} · <a href="/downloads/">all downloads</a></span>
+  </p>
+)}

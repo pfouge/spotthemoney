@@ -2,7 +2,7 @@
 // Person / Organization for profiles, Dataset + DataCatalog for collections, BreadcrumbList
 // everywhere. Kept as plain objects so the sitemap and the pages share one source of truth.
 
-export const SITE_URL = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
+export const SITE_URL = (import.meta.env?.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
 export const SITE_NAME = "Spot the Money";
 export const PUBLISHER = {
   "@type": "Organization",
@@ -91,7 +91,8 @@ export function organizationLd(opts: { name: string; path: string; tickerSymbol?
   };
 }
 
-export function datasetLd(opts: { name: string; path: string; description: string; dateModified: string; keywords?: string[]; sources?: { name: string; url: string }[]; temporalCoverage?: string; parentCatalogPath?: string }) {
+export function datasetLd(opts: { name: string; path: string; description: string; dateModified: string; keywords?: string[]; sources?: { name: string; url: string }[]; temporalCoverage?: string; parentCatalogPath?: string; downloads?: (string | null | undefined)[] }) {
+  const files = (opts.downloads ?? []).filter((x): x is string => !!x);
   return {
     "@context": "https://schema.org",
     "@type": "Dataset",
@@ -111,6 +112,7 @@ export function datasetLd(opts: { name: string; path: string; description: strin
     publisher: PUBLISHER,
     ...(opts.keywords?.length ? { keywords: opts.keywords } : {}),
     ...(opts.temporalCoverage ? { temporalCoverage: opts.temporalCoverage } : {}),
+    ...(files.length ? { distribution: files.map((path) => ({ "@type": "DataDownload", encodingFormat: "text/csv", contentUrl: `${SITE_URL}${path}` })) } : {}),
     ...(opts.sources?.length ? { isBasedOn: opts.sources.map((s) => ({ "@type": "Dataset", name: s.name, url: s.url })) } : {}),
     includedInDataCatalog: { "@type": "DataCatalog", "@id": `${SITE_URL}${opts.parentCatalogPath ?? "/"}#catalog`, name: `${SITE_NAME} data catalog`, url: `${SITE_URL}${opts.parentCatalogPath ?? "/"}` },
   };
