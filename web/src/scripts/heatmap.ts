@@ -111,10 +111,10 @@ export function initHeatmap(root: HTMLElement): void {
   const q = <T extends Element>(sel: string): T => root.querySelector<T>(sel)!;
   const mapEl = q<HTMLDivElement>(".hm-map");
   const tip = q<HTMLDivElement>(".hm-tip");
-  // The chart and view a map opens on come from its markup (Heatmap.astro): the main maps open on
-  // the scatter in the Buying view (Peter, 2026-10-09), the small map at the foot of a page on the
-  // treemap in the Net view.
-  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30,
+  // The chart, window and view a map opens on come from its markup (Heatmap.astro): the main maps
+  // open on the scatter, the small map on the treemap; all of them on 90 days in the Net view
+  // (Peter, 2026-10-09).
+  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: ([7, 30, 90, 365].includes(Number(root.dataset.window)) ? Number(root.dataset.window) : 90),
     view: (["net", "buy", "sell"].includes(root.dataset.view ?? "") ? root.dataset.view : "net") as State["view"], tickers: "", cap: "all", side: "tickers",
     chart: root.dataset.chart === "scatter" ? "scatter" : "map" };
   const crossSrc = root.dataset.cross || "";
@@ -132,14 +132,19 @@ export function initHeatmap(root: HTMLElement): void {
   if (primary && location.hash.length > 1) {
     const h = new URLSearchParams(location.hash.slice(1));
     for (const k of ["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap"] as const) { const v = h.get(k); if (v != null) (state as unknown as Record<string, string>)[k] = v; }
+    // Only a hash that carries one of our keys is a saved view ("#heatmap" is a jump link).
+    const ours = ["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap", "w", "chart"].some((k) => h.has(k));
     const w = Number(h.get("w")); if ([7, 30, 90, 365].includes(w)) state.window = w;
     if (!["all", "mega", "large", "mid", "small", "micro"].includes(state.cap)) state.cap = "all";
     if (!["net", "buy", "sell"].includes(state.view)) state.view = DEFAULTS.view;
-    // Links shared before 2026-10-09 carry no "chart" key and meant the treemap, in the Net view
-    // unless they said otherwise. Every link written since names its chart.
+    // Old links keep their meaning. A link written today always states its window and view, so
+    // one that leaves them out is older and meant what the map opened on then: 30 days, and the
+    // treemap in the Net view (no "chart" key, before 2026-10-09) or the Buying view (with one).
     const chart = h.get("chart");
     if (chart === "scatter" || chart === "map") state.chart = chart;
-    else if ([...h.keys()].length) { state.chart = "map"; if (!h.get("view")) state.view = "net"; }
+    else if (ours) state.chart = "map";
+    if (ours && !h.has("w")) state.window = 30;
+    if (ours && !h.has("view")) state.view = chart ? "buy" : "net";
   }
   const writeHash = (): void => {
     if (!primary) return;
@@ -148,12 +153,12 @@ export function initHeatmap(root: HTMLElement): void {
     if (state.who) h.set("who", state.who);
     if (hasInsiders && state.codes !== "open") h.set("codes", state.codes);
     if (hasInsiders && state.plan !== "exclude") h.set("plan", state.plan);
-    if (state.window !== 30) h.set("w", String(state.window));
+    if (state.window !== DEFAULTS.window) h.set("w", String(state.window));
     if (state.view !== DEFAULTS.view) h.set("view", state.view);
     if (state.tickers) h.set("tickers", state.tickers);
     if (state.cap !== "all") h.set("cap", state.cap);
     if (state.side !== "tickers") h.set("side", state.side);
-    if (state.chart !== DEFAULTS.chart || [...h.keys()].length) h.set("chart", state.chart);
+    if (state.chart !== DEFAULTS.chart || [...h.keys()].length) { h.set("chart", state.chart); h.set("w", String(state.window)); h.set("view", state.view); } // a saved view always says all three
     const s = h.toString(); history.replaceState(null, "", s ? "#" + s : location.pathname + location.search);
   };
 

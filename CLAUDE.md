@@ -1635,3 +1635,24 @@ foot of those pages and a small heatmap joins it.
   after the Leaderboards card in `VizHome.astro`'s grid (right-hand column on desktop, below it
   on a phone). The home page no longer has a "More views" section. `/congress/` and
   `/insiders/` have no leaderboards and keep "More views" (small scatter + small heatmap).
+
+### Trade map default is 90 days, Net view (2026-10-09) — Peter, with a screenshot of the filter bar
+
+- Peter: "now that I look at it, make this the default view" — All insiders, every filter at its
+  first option, Open-market, No 10b5-1 plans, **90D**, **Net**. Every map now opens that way
+  (the three full-size maps and the small heatmaps); it was 30D, and Buying on the scatter.
+  `Heatmap.astro` props `win` (default 90) and `view` (default `net`) → `data-window`,
+  `data-view`; `heatmap.ts` reads both into `DEFAULTS`, so Reset returns to 90D / Net.
+- **Shared links keep their meaning.** A link written from now on always carries `chart`, `w`
+  and `view`. A link without `w` is older and means 30 days; without `view` it means Net (no
+  `chart` key, before the scatter) or Buying (with one, shared on 2026-10-09).
+- Fixed on the way: any hash at all was read as a saved view, so `/congress/#heatmap` (a jump
+  link) opened the heatmap in place of the scatter. Only a hash with one of the map's own keys
+  counts now.
+- `verify-filters` checks what each page opens on, the jump link, three generations of old
+  link, and that a written link states chart, window and view. Guide
+  `how-to-use-the-trade-map` reworded (opens on 90 days / Net).
+- Not changed: the answer blocks and figure strips above the maps still talk about the last 30
+  days (they are separate counts, not the map's window).
+- Verified on the local build only: `astro check` 0 errors, `verify-filters` 448 states + link
+  checks / 0 mismatches, `verify-guides`, `verify-live --all`, `verify-a11y` 100, 90 unit tests.

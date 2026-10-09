@@ -9,22 +9,24 @@
 // `primary` makes the filter state live in the URL hash (one per page).
 //
 // Two ways to draw the same filtered trades (2026-10-09, Peter): the SCATTER (one dot per
-// ticker; scripts/scatter.ts) is what a full-size map opens on, in the Buying view; the switch
+// ticker; scripts/scatter.ts) is what a full-size map opens on; the switch
 // under the chart turns it into the HEATMAP (the treemap). `compact` is the small heatmap at the
-// foot of the main pages: treemap only, Net view, window and view controls only, no side list.
+// foot of the main pages: treemap only, window and view controls only, no side list.
+// Every map opens on 90 days in the Net view (Peter, 2026-10-09; before that 30 days, and Buying
+// on the scatter). `win` and `view` change that for one instance.
 import { CAP_BANDS } from "../lib/capband";
 import { getFlagship, senateShown } from "../lib/flagship";
 const hasSenate = senateShown(await getFlagship());
-interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; chart?: "scatter" | "map"; view?: "net" | "buy" | "sell"; }
+interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; chart?: "scatter" | "map"; view?: "net" | "buy" | "sell"; win?: 7 | 30 | 90 | 365; }
 const { kind, primary = false, compact = false, id = `hm-${kind}` } = Astro.props as Props;
 const { height = compact ? 320 : 560, chart = compact ? "map" : "scatter" } = Astro.props as Props;
-const { view = chart === "scatter" ? "buy" : "net" } = Astro.props as Props;
+const { view = "net", win = 90 } = Astro.props as Props;
 // On a one-group page the scatter's second axis (the other group) comes from a small totals file.
 const cross = kind === "all" || compact ? "" : "/data/trade-cross.json";
 const src = kind === "all" ? "/data/heatmap-congress.json,/data/heatmap-insiders.json" : `/data/heatmap-${kind}.json`;
 const hasInsiders = kind !== "congress";
 ---
-<section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} data-chart={chart} data-view={view} data-cross={cross || undefined} aria-label={kind === "congress" ? "Congressional trades heatmap" : kind === "insiders" ? "Corporate insider trades heatmap" : "Congress and corporate insider trades heatmap"}>
+<section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} data-chart={chart} data-view={view} data-window={win} data-cross={cross || undefined} aria-label={kind === "congress" ? "Congressional trades heatmap" : kind === "insiders" ? "Corporate insider trades heatmap" : "Congress and corporate insider trades heatmap"}>
   <div class="controls hm-controls">
     {kind === "all" && (
       <div class="ctl"><span class="lbl">Who</span>
@@ -80,7 +82,7 @@ const hasInsiders = kind !== "congress";
       </select>
     </div>
     <div class="ctl" data-keep><span class="lbl">Window</span>
-      <div class="seg" data-seg="window"><button type="button" data-v="7">7D</button><button type="button" data-v="30" class="on">30D</button><button type="button" data-v="90">90D</button><button type="button" data-v="365">1Y</button></div>
+      <div class="seg" data-seg="window">{([[7, "7D"], [30, "30D"], [90, "90D"], [365, "1Y"]] as const).map(([d, label]) => <button type="button" data-v={String(d)} class:list={[{ on: win === d }]}>{label}</button>)}</div>
     </div>
     <div class="ctl" data-keep><span class="lbl">View</span>
       <div class="seg" data-seg="view"><button type="button" data-v="buy" class:list={[{ on: view === "buy" }]}>Buying</button><button type="button" data-v="net" class:list={[{ on: view === "net" }]}>Net</button><button type="button" data-v="sell" class:list={[{ on: view === "sell" }]}>Selling</button></div>

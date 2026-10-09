@@ -74,8 +74,8 @@
   "how-to-use-the-trade-map": {
     "reviewed": "2026-10-09",
     "covers": {
-      "web/src/components/Heatmap.astro": "74d3a5ed438522b0",
-      "web/src/scripts/heatmap.ts": "8037b34db415f938",
+      "web/src/components/Heatmap.astro": "02dc9bcb5c349d6c",
+      "web/src/scripts/heatmap.ts": "1b68aded6a940fde",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
       "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
       "web/src/components/MiniCharts.astro": "4a34216ef3c2d7e2",

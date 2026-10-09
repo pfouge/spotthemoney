@@ -20,7 +20,7 @@ export const siteGuides: ((c: GuideCtx) => Guide)[] = [
     keyFacts: [
       "One dot per stock. Further right = more bought; further left = more sold. Bigger dot = more dollars.",
       "Colour is the share of dollars that were purchases: red, orange, yellow, lime, green.",
-      "The map opens on Buying (the right half). Net shows all four quarters; Selling shows the left half.",
+      "The map opens on the last 90 days in the Net view (all four quarters). Buying shows the right half; Selling shows the left half.",
       "The switch under the chart changes it to a heatmap of tiles and back.",
       "The period (7D, 30D, 90D, 1Y) counts trades by the date they were disclosed.",
       "Click a dot or a tile to open that stock's page. Filters are kept in the page address.",
@@ -28,7 +28,7 @@ export const siteGuides: ((c: GuideCtx) => Guide)[] = [
     sections: [
       { id: "tiles", h: "What does the chart show?", html: `
 <p>Each dot is one stock, labelled with its ticker where there is room. Two groups are on the chart at once. Across the chart is the page's own group: company insiders on the home page and the Insiders page, members of Congress on the Congress page. Up and down is the other group's buying minus its selling, so a dot above the middle line is a stock the other group bought more of than it sold.</p>
-<p>The chart opens on <strong>Buying</strong>: only the right half is drawn, and a dot's distance from the left edge is the dollars bought. <strong>Selling</strong> draws the left half, with dollars sold growing to the left. <strong>Net</strong> draws all four quarters, with bought minus sold across: "Both buying" is the top right corner, "Both selling" the bottom left, and the other two corners are where the groups went opposite ways.</p>
+<p>The chart opens on the last 90 days in the <strong>Net</strong> view: all four quarters are drawn, with bought minus sold across. "Both buying" is the top right corner, "Both selling" the bottom left, and the other two corners are where the groups went opposite ways. <strong>Buying</strong> draws only the right half, and a dot's distance from the left edge is the dollars bought. <strong>Selling</strong> draws the left half, with dollars sold growing to the left.</p>
 <p>Dot size is the dollars behind the dot. Colour is the share of those dollars that were purchases, by both groups together: red when nearly all were sales, yellow when buying and selling were about even, green when nearly all were purchases. Both axes are log scales, so each gridline is ten times the one before it, and anything under $10,000 sits on the axis line.</p>
 <p>Hover over a dot to see each group's dollars bought, sold and net. Click it to open the stock's page with every trade listed. The list beside the chart ranks the same stocks, and its "Tickers" switch changes it to a ranking of people.</p>` },
       { id: "heatmap", h: "How do I see the heatmap instead?", html: `
@@ -41,7 +41,7 @@ export const siteGuides: ((c: GuideCtx) => Guide)[] = [
       { id: "filters", h: "What does each filter do?", html: `
 ${table(["Filter", "What it does"], [
   ["7D, 30D, 90D, 1Y", "The period, counted by the date a trade was disclosed. 1Y loads an older file of insider trades the first time you choose it."],
-  ["Buying, Net, Selling", "Buying (the starting view) shows dollars bought and the right half of the chart. Net shows bought minus sold in all four quarters. Selling shows dollars sold and the left half. On the heatmap, Net colours tiles by direction and the other two size and shade tiles by that side alone."],
+  ["Buying, Net, Selling", "Net (the starting view) shows bought minus sold in all four quarters. Buying shows dollars bought and the right half of the chart. Selling shows dollars sold and the left half. On the heatmap, Net colours tiles by direction and the other two size and shade tiles by that side alone."],
   ["Both chambers, House, Senate", "Limits Congress trades to one chamber."],
   ["Any party, Democrats, Republicans, Independents", "Limits Congress trades by party."],
   ["All roles, Officers, Directors, 10% owners", "Limits insider trades by the filer's relationship to the company."],
@@ -62,7 +62,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
 <p>To show decisions and leave out mechanics. Most Form 4 rows are pay arriving, options being exercised or tax being withheld; and many sales follow a schedule fixed long before. The starting view keeps open-market purchases and sales that were not made under a plan. Both switches are one click from the full picture. See ${`<a href="/guides/form-4-transaction-codes/">transaction codes</a>`} and ${`<a href="/guides/rule-10b5-1-trading-plans/">10b5-1 plans</a>`}.</p>
 <p>Three kinds of row are never on the map: options and other derivatives, a trade already counted from another filing, and anything without a ticker.</p>` },
       { id: "share", h: "How do I share or save a view?", html: `
-<p>Use "Share this view" under the map. The link carries your filters and whether you were on the scatter or the heatmap, so whoever opens it sees the same view. Links shared before the scatter was added still open the heatmap. Every chart on the site has its own Share button with a "Save image" option, and each row in a table of trades has a share icon that links straight to that trade. The same menu writes a citation for you in four styles; see ${`<a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a>`}.</p>
+<p>Use "Share this view" under the map. The link carries your filters, the period, the view and whether you were on the scatter or the heatmap, so whoever opens it sees the same view. Links shared before the scatter was added still open the heatmap, and older links keep the period and view they were made with. Every chart on the site has its own Share button with a "Save image" option, and each row in a table of trades has a share icon that links straight to that trade. The same menu writes a citation for you in four styles; see ${`<a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a>`}.</p>
 <p>To find a person or a stock directly, press <kbd>/</kbd> or use the search box at the top of any page.</p>` },
     ],
     faqs: [

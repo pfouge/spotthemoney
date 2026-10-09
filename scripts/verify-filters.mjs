@@ -10,11 +10,13 @@
 // loaded. It also checks that the URL hash restores the same result after a reload and that
 // Reset returns to the default counts. Exit 1 on any mismatch.
 //
-// Since 2026-10-09 a main map opens on the scatter chart in the Buying view. The suite runs in
+// Since 2026-10-09 a main map opens on the scatter chart, on 90 days in the Net view (it opened
+// on 30 days and Buying for a day before that, and on the heatmap before that). The suite runs in
 // whichever chart the page opens on and expects exactly one dot (scatter) per ticker in the
 // summary; it then flips the switch under the chart and checks the heatmap draws tiles, the
-// link remembers the choice, a link without a "chart" key (shared before the change) still
-// opens the heatmap in the Net view, and Reset keeps the chosen chart.
+// link remembers the choice and always states its window and view, links shared under the older
+// defaults still open as they did, a jump link ("#heatmap") is not read as a saved view, and
+// Reset keeps the chosen chart.
 //
 // Needs Playwright (not a repo dependency):  npx -y playwright@latest install chromium  once,
 // then  npm i --no-save playwright  — or run `browserSuite` by pasting it into DevTools.
@@ -84,7 +86,7 @@ export async function browserSuite(opts) {
   };
 
   // ── drive the real controls ──
-  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: root.dataset.view || "net", tickers: "", cap: "all" };
+  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: Number(root.dataset.window) || 90, view: root.dataset.view || "net", tickers: "", cap: "all" };
   const sel = (k) => root.querySelector(`[data-ctl="${k}"]`);
   const seg = (k) => [...root.querySelectorAll(`[data-seg="${k}"] button`)];
   const has = { cls: !!sel("cls"), chamber: !!sel("chamber"), party: !!sel("party"), role: !!sel("role"), who: !!sel("who"), cap: !!sel("cap"), codes: seg("codes").length > 0, plan: seg("plan").length > 0 };
@@ -214,10 +216,22 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const v = await page.$$eval("[data-heatmap] .hm-summary .cell .v", (els) => els.map((e) => e.textContent.trim()));
         if (Number((v[1] ?? "").replace(/,/g, "")) !== res.hashWant.disclosures || Number(v[2]) !== res.hashWant.tickers) { res.failed++; res.fails.push({ label: "hash restore after reload", bad: [`page ${v[1]}/${v[2]} ≠ ${res.hashWant.disclosures}/${res.hashWant.tickers}`] }); }
       }
-      // a link shared before 2026-10-09 has no "chart" key: it must still open the heatmap, in the Net view
-      await page.goto(base + path + "#w=90", { waitUntil: "networkidle" }); await page.reload({ waitUntil: "networkidle" });
-      const legacy = await page.evaluate(() => { const r = document.querySelector("[data-heatmap][data-primary='true']"); return { chart: r?.dataset.chartNow, view: r?.querySelector('[data-seg="view"] button.on')?.dataset.v }; });
-      if (legacy.chart !== "map" || legacy.view !== "net") { res.failed++; res.fails.push({ label: "old shared link", bad: [`opens ${legacy.chart}/${legacy.view}, expected map/net`] }); }
+      // What a page opens on, and what older links must still mean. A link written today always
+      // carries "w" and "view"; one without them was shared when the map opened on 30 days, in the
+      // Net view on the heatmap (no "chart" key) or the Buying view on the scatter (with one).
+      const opensOn = async (hash) => {
+        await page.goto(base + path + hash, { waitUntil: "networkidle" }); await page.reload({ waitUntil: "networkidle" });
+        return page.evaluate(() => { const r = document.querySelector("[data-heatmap][data-primary='true']"); const on = (k) => r?.querySelector(`[data-seg="${k}"] button.on`)?.dataset.v; return `${r?.dataset.chartNow}/${on("view")}/${on("window")}`; });
+      };
+      for (const [label, hash, want] of [
+        ["default view", "", "scatter/net/90"],
+        ["jump link is not a saved view", "#heatmap", "scatter/net/90"],
+        ["link shared before the scatter", "#tickers=AAPL", "map/net/30"],
+        ["link shared before the scatter, with a window", "#w=90", "map/net/90"],
+        ["link shared on the Buying default", "#tickers=AAPL&chart=scatter", "scatter/buy/30"],
+        ["link written today", "#tickers=AAPL&chart=map&w=90&view=net", "map/net/90"],
+      ]) { const got = await opensOn(hash); res.checks++; if (got !== want) { res.failed++; res.fails.push({ label, bad: [`opens ${got}, expected ${want}`] }); } }
+      if (res.hash && !(res.hash.includes("w=") && res.hash.includes("view=") && res.hash.includes("chart="))) { res.failed++; res.fails.push({ label: "a saved view states chart, window and view", bad: [`hash is "${res.hash}"`] }); }
       if (errors.length) { res.failed += errors.length; res.fails.push({ label: "page errors", bad: errors.slice(0, 3) }); }
       failed += res.failed ?? 1;
       console.log(`${res.failed ? "✗" : "✓"} ${path}  ${res.kind} map · ${res.rows} rows · ${res.sized}/${res.tickersInRows} tickers sized · ${res.checks} filter states checked · ${res.failed} mismatch(es)`);
