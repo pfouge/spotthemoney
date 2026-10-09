@@ -140,6 +140,13 @@ export interface Flagship {
   seats: Map<number, Seat[]>;
 }
 
+/** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */
+export function decodeEntities(s: string | null): string | null {
+  if (!s || !s.includes("&")) return s;
+  const once = (x: string) => x.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n))).replace(/&amp;/g, "&");
+  return once(once(s));
+}
+
 const APPROVED = new Set(["auto_approved", "approved"]);
 export const CONGRESS_DEADLINE_DAYS = 45;
 export const FORM4_DEADLINE_DAYS = 4; // 2 business days ≈ 4 calendar days, conservative
@@ -248,7 +255,7 @@ async function load(): Promise<Flagship> {
       const p = model.people.get(r.person_id);
       if (!p) continue;
       const role: Role = { kind: r.role_kind as Role["kind"], chamber: r.chamber as Role["chamber"], state: r.state, district: r.district, party: r.party,
-        companyId: r.company_id, officerTitle: r.officer_title, isDirector: r.is_director, validFrom: r.valid_from, validTo: r.valid_to };
+        companyId: r.company_id, officerTitle: decodeEntities(r.officer_title), isDirector: r.is_director, validFrom: r.valid_from, validTo: r.valid_to };
       p.roles.push(role);
       if (role.kind === "congress") p.isCongress = true;
       if (role.kind === "insider") { p.isInsider = true; if (role.companyId != null) model.companies.get(role.companyId)?.insiders.push(p); }

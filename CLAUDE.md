@@ -1558,3 +1558,17 @@ numbering is: 1 politician pages, 2 stock/company/insider pages, 3 automatic int
   `verify-guides` (20 guides, 7 re-read and accepted), `verify-downloads` 1,261,
   `verify-live --all`, `verify-profile` 755, `verify-a11y` 100, `verify-share` 250,
   `verify-filters`, 83 unit tests.
+
+### Live check of `6c2f546` and a title repair (2026-10-09)
+
+- `6c2f546` (stock/company/insider layout, automatic linking) is live. Checked on
+  `/stocks/nvda/`, `/companies/nvidia-corp/`, `/insiders/huang-jen-hsun/`: header facts, working
+  jump links, insider and member tables, related lists, "Guides for this page", flags linked
+  (no unlinked "late" flags). Downloads hub now lists 26 files; the old small quarters are one
+  `insider-trades-before-2025-q4.csv`. Committees still absent on member pages (roster job has
+  not run since migration 0015).
+- **Found live:** officer titles showed XML escapes as text ("EVP &amp; Chief Financial
+  Officer" on `/insiders/kress-colette/` and wherever a role is printed). Old data: migration
+  0008 repaired names, not titles. Fix: migration `0016_decode_xml_entities_in_titles.sql`
+  (idempotent) plus `decodeEntities()` in `flagship.ts` applied to every officer title at build
+  time, so the pages are right as soon as the deploy finishes whichever runs first.

@@ -8,6 +8,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Flagship, Person, Txn, Security, Company } from "../web/src/lib/flagship";
+import { decodeEntities } from "../web/src/lib/flagship";
 
 let nid = 1;
 const f4 = (personId: number, securityId: number, code: string, side: string, date: string, shares: number, value: number): Txn => ({ id: nid++, filingId: 1, personId, securityId, side, code, isDerivative: false, txnDate: date, disclosedAt: date, amountLow: null, amountHigh: null, shares, price: value / shares, lagDays: 1, is10b51: false, ownerType: null, assetType: "stock", source: "sec_form4", sourceUrl: null, filedAt: date, isPublished: true, value });
@@ -108,4 +109,13 @@ test("every glossary term points at a guide that exists", () => {
     const slug = flagHref(flag, src)!.split("/")[2]!;
     assert.ok(slugs.has(slug), `flag "${flag}" points at a missing guide ${slug}`);
   }
+});
+
+test("decodeEntities: officer titles with XML escapes, single or double", () => {
+  assert.equal(decodeEntities("EVP &amp; Chief Financial Officer"), "EVP & Chief Financial Officer");
+  assert.equal(decodeEntities("EVP &amp;amp; CFO"), "EVP & CFO");
+  assert.equal(decodeEntities("Chairman, President &#38; CEO"), "Chairman, President & CEO");
+  assert.equal(decodeEntities("R&D Lead"), "R&D Lead");
+  assert.equal(decodeEntities("Director"), "Director");
+  assert.equal(decodeEntities(null), null);
 });
