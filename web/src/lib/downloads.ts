@@ -100,6 +100,24 @@ export function splitByPeriod<T>(rows: T[], dateOf: (r: T) => string | null, max
   return out;
 }
 
+/** Below this many rows an old quarter is not worth a file of its own. */
+export const SMALL_PIECE = 1000;
+/**
+ * The oldest pieces are often a handful of rows each (old trades disclosed late, long before
+ * coverage starts in earnest): fold the run of small pieces at the old end into one
+ * "before <first full period>" file. Pieces come newest first; nothing is dropped.
+ */
+export function mergeOldSmall<T>(pieces: { period: string; label: string; rows: T[] }[], small = SMALL_PIECE, max = MAX_ROWS): { period: string; label: string; rows: T[] }[] {
+  const dated = pieces.filter((p) => p.period !== "undated"), undated = pieces.filter((p) => p.period === "undated");
+  let cut = dated.length;
+  while (cut > 0 && dated[cut - 1]!.rows.length < small) cut--;
+  const tail = dated.slice(cut);
+  const total = tail.reduce((n, p) => n + p.rows.length, 0);
+  if (tail.length < 2 || cut === 0 || total > max) return pieces;
+  const first = dated[cut - 1]!;
+  return [...dated.slice(0, cut), { period: `before-${first.period}`, label: `before ${first.label}`, rows: tail.flatMap((p) => p.rows) }, ...undated];
+}
+
 // ── catalogue ────────────────────────────────────────────────────────────────────────────
 export interface Downloads {
   files: DownloadFile[];                       // the files listed on /downloads/
@@ -170,7 +188,7 @@ async function build(): Promise<Downloads> {
   const cutoff = new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10);
   const recent = insiders.filter((t) => (t.disclosedAt ?? "") >= cutoff);
   add(file({ name: "insider-trades-latest.csv", group: "insiders", kind: "trades", title: "Insider transactions, last 90 days", about: "Form 4 rows disclosed in the last 90 days.", updated: newest(recent.map((t) => t.disclosedAt)) }, cols, recent.slice(0, MAX_ROWS)));
-  for (const piece of splitByPeriod(insiders, (t) => t.disclosedAt)) {
+  for (const piece of mergeOldSmall(splitByPeriod(insiders, (t) => t.disclosedAt))) {
     add(file({ name: `insider-trades-${piece.period}.csv`, group: "insiders", kind: "trades", title: `Insider transactions, ${piece.label}`, about: `Form 4 rows disclosed in ${piece.label}.`, updated: newest(piece.rows.map((t) => t.disclosedAt)) }, cols, piece.rows));
   }
 

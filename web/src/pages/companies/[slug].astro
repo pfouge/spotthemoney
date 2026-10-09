@@ -2,6 +2,9 @@
 // Company page: /companies/<slug>/ — insiders, their transactions, and the same company's
 // federal contracts and lobbying (exact normalized-name match on USAspending recipient /
 // LDA client; a miss simply shows the reason line).
+import LearnMore from "../../components/LearnMore.astro";
+import { insiderRows, memberRows, relatedCompanies, sizeOf, tickerPages } from "../../lib/entity";
+import { orgPath } from "../../lib/links";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -36,6 +39,19 @@ const contractsTotal = sum(c.contracts.map((r) => r.amount));
 const lobbyingYear = new Date().getUTCFullYear();
 const lobbyingYtd = c.lobbying.filter((r) => r.year === lobbyingYear);
 const lobbyingTotal = sum(lobbyingYtd.map((r) => r.amount));
+const insiderList = insiderRows(model, txns);
+const memberList = memberRows(model, congressTxns);
+const relatedCos = relatedCompanies(model, c);
+const size = sizeOf(model, c.primaryTicker);
+const primarySec = c.primaryTicker ? tickerPages(model).get(c.primaryTicker.toLowerCase()) : undefined;
+const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
+const jump: [string, string][] = [
+  ...(c.insiders.length ? [["#insiders", "Insiders"] as [string, string]] : []),
+  ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
+  ["#insider-transactions", "Transactions"], ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
+  ...(relatedCos.length ? [["#related", "Related companies"] as [string, string]] : []),
+  ["#sources", "Sources"],
+];
 const lastUpdated = [txns[0]?.filedAt, c.contracts[0]?.createdAt, c.lobbying[0]?.createdAt].filter(Boolean).sort().reverse()[0] ?? model.builtAt;
 
 const answer = `${c.name}${c.primaryTicker ? ` (${c.primaryTicker})` : ""} has ${plural(c.insiders.length, "insider")} on file who disclosed ${plural(y.length, "transaction")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "sale")}, about ${money(sum(y.map((t) => t.value)))} at reported prices)${congressTxns.length ? `, and ${plural(congressTxns.length, "congressional trade")} in its stock ${congressTxns.length === 1 ? "is" : "are"} on record` : ""}. ${c.contracts.length ? `USAspending shows ${plural(c.contracts.length, "federal contract award")} with a combined value of ${money(contractsTotal)} to a recipient with this name that started in the last 180 days` : "No federal contract award that started in the last 180 days was found for a recipient with exactly this name"}${lobbyingYtd.length ? `, and ${plural(lobbyingYtd.length, "lobbying filing")} naming it as client report ${money(lobbyingTotal)} in ${lobbyingYear}.` : "; no lobbying filing names it as client this year."}`;
@@ -52,34 +68,66 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: c.name, path }]} />
   <p class="eyebrow">Company{c.cik ? <> <span class="x">/</span> CIK {c.cik}</> : null}</p>
   <h1>{c.name}</h1>
-  <p class="lede">{securities.map((s) => <a class="mono" href={securityPath(s)}>{s.ticker}</a>)}{securities.length ? " · " : ""}{plural(c.insiders.length, "insider")} on file</p>
+  <dl class="facts" data-entity-facts>
+    {securities.length > 0 && <div><dt>{securities.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{[...new Map(securities.map((s) => [s.ticker, s])).values()].map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}</dd></div>}
+    {size && <div><dt>Size, estimated from filings</dt><dd>{size.label} ({size.range})</dd></div>}
+    <div><dt>Insiders on file</dt><dd>{c.insiders.length ? <a href="#insiders">{num(c.insiders.length)}</a> : "0"}</dd></div>
+    {memberList.length > 0 && <div><dt>Members of Congress who traded it</dt><dd><a href="#members">{num(memberList.length)}</a></dd></div>}
+    <div><dt>Federal contracts on record</dt><dd>{c.contracts.length ? <a href="#contracts">{plural(c.contracts.length, "award")}</a> : "none matched"}</dd></div>
+    <div><dt>Lobbying filings on record</dt><dd>{c.lobbying.length ? <a href="#lobbying">{num(c.lobbying.length)}</a> : "none matched"}</dd></div>
+    {c.cik && <div><dt>SEC filings</dt><dd><a href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${c.cik}`} rel="noopener" target="_blank">EDGAR ↗</a></dd></div>}
+    {lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(lastTrade)}</dd></div>}
+  </dl>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
   <ReviewNote show={c.underReview} what="Insider rows" />
 
+  <nav class="jump" aria-label="On this page">
+    <span>On this page</span>
+    {jump.map(([href, label]) => <a href={href}>{label}</a>)}
+  </nav>
+
   <VizStock company={c} />
 
-  <h2>Insiders</h2>
+  <h2 id="insiders">Insiders</h2>
   {c.insiders.length === 0 ? <p class="empty-reason">No reporting owners on file for this issuer yet.</p> : (
     <div class="tablewrap">
       <table class="data">
-        <thead><tr><th>Name</th><th>Role</th><th class="num">Transactions</th><th>Last filed</th></tr></thead>
+        <thead><tr><th>Name</th><th>Role</th><th class="num">Rows</th><th class="num">Bought</th><th class="num">Sold</th><th>Last filed</th></tr></thead>
         <tbody>
-          {c.insiders.sort((a, b) => (b.lastFiledAt ?? "").localeCompare(a.lastFiledAt ?? "")).map((p) => { const pp = personPath(p); return (
-            <tr><td>{pp ? <a href={pp}>{p.name}</a> : p.name}</td><td>{roleLabel(p, model.companies).replace(/ at .*$/, "")}</td><td class="num">{num(p.txns.length)}</td><td class="mono">{formatDate(p.lastFiledAt)}</td></tr>
+          {[...c.insiders].sort((a, b) => (b.lastFiledAt ?? "").localeCompare(a.lastFiledAt ?? "")).map((p) => { const pp = personPath(p); const r = insiderList.find((x) => x.person.id === p.id); return (
+            <tr><th scope="row">{pp ? <a href={pp}>{p.name}</a> : p.name}</th><td>{roleLabel(p, model.companies).replace(/ at .*$/, "")}</td><td class="num">{num(r?.rows ?? 0)}</td><td class="num">{num(r?.buys ?? 0)}</td><td class="num">{num(r?.sells ?? 0)}</td><td class="mono">{formatDate(p.lastFiledAt)}</td></tr>
           ); })}
         </tbody>
       </table>
     </div>
   )}
+  {c.insiders.length > 0 && <p class="section-note">Rows are this company's Form 4 rows for each person. "Bought" and "sold" count open-market purchases (code P) and sales only. More in <a href="/guides/insider-buying-vs-insider-selling/">insider buying and insider selling</a>.</p>}
 
-  <h2>Insider transactions</h2>
+  {memberList.length > 0 && (
+    <section aria-labelledby="members" data-entity-members>
+      <h2 id="members">Members of Congress who traded {c.primaryTicker ?? "this stock"}</h2>
+      <p class="section-note">From periodic transaction reports that name the company's stock. Amounts are the sums of the ranges as filed. Every row is on the {primarySec ? <a href={securityPath(primarySec)}>{primarySec.ticker} page</a> : "stock page"}.</p>
+      <div class="tablewrap">
+        <table class="data">
+          <thead><tr><th>Member</th><th>Seat</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th>Latest</th></tr></thead>
+          <tbody>
+            {memberList.slice(0, 15).map((r) => (
+              <tr><th scope="row">{r.path ? <a href={r.path}>{r.person.name}</a> : r.person.name}</th><td>{r.seat}</td><td class="num">{num(r.trades)}</td><td class="num">{num(r.buys)}</td><td class="num">{num(r.sells)}</td><td class="num">{money(r.low)}–{money(r.high)}</td><td class="mono">{r.last ? formatDate(r.last) : "—"}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )}
+
+  <h2 id="insider-transactions">Insider transactions</h2>
   <DownloadCsv file={c.primaryTicker ? (await getDownloads()).stock.get(c.primaryTicker.toLowerCase()) : undefined} note="insider and congressional rows for this ticker" />
   <TxnTable model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
 
   <AdSlot label="Advertisement" />
 
-  <h2>Federal contracts (USAspending, awards started in the last 180 days)</h2>
+  <h2 id="contracts">Federal contracts (USAspending, awards started in the last 180 days)</h2>
   {c.contracts.length === 0 ? <p class="empty-reason">No contract award starting in the last 180 days was found for a recipient named exactly "{c.name}". Subsidiaries and differently-spelled recipients are not matched — search <a href="/contracts/">contracts</a>.</p> : (
     <div class="tablewrap">
       <table class="data">
@@ -93,19 +141,31 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </div>
   )}
 
-  <h2>Lobbying (Senate LDA, as client)</h2>
+  <h2 id="lobbying">Lobbying (Senate LDA, as client)</h2>
   {c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing posted since October 2025 names "{c.name}" as the client. Filings under a subsidiary or trade-association name are not matched — search <a href="/lobbying/">lobbying</a>.</p> : (
     <div class="tablewrap">
       <table class="data">
         <thead><tr><th>Period</th><th>Registrant</th><th>Primary issue</th><th class="num">Amount</th><th>Source</th></tr></thead>
         <tbody>
           {c.lobbying.slice(0, 50).map((r) => (
-            <tr><td class="mono">{r.year ?? "—"}{r.quarter ? ` Q${r.quarter}` : ""}</td><td>{r.registrant ?? "—"}</td><td>{r.issueArea ?? "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td>{r.sourceRef ? <a href={r.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>
+            <tr><td class="mono">{r.year ?? "—"}{r.quarter ? ` Q${r.quarter}` : ""}</td><td>{orgPath(model, r.registrant) ? <a href={orgPath(model, r.registrant)!}>{r.registrant}</a> : (r.registrant ?? "—")}</td><td>{r.issueArea ? model.issueNames.get(r.issueArea) ?? r.issueArea : "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td>{r.sourceRef ? <a href={r.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>
           ))}
         </tbody>
       </table>
     </div>
   )}
+
+  {relatedCos.length > 0 && (
+    <section aria-labelledby="related" data-related>
+      <h2 id="related">Related companies</h2>
+      <p class="section-note">Companies whose stock was traded by the same people who traded {c.primaryTicker}, by number of filers in common. It shows overlap in public filings and nothing else.</p>
+      <ul class="mates two">
+        {relatedCos.map((r) => <li><span><a href={r.path}>{r.company.name}</a> <span class="soft mono">{r.ticker}</span></span> <span>{plural(r.shared, "filer")} in common</span></li>)}
+      </ul>
+    </section>
+  )}
+
+  <LearnMore slugs={["what-is-form-4", "insider-buying-vs-insider-selling", ...(c.contracts.length ? ["federal-contracts-usaspending"] : []), ...(c.lobbying.length ? ["lobbying-disclosure-reports"] : []), "what-disclosure-data-cannot-tell-you"]} />
 
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={c.txns} edgarId={c.cik ?? c.primaryTicker}

@@ -614,3 +614,16 @@ main code { overflow-wrap: anywhere; }
 .files .file-what { font-size: 14.5px; }
 .files .file-meta { font-size: 13.5px; color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 860px) { .files li { grid-template-columns: 1fr; } .files .file-meta { text-align: left; } }
+
+/* Entity pages (stock, company, insider) and automatic links (2026-10-09). */
+a.flag { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 2px; }
+a.flag:hover { color: var(--ink); }
+.mates.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; }
+@media (max-width: 760px) { .mates.two { grid-template-columns: 1fr; } }
+.mates li > span:first-child { color: var(--ink); font-size: 14.5px; text-align: left; min-width: 0; }
+.mates li > span:first-child .soft { color: var(--ink-soft); font-size: 13.5px; margin-left: 6px; }
+.learn-more .mates li { align-items: baseline; }
+.learn-more .mates li span { max-width: 62ch; }
+.facts dd a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.guide-body a[data-auto] { text-decoration-style: dotted; }
+table.data tbody th a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }

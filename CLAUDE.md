@@ -1503,3 +1503,58 @@ No questions were asked (Peter: "just do it"); the choices below are mine and ca
 - Verified on the local build only: `astro check` 0 errors, `verify-downloads` 1,261 checks,
   `verify-guides` (20 guides, 9 re-read and accepted), `verify-live --all`, `verify-profile`
   755, `verify-a11y` 100, `verify-share` 250, `verify-filters`, 74 unit tests.
+
+### Stock, company and insider page layout; automatic internal linking (2026-10-09) — Peter: "next Stock, company and insider pages layout polish and Automatic internal linking enhancements"
+
+These are items 2 and 3 of the suggestions list (Peter pasted the full list on 2026-10-09; the
+numbering is: 1 politician pages, 2 stock/company/insider pages, 3 automatic internal linking,
+4 accounts/follow/watchlists, 5 email signup on pages, 6 sharing, 7 FAQ and guides, 8 citation,
+9 CSV downloads, then the unnumbered "Legal, Privacy & Website Trust" block). No questions asked.
+
+- **One layout for every entity page**, matching the member page: header facts (`dl.facts`),
+  answer, jump links, figures, charts, "who" tables, the transaction tables, related pages,
+  "Guides for this page", sources.
+  - Stock: facts (company, security type, size band, counts, latest trade); **Insiders trading
+    X** and **Members of Congress trading X** tables (linked names, rows, open-market buys and
+    sales, values or ranges, latest date); a folded table of rows by Form 4 code; **Related
+    stocks**. The old "Who is filing" bullet list is gone.
+  - Company: facts incl. EDGAR link and matched contract/lobbying counts; richer Insiders table;
+    **Members of Congress who traded <ticker>** (the page computed these rows before and never
+    showed them); issue names instead of codes in the lobbying table; **Related companies**.
+  - Insider: facts; **What kind of transactions** (by code) beside rows by year; **Other
+    insiders at <company>**.
+- **Figures in `web/src/lib/entity.ts`** (pure; tests in `scripts/entity.test.ts`): `codeRows`,
+  `yearRows`, `insiderRows`, `memberRows`, `relatedTickers`, `relatedCompanies`, `colleagues`,
+  `sizeOf` (cached), `tickerPages`, `CODE_LABEL`. "Bought" for Form 4 means code P only.
+  "Related" = filers in common, stated on the page as overlap in public filings and nothing else.
+  There is no sector data (companies.sector is empty), so nothing is related by industry.
+- **Automatic links in `web/src/lib/links.ts`:**
+  - `orgPath` links a lobbying client, registrant or contract recipient to a company page on an
+    exact normalised-name match, never when two companies share the name. Now used in the
+    newest-filings and largest-awards tables and on company pages.
+  - `flagHref`: flags in every trade table ("late", "10b5-1 plan", "derivative", "also in
+    another filing", spouse/joint/child) are links to the guide that explains them.
+  - `autolink` + `GLOSSARY`: in guides, the first mention of a term another guide explains
+    becomes a link (max two per section, one per target per page, never to itself, never inside
+    an existing link, heading, code or table, never where the guide already links by hand).
+    Marked `data-auto`. A test checks every glossary and flag target is a real guide.
+  - `LearnMore.astro`: "Guides for this page" on stock, company and insider pages; titles come
+    from the guides data.
+- **New verifier:** `node scripts/verify-links.mjs <base-url> [--sample N]` (no browser):
+  broken internal links and anchors, orphans, click depth from home (full crawl only), entity
+  pages missing facts / guide links / jump targets, automatic-link rules, flag links.
+  Local full crawl: 5,232 checks, no orphans, deepest page 3 clicks from home. Against the live
+  site use `--sample` (a full crawl is ~17,000 requests).
+- **Downloads follow-up from the live check of `e305810`:** all 76 files matched their stated
+  row counts, the largest was 14.9 MB (insider 2026 Q1, 44,499 rows), but about 60 of them were
+  old quarters with a handful of rows. `mergeOldSmall` now folds the run of small old quarters
+  into one `insider-trades-before-<period>.csv`.
+- Guides: `what-is-form-4` gained the description of the three page types (now covers
+  `entity.ts`, `links.ts` and the three page files); methodology `#related-pages`.
+- Not done from list items 1–3: profile photos (no licensed source; About says none are used),
+  holdings (annual disclosures are not ingested), performance statistics (no price data
+  licensed for display). Committees on member pages still wait on the first roster run.
+- Verified on the local build only: `astro check` 0 errors, `verify-links` 5,232,
+  `verify-guides` (20 guides, 7 re-read and accepted), `verify-downloads` 1,261,
+  `verify-live --all`, `verify-profile` 755, `verify-a11y` 100, `verify-share` 250,
+  `verify-filters`, 83 unit tests.

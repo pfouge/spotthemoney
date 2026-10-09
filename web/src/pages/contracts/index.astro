@@ -10,6 +10,7 @@ import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural, money, sum, normalizeOrgName, companyPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
+import { orgPath } from "../../lib/links";
 import { formatDate } from "../../lib/format";
 import Viz from "../../components/Viz.astro";
 import { flowDiagramSvg } from "../../lib/viz";
@@ -54,7 +55,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "federal-contracts.csv")} note="every award held, not only the 100 shown" />
   {rows.length === 0 ? <p class="empty-reason">No awards on record yet.</p> : (
     <div class="tablewrap"><table class="data"><thead><tr><th>Start date</th><th>Recipient</th><th>Awarding agency</th><th class="num">Award value</th><th>NAICS</th><th>Source</th></tr></thead><tbody>
-      {rows.slice(0, 100).map((r) => <tr><td class="mono">{formatDate(r.actionDate)}</td><td>{r.recipient ?? "—"}</td><td>{r.agency ?? "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>)}
+      {rows.slice(0, 100).map((r) => <tr><td class="mono">{formatDate(r.actionDate)}</td><td>{orgPath(model, r.recipient) ? <a href={orgPath(model, r.recipient)!}>{r.recipient}</a> : (r.recipient ?? "—")}</td><td>{r.agency ?? "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>)}
     </tbody></table></div>
   )}
 

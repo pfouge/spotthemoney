@@ -2,7 +2,7 @@
 //   npx tsx --test scripts/downloads.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { splitByPeriod, sizeLabel, memberCsvPath, stockCsvPath, tradeColumns } from "../web/src/lib/downloads";
+import { mergeOldSmall, splitByPeriod, sizeLabel, memberCsvPath, stockCsvPath, tradeColumns } from "../web/src/lib/downloads";
 import { toCsv, parseCsv } from "../web/src/lib/csv";
 import type { Flagship, Txn } from "../web/src/lib/flagship";
 
@@ -51,4 +51,16 @@ test("trade columns: a congressional row gives a range and no value; a Form 4 ro
   assert.deepEqual([get(b!, "also_in_another_filing"), get(b!, "under_review"), get(b!, "late"), get(b!, "filing_id")], ["true", "true", "false", "0001-26-000001"]);
   assert.equal(get(b!, "filing_url"), "https://www.sec.gov/Archives/edgar/data/1/000126000001/");
   assert.ok(!head!.some((k) => /donor|email|address|ssn|phone/i.test(k)));
+});
+
+test("mergeOldSmall: the run of small old pieces becomes one 'before' file; nothing else moves", () => {
+  const piece = (period: string, n: number) => ({ period, label: period.toUpperCase(), rows: Array(n).fill(period) });
+  const out = mergeOldSmall([piece("2026-q3", 50), piece("2026-q2", 5000), piece("2026-q1", 3), piece("2025-q4", 9), piece("2025-q3", 1), piece("undated", 2)], 1000);
+  assert.deepEqual(out.map((p) => [p.period, p.rows.length]), [["2026-q3", 50], ["2026-q2", 5000], ["before-2026-q2", 13], ["undated", 2]]);
+  assert.equal(out[2]!.label, "before 2026-Q2");
+  // one small old piece, or no full piece at all: left as they are
+  const one = [piece("2026-q2", 5000), piece("2026-q1", 3)];
+  assert.deepEqual(mergeOldSmall(one, 1000), one);
+  const allSmall = [piece("2026-q2", 5), piece("2026-q1", 3)];
+  assert.deepEqual(mergeOldSmall(allSmall, 1000), allSmall);
 });

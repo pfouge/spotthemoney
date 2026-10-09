@@ -1,6 +1,8 @@
 ---
 // Insider profile: /insiders/<slug>/ — one page per person with an insider role (Form 4 filer).
 // Answer-first (roadmap B.3), then the transactions, then sources, last-updated, disclaimer.
+import LearnMore from "../../components/LearnMore.astro";
+import { codeRows, yearRows, colleagues } from "../../lib/entity";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -39,6 +41,16 @@ const primary = tickers[0];
 const latest = txns[0];
 const lateCount = txns.filter(isLate).length;
 const title = roleLabel(p, model.companies);
+const codes = codeRows(txns);
+const years = yearRows(txns);
+const peers = colleagues(model, p);
+const lastTrade = txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
+const uniqueTickers = [...new Map(tickers.map((s) => [s.ticker, s])).values()];
+const jump: [string, string][] = txns.length === 0 ? [] : [
+  ["#by-type", "By type"], ["#by-year", "By year"], ["#transactions", "Transactions"], ["#filings", "Filings"],
+  ...(peers.length ? [["#colleagues", "Other insiders"] as [string, string]] : []),
+  ["#sources", "Sources"],
+];
 
 const answer = txns.length === 0
   ? `${p.name}, ${title}, has ${plural(p.filings.length, "Form 4 filing")} on record but no transactions that met the publishing bar (approved review, confidence ≥ 0.9). Filings and source links are listed below.`
@@ -61,10 +73,25 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Insiders", path: "/insiders/" }, { name: p.name, path }]} />
   <p class="eyebrow">Insider <span class="x">/</span> {company ? (cpath ? <a href={cpath}>{company.name}</a> : company.name) : "SEC Form 4 filer"}</p>
   <h1>{p.name}</h1>
-  <p class="lede">{title}{primary ? <> · <a href={securityPath(primary)} class="mono">{primary.ticker}</a></> : null}</p>
+  <p class="lede">{title}</p>
+
+  <dl class="facts" data-entity-facts>
+    {company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
+    {uniqueTickers.length > 0 && <div><dt>{uniqueTickers.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{uniqueTickers.slice(0, 4).map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}{uniqueTickers.length > 4 ? ` and ${uniqueTickers.length - 4} more` : ""}</dd></div>}
+    {p.firstFiledAt && <div><dt>First filing on record</dt><dd>{formatDate(p.firstFiledAt)}</dd></div>}
+    {lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(lastTrade)}</dd></div>}
+    {p.cik && <div><dt>SEC filings</dt><dd><a href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${p.cik}&type=4`} rel="noopener" target="_blank">EDGAR ↗</a></dd></div>}
+  </dl>
 
   <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote="Source: SEC EDGAR Form 4 filings" />
   <ReviewNote show={p.underReview} what="These Form 4 rows" />
+
+  {jump.length > 0 && (
+    <nav class="jump" aria-label="On this page">
+      <span>On this page</span>
+      {jump.map(([href, label]) => <a href={href}>{label}</a>)}
+    </nav>
+  )}
 
   <section class="datastrip">
     <div class="cell"><div class="k">Transactions</div><div class="v">{num(txns.length)}</div></div>
@@ -75,13 +102,36 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 
   <VizPerson person={p} />
 
-  <h2>Transactions</h2>
+  {txns.length > 0 && (
+    <section aria-labelledby="by-type">
+      <h2 id="by-type">What kind of transactions</h2>
+      <p class="section-note">Most Form 4 rows are pay arriving or tax being withheld, not a decision to buy or sell. Only code P is an open-market purchase and code S an open-market sale. What each code means: <a href="/guides/form-4-transaction-codes/">Form 4 transaction codes</a>.</p>
+      <div class="split">
+        <div class="tablewrap">
+          <table class="data" data-entity-codes>
+            <caption class="sr-only">Rows by Form 4 transaction code</caption>
+            <thead><tr><th>Code</th><th>Meaning</th><th class="num">Rows</th><th class="num">Shares</th><th class="num">Value</th></tr></thead>
+            <tbody>{codes.map((c) => <tr><th scope="row" class="mono">{c.code}</th><td>{c.label}</td><td class="num">{num(c.rows)}</td><td class="num">{num(c.shares)}</td><td class="num">{c.value ? money(c.value) : "—"}</td></tr>)}</tbody>
+          </table>
+        </div>
+        <div class="tablewrap">
+          <table class="data" data-entity-years id="by-year">
+            <caption class="sr-only">Rows by year of the trade</caption>
+            <thead><tr><th>Year</th><th class="num">Rows</th><th class="num">Bought</th><th class="num">Sold</th></tr></thead>
+            <tbody>{years.map((y) => <tr><th scope="row" class="mono">{y.year}</th><td class="num">{num(y.rows)}</td><td class="num">{y.buys ? `${num(y.buys)} · ${money(y.bought)}` : "0"}</td><td class="num">{y.sells ? `${num(y.sells)} · ${money(y.sold)}` : "0"}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <h2 id="transactions">Transactions</h2>
   <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
   <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet — the filings below may be amendments, holdings-only reports, or rows still under review." />
 
   <AdSlot label="Advertisement" />
 
-  <h2>Filings</h2>
+  <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
     <div class="tablewrap">
       <table class="data">
@@ -101,6 +151,18 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
       </table>
     </div>
   )}
+
+  {peers.length > 0 && (
+    <section aria-labelledby="colleagues" data-related>
+      <h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2>
+      <ul class="mates two">
+        {peers.map((r) => <li><span><a href={r.path}>{r.person.name}</a> <span class="soft">{r.role}</span></span> <span>{plural(r.rows, "row")}</span></li>)}
+      </ul>
+      {cpath && <p class="section-note">Everyone on file, with contracts and lobbying under the company's name: <a href={cpath}>{company!.name}</a>.</p>}
+    </section>
+  )}
+
+  <LearnMore slugs={["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", ...(txns.some((t) => t.is10b51) ? ["rule-10b5-1-trading-plans"] : []), ...(txns.some((t) => t.isDerivative) ? ["insider-options-and-derivatives"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
 
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={txns} filings={p.filings} edgarId={p.cik} />

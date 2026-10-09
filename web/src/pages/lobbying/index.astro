@@ -9,6 +9,7 @@ import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural, money, sum, normalizeOrgName, companyPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
+import { orgPath } from "../../lib/links";
 import Viz from "../../components/Viz.astro";
 import { treemapSvg } from "../../lib/viz";
 import { lobbyingIssues } from "../../lib/vizdata";
@@ -70,7 +71,7 @@ const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filin
   <DownloadCsv file={lobFile} note={lobFile ? lobFile.title.replace("Lobbying filings, ", "") + "; earlier quarters are on the downloads page" : undefined} />
   {model.lobbying.length === 0 ? <p class="empty-reason">No filings on record yet.</p> : (
     <div class="tablewrap"><table class="data"><thead><tr><th>Period</th><th>Type</th><th>Registrant</th><th>Client</th><th>Primary issue</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
-      {[...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100).map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? "—"}</td><td>{l.registrant ?? "—"}</td><td>{l.client ?? "—"}</td><td>{l.issueArea ?? "—"}</td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>)}
+      {[...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100).map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? "—"}</td><td>{orgPath(model, l.registrant) ? <a href={orgPath(model, l.registrant)!}>{l.registrant}</a> : (l.registrant ?? "—")}</td><td>{orgPath(model, l.client) ? <a href={orgPath(model, l.client)!}>{l.client}</a> : (l.client ?? "—")}</td><td>{l.issueArea ?? "—"}</td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>)}
     </tbody></table></div>
   )}
 

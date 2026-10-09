@@ -9,7 +9,7 @@ const FORM4 = "https://www.sec.gov/files/form4data.pdf";
 export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "what-is-form-4", group: "insiders", updated: U,
+    slug: "what-is-form-4", group: "insiders", updated: "2026-10-09",
     title: "What is SEC Form 4?",
     seoTitle: ["What Is SEC Form 4? Insider Trading Filings Explained", "What Is SEC Form 4? Insider Filings Explained"],
     description: ["Form 4 is the SEC filing a company's officers, directors and 10% owners must make within two business days of trading its stock. What it shows and how to read it.", "Form 4 is the SEC filing company insiders make within two business days of trading their company's stock. What it shows."],
@@ -45,7 +45,14 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>A Form 4 therefore tells you that a trade happened, not that anything was wrong with it.</p>` },
       { id: "here", h: "Which insider filings are on this site?", html: `
 <p>Form 4 filings for a tracked set of companies: about 70 large or heavily traded U.S. stocks, plus every stock that appears in a congressional trade report. That is ${c.counts.tickers} tickers and ${c.counts.insiderTxns} transactions today, not the whole market. Each row links to the filing on EDGAR.</p>
-<p>The <a href="/insiders/">Insiders page</a> lists the newest filings and the <a href="/">trade map</a> shows where the dollars went.</p>` },
+<p>The <a href="/insiders/">Insiders page</a> lists the newest filings and the <a href="/">trade map</a> shows where the dollars went.</p>
+<p>Three kinds of page hold the detail, and they link to one another:</p>
+<ul>
+<li><strong>A stock's page</strong> lists the insiders who filed for that ticker and the members of Congress who traded it, each with the number of rows, open-market purchases and sales, and the latest date. A folded table breaks the rows down by Form 4 code. "Related stocks" are the tickers traded by the same people, ranked by the number of filers in common.</li>
+<li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
+<li><strong>A company's page</strong> adds federal contracts and lobbying filings under the company's exact name, the members of Congress who traded its stock, and related companies.</li>
+</ul>
+<p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more.</p>` },
     ],
     faqs: [
       { q: "What is a Form 4 filing?", a: "Form 4 is the SEC filing that a company's officers, directors and owners of more than 10% of its stock must make within two business days of trading that stock. It shows the date, shares, price and holdings afterwards.", on: ["insiders", "stocks"] },
@@ -62,8 +69,8 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
     ],
     related: ["form-4-transaction-codes", "rule-10b5-1-trading-plans", "insider-buying-vs-insider-selling", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Stocks with insider activity", href: "/stocks/" }],
-    covers: ["web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship.ts#isLate"],
-    ui: [],
+    covers: ["web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/links.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro"],
+    ui: [{ text: "Guides for this page", on: "/stocks/aapl/" }, { text: "Related stocks", on: "/stocks/aapl/" }],
     facts: ["foreignInsiders"],
   }),
 

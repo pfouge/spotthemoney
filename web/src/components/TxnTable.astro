@@ -8,6 +8,7 @@ import { edgarFilingUrl } from "../lib/seo";
 import { formatDate } from "../lib/format";
 import Empty from "./Empty.astro";
 import { tradeSentence } from "../lib/sharetext";
+import { flagHref } from "../lib/links";
 
 interface Props {
   model: Flagship;
@@ -82,7 +83,7 @@ const flags = (t: Txn) => {
               <td class="num">{t.shares != null ? num(t.shares) : "—"}</td>
               <td class="num">{t.price != null && t.price > 0 ? money(t.price, { compact: false }) : "—"}</td>
               <td class="num strong">{amountLabel(t)}</td>
-              <td class="flags">{flags(t).map((f) => <span class={`flag ${f.replace(/\W+/g, "-")}`}>{f}</span>)}</td>
+              <td class="flags">{flags(t).map((f) => { const to = flagHref(f, t.source); const cls = `flag ${f.replace(/\W+/g, "-")}`; return to ? <a class={cls} href={to} title="What this flag means">{f}</a> : <span class={cls}>{f}</span>; })}</td>
               <td>{href ? <a href={href} rel="noopener nofollow" target="_blank">{sourceLabel(t)} ↗</a> : sourceLabel(t)}</td>
               <td class="rs">{line && <button type="button" class="row-share" data-share="trade" data-share-text={line} data-share-path={home !== here ? home : undefined} data-share-id={`t${t.id}`} data-share-date={(t.disclosedAt ?? "").slice(0, 10) || undefined} aria-label="Share or cite this trade"></button>}</td>
             </tr>

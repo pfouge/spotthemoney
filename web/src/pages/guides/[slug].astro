@@ -8,6 +8,7 @@ import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getGuides, guidePath, GROUPS, type Guide } from "../../lib/guides";
 import { SITE_URL } from "../../lib/seo";
+import { autolink } from "../../lib/links";
 
 export async function getStaticPaths() {
   const guides = await getGuides();
@@ -19,6 +20,11 @@ const group = GROUPS.find((x) => x.key === g.group)!;
 const path = guidePath(g.slug);
 const related = g.related.map((s) => all.find((x) => x.slug === s)!).filter(Boolean);
 const FIRST_PUBLISHED = "2026-10-08";
+// First mention of a term another guide explains becomes a link to that guide (lib/links.ts).
+// Guides this one already links by hand anywhere in its sections are left alone.
+const used = new Set<string>([g.slug]);
+for (const s of g.sections) for (const m of s.html.matchAll(/href="\/guides\/([a-z0-9-]+)\//g)) used.add(m[1]!);
+const sections = g.sections.map((s) => ({ ...s, html: autolink(s.html, { self: g.slug, used, max: 2 }) }));
 const ld = [
   {
     "@context": "https://schema.org", "@type": "Article", "@id": `${SITE_URL}${path}#article`, headline: g.title, description: g.description.at(-1),
@@ -53,7 +59,7 @@ const ld = [
     </nav>
 
     <div class="prose guide-body">
-      {g.sections.map((s) => (
+      {sections.map((s) => (
         <section>
           <h2 id={s.id}>{s.h}</h2>
           <Fragment set:html={s.html} />

@@ -1,0 +1,18 @@
+---
+// "Guides for this page": links from a data page to the guides that explain what is on it.
+// Titles come from the guides themselves (lib/guides), so a renamed guide renames its links,
+// and a slug that no longer exists is simply left out.
+import { getGuides, guidePath } from "../lib/guides";
+interface Props { slugs: string[]; heading?: string }
+const { slugs, heading = "Guides for this page" } = Astro.props;
+const all = await getGuides();
+const items = slugs.map((s) => all.find((g) => g.slug === s)).filter((g): g is NonNullable<typeof g> => !!g);
+---
+{items.length > 0 && (
+  <section class="learn-more" aria-labelledby="learn-more" data-learn-more>
+    <h2 id="learn-more">{heading}</h2>
+    <ul class="mates">
+      {items.map((g) => <li><a href={guidePath(g.slug)}>{g.title}</a> <span>{g.keyFacts[0]}</span></li>)}
+    </ul>
+  </section>
+)}

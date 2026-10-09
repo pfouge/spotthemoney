@@ -23,7 +23,7 @@
     "reviewed": "2026-10-09",
     "covers": {
       "ingest/src/sources/usaspending.ts": "7e00ec5f0f888855",
-      "web/src/pages/contracts/index.astro": "95beb595812f2dd5"
+      "web/src/pages/contracts/index.astro": "d2e2702698b6d58e"
     }
   },
   "form-4-transaction-codes": {
@@ -56,16 +56,16 @@
       "web/src/scripts/share.ts": "56931901139ea42c",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "a484ae29c77788c9",
-      "web/src/lib/downloads.ts": "9615a082e44d7f02",
+      "web/src/lib/downloads.ts": "0e86fbe2a0ff27fe",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "85ffe40974311c2a",
+      "web/src/pages/downloads/index.astro": "670a16ece37ab883",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"
     }
   },
   "how-to-read-a-congressional-trade-report": {
     "reviewed": "2026-10-09",
     "covers": {
-      "web/src/components/TxnTable.astro": "0fa1a05a633f1f10",
+      "web/src/components/TxnTable.astro": "1854b63be4ae16ae",
       "ingest/py/senate_import.py": "b2717cb2bd239da8",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
       "web/src/pages/congress/[slug].astro": "8eca50cc199c21ca"
@@ -110,21 +110,21 @@
     "reviewed": "2026-10-09",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "04e83544d9137a8b",
-      "web/src/pages/lobbying/index.astro": "821bcff1723a3fc9"
+      "web/src/pages/lobbying/index.astro": "398fbcb5c1787aab"
     }
   },
   "rule-10b5-1-trading-plans": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/components/TxnTable.astro": "0fa1a05a633f1f10"
+      "web/src/components/TxnTable.astro": "1854b63be4ae16ae"
     }
   },
   "ten-percent-owners-and-joint-filings": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "0fa1a05a633f1f10"
+      "web/src/components/TxnTable.astro": "1854b63be4ae16ae"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -149,10 +149,15 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
       "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11",
-      "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5"
+      "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
+      "web/src/lib/entity.ts": "4770bf63df3f89d9",
+      "web/src/lib/links.ts": "5e32b90da3079fca",
+      "web/src/pages/stocks/[ticker].astro": "c15ff7589ce47a54",
+      "web/src/pages/insiders/[slug].astro": "b25f155dcf01d2e0",
+      "web/src/pages/companies/[slug].astro": "d6279c8ec7930da6"
     }
   }
 }
