@@ -11,6 +11,7 @@ import { getFlagship, withinDays, num, money, plural, senateShown } from "../lib
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
 import VizHome from "../components/VizHome.astro";
+import MiniCharts from "../components/MiniCharts.astro";
 
 const model = await getFlagship();
 const hasSenate = senateShown(model);
@@ -56,7 +57,7 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   </section>
 
   <div class="hm-switch">
-    <div class="seg" id="hmSwitch" role="tablist" aria-label="Choose a heatmap">
+    <div class="seg" id="hmSwitch" role="tablist" aria-label="Choose whose trades to show">
       <button type="button" class="on" data-pane="all" role="tab" aria-selected="true">All insiders</button>
       <button type="button" data-pane="congress" role="tab" aria-selected="false">Congress</button>
       <button type="button" data-pane="insiders" role="tab" aria-selected="false">Corporate insiders</button>
@@ -74,6 +75,8 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
 
   <VizHome />
 
+  <MiniCharts kind="all" scatter={false} />
+
   <div class="datastrip strip-compact">
     <div class="cell"><div class="k">I-Bond composite</div><div class="v pos">{ibondRate}</div><div class="delta"><a href="/rates/i-bonds/">Next reset and calculator &rarr;</a></div></div>
     <div class="cell"><div class="k">10-year Treasury</div><div class="v pos">{tenYRate}</div><div class="delta"><a href="/rates/treasury-yields/">Yield curve and TIPS &rarr;</a></div></div>
@@ -84,9 +87,11 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   <section class="manifesto">
     <p class="eyebrow">How to read it</p>
     <p>
-      Congress reports dollar ranges, so a congressional tile counts each trade at the top of its
-      bracket; insider tiles are shares × the reported price. Green is net buying, red net selling,
-      and the deeper the color the more one-sided the flow. Open-market insider trades (codes P and S)
+      Each dot is one stock: further right is more bought, further left more sold, and the color runs
+      from red (mostly sales) through yellow to green (mostly purchases). The switch under the chart
+      shows the same trades as a heatmap. Congress reports dollar ranges, so a congressional trade
+      counts at the top of its bracket; insider trades are shares × the reported price.
+      Open-market insider trades (codes P and S)
       are shown by default with Rule 10b5-1 plan sales excluded; switch them on to compare.
       Disclosures lag the trade — Congress has 45 days, insiders two business days — and every row
       links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>

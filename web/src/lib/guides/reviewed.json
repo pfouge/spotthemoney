@@ -72,10 +72,13 @@
     }
   },
   "how-to-use-the-trade-map": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-10-09",
     "covers": {
-      "web/src/components/Heatmap.astro": "97be9dc8a052b571",
-      "web/src/scripts/heatmap.ts": "3f5bbe08bf8bbfca",
+      "web/src/components/Heatmap.astro": "74d3a5ed438522b0",
+      "web/src/scripts/heatmap.ts": "8037b34db415f938",
+      "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
+      "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
+      "web/src/components/MiniCharts.astro": "d46e7d205cd39c70",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
       "web/src/scripts/share.ts": "56931901139ea42c"
@@ -87,7 +90,7 @@
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
       "web/src/components/VizFlow.astro": "c60219a0038ce83c",
-      "web/src/pages/insiders/index.astro": "a6a4ce96a6f16882"
+      "web/src/pages/insiders/index.astro": "b1068888676c2279"
     }
   },
   "insider-options-and-derivatives": {

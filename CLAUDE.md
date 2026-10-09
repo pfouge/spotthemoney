@@ -1572,3 +1572,54 @@ numbering is: 1 politician pages, 2 stock/company/insider pages, 3 automatic int
   0008 repaired names, not titles. Fix: migration `0016_decode_xml_entities_in_titles.sql`
   (idempotent) plus `decodeEntities()` in `flagship.ts` applied to every officer title at build
   time, so the pages are right as soon as the deploy finishes whichever runs first.
+
+### Trade map opens on a scatter chart; heatmap behind a switch (2026-10-09) — Peter, with a sketch
+
+Peter's instructions: the main chart on the main pages defaults to the scatter in his sketch;
+a switch **under the chart**, with a scatter icon on one side and a tile ("quadrant") icon on
+the other, changes it to the heatmap; dots green for mostly buying, red for mostly selling,
+red–yellow–green in between; default view Buying showing the right half, Net showing four
+quadrants, Selling the left half; dots labelled with tickers; the small scatter stays at the
+foot of those pages and a small heatmap joins it.
+
+- **One component, two drawings.** `Heatmap.astro` + `scripts/heatmap.ts` still own the
+  filters, summary, side list and URL hash. `state.chart` is `scatter` or `map`; the scatter is
+  drawn by `web/src/scripts/scatter.ts` (pure: points in, SVG string out; tests in
+  `scripts/scatter.test.ts`). Full-size maps open on `scatter` + view `buy`
+  (`data-chart`, `data-view` on the root); `compact` maps open on `map` + `net`.
+- **What a dot is.** Across = the page's own group (insiders on `/` and `/insiders/`, Congress
+  on `/congress/`; on the combined map, whichever group the filters single out — `xClass()`):
+  dollars bought (Buying, right half), dollars sold (Selling, left half), bought minus sold
+  (Net, four quadrants). Up and down = the other group's buying minus selling. Size = dollars.
+  Colour = share of all those dollars that were purchases, five stops red → orange → yellow →
+  lime → green (`shareColor`). Signed log scales with a $10,000 dead zone; decade gridlines.
+  The dot set is exactly the heatmap's tile set (`aggregate(filtered())`), so the summary's
+  "Tickers" always equals the number of dots.
+- **Labels:** biggest dots first, each in the first free spot beside its dot; never over a dot,
+  another label or a corner caption; at most 90 (28 on a phone). Every dot links to the stock
+  page, has an `aria-label`, and shows a tooltip with both groups' bought / sold / net.
+- **The other group's numbers.** Home page: from the loaded rows, each group under its own
+  filters. One-group pages: `/data/trade-cross.json` (`web/src/lib/trade-cross.ts`), per ticker
+  and window, Congress = all members, insiders = open-market non-plan trades, windows counted
+  back from the build date. Fetched the first time the scatter draws (`root.dataset.cross`).
+  The line under the chart says which rule applies.
+- **Switch.** `.hm-chart-switch` sits inside `.hm-mapcol`, directly under the chart on every
+  screen size: icon · `role="switch"` button · icon (the icons are click targets, hidden from
+  assistive tech; the switch carries the label). Reset clears filters, not the chart.
+- **Links.** New links always carry `chart=`. A hash with filters but no `chart` key was
+  shared before this change and opens the heatmap in the Net view, as it did then.
+- **Small charts.** `MiniCharts.astro` ("More views") near the foot of `/`, `/congress/`,
+  `/insiders/`: the small static Congress-vs-insiders scatter (already on the home page among
+  its charts, so not repeated there) and a compact heatmap (window and view controls only).
+- View buttons are now ordered Buying · Net · Selling. Section heading and chip on
+  `/congress/` and `/insiders/` read "Trade map" (anchor still `#heatmap`). Home title unchanged.
+- `verify-filters` runs its whole suite on whichever chart a page opens on, requires one dot per
+  ticker and at least one label, then tests the switch, the hash, Reset and an old-style link.
+- Guide `how-to-use-the-trade-map` rewritten for the scatter (new section `#heatmap`).
+- Peter's sketch shows many dots on the centre line; that is real — most stocks are traded by
+  one group only, so the other group's value is zero.
+- Not done: no saved image of the scatter from "Share this view" (the map share is a link);
+  the cross file ignores a one-group page's filters by design; labels are not user-toggleable.
+- Verified on the local build only: `astro check` 0 errors, `verify-filters` 430 states / 0
+  mismatches, `verify-a11y` 100, `verify-guides`, `verify-live --all`, `verify-links`,
+  `verify-share` 250, 90 unit tests; a 1,200-dot render takes 28 ms and yields a 217 KB SVG.

@@ -627,3 +627,40 @@ a.flag:hover { color: var(--ink); }
 .facts dd a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
 .guide-body a[data-auto] { text-decoration-style: dotted; }
 table.data tbody th a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+
+/* Trade map, scatter view and chart switch (2026-10-09). */
+.hm-map svg.hm-scatter { display: block; width: 100%; height: 100%; }
+svg.hm-scatter .g { stroke: var(--line); stroke-width: 1; }
+svg.hm-scatter .ax { stroke: var(--line-strong); stroke-width: 1.2; }
+svg.hm-scatter text { font-family: var(--font-sans); fill: var(--ink-soft); }
+svg.hm-scatter .tk { font-size: 12px; font-variant-numeric: tabular-nums; }
+svg.hm-scatter .ttl { font-size: 12.5px; }
+svg.hm-scatter .cn { font-size: 12.5px; }
+svg.hm-scatter .cn.st { fill: var(--ink); font-weight: 600; }
+svg.hm-scatter .lb { fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+svg.hm-scatter a.hm-dot circle { stroke: var(--surface); stroke-width: 1.5; fill-opacity: 0.9; }
+svg.hm-scatter a.hm-dot:hover circle, svg.hm-scatter a.hm-dot:focus-visible circle { stroke: var(--ink); stroke-width: 2; fill-opacity: 1; }
+svg.hm-scatter a.hm-dot:focus-visible { outline: none; }
+@media (max-width: 560px) { svg.hm-scatter .tk, svg.hm-scatter .ttl, svg.hm-scatter .cn { font-size: 11px; } }
+.hm-chart-switch { display: flex; align-items: center; gap: 10px; padding: 10px 0 0; }
+.hm-chart-ic { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; color: var(--ink-soft); cursor: pointer; }
+.hm-chart-ic.on { color: var(--ink); background: var(--chip); }
+.hm-chart-ic:hover { color: var(--ink); }
+.hm-toggle { position: relative; width: 46px; height: 26px; flex: none; padding: 0; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--chip); cursor: pointer; }
+.hm-toggle .knob { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--ink); transition: transform 0.15s ease; }
+.hm-toggle[aria-checked="true"] .knob { transform: translateX(20px); }
+.hm-toggle:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .hm-toggle .knob { transition: none; } }
+html:not(.js) .hm-chart-switch { display: none; }
+.hm-legend .hm-grad { display: inline-flex; align-items: center; gap: 8px; }
+.hm-legend .hm-grad .bar { display: inline-block; width: 90px; height: 10px; border-radius: 5px; }
+/* The small heatmap at the foot of the main pages: map, window and view only. */
+.heatmap[data-compact="true"] { margin-bottom: 0; }
+.heatmap[data-compact="true"] .hm-controls .ctl:not([data-keep]), .heatmap[data-compact="true"] .hm-reset,
+.heatmap[data-compact="true"] .hm-summary, .heatmap[data-compact="true"] .hm-side, .heatmap[data-compact="true"] [data-share="map"] { display: none; }
+.heatmap[data-compact="true"] .hm-main { grid-template-columns: 1fr; }
+.mini-charts { margin-top: 2.5rem; }
+.mini-map { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; min-width: 0; }
+.mini-map h3 { margin: 0 0 4px; font-size: 1rem; }
+.mini-map .viz-q { margin: 0 0 8px; color: var(--ink-soft); font-size: 13.5px; }
+.hm-mapcol { min-width: 0; }

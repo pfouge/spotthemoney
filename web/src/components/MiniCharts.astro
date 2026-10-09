@@ -1,0 +1,32 @@
+---
+// The two small charts at the foot of the main pages (2026-10-09, Peter): the small
+// Congress-against-insiders scatter and a small heatmap. The full-size chart at the top of the
+// page opens on the scatter and can be switched to the heatmap; these keep both in view.
+// `scatter={false}` on the home page, where the small scatter already sits among the charts above.
+import Viz from "./Viz.astro";
+import Heatmap from "./Heatmap.astro";
+import { getFlagship } from "../lib/flagship";
+import { scatterSvg, PHONE_W } from "../lib/viz";
+import { agreementPoints } from "../lib/vizdata";
+interface Props { kind: "congress" | "insiders" | "all"; scatter?: boolean }
+const { kind, scatter = true } = Astro.props;
+const model = await getFlagship();
+const pts = scatter ? agreementPoints(model) : [];
+const agree = pts.filter((p) => Math.sign(p.x) === Math.sign(p.y)).length;
+const what = kind === "congress" ? "congressional trades" : kind === "insiders" ? "insider trades" : "congressional and insider trades";
+---
+<section class="mini-charts" aria-labelledby="more-views">
+  <h2 id="more-views">More views</h2>
+  <div class="viz-grid">
+    {scatter && (
+      <Viz title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock traded by both groups in the last year."
+        svg={scatterSvg(pts)} svgPhone={scatterSvg(pts, PHONE_W)}
+        summary={pts.length ? `${pts.length} stocks were traded by both groups in the last year; in ${agree} of them Congress and insiders moved the same way. Dot size is total dollars traded; both axes are log scales.` : undefined} />
+    )}
+    <div class="mini-map" id="mini-heatmap">
+      <h3>Trade heatmap</h3>
+      <p class="viz-q">The same {what} as the chart at the top of the page, drawn as tiles: size is dollars disclosed, colour is direction.</p>
+      <Heatmap kind={kind} compact={true} id={`hm-${kind}-mini`} />
+    </div>
+  </div>
+</section>

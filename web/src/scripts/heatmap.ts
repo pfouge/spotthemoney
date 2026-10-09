@@ -11,6 +11,8 @@ interface InsiderRow { t: string; n: string | null; p: string; ps: string | null
 type Row = (CongressRow | InsiderRow) & { k: "congress" | "insiders" };
 const isC = (r: Row): r is CongressRow & { k: "congress" } => r.k === "congress";
 import { unpack, type Packed } from "../lib/heatmap-pack";
+import { scatterMarkup, shareGradientCss, type Pt } from "./scatter";
+interface Cross { builtAt: string; windows: number[]; congress: Record<string, number[]>; insiders: Record<string, number[]> }
 interface File { kind: "congress" | "insiders"; builtAt: string; windowDays: number; recentDays?: number; older?: string | null; caps?: Record<string, string>; v?: number; rows: unknown[] }
 
 interface State {
@@ -26,6 +28,8 @@ interface State {
   tickers: string;    // comma list, "" = all
   cap: "all" | "mega" | "large" | "mid" | "small" | "micro"; // company size band (estimated from filings)
   side: "tickers" | "filers";
+  /** How the main panel is drawn: one dot per ticker (scripts/scatter.ts) or the treemap. */
+  chart: "scatter" | "map";
 }
 
 interface Node { ticker: string; name: string | null; buy: number; sell: number; trades: number; cBuy: number; cSell: number; iBuy: number; iSell: number; people: Map<string, { name: string; slug: string | null; k: "congress" | "insiders"; amt: number; n: number }>; net: number; total: number; value: number }
@@ -107,7 +111,14 @@ export function initHeatmap(root: HTMLElement): void {
   const q = <T extends Element>(sel: string): T => root.querySelector<T>(sel)!;
   const mapEl = q<HTMLDivElement>(".hm-map");
   const tip = q<HTMLDivElement>(".hm-tip");
-  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: "net", tickers: "", cap: "all", side: "tickers" };
+  // The chart and view a map opens on come from its markup (Heatmap.astro): the main maps open on
+  // the scatter in the Buying view (Peter, 2026-10-09), the small map at the foot of a page on the
+  // treemap in the Net view.
+  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30,
+    view: (["net", "buy", "sell"].includes(root.dataset.view ?? "") ? root.dataset.view : "net") as State["view"], tickers: "", cap: "all", side: "tickers",
+    chart: root.dataset.chart === "scatter" ? "scatter" : "map" };
+  const crossSrc = root.dataset.cross || "";
+  let cross: Cross | null = null; let crossState: "none" | "idle" | "loading" | "loaded" | "failed" = crossSrc ? "idle" : "none";
   const state: State = { ...DEFAULTS };
   let rows: Row[] = []; let builtAt = ""; let maxVal = 1;
   // The insiders file holds the last `recentDays`; the rest of the year is a second file,
@@ -123,6 +134,12 @@ export function initHeatmap(root: HTMLElement): void {
     for (const k of ["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap"] as const) { const v = h.get(k); if (v != null) (state as unknown as Record<string, string>)[k] = v; }
     const w = Number(h.get("w")); if ([7, 30, 90, 365].includes(w)) state.window = w;
     if (!["all", "mega", "large", "mid", "small", "micro"].includes(state.cap)) state.cap = "all";
+    if (!["net", "buy", "sell"].includes(state.view)) state.view = DEFAULTS.view;
+    // Links shared before 2026-10-09 carry no "chart" key and meant the treemap, in the Net view
+    // unless they said otherwise. Every link written since names its chart.
+    const chart = h.get("chart");
+    if (chart === "scatter" || chart === "map") state.chart = chart;
+    else if ([...h.keys()].length) { state.chart = "map"; if (!h.get("view")) state.view = "net"; }
   }
   const writeHash = (): void => {
     if (!primary) return;
@@ -132,10 +149,11 @@ export function initHeatmap(root: HTMLElement): void {
     if (hasInsiders && state.codes !== "open") h.set("codes", state.codes);
     if (hasInsiders && state.plan !== "exclude") h.set("plan", state.plan);
     if (state.window !== 30) h.set("w", String(state.window));
-    if (state.view !== "net") h.set("view", state.view);
+    if (state.view !== DEFAULTS.view) h.set("view", state.view);
     if (state.tickers) h.set("tickers", state.tickers);
     if (state.cap !== "all") h.set("cap", state.cap);
     if (state.side !== "tickers") h.set("side", state.side);
+    if (state.chart !== DEFAULTS.chart || [...h.keys()].length) h.set("chart", state.chart);
     const s = h.toString(); history.replaceState(null, "", s ? "#" + s : location.pathname + location.search);
   };
 
@@ -209,8 +227,14 @@ export function initHeatmap(root: HTMLElement): void {
     maxVal = Math.max(1, ...nodes.map((d) => d.value));
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
     mapEl.innerHTML = "";
+    root.dataset.chartNow = state.chart;
+    mapEl.setAttribute("aria-label", state.chart === "scatter"
+      ? "Trade scatter chart: one dot per ticker, placed by dollars bought and sold. Each dot links to that ticker's page."
+      : "Trade map: one tile per ticker, sized by dollars disclosed. Each tile links to that ticker's page.");
     if (!nodes.length) {
       mapEl.innerHTML = `<div class="hm-empty">No disclosed ${kind === "congress" ? "congressional" : kind === "insiders" ? "insider" : ""} trades match these filters in the last ${state.window} days.</div>`;
+    } else if (state.chart === "scatter") {
+      renderScatter(nodes, W, H);
     } else {
       for (const leaf of squarify(nodes, { x: 0, y: 0, w: W, h: H })) {
         const d = leaf.item; const w = Math.round(leaf.w), h = Math.round(leaf.h);
@@ -233,6 +257,98 @@ export function initHeatmap(root: HTMLElement): void {
     renderSummary(nodes, sel); renderSide(nodes, sel); renderLegend();
     writeHash();
   }
+  // ── scatter view ──
+  const NAME = { congress: "Congress", insiders: "Corporate insiders" } as const;
+  type Cls = "congress" | "insiders";
+  /** The group plotted across: the page's own; on the combined map, whichever group the filters single out. */
+  function xClass(): Cls {
+    if (kind !== "all") return kind;
+    if (state.cls !== "all") return state.cls;
+    if (state.who) { const r = rows.find((x) => x.ps === state.who); if (r) return r.k; }
+    const congressFilter = state.chamber !== "all" || state.party !== "all", insiderFilter = state.role !== "all";
+    return congressFilter && !insiderFilter ? "congress" : "insiders";
+  }
+  /** A group's own filters, applied whether or not the other group is narrowed. */
+  const classMatch = (r: Row): boolean => {
+    if (isC(r)) return (state.chamber === "all" || r.ch === state.chamber) && (state.party === "all" || partyOf(r.pa) === state.party);
+    const i = r as InsiderRow;
+    return !(state.codes === "open" && i.c !== "P" && i.c !== "S") && !(state.plan === "exclude" && i.pl) && (state.role === "all" || i.r === state.role);
+  };
+  /** ticker → [bought, sold] for the group plotted up and down. Null while its file is loading. */
+  function otherTotals(yc: Cls): Map<string, [number, number]> | null {
+    const out = new Map<string, [number, number]>();
+    if (kind === "all") {
+      const c = cutoff(), ts = tickerSet();
+      for (const r of rows) {
+        if (r.k !== yc || (r.s !== "buy" && r.s !== "sell") || (r.f ?? r.d) < c || !classMatch(r)) continue;
+        if ((ts && !ts.has(r.t)) || (state.cap !== "all" && caps[r.t] !== state.cap)) continue;
+        const a = out.get(r.t) ?? [0, 0]; a[r.s === "buy" ? 0 : 1] += r.v; out.set(r.t, a);
+      }
+      return out;
+    }
+    if (crossState === "idle") {
+      crossState = "loading"; root.dataset.cross = crossState;
+      fetch(crossSrc, { headers: { accept: "application/json" } }).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<Cross>; })
+        .then((f) => { cross = f; crossState = "loaded"; }).catch(() => { crossState = "failed"; })
+        .finally(() => { root.dataset.cross = crossState; render(); });
+    }
+    if (!cross) return crossState === "loading" ? null : out;
+    const i = cross.windows.indexOf(state.window); if (i < 0) return out;
+    for (const [t, a] of Object.entries(yc === "congress" ? cross.congress : cross.insiders)) { const b = a[i * 2] ?? 0, sl = a[i * 2 + 1] ?? 0; if (b || sl) out.set(t, [b, sl]); }
+    return out;
+  }
+  interface Dot { d: Node; xb: number; xs: number; yb: number; ys: number }
+  let dotInfo = new Map<string, Dot>(); let scatterAxes: { xc: Cls; yc: Cls } = { xc: "insiders", yc: "congress" };
+  function renderScatter(nodes: Node[], W: number, H: number): void {
+    const xc = xClass(), yc: Cls = xc === "insiders" ? "congress" : "insiders";
+    scatterAxes = { xc, yc };
+    const yt = otherTotals(yc);
+    if (!yt) { mapEl.innerHTML = `<div class="hm-empty">Loading disclosed trades…</div>`; return; }
+    dotInfo = new Map(); const pts: Pt[] = [];
+    for (const d of nodes) {
+      const xb = xc === "insiders" ? d.iBuy : d.cBuy, xs = xc === "insiders" ? d.iSell : d.cSell;
+      const [yb, ys] = yt.get(d.ticker) ?? [0, 0];
+      const across = state.view === "buy" ? xb : state.view === "sell" ? xs : xb + xs;
+      const all = xb + xs + yb + ys;
+      dotInfo.set(d.ticker, { d, xb, xs, yb, ys });
+      pts.push({ ticker: d.ticker, name: d.name, x: state.view === "buy" ? xb : state.view === "sell" ? -xs : xb - xs, y: yb - ys, size: Math.max(1, across + yb + ys), share: all ? (xb + yb) / all : 0.5 });
+    }
+    const X = NAME[xc], Y = NAME[yc];
+    const does = (c: Cls, verb: "buy" | "sell", cap: boolean): string => { const who = c === "congress" ? "Congress" : cap ? "Insiders" : "insiders"; return `${who} ${c === "congress" ? verb + "s" : verb}`; };
+    const mixedTop = `${does(yc, "buy", true)}, ${does(xc, "sell", false)}`, mixedBottom = `${does(xc, "buy", true)}, ${does(yc, "sell", false)}`;
+    const out = scatterMarkup(pts, {
+      W, H, dark: isDark(),
+      half: state.view === "buy" ? "right" : state.view === "sell" ? "left" : "both",
+      xTitle: state.view === "buy" ? `${X}: dollars bought (log scale) →` : state.view === "sell" ? `← ${X}: dollars sold (log scale)` : `${X}: net selling ←→ net buying (log scale)`,
+      yTitle: `${Y}: selling ←→ buying`,
+      corners: state.view === "buy" ? ["", "Both buying", "", mixedBottom] : state.view === "sell" ? [mixedTop, "", "Both selling", ""] : [mixedTop, "Both buying", "Both selling", mixedBottom],
+      strong: [false, true, true, false],
+    });
+    mapEl.innerHTML = out.svg;
+  }
+  function showDotTip(e: MouseEvent, ticker: string): void {
+    const i = dotInfo.get(ticker); if (!i) return;
+    const { xc, yc } = scatterAxes; const short = (c: Cls) => (c === "congress" ? "Congress" : "Insiders");
+    const net = (b: number, s2: number) => { const n = b - s2; return `<b class="${n >= 0 ? "pos" : "neg"}">${n >= 0 ? "▲" : "▼"} ${fmtUSD(Math.abs(n))}</b>`; };
+    tip.innerHTML = `<div class="t-tk">${esc(i.d.ticker)} <span class="soft">${esc(i.d.name ?? "")}</span></div>` +
+      `<div class="t-row"><span>${short(xc)} bought</span><b class="pos">${fmtUSD(i.xb)}</b></div>` +
+      `<div class="t-row"><span>${short(xc)} sold</span><b class="neg">${fmtUSD(i.xs)}</b></div>` +
+      `<div class="t-row"><span>${short(xc)} net</span>${net(i.xb, i.xs)}</div>` +
+      `<div class="t-row t-top"><span>${short(yc)} bought</span><b class="pos">${fmtUSD(i.yb)}</b></div>` +
+      `<div class="t-row"><span>${short(yc)} sold</span><b class="neg">${fmtUSD(i.ys)}</b></div>` +
+      `<div class="t-row"><span>${short(yc)} net</span>${net(i.yb, i.ys)}</div>`;
+    tip.style.opacity = "1";
+    let x = e.clientX + 14, y = e.clientY + 14;
+    if (x + 260 > innerWidth) x = e.clientX - 260; if (y + 190 > innerHeight) y = e.clientY - 190;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  mapEl.addEventListener("mousemove", (e) => {
+    if (state.chart !== "scatter") return;
+    const a = (e.target as Element).closest?.<SVGAElement>("a.hm-dot");
+    if (a?.dataset.t) showDotTip(e, a.dataset.t); else tip.style.opacity = "0";
+  });
+  mapEl.addEventListener("mouseleave", () => { if (state.chart === "scatter") tip.style.opacity = "0"; });
+
   function showTip(e: MouseEvent, d: Node): void {
     const dir = d.net >= 0 ? "pos" : "neg", arrow = d.net >= 0 ? "▲" : "▼";
     const top = [...d.people.values()].sort((a, b) => b.amt - a.amt).slice(0, 3).map((p) => esc(p.name)).join(", ");
@@ -285,9 +401,16 @@ export function initHeatmap(root: HTMLElement): void {
   }
   function renderLegend(): void {
     const R = isDark() ? RAMPS.dark : RAMPS.light; const el = q(".hm-legend");
+    if (state.chart === "scatter") {
+      const xc = xClass(), yc: Cls = xc === "insiders" ? "congress" : "insiders"; const across = state.view === "buy" ? "dollars bought" : state.view === "sell" ? "dollars sold" : "bought minus sold";
+      const other = kind === "all" ? "" : crossState === "failed" ? ` · ${NAME[yc]} figures could not be loaded` : ` · ${NAME[yc]} figures: ${yc === "insiders" ? "open-market trades, no 10b5-1 plans" : "all members"}`;
+      el.innerHTML = `<span class="hm-grad"><span>Mostly selling</span><span class="bar" style="background:${shareGradientCss(isDark())}"></span><span>Mostly buying</span></span>` +
+        `<span>Across = ${NAME[xc]}, ${across} · up and down = ${NAME[yc]}, buying minus selling · dot size = dollars · window = date disclosed${other}</span>`;
+    } else {
     const size = kind === "congress" ? "Window = date disclosed · tile size = top of the reported range, summed" : kind === "insiders" ? "Window = date disclosed · tile size = shares × price, summed" : "Window = date disclosed · tile size = $ disclosed (Congress: top of range; insiders: shares × price)";
     if (state.view === "net") el.innerHTML = `<span><span class="sw" style="background:${R.hiG}"></span>Net buying</span><span><span class="sw" style="background:${R.hiR}"></span>Net selling</span><span>${size} · color intensity = how one-sided</span>`;
     else { const c = state.view === "buy" ? R.hiG : R.hiR, w = state.view === "buy" ? "buying" : "selling"; el.innerHTML = `<span><span class="sw" style="background:${c}"></span>${w} volume</span><span>${size} · intensity = $ ${w}</span>`; }
+    }
     const stamp = q(".hm-stamp"); if (stamp) stamp.textContent = builtAt ? `Data as of ${builtAt.slice(0, 10)} · ${rows.length.toLocaleString("en-US")} disclosed trades${older === "loaded" || older === "none" ? ` in the last ${fullDays} days` : older === "loading" ? " · loading older trades…" : older === "failed" ? " · older insider trades could not be loaded" : kind === "insiders" ? ` in the last ${recentDays} days` : ` · insider trades older than ${recentDays} days load with 1Y`}` : "";
   }
 
@@ -304,6 +427,16 @@ export function initHeatmap(root: HTMLElement): void {
   bindSeg("codes", (v) => { state.codes = v as State["codes"]; });
   bindSeg("plan", (v) => { state.plan = v as State["plan"]; });
   bindSeg("side", (v) => { state.side = v as State["side"]; });
+  // The chart switch under the map: a real switch (off = scatter, on = heatmap) with a clickable
+  // icon on each side.
+  const chartSwitch = root.querySelector<HTMLButtonElement>('[data-ctl="chart"]');
+  const syncChart = (): void => {
+    chartSwitch?.setAttribute("aria-checked", state.chart === "map" ? "true" : "false");
+    root.querySelectorAll<HTMLElement>("[data-chart-set]").forEach((el) => el.classList.toggle("on", el.dataset.chartSet === state.chart));
+  };
+  const setChart = (c: State["chart"]): void => { state.chart = c; syncChart(); render(); };
+  chartSwitch?.addEventListener("click", () => setChart(state.chart === "map" ? "scatter" : "map"));
+  root.querySelectorAll<HTMLElement>("[data-chart-set]").forEach((el) => el.addEventListener("click", () => setChart(el.dataset.chartSet as State["chart"])));
   const sels: Partial<Record<"cls" | "chamber" | "party" | "role", HTMLSelectElement>> = {};
   for (const k of ["cls", "chamber", "party", "role"] as const) {
     const el = root.querySelector<HTMLSelectElement>(`[data-ctl="${k}"]`); if (!el) continue;
@@ -321,12 +454,13 @@ export function initHeatmap(root: HTMLElement): void {
   const tickIn = root.querySelector<HTMLInputElement>('[data-ctl="tickers"]');
   let tt: ReturnType<typeof setTimeout>; tickIn?.addEventListener("input", () => { clearTimeout(tt); tt = setTimeout(() => { state.tickers = tickIn.value; render(); }, 180); });
   const resetBtn = root.querySelector<HTMLButtonElement>('[data-ctl="reset"]');
-  resetBtn?.addEventListener("click", () => { Object.assign(state, DEFAULTS); syncAll(); render(); });
+  resetBtn?.addEventListener("click", () => { Object.assign(state, DEFAULTS, { chart: state.chart }); syncAll(); render(); }); // Reset clears the filters, not the choice of chart
   function syncAll(): void {
     ["window", "view", "codes", "plan", "side"].forEach(syncSeg);
     for (const k of ["cls", "chamber", "party", "role"] as const) { const el = sels[k]; if (el) el.value = state[k]; }
     if (whoSel) whoSel.value = state.who; if (tickIn) tickIn.value = state.tickers;
     if (capSel) capSel.value = state.cap;
+    syncChart();
     syncVisibility();
   }
   function fillWho(): void {

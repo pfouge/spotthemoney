@@ -7,15 +7,24 @@
 //               and 10b5-1 switches (defaults: open-market only, plans excluded)
 // Both: window 7D/30D/90D/1Y, view Net/Buying/Selling, ticker filter, ticker/filer side list.
 // `primary` makes the filter state live in the URL hash (one per page).
+//
+// Two ways to draw the same filtered trades (2026-10-09, Peter): the SCATTER (one dot per
+// ticker; scripts/scatter.ts) is what a full-size map opens on, in the Buying view; the switch
+// under the chart turns it into the HEATMAP (the treemap). `compact` is the small heatmap at the
+// foot of the main pages: treemap only, Net view, window and view controls only, no side list.
 import { CAP_BANDS } from "../lib/capband";
 import { getFlagship, senateShown } from "../lib/flagship";
 const hasSenate = senateShown(await getFlagship());
-interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; }
-const { kind, primary = false, height = 560, id = `hm-${kind}`, compact = false } = Astro.props as Props;
+interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; chart?: "scatter" | "map"; view?: "net" | "buy" | "sell"; }
+const { kind, primary = false, compact = false, id = `hm-${kind}` } = Astro.props as Props;
+const { height = compact ? 320 : 560, chart = compact ? "map" : "scatter" } = Astro.props as Props;
+const { view = chart === "scatter" ? "buy" : "net" } = Astro.props as Props;
+// On a one-group page the scatter's second axis (the other group) comes from a small totals file.
+const cross = kind === "all" || compact ? "" : "/data/trade-cross.json";
 const src = kind === "all" ? "/data/heatmap-congress.json,/data/heatmap-insiders.json" : `/data/heatmap-${kind}.json`;
 const hasInsiders = kind !== "congress";
 ---
-<section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} aria-label={kind === "congress" ? "Congressional trades heatmap" : kind === "insiders" ? "Corporate insider trades heatmap" : "Congress and corporate insider trades heatmap"}>
+<section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} data-chart={chart} data-view={view} data-cross={cross || undefined} aria-label={kind === "congress" ? "Congressional trades heatmap" : kind === "insiders" ? "Corporate insider trades heatmap" : "Congress and corporate insider trades heatmap"}>
   <div class="controls hm-controls">
     {kind === "all" && (
       <div class="ctl"><span class="lbl">Who</span>
@@ -70,11 +79,11 @@ const hasInsiders = kind !== "congress";
         {CAP_BANDS.map((b) => <option value={b.code}>{b.label} · {b.range}</option>)}
       </select>
     </div>
-    <div class="ctl"><span class="lbl">Window</span>
+    <div class="ctl" data-keep><span class="lbl">Window</span>
       <div class="seg" data-seg="window"><button type="button" data-v="7">7D</button><button type="button" data-v="30" class="on">30D</button><button type="button" data-v="90">90D</button><button type="button" data-v="365">1Y</button></div>
     </div>
-    <div class="ctl"><span class="lbl">View</span>
-      <div class="seg" data-seg="view"><button type="button" data-v="net" class="on">Net</button><button type="button" data-v="buy">Buying</button><button type="button" data-v="sell">Selling</button></div>
+    <div class="ctl" data-keep><span class="lbl">View</span>
+      <div class="seg" data-seg="view"><button type="button" data-v="buy" class:list={[{ on: view === "buy" }]}>Buying</button><button type="button" data-v="net" class:list={[{ on: view === "net" }]}>Net</button><button type="button" data-v="sell" class:list={[{ on: view === "sell" }]}>Selling</button></div>
     </div>
     <div class="ctl"><span class="lbl">Tickers</span><input class="hm-input mono" data-ctl="tickers" type="text" inputmode="text" placeholder="Tickers: NVDA, AAPL" aria-label="Filter tickers" /></div>
     <button type="button" class="hm-reset" data-ctl="reset">Reset</button>
@@ -83,7 +92,20 @@ const hasInsiders = kind !== "congress";
   <div class="summary hm-summary" aria-live="polite"></div>
 
   <div class="hm-main">
-    <div class="hm-map" style={`height:${height}px`} role="group" aria-label="Trade map: one tile per ticker, sized by dollars disclosed. Each tile links to that ticker's page."></div>
+    <div class="hm-mapcol">
+      <div class="hm-map" style={`height:${height}px`} role="group" aria-label={chart === "scatter" ? "Trade scatter chart: one dot per ticker, placed by dollars bought and sold. Each dot links to that ticker's page." : "Trade map: one tile per ticker, sized by dollars disclosed. Each tile links to that ticker's page."}></div>
+    {!compact && (
+      <div class="hm-chart-switch">
+        <span class:list={["hm-chart-ic", { on: chart === "scatter" }]} data-chart-set="scatter" title="Scatter chart" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 4v16h16"/><circle cx="9" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="13" cy="9" r="2.1" fill="currentColor" stroke="none"/><circle cx="17.5" cy="12.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="17" cy="6" r="1.4" fill="currentColor" stroke="none"/></svg>
+        </span>
+        <button type="button" class="hm-toggle" role="switch" data-ctl="chart" aria-checked={chart === "map" ? "true" : "false"} aria-label="Show the heatmap instead of the scatter chart" title="Switch between the scatter chart and the heatmap"><span class="knob"></span></button>
+        <span class:list={["hm-chart-ic", { on: chart === "map" }]} data-chart-set="map" title="Heatmap" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="1.5"/><path d="M12.5 3.5v17M3.5 13h9M12.5 9.5h8M16.5 9.5v11"/></svg>
+        </span>
+      </div>
+    )}
+    </div>
     <aside class="hm-side" style={`height:${height}px`}>
       <div class="hm-side-head">
         <h3 class="hm-side-title">Most traded</h3>

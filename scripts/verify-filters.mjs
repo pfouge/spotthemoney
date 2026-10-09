@@ -10,6 +10,12 @@
 // loaded. It also checks that the URL hash restores the same result after a reload and that
 // Reset returns to the default counts. Exit 1 on any mismatch.
 //
+// Since 2026-10-09 a main map opens on the scatter chart in the Buying view. The suite runs in
+// whichever chart the page opens on and expects exactly one dot (scatter) per ticker in the
+// summary; it then flips the switch under the chart and checks the heatmap draws tiles, the
+// link remembers the choice, a link without a "chart" key (shared before the change) still
+// opens the heatmap in the Net view, and Reset keeps the chosen chart.
+//
 // Needs Playwright (not a repo dependency):  npx -y playwright@latest install chromium  once,
 // then  npm i --no-save playwright  — or run `browserSuite` by pasting it into DevTools.
 //
@@ -78,7 +84,7 @@ export async function browserSuite(opts) {
   };
 
   // ── drive the real controls ──
-  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: "net", tickers: "", cap: "all" };
+  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: 30, view: root.dataset.view || "net", tickers: "", cap: "all" };
   const sel = (k) => root.querySelector(`[data-ctl="${k}"]`);
   const seg = (k) => [...root.querySelectorAll(`[data-seg="${k}"] button`)];
   const has = { cls: !!sel("cls"), chamber: !!sel("chamber"), party: !!sel("party"), role: !!sel("role"), who: !!sel("who"), cap: !!sel("cap"), codes: seg("codes").length > 0, plan: seg("plan").length > 0 };
@@ -98,12 +104,13 @@ export async function browserSuite(opts) {
     if (s.tickers) { const t = sel("tickers"); t.value = s.tickers; t.dispatchEvent(new Event("input", { bubbles: true })); await sleep(260); }
     await sleep(0);
     for (let i = 0; i < 200 && root.dataset.older === "loading"; i++) await sleep(50); // 1Y pulls the older file
+    for (let i = 0; i < 200 && root.dataset.cross === "loading"; i++) await sleep(50); // the scatter's second axis on a one-group page
   };
   // same rounding as fmtUSD in web/src/scripts/heatmap.ts
   const usd = (v) => { const a = Math.abs(v); return a >= 1e9 ? "$" + (v / 1e9).toFixed(a >= 1e10 ? 0 : 1) + "B" : a >= 1e6 ? "$" + (v / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "M" : a >= 1e3 ? "$" + Math.round(v / 1e3) + "K" : "$" + Math.round(v); };
   const shown = () => {
     const v = [...root.querySelectorAll(".hm-summary .cell .v")].map((e) => e.textContent.trim());
-    return { totalText: v[0], disclosures: Number(v[1].replace(/,/g, "")), tickers: Number(v[2]), filers: Number(v[3]), netText: v[4], tiles: root.querySelectorAll(".hm-map .hm-tile").length, empty: !!root.querySelector(".hm-map .hm-empty") };
+    return { totalText: v[0], disclosures: Number(v[1].replace(/,/g, "")), tickers: Number(v[2]), filers: Number(v[3]), netText: v[4], tiles: root.querySelectorAll(".hm-map .hm-tile, .hm-map a.hm-dot").length, labels: root.querySelectorAll(".hm-map svg.hm-scatter .lb").length, chart: root.dataset.chartNow, empty: !!root.querySelector(".hm-map .hm-empty") };
   };
   // state the page actually uses: controls a map does not have stay at their defaults
   const effective = (s) => {
@@ -123,6 +130,8 @@ export async function browserSuite(opts) {
     if ((want.tickers === 0) !== got.empty) bad.push(`empty-state: page ${got.empty}, expected ${want.tickers === 0}`);
     if (want.tickers > 0 && got.tiles === 0) bad.push("no tiles drawn");
     if (got.tiles > want.tickers) bad.push(`tiles ${got.tiles} > tickers ${want.tickers}`);
+    if (got.chart === "scatter" && got.tiles !== want.tickers) bad.push(`scatter draws ${got.tiles} dots for ${want.tickers} tickers`);
+    if (got.chart === "scatter" && want.tickers > 0 && got.labels === 0) bad.push("scatter has no ticker labels");
     if (bad.length) fails.push({ label, state: st, bad });
     return { want, got, st };
   };
@@ -159,6 +168,26 @@ export async function browserSuite(opts) {
   // every size band must be reachable: a band no ticker maps to is fine, an unknown code is not
   const badBands = [...new Set(Object.values(caps))].filter((b) => has.cap && !optionsOf("cap").includes(b));
   if (badBands.length) fails.push({ label: "size bands", bad: [`data has band(s) with no option: ${badBands.join(", ")}`] });
+  // the chart switch: heatmap draws tiles, the link says so, Reset keeps it, and switching back restores the dots
+  const sw = root.querySelector('[data-ctl="chart"]');
+  if (sw) {
+    const startChart = root.dataset.chartNow, other = startChart === "scatter" ? "map" : "scatter";
+    await apply({ ...DEFAULTS, window: 365 }); const wantSw = expected(effective({ ...DEFAULTS, window: 365 }));
+    sw.click(); await sleep(0); for (let i = 0; i < 200 && root.dataset.cross === "loading"; i++) await sleep(50);
+    const a = shown(); ran++;
+    const bad = [];
+    if (a.chart !== other) bad.push(`chart is ${a.chart}, expected ${other}`);
+    if (sw.getAttribute("aria-checked") !== String(other === "map")) bad.push(`switch aria-checked is ${sw.getAttribute("aria-checked")}`);
+    if (a.disclosures !== wantSw.disclosures || a.tickers !== wantSw.tickers) bad.push(`counts changed with the chart: ${a.disclosures}/${a.tickers} ≠ ${wantSw.disclosures}/${wantSw.tickers}`);
+    if (wantSw.tickers > 0 && a.tiles === 0) bad.push("nothing drawn after switching");
+    if (other === "map" && root.querySelector(".hm-map svg.hm-scatter")) bad.push("scatter still drawn in heatmap mode");
+    if (root.dataset.primary === "true" && !location.hash.includes(`chart=${other}`)) bad.push(`hash is "${location.hash}", expected chart=${other}`);
+    root.querySelector('[data-ctl="reset"]').click(); await sleep(0);
+    if (root.dataset.chartNow !== other) bad.push("Reset changed the chart");
+    sw.click(); await sleep(0);
+    if (root.dataset.chartNow !== startChart) bad.push("switching back did not restore the first chart");
+    if (bad.length) fails.push({ label: "chart switch", bad });
+  }
   await apply({ ...DEFAULTS, window: 365, view: "sell" });
   const hash = location.hash; const hashWant = expected(effective({ ...DEFAULTS, window: 365, view: "sell" }));
   if (root.dataset.primary === "true" && !(hash.includes("w=365") && hash.includes("view=sell"))) fails.push({ label: "hash write", bad: [`hash is "${hash}"`] });
@@ -185,6 +214,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const v = await page.$$eval("[data-heatmap] .hm-summary .cell .v", (els) => els.map((e) => e.textContent.trim()));
         if (Number((v[1] ?? "").replace(/,/g, "")) !== res.hashWant.disclosures || Number(v[2]) !== res.hashWant.tickers) { res.failed++; res.fails.push({ label: "hash restore after reload", bad: [`page ${v[1]}/${v[2]} ≠ ${res.hashWant.disclosures}/${res.hashWant.tickers}`] }); }
       }
+      // a link shared before 2026-10-09 has no "chart" key: it must still open the heatmap, in the Net view
+      await page.goto(base + path + "#w=90", { waitUntil: "networkidle" }); await page.reload({ waitUntil: "networkidle" });
+      const legacy = await page.evaluate(() => { const r = document.querySelector("[data-heatmap][data-primary='true']"); return { chart: r?.dataset.chartNow, view: r?.querySelector('[data-seg="view"] button.on')?.dataset.v }; });
+      if (legacy.chart !== "map" || legacy.view !== "net") { res.failed++; res.fails.push({ label: "old shared link", bad: [`opens ${legacy.chart}/${legacy.view}, expected map/net`] }); }
       if (errors.length) { res.failed += errors.length; res.fails.push({ label: "page errors", bad: errors.slice(0, 3) }); }
       failed += res.failed ?? 1;
       console.log(`${res.failed ? "✗" : "✓"} ${path}  ${res.kind} map · ${res.rows} rows · ${res.sized}/${res.tickersInRows} tickers sized · ${res.checks} filter states checked · ${res.failed} mismatch(es)`);

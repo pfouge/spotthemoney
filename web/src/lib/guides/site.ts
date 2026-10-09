@@ -12,30 +12,36 @@ const U = "2026-10-08";
 export const siteGuides: ((c: GuideCtx) => Guide)[] = [
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-use-the-trade-map", group: "site", updated: U,
+    slug: "how-to-use-the-trade-map", group: "site", updated: "2026-10-09",
     title: "How to use the trade map",
-    seoTitle: ["How to Use the Trade Map: Tiles, Filters and Time Windows", "How to Use the Spot the Money Trade Map"],
-    description: ["The trade map shows one tile per stock, sized by dollars disclosed and coloured by buying or selling. What each filter does and how to share a view.", "One tile per stock, sized by dollars and coloured by direction. What each trade map filter does."],
-    answer: "The trade map shows one tile for each stock that members of Congress or company insiders traded in the period you pick. A tile's size is the dollars disclosed and its colour is the direction: green for net buying, red for net selling.",
+    seoTitle: ["How to Use the Trade Map: Scatter Chart, Heatmap and Filters", "How to Use the Spot the Money Trade Map"],
+    description: ["The trade map shows one dot per stock: buying to the right, selling to the left, green for mostly purchases. What each filter does, and the heatmap view.", "One dot per stock, placed and coloured by buying and selling. What each trade map filter does."],
+    answer: "The trade map shows one dot for each stock that members of Congress or company insiders traded in the period you pick. A dot's position shows how much was bought or sold, its size is the dollars involved, and its colour runs from red (mostly sales) through yellow to green (mostly purchases); a switch under the chart shows the same trades as a heatmap of tiles.",
     keyFacts: [
-      "Bigger tile = more dollars disclosed. Greener = more buying; redder = more selling.",
+      "One dot per stock. Further right = more bought; further left = more sold. Bigger dot = more dollars.",
+      "Colour is the share of dollars that were purchases: red, orange, yellow, lime, green.",
+      "The map opens on Buying (the right half). Net shows all four quarters; Selling shows the left half.",
+      "The switch under the chart changes it to a heatmap of tiles and back.",
       "The period (7D, 30D, 90D, 1Y) counts trades by the date they were disclosed.",
-      "The insider view starts with open-market trades only, without pre-arranged plan trades.",
-      "Click a tile to open that stock's page.",
-      "Filters are kept in the page address, so a link reproduces the view.",
+      "Click a dot or a tile to open that stock's page. Filters are kept in the page address.",
     ],
     sections: [
-      { id: "tiles", h: "What does a tile show?", html: `
-<p>Each tile is one stock. Its area is proportional to the dollars traded in that stock during the period, so the largest tile is where the most money moved. Its colour shows direction: green when buying outweighed selling, red when selling outweighed buying, and a stronger shade the more one-sided the trading was. The ticker and the dollar total are written on the tile when it is large enough.</p>
-<p>Hover over a tile to see the split between buying and selling, the number of trades and the people behind them. Click it to open the stock's page with every trade listed.</p>
-<p>The list beside the map ranks the same stocks, and its "Tickers" switch changes it to a ranking of people.</p>` },
+      { id: "tiles", h: "What does the chart show?", html: `
+<p>Each dot is one stock, labelled with its ticker where there is room. Two groups are on the chart at once. Across the chart is the page's own group: company insiders on the home page and the Insiders page, members of Congress on the Congress page. Up and down is the other group's buying minus its selling, so a dot above the middle line is a stock the other group bought more of than it sold.</p>
+<p>The chart opens on <strong>Buying</strong>: only the right half is drawn, and a dot's distance from the left edge is the dollars bought. <strong>Selling</strong> draws the left half, with dollars sold growing to the left. <strong>Net</strong> draws all four quarters, with bought minus sold across: "Both buying" is the top right corner, "Both selling" the bottom left, and the other two corners are where the groups went opposite ways.</p>
+<p>Dot size is the dollars behind the dot. Colour is the share of those dollars that were purchases, by both groups together: red when nearly all were sales, yellow when buying and selling were about even, green when nearly all were purchases. Both axes are log scales, so each gridline is ten times the one before it, and anything under $10,000 sits on the axis line.</p>
+<p>Hover over a dot to see each group's dollars bought, sold and net. Click it to open the stock's page with every trade listed. The list beside the chart ranks the same stocks, and its "Tickers" switch changes it to a ranking of people.</p>` },
+      { id: "heatmap", h: "How do I see the heatmap instead?", html: `
+<p>Use the switch directly under the chart: the scatter icon is on one side and the tile icon on the other. The heatmap draws the same filtered trades as one tile per stock. A tile's area is the dollars traded and its colour is the direction: green when buying outweighed selling, red when selling outweighed buying, stronger the more one-sided it was. In the Buying or Selling view the tiles are sized and shaded by that side alone.</p>
+<p>The switch changes the picture only. The filters, the totals above the chart and the ranked list stay as they are, and "Reset" clears the filters without changing which chart you are on. A small heatmap also sits near the foot of the home, Congress and Insiders pages under "More views".</p>
+<p>On the Congress and Insiders pages the second group on the scatter is not affected by that page's filters: insider figures there are open-market trades without 10b5-1 plan trades, and Congress figures are all members. On the home page each group follows its own filters.</p>` },
       { id: "three-maps", h: "Which map am I looking at?", html: `
 <p>The home page has three views: "All insiders" combines Congress and company insiders, "Congress" shows members only and "Corporate insiders" shows Form 4 filers only. The <a href="/congress/">Congress</a> and <a href="/insiders/">Insiders</a> pages open on their own map.</p>
-<p>Dollar amounts for the two groups are built differently. Company insiders report exact shares and prices. Members of Congress report ranges, and the map uses the top of each range (see ${`<a href="/guides/congress-trade-amount-ranges/">amount ranges</a>`}). The line under the map states which rule applies.</p>` },
+<p>Dollar amounts for the two groups are built differently. Company insiders report exact shares and prices. Members of Congress report ranges, and the map uses the top of each range (see ${`<a href="/guides/congress-trade-amount-ranges/">amount ranges</a>`}). The line under the chart says what is plotted.</p>` },
       { id: "filters", h: "What does each filter do?", html: `
 ${table(["Filter", "What it does"], [
   ["7D, 30D, 90D, 1Y", "The period, counted by the date a trade was disclosed. 1Y loads an older file of insider trades the first time you choose it."],
-  ["Net, Buying, Selling", "Net colours tiles by direction. Buying or Selling sizes and colours tiles by that side alone."],
+  ["Buying, Net, Selling", "Buying (the starting view) shows dollars bought and the right half of the chart. Net shows bought minus sold in all four quarters. Selling shows dollars sold and the left half. On the heatmap, Net colours tiles by direction and the other two size and shade tiles by that side alone."],
   ["Both chambers, House, Senate", "Limits Congress trades to one chamber."],
   ["Any party, Democrats, Republicans, Independents", "Limits Congress trades by party."],
   ["All roles, Officers, Directors, 10% owners", "Limits insider trades by the filer's relationship to the company."],
@@ -56,11 +62,12 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
 <p>To show decisions and leave out mechanics. Most Form 4 rows are pay arriving, options being exercised or tax being withheld; and many sales follow a schedule fixed long before. The starting view keeps open-market purchases and sales that were not made under a plan. Both switches are one click from the full picture. See ${`<a href="/guides/form-4-transaction-codes/">transaction codes</a>`} and ${`<a href="/guides/rule-10b5-1-trading-plans/">10b5-1 plans</a>`}.</p>
 <p>Three kinds of row are never on the map: options and other derivatives, a trade already counted from another filing, and anything without a ticker.</p>` },
       { id: "share", h: "How do I share or save a view?", html: `
-<p>Use "Share this view" under the map. The link carries your filters, so whoever opens it sees the same map. Every chart on the site has its own Share button with a "Save image" option, and each row in a table of trades has a share icon that links straight to that trade. The same menu writes a citation for you in four styles; see ${`<a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a>`}.</p>
+<p>Use "Share this view" under the map. The link carries your filters and whether you were on the scatter or the heatmap, so whoever opens it sees the same view. Links shared before the scatter was added still open the heatmap. Every chart on the site has its own Share button with a "Save image" option, and each row in a table of trades has a share icon that links straight to that trade. The same menu writes a citation for you in four styles; see ${`<a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a>`}.</p>
 <p>To find a person or a stock directly, press <kbd>/</kbd> or use the search box at the top of any page.</p>` },
     ],
     faqs: [
-      { q: "What do the colours on the trade map mean?", a: "Green means buying outweighed selling in that stock over the chosen period, red means selling outweighed buying, and a stronger shade means the trading was more one-sided. Tile size is the dollars disclosed.", on: ["congress", "insiders", "stocks"] },
+      { q: "What do the colours on the trade map mean?", a: "Colour shows how much of the trading in a stock was buying. On the scatter chart a dot runs from red (nearly all sales) through yellow (about even) to green (nearly all purchases). On the heatmap, green means buying outweighed selling and red the reverse, stronger the more one-sided it was.", on: ["congress", "insiders", "stocks"] },
+      { q: "How do I read the scatter chart on the trade map?", a: "Each dot is one stock. Left to right shows how much the page's own group bought or sold, up and down shows whether the other group was a net buyer or seller, and dot size is the dollars involved. Buying shows the right half, Selling the left half and Net all four quarters." },
       { q: "Does the trade map use the trade date or the filing date?", a: "The filing date. The 7D, 30D, 90D and 1Y periods count trades by when they were disclosed, because that is when the public could first see them." },
       { q: "Are the market cap bands live market values?", a: "No. They are estimates from SEC filings: reported shares outstanding times the typical price in recent insider trades, or the reported public float." },
       { q: "Can I share a filtered view of the trade map?", a: "Yes. \"Share this view\" under the map gives a link that keeps your filters, so the same view opens for anyone who follows it." },
@@ -71,7 +78,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
     ],
     related: ["congress-trade-amount-ranges", "form-4-transaction-codes", "rule-10b5-1-trading-plans", "what-disclosure-data-cannot-tell-you"],
     seeLive: [{ label: "Trade map", href: "/" }, { label: "Methodology", href: "/methodology/" }],
-    covers: ["web/src/components/Heatmap.astro", "web/src/scripts/heatmap.ts", "web/src/lib/heatmap.ts", "web/src/lib/capband.ts", "web/src/scripts/share.ts"],
+    covers: ["web/src/components/Heatmap.astro", "web/src/scripts/heatmap.ts", "web/src/scripts/scatter.ts", "web/src/lib/trade-cross.ts", "web/src/components/MiniCharts.astro", "web/src/lib/heatmap.ts", "web/src/lib/capband.ts", "web/src/scripts/share.ts"],
     ui: [
       { text: "All insiders", on: "/" }, { text: "Corporate insiders", on: "/" },
       { text: ">7D<", on: "/" }, { text: ">30D<", on: "/" }, { text: ">90D<", on: "/" }, { text: ">1Y<", on: "/" },
@@ -79,7 +86,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
       { text: "Both chambers", on: "/" }, { text: "Any party", on: "/" }, { text: "All roles", on: "/" }, { text: "10% owners", on: "/" },
       { text: "Open-market", on: "/" }, { text: "All codes", on: "/" }, { text: "No 10b5-1 plans", on: "/" }, { text: "With plans", on: "/" },
       { text: "Market cap", on: "/" }, { text: ">Reset<", on: "/" }, { text: ">Tickers<", on: "/" }, { text: "Share this view", on: "/" },
-      { text: "Save image", on: "/" },
+      { text: "Save image", on: "/" }, { text: "More views", on: "/" }, { text: "Trade heatmap", on: "/congress/" }, { text: 'role="switch"', on: "/" },
     ],
     facts: [],
   }),

@@ -15,6 +15,7 @@ import { getFlagship, withinDays, num, plural, personPath, securityPath, roleLab
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizCongress from "../../components/VizCongress.astro";
+import MiniCharts from "../../components/MiniCharts.astro";
 
 const model = await getFlagship();
 const hasSenate = senateShown(model);
@@ -51,11 +52,11 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <ReviewNote show={underReview} what="Congressional rows" />
   {pendingOcr > 0 && <p class="note">{plural(pendingOcr, "filing is", "filings are")} scanned PDFs awaiting human review and show no rows yet.</p>}
 
-  <h2 id="heatmap" class="hm-h2">Heatmap <span class="tag live">Live</span></h2>
+  <h2 id="heatmap" class="hm-h2">Trade map <span class="tag live">Live</span></h2>
   <Heatmap kind="congress" primary={true} />
 
   <nav class="feeds" aria-label="Sections">
-    <a href="#heatmap">Heatmap</a>{model.txns.some((t) => t.isPublished && t.source !== "sec_form4") && <a href="#charts">Charts</a>}<a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
+    <a href="#heatmap">Trade map</a>{model.txns.some((t) => t.isPublished && t.source !== "sec_form4") && <a href="#charts">Charts</a>}<a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
   </nav>
 
   <VizCongress />
@@ -97,6 +98,8 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
       {members.sort((a, b) => a.name.localeCompare(b.name)).map((p) => { const pp = personPath(p); return <li>{pp ? <a href={pp}>{p.name}</a> : p.name} <span class="soft">{plural(p.txns.length, "trade")}</span></li>; })}
     </ul>
   )}
+
+  <MiniCharts kind="congress" />
 
   <h2>How to read this</h2>
   <p>Members report ranges, not amounts, and have {CONGRESS_DEADLINE_DAYS} days to file after a trade. "Late" means the report was filed more than {CONGRESS_DEADLINE_DAYS} days after the transaction date. Owner shows whether a holding is the member's own, a spouse's, a dependent's, or joint. See <a href="/methodology/">methodology</a>.</p>
