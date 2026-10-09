@@ -23,6 +23,10 @@ import type { IngestRunResult } from "@stm/shared";
 const SOURCE = "congress_roster";
 const DEFAULT_URL = "https://unitedstates.github.io/congress-legislators/legislators-current.json";
 const HISTORICAL_URL = "https://unitedstates.github.io/congress-legislators/legislators-historical.json";
+const COMMITTEES_URL = "https://unitedstates.github.io/congress-legislators/committees-current.json";
+const MEMBERSHIP_URL = "https://unitedstates.github.io/congress-legislators/committee-membership-current.json";
+/** Fewer assignments than this means a broken file, not an empty Congress: keep what is stored. */
+export const MIN_MEMBERSHIP_ROWS = 500;
 /** A filer is only looked for among members whose last term ended this recently. */
 export const FORMER_MEMBER_YEARS = 4;
 
@@ -161,6 +165,57 @@ export function findMember(filer: UnlinkedFiler, legislators: Legislator[], toda
   return hits.length === 1 ? hits[0]! : null;
 }
 
+// ── committees (migration 0015) ───────────────────────────────────────────────────────────
+export interface SourceCommittee {
+  type: string; // 'house' | 'senate' | 'joint'
+  name: string;
+  thomas_id: string;
+  url?: string;
+  jurisdiction?: string;
+  subcommittees?: { name: string; thomas_id: string }[];
+}
+export interface SourceMember { name?: string; bioguide?: string; party?: string; rank?: number; title?: string }
+export interface CommitteeRecord { code: string; parent_code: string | null; chamber: "house" | "senate" | "joint"; name: string; url: string | null; jurisdiction: string | null }
+export interface SeatRecord { committee_code: string; bioguide: string; side: string | null; rank: number | null; title: string | null }
+
+/** Full committees first, then their subcommittees (code = parent code + subcommittee id). */
+export function flattenCommittees(list: SourceCommittee[]): CommitteeRecord[] {
+  const out: CommitteeRecord[] = [];
+  const seen = new Set<string>();
+  const add = (r: CommitteeRecord) => { if (r.code && r.name && !seen.has(r.code)) { seen.add(r.code); out.push(r); } };
+  for (const c of list) {
+    if (c.type !== "house" && c.type !== "senate" && c.type !== "joint") continue;
+    if (!c.thomas_id || !c.name) continue;
+    add({ code: c.thomas_id, parent_code: null, chamber: c.type, name: c.name.trim(), url: c.url?.trim() || null, jurisdiction: c.jurisdiction?.replace(/\s+/g, " ").trim() || null });
+  }
+  for (const c of list) {
+    if (!seen.has(c.thomas_id)) continue;
+    for (const sc of c.subcommittees ?? []) {
+      if (!sc.thomas_id || !sc.name) continue;
+      add({ code: `${c.thomas_id}${sc.thomas_id}`, parent_code: c.thomas_id, chamber: c.type as CommitteeRecord["chamber"], name: sc.name.replace(/\s+/g, " ").trim(), url: null, jurisdiction: null });
+    }
+  }
+  return out;
+}
+
+/** One seat per member per committee; seats on a committee the committee file does not list are dropped. */
+export function seatRecords(membership: Record<string, SourceMember[]>, codes: Set<string>): SeatRecord[] {
+  const out: SeatRecord[] = [];
+  const seen = new Set<string>();
+  for (const [code, members] of Object.entries(membership)) {
+    if (!codes.has(code) || !Array.isArray(members)) continue;
+    for (const m of members) {
+      if (!m?.bioguide) continue;
+      const key = `${code}|${m.bioguide}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ committee_code: code, bioguide: m.bioguide, side: m.party === "majority" || m.party === "minority" ? m.party : null,
+        rank: Number.isFinite(m.rank) ? Number(m.rank) : null, title: m.title?.trim() || null });
+    }
+  }
+  return out;
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // DB-backed ingest (untested offline; the pure helpers above carry the test coverage).
 // ──────────────────────────────────────────────────────────────────────────
@@ -236,6 +291,8 @@ async function mergePerson(sql: Sql, fromId: number, intoId: number): Promise<vo
     await tx`update filings set filer_person_id = ${intoId} where filer_person_id = ${fromId}`;
     await tx`update transactions set person_id = ${intoId} where person_id = ${fromId}`;
     await tx`update leaderboard_snapshots set person_id = ${intoId} where person_id = ${fromId}`;
+    // Committee seats of the dropped row go with it (cascade); the committee pass at the end of
+    // this run writes the full set again under the surviving row.
     await tx`delete from person_roles where person_id = ${fromId}`;
     await tx`delete from people where id = ${fromId}`;
   });
@@ -417,7 +474,57 @@ export async function ingestCongressRoster(): Promise<IngestRunResult> {
     console.error(`congress_roster: former-member pass failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
+  try {
+    await syncCommittees(sql, ctx);
+  } catch (err) {
+    // Committees are an extra on the member pages; the roster itself must not fail over them.
+    // A missing table (migration 0015 not applied yet) lands here too.
+    ctx.extra.committees_error = 1;
+    console.error(`congress_roster: committee pass failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   return { source: SOURCE, rowsSeen: ctx.rowsSeen, rowsChanged: ctx.rowsChanged, status: "success", stats: ctx.stats() };
+}
+
+/**
+ * Current committee and subcommittee assignments: two more requests to the same dataset.
+ * The stored set is replaced in one transaction, so a member who leaves a committee leaves
+ * it here on the next run. A file that is far too short is treated as broken and ignored.
+ */
+async function syncCommittees(sql: Sql, ctx: RunContext): Promise<void> {
+  const committees = flattenCommittees(await fetchJson<SourceCommittee[]>(process.env.CONGRESS_COMMITTEES_URL ?? COMMITTEES_URL));
+  const membership = await fetchJson<Record<string, SourceMember[]>>(process.env.CONGRESS_MEMBERSHIP_URL ?? MEMBERSHIP_URL);
+  const seats = seatRecords(membership, new Set(committees.map((c) => c.code)));
+  ctx.extra.committees = committees.length;
+  ctx.extra.committee_seats_in_file = seats.length;
+  if (seats.length < MIN_MEMBERSHIP_ROWS) {
+    ctx.warn(`committee membership file has ${seats.length} seats (expected thousands) — stored assignments left as they are`);
+    return;
+  }
+  const people = await sql<{ id: number; bioguide_id: string }[]>`select id, bioguide_id from people where bioguide_id is not null`;
+  const idOf = new Map(people.map((p) => [p.bioguide_id, p.id]));
+  const rows = seats.flatMap((s) => {
+    const person_id = idOf.get(s.bioguide);
+    return person_id == null ? [] : [{ committee_code: s.committee_code, person_id, side: s.side, rank: s.rank, title: s.title }];
+  });
+  ctx.extra.committee_seats = rows.length;
+  ctx.extra.committee_seats_unmatched = seats.length - rows.length;
+  await sql.begin(async (tx) => {
+    await tx`delete from congress_committee_members`;
+    // Parents before children: the first pass holds full committees only.
+    for (const pass of [committees.filter((c) => !c.parent_code), committees.filter((c) => c.parent_code)]) {
+      for (let i = 0; i < pass.length; i += 200) {
+        await tx`
+          insert into congress_committees ${tx(pass.slice(i, i + 200), "code", "parent_code", "chamber", "name", "url", "jurisdiction")}
+          on conflict (code) do update set parent_code = excluded.parent_code, chamber = excluded.chamber, name = excluded.name,
+            url = excluded.url, jurisdiction = excluded.jurisdiction, updated_at = now()`;
+      }
+    }
+    await tx`delete from congress_committees where code not in ${tx(committees.map((c) => c.code))}`;
+    for (let i = 0; i < rows.length; i += 500) {
+      await tx`insert into congress_committee_members ${tx(rows.slice(i, i + 500), "committee_code", "person_id", "side", "rank", "title")}`;
+    }
+  });
 }
 
 /**

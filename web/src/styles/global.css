@@ -559,3 +559,41 @@ a.faq-more { white-space: nowrap; color: var(--signal); text-decoration: underli
 .source-panel .source-note { font-size: 13.5px; color: var(--ink-soft); margin-top: 0.5rem; }
 .source-panel table.data a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
 
+
+/* Member profile pages (2026-10-08): header facts, jump links, paired tables, committee list, related members. */
+.facts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 0.9rem 0 0.4rem; padding: 0; }
+.facts div { min-width: 0; }
+.facts dt { font-size: 12.5px; color: var(--ink-soft); }
+.facts dd { margin: 1px 0 0; font-size: 15px; font-weight: 500; color: var(--ink); }
+.lede .tag { margin-left: 8px; }
+.jump { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0.9rem 0 0.2rem; font-size: 13.5px; }
+.jump span { color: var(--ink-soft); margin-right: 4px; }
+.jump a { color: var(--ink); background: var(--chip); padding: 4px 10px; border-radius: 999px; text-decoration: none; }
+.jump a:hover { background: var(--line); }
+.section-note { font-size: 13.5px; color: var(--ink-soft); max-width: 86ch; margin: 0.35rem 0 0.6rem; }
+.split { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 8px 32px; align-items: start; }
+.split.even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.split h3 { font-size: 1rem; margin: 0.4rem 0 0.2rem; }
+@media (max-width: 860px) { .split, .split.even { grid-template-columns: 1fr; } }
+.seats { list-style: none; margin: 0.4rem 0 0.6rem; padding: 0; max-width: 86ch; }
+.seats > li { padding: 0.7rem 0; border-bottom: 1px solid var(--line); }
+.seat-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-weight: 500; }
+.seat-head a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.seat-head .tag { font-weight: 500; }
+.seat-head .tag.lead { color: var(--signal-ink); background: var(--signal); }
+.seat-what, .seat-subs { margin: 0.25rem 0 0; font-size: 13.5px; color: var(--ink-soft); max-width: none; }
+.seat-subs span { color: var(--ink); }
+.mates { list-style: none; margin: 0; padding: 0; }
+.mates li { display: flex; justify-content: space-between; gap: 12px; padding: 0.5rem 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.mates li span { color: var(--ink-soft); font-size: 13.5px; text-align: right; }
+.mates a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+[data-profile-stocks] a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+main h2[id] { scroll-margin-top: 96px; }
+/* Between the menu breakpoint and ~1200px the six header links ran 32px past the edge (found 2026-10-08). */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  header.site .container { gap: 8px; }
+  nav.site a { padding: 0 8px; font-size: 15px; }
+  .search-pill { flex-basis: 150px; min-width: 0; }
+}
+/* Tables whose row labels are sentences: let them wrap instead of running off a phone screen. */
+table.data.wrap th, table.data.wrap td { white-space: normal; height: auto; padding-block: 12px; }

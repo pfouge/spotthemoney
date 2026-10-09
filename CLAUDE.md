@@ -1399,3 +1399,52 @@ points to the Terms page instead of Creative Commons.
   page title, not the filter state.
 - Verified on the local build only: `astro check` 0 errors, `verify-guides` (20 guides),
   `verify-share` 250/250, `verify-live --all`, `verify-a11y`, `verify-filters`, 45 unit tests.
+
+### Better politician profile pages (2026-10-08) — Peter: "Better politician profile pages now"
+
+Peter said to go ahead without the usual questions; the choices below are mine and can be changed.
+
+- **Member page rebuilt** (`web/src/pages/congress/[slug].astro`). Order: header facts (chamber,
+  seat with the state spelled out, party, current term or "Left office", committee count, latest
+  trade) → answer → jump links → figure strip (now also Purchases, Sales, Stocks traded) →
+  Most-traded stocks → charts → Year by year / whose trades → How this record compares →
+  Committee assignments → Disclosed trades → Filings → Related members → Questions → Sources.
+  Members with no trades keep the header, committees and empty states and stay `noindex`.
+- **Figures live in `web/src/lib/profile.ts`** (pure, tested in `scripts/profile.test.ts`, 5 tests):
+  `memberProfile`, `peerStats` (members with ≥1 trade; medians; rank by trade count),
+  `sameState`, `sameStocks`, `seatGroups`, `memberQa`, `stateName`, `seatName`, `partyName`.
+  Every number is a count, a date or a sum of ranges as filed. No prices, no returns.
+- **Committee assignments are new data.** Migration `0015_congress_committees.sql`
+  (`congress_committees`, `congress_committee_members`; RLS on, no public policy). The
+  `congress_roster` job now also reads `committees-current.json` and
+  `committee-membership-current.json` from the same congress-legislators project (two more
+  requests a day) and replaces the stored set in one transaction. A membership file with fewer
+  than 500 seats is treated as broken and ignored; a failure in the committee pass never fails
+  the roster (`stats.committees_error`). Env overrides: `CONGRESS_COMMITTEES_URL`,
+  `CONGRESS_MEMBERSHIP_URL`. Until the job has run once after the migration, pages simply have
+  no committee section. `flagship.ts` gained `Seat`, `model.seats`, and `Role.validFrom/validTo`.
+- **Wording rules kept:** committees are "listed for context only"; the "Also on record" column
+  (company has lobbying reports or federal contracts on its own page) says it describes the
+  company, not the member; the questions never give a reason for a trade (tested). No photos.
+- **Per-member questions** carry FAQPage data; Person data gained `identifier` (Bioguide),
+  `affiliation` and `memberOf`.
+- **Guides:** new section "What does a member's page on this site show?" in
+  `how-to-read-a-congressional-trade-report`, which now covers `profile.ts` and the page file.
+  Methodology has a "Member pages" paragraph (`#member-pages`); About names committee data.
+- **New verifier:** `node scripts/verify-profile.mjs <base-url> [--sample N]` — on a sample of
+  member pages checks that totals, year rows, owner rows, stock rows, the trade table, the
+  questions and the structured data all agree, and that nothing runs off the side at 390 and
+  1100px. Run it with the other verifiers after any change to the member page or `profile.ts`.
+- **Header fix found on the way:** between 1024 and 1199px the six header links ran 32px past
+  the edge on every page (since "Guides" joined the nav). Tightened in `global.css`.
+- Stale sentence fixed: the empty-state answer for senators no longer says Senate filings are
+  not ingested.
+- Not done: committee pages (members of one committee and their trades); matching trades to
+  committee remit (deliberately not attempted); donations to a member's campaign committee
+  (committees are not linked to people in the database); former members have no committee
+  history (the source lists current seats only); insider profile pages are unchanged.
+- Verified on the local build only (real roster and committee files, synthetic trades):
+  `astro check` 0 errors, `verify-profile` 755 checks on 25 members, `verify-guides` (20 guides),
+  `verify-live --all`, `verify-a11y` 96 checks, `verify-share` 250, `verify-filters`, 66 unit
+  tests. The committee job ran locally against the real files: 230 committees, 3,895 seats,
+  531 members, none unmatched. Not verified: the job on GitHub Actions, live data.

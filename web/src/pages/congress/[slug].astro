@@ -1,5 +1,9 @@
 ---
 // Politician profile: /congress/<slug>/ — one page per member with STOCK Act PTR filings.
+// Order (2026-10-08 rebuild): who this is (seat, party, term, committees) → the one-paragraph
+// answer → headline figures → most-traded stocks → charts → year by year and whose trades →
+// comparison with other members → committees → every trade → filings → related members →
+// questions → sources. The figures come from lib/profile.ts, which is unit-tested.
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
@@ -8,10 +12,11 @@ import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
-import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDays, CONGRESS_DEADLINE_DAYS, money, sum } from "../../lib/flagship";
-import { personLd, fitDescription } from "../../lib/seo";
+import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDays, CONGRESS_DEADLINE_DAYS, money, sum, securityPath, companyPath } from "../../lib/flagship";
+import { personLd, fitDescription, SITE_URL } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizPerson from "../../components/VizPerson.astro";
+import { memberProfile, peerStats, sameState, sameStocks, seatGroups, seatTitle, memberQa, stateName, seatName, partyName } from "../../lib/profile";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -27,6 +32,7 @@ const path = personPath(p)!;
 const role = p.roles.find((r) => r.kind === "congress")!;
 const txns = p.txns;
 const year = new Date().getUTCFullYear();
+const today = new Date().toISOString().slice(0, 10);
 const thisYear = txns.filter((t) => (t.txnDate ?? "").startsWith(String(year)));
 const late = txns.filter(isLate);
 const avgLag = avg(txns.map((t) => t.lagDays));
@@ -34,10 +40,32 @@ const tickers = [...new Set(txns.map((t) => t.securityId).filter((x): x is numbe
 const title = roleLabel(p, model.companies);
 const pendingOcr = p.filings.filter((f) => f.txnCount === 0).length;
 
+const prof = memberProfile(model, p);
+const peers = peerStats(model);
+const seats = model.seats.get(p.id) ?? [];
+const groups = seatGroups(seats);
+const former = !!role.validTo && role.validTo < today;
+const chamberName = role.chamber === "senate" ? "Senate" : "House of Representatives";
+const state = stateName(role.state), seat = seatName(role.chamber, role.district), party = partyName(role.party);
+const range = `between ${money(prof.low)} and ${money(prof.high)}`;
+const stateMates = sameState(model, p);
+const stockMates = prof.trades ? sameStocks(model, p) : [];
+const qa = memberQa(p, prof, seats, { chamber: role.chamber, range, longDate: formatDate });
+const rank = peers.rankByTrades.get(p.id);
+const STOCK_ROWS = 15;
+const topStocks = prof.stocks.slice(0, STOCK_ROWS);
+const hasTies = topStocks.some((s) => s.lobbying > 0 || s.contracts > 0);
+const sourceLinks = [
+  p.bioguideId ? { label: "Biographical Directory of Congress", href: `https://bioguide.congress.gov/search/bio/${p.bioguideId}` } : null,
+  role.chamber === "senate"
+    ? { label: "Senate financial disclosures (eFD)", href: "https://efdsearch.senate.gov/search/" }
+    : { label: "House Clerk financial disclosures", href: "https://disclosures-clerk.house.gov/FinancialDisclosure" },
+].filter((x): x is { label: string; href: string } => !!x);
+
 const answer = txns.length === 0
   ? (p.filings.length > 0
       ? `${p.name} (${title}) has ${plural(p.filings.length, "periodic transaction report")} on record; ${pendingOcr ? `${num(pendingOcr)} could not be read automatically and are awaiting review` : "no transactions met the publishing bar yet"}. Source links are below.`
-      : `No stock trade disclosures by ${p.name} (${title}) are on record here yet. ${role.chamber === "senate" ? "This site does not yet ingest Senate filings; they can be searched at the Senate's own disclosure site." : "House periodic transaction reports are checked daily and appear here the day after they are filed."}`)
+      : `No stock trade disclosures by ${p.name} (${title}) are on record here yet. ${role.chamber === "senate" ? "Senate periodic transaction reports are added in batches from the Senate's own disclosure site." : "House periodic transaction reports are checked daily and appear here the day after they are filed."}`)
   : `${p.name} (${title}) disclosed ${plural(thisYear.length, "trade")} in ${year} and ${plural(txns.length, "trade")} in total on record, filed on average ${avgLag == null ? "—" : Math.round(avgLag)} days after the trade; ${plural(late.length, "was late", "were late")} against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline. Disclosed ranges add up to between ${money(sum(txns.map((t) => t.amountLow)))} and ${money(sum(txns.map((t) => t.amountHigh)))}, most often in ${tickers.slice(0, 3).map((s) => s.ticker).join(", ") || "assets without a ticker"}.`;
 
 const description = fitDescription([
@@ -49,33 +77,169 @@ const description = fitDescription([
 // navigation, out of search and out of the sitemap, until a filing lands (audit 2026-10-04:
 // 529 of 539 member pages were empty, 100 of them senators the site does not ingest yet).
 const noindex = txns.length === 0;
-const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? "United States Senator" : "United States Representative", worksFor: { name: role.chamber === "senate" ? "United States Senate" : "United States House of Representatives" }, description,
-  sameAs: p.bioguideId ? [`https://bioguide.congress.gov/search/bio/${p.bioguideId}`] : [] });
+const ld = {
+  ...personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? "United States Senator" : "United States Representative", worksFor: { name: role.chamber === "senate" ? "United States Senate" : "United States House of Representatives" }, description,
+    sameAs: p.bioguideId ? [`https://bioguide.congress.gov/search/bio/${p.bioguideId}`] : [] }),
+  ...(p.bioguideId ? { identifier: { "@type": "PropertyValue", propertyID: "Bioguide ID", value: p.bioguideId } } : {}),
+  ...(party ? { affiliation: { "@type": "Organization", name: party === "Democrat" ? "Democratic Party" : party === "Republican" ? "Republican Party" : party } } : {}),
+  ...(groups.length ? { memberOf: groups.map((g) => ({ "@type": "Organization", name: g.seat.name, ...(g.seat.url ? { url: g.seat.url } : {}) })) } : {}),
+};
+const faqLd = qa.length ? { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}${path}#questions`,
+  mainEntity: qa.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) } : null;
+
+const jump: [string, string][] = txns.length === 0 ? [] : [
+  ...(topStocks.length ? [["#stocks", "Stocks"] as [string, string]] : []),
+  ["#charts", "Charts"], ["#by-year", "By year"], ...(peers.members > 1 ? [["#compare", "Compared"] as [string, string]] : []),
+  ...(groups.length ? [["#committees", "Committees"] as [string, string]] : []),
+  ["#trades", "Trades"], ["#filings", "Filings"], ["#questions", "Questions"], ["#sources", "Sources"],
+];
 ---
 <BaseLayout title={[`${p.name} Stock Trades — STOCK Act Disclosures`, `${p.name} Stock Trades`]} description={description} noindex={noindex} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: p.name, path }]} />
   <p class="eyebrow">Congress <span class="x">/</span> {role.chamber === "senate" ? "Senate" : "House"}</p>
   <h1>{p.name}</h1>
-  <p class="lede">{title}</p>
+  <p class="lede">{title}{former && <span class="tag">Former member</span>}</p>
+
+  <dl class="facts" data-profile-facts>
+    <div><dt>Chamber</dt><dd>{chamberName}</dd></div>
+    {state && <div><dt>{role.chamber === "senate" ? "State" : "Seat"}</dt><dd>{state}{seat ? `, ${seat}` : ""}</dd></div>}
+    {party && <div><dt>Party</dt><dd>{party}</dd></div>}
+    {former
+      ? <div><dt>Left office</dt><dd>{formatDate(role.validTo!)}</dd></div>
+      : role.validFrom && <div><dt>Current term began</dt><dd>{formatDate(role.validFrom)}</dd></div>}
+    {groups.length > 0 && <div><dt>Committees</dt><dd><a href="#committees">{plural(groups.length, "committee")}</a></dd></div>}
+    {prof.lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(prof.lastTrade)}</dd></div>}
+  </dl>
 
   <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote={role.chamber === "senate" ? "Source: Senate eFD periodic transaction reports" : "Source: House Clerk periodic transaction reports"} />
   <ReviewNote show={p.underReview} what="These congressional rows" />
 
+  {jump.length > 0 && (
+    <nav class="jump" aria-label="On this page">
+      <span>On this page</span>
+      {jump.map(([href, label]) => <a href={href}>{label}</a>)}
+    </nav>
+  )}
+
   <section class="datastrip">
     <div class="cell"><div class="k">Trades on record</div><div class="v">{num(txns.length)}</div></div>
     <div class="cell"><div class="k">Trades in {year}</div><div class="v">{num(thisYear.length)}</div></div>
+    {txns.length > 0 && <div class="cell"><div class="k">Purchases</div><div class="v">{num(prof.buys)}</div></div>}
+    {txns.length > 0 && <div class="cell"><div class="k">Sales</div><div class="v">{num(prof.sells)}</div></div>}
+    {txns.length > 0 && <div class="cell"><div class="k">Stocks traded</div><div class="v">{num(prof.stocks.length)}</div></div>}
     <div class="cell"><div class="k">Avg. days to report</div><div class="v">{avgLag == null ? "—" : Math.round(avgLag)}</div></div>
     <div class="cell"><div class="k">Late filings</div><div class={`v ${late.length ? "neg" : ""}`}>{num(late.length)}</div></div>
   </section>
 
+  {topStocks.length > 0 && (
+    <section aria-labelledby="stocks">
+      <h2 id="stocks">Most-traded stocks</h2>
+      <p class="section-note">
+        Ranked by number of disclosed trades. Amounts are the sums of the ranges as filed, so the real figure lies somewhere between the two ends.
+        {prof.stocks.length > STOCK_ROWS && ` Showing ${STOCK_ROWS} of ${num(prof.stocks.length)}; the full list is in the trade table below.`}
+      </p>
+      <div class="tablewrap">
+        <table class="data" data-profile-stocks>
+          <thead><tr><th>Stock</th><th>Company</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th>Latest trade</th>{hasTies && <th>Also on record</th>}</tr></thead>
+          <tbody>
+            {topStocks.map((s) => (
+              <tr>
+                <th scope="row"><a class="mono" href={securityPath(s.sec)}>{s.sec.ticker}</a></th>
+                <td>{s.company && companyPath(s.company) ? <a href={companyPath(s.company)!}>{s.company.name}</a> : (s.company?.name ?? s.sec.name ?? "—")}</td>
+                <td class="num">{num(s.trades)}</td>
+                <td class="num">{num(s.buys)}</td>
+                <td class="num">{num(s.sells)}</td>
+                <td class="num">{money(s.low)}–{money(s.high)}</td>
+                <td class="mono">{s.last ? formatDate(s.last) : "—"}</td>
+                {hasTies && <td>{[s.lobbying > 0 ? "lobbying reports" : null, s.contracts > 0 ? "federal contracts" : null].filter(Boolean).join(", ") || "—"}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {hasTies && <p class="section-note">"Also on record" means the company's own page here lists lobbying reports or federal contract awards. It describes the company, not this member, and is no statement about why a trade was made.</p>}
+    </section>
+  )}
+
   <VizPerson person={p} />
 
-  <h2>Disclosed trades</h2>
+  {prof.years.length > 0 && (
+    <section aria-labelledby="by-year">
+      <h2 id="by-year">Year by year, and whose trades</h2>
+      <div class="split">
+        <div class="tablewrap">
+          <table class="data" data-profile-years>
+            <caption class="sr-only">Disclosed trades by year of the trade</caption>
+            <thead><tr><th>Year</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th class="num">Reported late</th></tr></thead>
+            <tbody>
+              {prof.years.map((y) => (
+                <tr><th scope="row" class="mono">{y.year}</th><td class="num">{num(y.trades)}</td><td class="num">{num(y.buys)}</td><td class="num">{num(y.sells)}</td><td class="num">{money(y.low)}–{money(y.high)}</td><td class="num">{num(y.late)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div class="tablewrap">
+          <table class="data" data-profile-owners>
+            <caption class="sr-only">Disclosed trades by owner of the asset</caption>
+            <thead><tr><th>Owner on the report</th><th class="num">Trades</th><th class="num">Share</th></tr></thead>
+            <tbody>
+              {prof.owners.map((o) => <tr><th scope="row">{o.label}</th><td class="num">{num(o.n)}</td><td class="num">{o.share}%</td></tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="section-note">
+        A member's report also covers trades by a spouse or dependent child, and jointly held assets; the owner column is what the report states.
+        Exchanges and other transactions that are neither a purchase nor a sale are counted in "Trades" only.
+        More in <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>.
+      </p>
+    </section>
+  )}
+
+  {txns.length > 0 && peers.members > 1 && (
+    <section aria-labelledby="compare" data-profile-compare>
+      <h2 id="compare">How this record compares</h2>
+      <p class="section-note">Against the {num(peers.members)} members of Congress with at least one trade on record here. Members with no reported trades are not in the comparison, and coverage starts on different dates for the House and the Senate.</p>
+      <div class="tablewrap">
+        <table class="data wrap">
+          <thead><tr><th>Measure</th><th class="num">{p.name}</th><th class="num">All members with trades</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Trades on record</th><td class="num">{num(prof.trades)}{rank ? ` (${num(rank)}${rank === 1 ? "st" : rank === 2 ? "nd" : rank === 3 ? "rd" : "th"} of ${num(peers.members)})` : ""}</td><td class="num">{peers.medianTrades == null ? "—" : `${num(Math.round(peers.medianTrades))} for the middle member`}</td></tr>
+            <tr><th scope="row">Median days from trade to report</th><td class="num">{prof.medianLag == null ? "—" : Math.round(prof.medianLag)}</td><td class="num">{peers.medianLag == null ? "—" : Math.round(peers.medianLag)}</td></tr>
+            <tr><th scope="row">Trades reported after {CONGRESS_DEADLINE_DAYS} days</th><td class="num">{prof.lateShare == null ? "—" : `${prof.lateShare}%`}</td><td class="num">{peers.lateShare == null ? "—" : `${peers.lateShare}%`}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-note">How lateness is counted: <a href="/guides/late-congressional-trade-disclosures/">late congressional trade disclosures</a>. All members: <a href="/congress/">Congress trades</a>.</p>
+    </section>
+  )}
+
+  {groups.length > 0 && (
+    <section aria-labelledby="committees" data-profile-committees>
+      <h2 id="committees">Committee assignments</h2>
+      <p class="section-note">Current assignments in the {chamberName}{groups.some((g) => g.seat.chamber === "joint") ? " and joint committees" : ""}. Listed for context only: nothing on this page connects a trade to committee business.</p>
+      <ul class="seats">
+        {groups.map((g) => (
+          <li>
+            <div class="seat-head">
+              {g.seat.url ? <a href={g.seat.url} rel="noopener" target="_blank">{g.seat.name}</a> : <span>{g.seat.name}</span>}
+              <span class={`tag ${g.seat.title ? "lead" : ""}`}>{seatTitle(g.seat)}</span>
+            </div>
+            {g.seat.jurisdiction && <p class="seat-what">{g.seat.jurisdiction}</p>}
+            {g.subs.length > 0 && <p class="seat-subs"><span>Subcommittees:</span> {g.subs.map((s) => `${s.name}${s.title ? ` (${s.title})` : ""}`).join(" · ")}</p>}
+          </li>
+        ))}
+      </ul>
+      <p class="section-note">Source: the public-domain <a href="https://github.com/unitedstates/congress-legislators" rel="noopener" target="_blank">congress-legislators</a> dataset, refreshed daily. Descriptions of a committee's remit are the dataset's own wording.</p>
+    </section>
+  )}
+
+  <h2 id="trades">Disclosed trades</h2>
   <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />
 
   <AdSlot label="Advertisement" />
 
-  <h2>Filings</h2>
+  <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
     <div class="tablewrap">
       <table class="data">
@@ -96,6 +260,40 @@ const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? 
     </div>
   )}
 
+  {(stateMates.length > 0 || stockMates.length > 0) && (
+    <section aria-labelledby="related" data-profile-related>
+      <h2 id="related">Related members</h2>
+      <div class="split even">
+        {stateMates.length > 0 && (
+          <div>
+            <h3>Also from {state ?? "the same state"}</h3>
+            <ul class="mates">
+              {stateMates.map((r) => <li><a href={r.path}>{r.person.name}</a> <span>{plural(r.trades, "trade")}</span></li>)}
+            </ul>
+          </div>
+        )}
+        {stockMates.length > 0 && (
+          <div>
+            <h3>Traded the same stocks</h3>
+            <ul class="mates">
+              {stockMates.map((r) => <li><a href={r.path}>{r.person.name}</a> <span>{r.shared!.join(", ")}</span></li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  {qa.length > 0 && (
+    <section aria-labelledby="questions" data-profile-qa>
+      <h2 id="questions">Questions about {p.name}'s trades</h2>
+      <div class="faq-list">
+        {qa.map((f) => <div class="faq-item"><h3>{f.q}</h3><p>{f.a}</p></div>)}
+      </div>
+      <p class="faq-all"><a href="/guides/congress-stock-trading-rules/">The rules on congressional stock trading</a> · <a href="/guides/what-disclosure-data-cannot-tell-you/">What disclosure data cannot tell you</a></p>
+    </section>
+  )}
+
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={txns} filings={p.filings} />
   <p>
@@ -105,7 +303,9 @@ const ld = personLd({ name: p.name, path, jobTitle: role.chamber === "senate" ? 
     a spouse's, a dependent's or joint. Filings we could not read automatically are held for human review and shown with zero rows until then.
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
   </p>
+  <p class="section-note">Official records: {sourceLinks.map((l, i) => <>{i > 0 && " · "}<a href={l.href} rel="noopener" target="_blank">{l.label}</a></>)}. Party, seat and term dates come from the congress-legislators dataset.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade by weeks and are sometimes amended. No inference about intent is made or implied.</p>
   <JsonLd data={ld} />
+  {faqLd && <JsonLd data={faqLd} />}
   {withinDays(p.lastFiledAt, 7) && <meta name="x-recent" content="1" />}
 </BaseLayout>

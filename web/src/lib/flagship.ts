@@ -54,6 +54,13 @@ export interface Role {
   companyId: number | null;
   officerTitle: string | null;
   isDirector: boolean | null;
+  /** Congress: start of the current (or last) term; the end date is set once a member has left. */
+  validFrom?: string | null; validTo?: string | null;
+}
+/** A current committee or subcommittee assignment (migration 0015; unitedstates/congress-legislators). */
+export interface Seat {
+  code: string; parent: string | null; chamber: "house" | "senate" | "joint"; name: string; url: string | null; jurisdiction: string | null;
+  side: string | null; rank: number | null; title: string | null;
 }
 export interface Person {
   id: number; name: string; slug: string | null; bioguideId: string | null; cik: string | null;
@@ -129,6 +136,8 @@ export interface Flagship {
   issueNames: Map<string, string>;     // LDA general issue code → display name (for the charts)
   /** 10-digit CIK → size figures from SEC filings (company_size, migration 0013); see lib/capband.ts. */
   companySize: Map<string, { shares: number | null; sharesAsOf: string | null; float: number | null; floatAsOf: string | null }>;
+  /** Person id → current committee and subcommittee seats. Empty until the roster job has run with migration 0015. */
+  seats: Map<number, Seat[]>;
 }
 
 const APPROVED = new Set(["auto_approved", "approved"]);
@@ -142,7 +151,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), seats: new Map(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -151,8 +160,9 @@ async function load(): Promise<Flagship> {
     const [peopleRows, roleRows, companyRows, securityRows, filingRows, txnRows, lobbyingRows, contractRows, committeeRows, donorEmployerRows, donorStateRows] = await Promise.all([
       sql<{ id: number; full_name: string; slug: string | null; bioguide_id: string | null; cik: string | null }[]>`
         select id, full_name, slug::text as slug, bioguide_id, cik from people`,
-      sql<{ person_id: number; role_kind: string; chamber: string | null; state: string | null; district: string | null; party: string | null; company_id: number | null; officer_title: string | null; is_director: boolean | null }[]>`
-        select person_id, role_kind, chamber::text as chamber, state, district, party, company_id, officer_title, is_director
+      sql<{ person_id: number; role_kind: string; chamber: string | null; state: string | null; district: string | null; party: string | null; company_id: number | null; officer_title: string | null; is_director: boolean | null; valid_from: string | null; valid_to: string | null }[]>`
+        select person_id, role_kind, chamber::text as chamber, state, district, party, company_id, officer_title, is_director,
+               valid_from::text as valid_from, valid_to::text as valid_to
           from person_roles order by id`,
       sql<{ id: number; name: string; cik: string | null; slug: string | null; primary_ticker: string | null; sector: string | null }[]>`
         select id, name, cik, slug::text as slug, primary_ticker::text as primary_ticker, sector from companies`,
@@ -220,7 +230,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), seats: new Map() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -238,7 +248,7 @@ async function load(): Promise<Flagship> {
       const p = model.people.get(r.person_id);
       if (!p) continue;
       const role: Role = { kind: r.role_kind as Role["kind"], chamber: r.chamber as Role["chamber"], state: r.state, district: r.district, party: r.party,
-        companyId: r.company_id, officerTitle: r.officer_title, isDirector: r.is_director };
+        companyId: r.company_id, officerTitle: r.officer_title, isDirector: r.is_director, validFrom: r.valid_from, validTo: r.valid_to };
       p.roles.push(role);
       if (role.kind === "congress") p.isCongress = true;
       if (role.kind === "insider") { p.isInsider = true; if (role.companyId != null) model.companies.get(role.companyId)?.insiders.push(p); }
@@ -368,6 +378,21 @@ async function load(): Promise<Flagship> {
       for (const r of sizeRows) model.companySize.set(r.cik.padStart(10, "0"), { shares: r.shares, sharesAsOf: r.shares_as_of, float: r.float, floatAsOf: r.float_as_of });
     } catch (err) {
       console.warn("[web] company size skipped:", (err as Error).message);
+    }
+
+    // Committee seats for the member pages. Optional as well: before migration 0015 is applied the
+    // table does not exist, and the pages simply leave the committee section out.
+    try {
+      const seatRows = await sql<{ person_id: number; code: string; parent_code: string | null; chamber: string; name: string; url: string | null; jurisdiction: string | null; side: string | null; rank: number | null; title: string | null }[]>`
+        select m.person_id, c.code, c.parent_code, c.chamber, c.name, c.url, c.jurisdiction, m.side, m.rank, m.title
+          from congress_committee_members m join congress_committees c on c.code = m.committee_code
+         order by m.person_id, c.name`;
+      for (const r of seatRows) {
+        const seat: Seat = { code: r.code, parent: r.parent_code, chamber: r.chamber as Seat["chamber"], name: r.name, url: r.url, jurisdiction: r.jurisdiction, side: r.side, rank: r.rank, title: r.title };
+        const xs = model.seats.get(r.person_id); if (xs) xs.push(seat); else model.seats.set(r.person_id, [seat]);
+      }
+    } catch (err) {
+      console.warn("[web] committee seats skipped:", (err as Error).message);
     }
 
     model.counts = {

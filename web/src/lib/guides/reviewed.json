@@ -62,7 +62,9 @@
     "reviewed": "2026-10-08",
     "covers": {
       "web/src/components/TxnTable.astro": "0fa1a05a633f1f10",
-      "ingest/py/senate_import.py": "b2717cb2bd239da8"
+      "ingest/py/senate_import.py": "b2717cb2bd239da8",
+      "web/src/lib/profile.ts": "849f1e073bf02b48",
+      "web/src/pages/congress/[slug].astro": "2b08ed84880247c7"
     }
   },
   "how-to-use-the-trade-map": {

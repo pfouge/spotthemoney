@@ -128,3 +128,34 @@ test("an ambiguous name matches nobody", () => {
   assert.equal(findMember(filer("Lindsey Graham", "senate"), two, TODAY), null);
   assert.equal(findMember(filer("Lindsey Graham", "senate", "SC"), two, TODAY)?.terms[0]!.state, "SC");
 });
+
+// ── committees ────────────────────────────────────────────────────────────────────────────
+import { flattenCommittees, seatRecords, type SourceCommittee } from "./congress_roster.js";
+
+const COMMITTEES: SourceCommittee[] = [
+  { type: "house", name: "House Committee on Agriculture", thomas_id: "HSAG", url: "https://agriculture.house.gov/", jurisdiction: "Farms,\n  food and forestry.",
+    subcommittees: [{ name: "Forestry and Horticulture", thomas_id: "15" }] },
+  { type: "senate", name: "Senate Committee on Finance", thomas_id: "SSFI" },
+  { type: "caucus", name: "Not a committee", thomas_id: "XXXX" },
+];
+
+test("flattenCommittees: parents first, subcommittee code is parent + id, unknown types dropped", () => {
+  const rows = flattenCommittees(COMMITTEES);
+  assert.deepEqual(rows.map((r) => r.code), ["HSAG", "SSFI", "HSAG15"]);
+  assert.equal(rows[2]!.parent_code, "HSAG");
+  assert.equal(rows[2]!.chamber, "house");
+  assert.equal(rows[0]!.jurisdiction, "Farms, food and forestry.");
+  assert.equal(rows[1]!.url, null);
+});
+
+test("seatRecords: one seat per member per committee, unknown committees and blank ids dropped", () => {
+  const codes = new Set(flattenCommittees(COMMITTEES).map((r) => r.code));
+  const seats = seatRecords({
+    HSAG: [{ bioguide: "T000467", party: "majority", rank: 1, title: "Chairman" }, { bioguide: "T000467", party: "majority", rank: 1 }, { name: "No id" }],
+    HSAG15: [{ bioguide: "C001063", party: "minority", rank: 2 }],
+    ZZZZ: [{ bioguide: "A000001" }],
+  }, codes);
+  assert.equal(seats.length, 2);
+  assert.deepEqual(seats[0], { committee_code: "HSAG", bioguide: "T000467", side: "majority", rank: 1, title: "Chairman" });
+  assert.deepEqual(seats[1], { committee_code: "HSAG15", bioguide: "C001063", side: "minority", rank: 2, title: null });
+});

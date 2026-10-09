@@ -98,6 +98,16 @@ ${table(["Column", "What it tells you"], [
   ["Amount", "A dollar range, not an exact figure."],
 ])}
 <p>On this site the same fields appear in each member's table as Security, Side, Trade date, Disclosed, Lag, Value and Flags, with a link to the source document in the last column.</p>` },
+      { id: "member-page", h: "What does a member's page on this site show?", html: `
+<p>Each member with a report on record has a page that starts with the seat, party, the date the current term began and the member's committees, followed by one paragraph that sums up the record. Below that, in order:</p>
+<ul>
+<li><strong>Most-traded stocks.</strong> The tickers that appear most often in the member's reports, with the number of purchases and sales and the sum of the ranges as filed. An "Also on record" note means the company's own page here lists lobbying reports or federal contract awards. It describes the company, not the member.</li>
+<li><strong>Year by year, and whose trades.</strong> Trades counted by the year of the trade, and by the owner the report names: the member, the spouse, a dependent child or a joint holding.</li>
+<li><strong>How this record compares.</strong> The member's number of trades, median days from trade to report and share of trades reported after ${c.congressDeadlineDays} days, beside the same figures for every member with at least one trade on record here. Members who reported no trades are not part of the comparison.</li>
+<li><strong>Committee assignments.</strong> Current committees and subcommittees, with any leadership post. They are listed for context. This site does not match trades to committee business, and a seat on a committee is not evidence about any trade.</li>
+<li><strong>Disclosed trades and filings.</strong> Every row with its link to the original report, then the list of reports themselves.</li>
+</ul>
+<p>The page ends with other members from the same state, members who traded the same tickers, and short answers to the questions people ask most about that member. All of it is counted from the same rows as the trade table.</p>` },
       { id: "dates", h: "Which date should I look at?", html: `
 <p>Both, because the gap between them is the point. The trade date tells you when the member bought or sold. The disclosed date tells you when the public could first know. A member has up to ${c.congressDeadlineDays} days, so a trade you are reading about today may be six weeks old.</p>
 <p>The Lag column on this site is the number of days between the two. When it is more than ${c.congressDeadlineDays}, the row carries a "late" flag. See ${`<a href="/guides/late-congressional-trade-disclosures/">late disclosures</a>`}.</p>
@@ -126,7 +136,7 @@ ${table(["Column", "What it tells you"], [
     ],
     related: ["congress-stock-trading-rules", "congress-trade-amount-ranges", "late-congressional-trade-disclosures", "house-and-senate-disclosure-differences"],
     seeLive: [{ label: "Congress trades, newest first", href: "/congress/" }, { label: "What is covered and what is not", href: "/methodology/#coverage" }],
-    covers: ["web/src/components/TxnTable.astro", "ingest/py/senate_import.py"],
+    covers: ["web/src/components/TxnTable.astro", "ingest/py/senate_import.py", "web/src/lib/profile.ts", "web/src/pages/congress/[slug].astro"],
     ui: [{ text: "Trade date", on: "/congress/" }, { text: "Disclosed", on: "/congress/" }, { text: "Lag", on: "/congress/" }],
     facts: ["stockAct"],
   }),
