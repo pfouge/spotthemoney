@@ -1,6 +1,7 @@
 ---
 // Home page chart deck: headline tiles, the direction charts for everyone, Congress vs insiders
 // and the leaderboards. Everything here is drawn from the same in-memory model as the page.
+import MiniHeatmap from "./MiniHeatmap.astro";
 import Viz from "./Viz.astro";
 import VizFlow from "./VizFlow.astro";
 import { getFlagship } from "../lib/flagship";
@@ -45,6 +46,7 @@ const signal = model.txns.filter((t) => t.isPublished);
           </div>
         </Viz>
       )}
+      <MiniHeatmap kind="all" />
     </div>
   </section>
 )}

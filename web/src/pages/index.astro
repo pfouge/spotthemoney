@@ -11,7 +11,6 @@ import { getFlagship, withinDays, num, money, plural, senateShown } from "../lib
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
 import VizHome from "../components/VizHome.astro";
-import MiniCharts from "../components/MiniCharts.astro";
 
 const model = await getFlagship();
 const hasSenate = senateShown(model);
@@ -74,8 +73,6 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   </section>
 
   <VizHome />
-
-  <MiniCharts kind="all" scatter={false} />
 
   <div class="datastrip strip-compact">
     <div class="cell"><div class="k">I-Bond composite</div><div class="v pos">{ibondRate}</div><div class="delta"><a href="/rates/i-bonds/">Next reset and calculator &rarr;</a></div></div>

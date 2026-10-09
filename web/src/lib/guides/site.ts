@@ -33,7 +33,7 @@ export const siteGuides: ((c: GuideCtx) => Guide)[] = [
 <p>Hover over a dot to see each group's dollars bought, sold and net. Click it to open the stock's page with every trade listed. The list beside the chart ranks the same stocks, and its "Tickers" switch changes it to a ranking of people.</p>` },
       { id: "heatmap", h: "How do I see the heatmap instead?", html: `
 <p>Use the switch directly under the chart: the scatter icon is on one side and the tile icon on the other. The heatmap draws the same filtered trades as one tile per stock. A tile's area is the dollars traded and its colour is the direction: green when buying outweighed selling, red when selling outweighed buying, stronger the more one-sided it was. In the Buying or Selling view the tiles are sized and shaded by that side alone.</p>
-<p>The switch changes the picture only. The filters, the totals above the chart and the ranked list stay as they are, and "Reset" clears the filters without changing which chart you are on. A small heatmap also sits near the foot of the home, Congress and Insiders pages under "More views".</p>
+<p>The switch changes the picture only. The filters, the totals above the chart and the ranked list stay as they are, and "Reset" clears the filters without changing which chart you are on. A small heatmap also sits beside the leaderboards on the home page, and under "More views" near the foot of the Congress and Insiders pages.</p>
 <p>On the Congress and Insiders pages the second group on the scatter is not affected by that page's filters: insider figures there are open-market trades without 10b5-1 plan trades, and Congress figures are all members. On the home page each group follows its own filters.</p>` },
       { id: "three-maps", h: "Which map am I looking at?", html: `
 <p>The home page has three views: "All insiders" combines Congress and company insiders, "Congress" shows members only and "Corporate insiders" shows Form 4 filers only. The <a href="/congress/">Congress</a> and <a href="/insiders/">Insiders</a> pages open on their own map.</p>
@@ -78,7 +78,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
     ],
     related: ["congress-trade-amount-ranges", "form-4-transaction-codes", "rule-10b5-1-trading-plans", "what-disclosure-data-cannot-tell-you"],
     seeLive: [{ label: "Trade map", href: "/" }, { label: "Methodology", href: "/methodology/" }],
-    covers: ["web/src/components/Heatmap.astro", "web/src/scripts/heatmap.ts", "web/src/scripts/scatter.ts", "web/src/lib/trade-cross.ts", "web/src/components/MiniCharts.astro", "web/src/lib/heatmap.ts", "web/src/lib/capband.ts", "web/src/scripts/share.ts"],
+    covers: ["web/src/components/Heatmap.astro", "web/src/scripts/heatmap.ts", "web/src/scripts/scatter.ts", "web/src/lib/trade-cross.ts", "web/src/components/MiniCharts.astro", "web/src/components/MiniHeatmap.astro", "web/src/components/VizHome.astro", "web/src/lib/heatmap.ts", "web/src/lib/capband.ts", "web/src/scripts/share.ts"],
     ui: [
       { text: "All insiders", on: "/" }, { text: "Corporate insiders", on: "/" },
       { text: ">7D<", on: "/" }, { text: ">30D<", on: "/" }, { text: ">90D<", on: "/" }, { text: ">1Y<", on: "/" },
@@ -86,7 +86,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
       { text: "Both chambers", on: "/" }, { text: "Any party", on: "/" }, { text: "All roles", on: "/" }, { text: "10% owners", on: "/" },
       { text: "Open-market", on: "/" }, { text: "All codes", on: "/" }, { text: "No 10b5-1 plans", on: "/" }, { text: "With plans", on: "/" },
       { text: "Market cap", on: "/" }, { text: ">Reset<", on: "/" }, { text: ">Tickers<", on: "/" }, { text: "Share this view", on: "/" },
-      { text: "Save image", on: "/" }, { text: "More views", on: "/" }, { text: "Trade heatmap", on: "/congress/" }, { text: 'role="switch"', on: "/" },
+      { text: "Save image", on: "/" }, { text: "More views", on: "/congress/" }, { text: "Trade heatmap", on: "/" }, { text: "Trade heatmap", on: "/congress/" }, { text: 'role="switch"', on: "/" },
     ],
     facts: [],
   }),

@@ -78,7 +78,9 @@
       "web/src/scripts/heatmap.ts": "8037b34db415f938",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
       "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
-      "web/src/components/MiniCharts.astro": "d46e7d205cd39c70",
+      "web/src/components/MiniCharts.astro": "4a34216ef3c2d7e2",
+      "web/src/components/MiniHeatmap.astro": "c6c11a50c9af0e2f",
+      "web/src/components/VizHome.astro": "4fa08e8cd73ef0cb",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
       "web/src/scripts/share.ts": "56931901139ea42c"

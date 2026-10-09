@@ -1,0 +1,14 @@
+---
+// The small heatmap card: the same trades as the page's main chart, drawn as tiles. Sits to the
+// right of Leaderboards on the home page (Peter, 2026-10-09) and in "More views" on /congress/
+// and /insiders/. A plain card, not a Viz figure: the map is HTML, so it has no image to save.
+import Heatmap from "./Heatmap.astro";
+interface Props { kind: "congress" | "insiders" | "all" }
+const { kind } = Astro.props;
+const what = kind === "congress" ? "congressional trades" : kind === "insiders" ? "insider trades" : "congressional and insider trades";
+---
+<div class="mini-map" id="mini-heatmap">
+  <h3>Trade heatmap</h3>
+  <p class="viz-q">The same {what} as the chart at the top of the page, drawn as tiles: size is dollars disclosed, colour is direction.</p>
+  <Heatmap kind={kind} compact={true} id={`hm-${kind}-mini`} />
+</div>

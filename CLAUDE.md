@@ -1623,3 +1623,15 @@ foot of those pages and a small heatmap joins it.
 - Verified on the local build only: `astro check` 0 errors, `verify-filters` 430 states / 0
   mismatches, `verify-a11y` 100, `verify-guides`, `verify-live --all`, `verify-links`,
   `verify-share` 250, 90 unit tests; a 1,200-dot render takes 28 ms and yields a 217 KB SVG.
+
+### Small heatmap moved beside Leaderboards on the home page (2026-10-09)
+
+- Live check of `5a8f97d`: scatter is the default on `/` (107 dots at 30 days, Buying) and
+  `/congress/` (74); the switch, Reset, the hash and the small charts all behave as built.
+  Read from the page's DOM — screenshots of the live site timed out, so the look with real
+  data has not been seen by Claude.
+- Peter: "Trade heatmap should not be under More Views, it should be to the right of
+  Leaderboards." The small heatmap card is now its own component (`MiniHeatmap.astro`), placed
+  after the Leaderboards card in `VizHome.astro`'s grid (right-hand column on desktop, below it
+  on a phone). The home page no longer has a "More views" section. `/congress/` and
+  `/insiders/` have no leaderboards and keep "More views" (small scatter + small heatmap).
