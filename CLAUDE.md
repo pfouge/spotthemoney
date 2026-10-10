@@ -1656,3 +1656,36 @@ foot of those pages and a small heatmap joins it.
   days (they are separate counts, not the map's window).
 - Verified on the local build only: `astro check` 0 errors, `verify-filters` 448 states + link
   checks / 0 mismatches, `verify-guides`, `verify-live --all`, `verify-a11y` 100, 90 unit tests.
+
+### Google Analytics 4 (2026-10-10) — Peter: "set up a GA4 property for this site"
+
+Peter's choices: its own GA account (not under pfouge.com or a client account); consent mode by
+region; keep Cloudflare Web Analytics alongside.
+
+- **GA setup (done in Chrome; Peter created the account and accepted Google's terms himself):**
+  account `spotthemoney.com` (411497541), property `spotthemoney.com` (558401102), web stream
+  `https://spotthemoney.com` (16103187243), **measurement ID `G-Y9940NMJKF`**. Account
+  data-sharing boxes all off. Time zone New York (Eastern), USD, industry Finance. Event and
+  user data retention 14 months. Google signals off; user-provided data off.
+  Enhanced measurement: page views (history-change page views OFF) and scrolls only — outbound
+  clicks, site search, forms, video and file downloads OFF.
+- **Why those switches are off — keep them off:** outbound clicks would record share links
+  (privacy page: "we do not record what you share"); file downloads would log CSV downloads per
+  visitor; history-change page views would count every trade-map filter change (it rewrites
+  the URL hash) as a page view.
+- **Code:** `web/src/components/Analytics.astro` (in `BaseLayout`; not in `EmbedLayout`, so
+  embeds carry no analytics). Consent defaults: EEA + UK + CH → `analytics_storage` denied
+  (cookieless pings, no banner); elsewhere granted unless the browser sends Global Privacy
+  Control; all ad consent types denied everywhere. Config: signals and ad personalisation off,
+  `cookie_expires` 13 months. `PUBLIC_GA_MEASUREMENT_ID` overrides the ID; empty turns GA off.
+- **Privacy page rewritten** (`POLICY_UPDATED` 2026-10-10): what GA records, the two `_ga`
+  cookies and their lifetime, the region rule, GPC honoured, 14-month retention, Google as
+  processor, opt-out add-on. About credits list both analytics tools.
+  **Before ads go on:** a Google consent message must grant ad consent in the EEA/UK/CH, and
+  the privacy page must say so first. Nothing on the site asks for consent today.
+- `verify-share` map check now uses a 30-day window (90 is the default since 2026-10-09, so it
+  never appears in a link).
+- Verified on the local build: `astro check` 0 errors, `verify-guides`, `verify-live --all`,
+  `verify-share` 250/250, `verify-a11y` 100, `verify-filters` 0 mismatches; in Chromium the page
+  queues the region default, then `granted` (or `denied` with GPC), then config with the ID;
+  embeds load no Google script. GA receiving hits is checked on the live site after the push.

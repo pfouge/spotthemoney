@@ -197,7 +197,8 @@ for (const [w, h, label] of [[1280, 900, "desktop"], [390, 844, "phone"]]) {
     await page.goto(base + "/", { waitUntil: "load" });
     await page.waitForSelector(".hm-tile, .hm-empty", { timeout: 20000 }).catch(() => {});
     const pane = page.locator(".hm-pane:not([hidden]) section, section.heatmap, .hm").first();
-    const w90 = page.locator('[data-seg="window"] button[data-v="90"], [data-ctl="window"] button[data-v="90"]').first();
+    // pick a window that is not the map's default (90 days since 2026-10-09), so it must appear in the link
+    const w90 = page.locator('[data-seg="window"] button[data-v="30"], [data-ctl="window"] button[data-v="30"]').first();
     if ((await w90.count()) > 0) { await w90.scrollIntoViewIfNeeded(); await w90.click(); await page.waitForTimeout(300); }
     const btn = page.locator('[data-share="map"]').first();
     if (ok((await btn.count()) > 0, `${where}: no "Share this view" button`)) {
@@ -205,7 +206,7 @@ for (const [w, h, label] of [[1280, 900, "desktop"], [390, 844, "phone"]]) {
       const s = await dialogState(page); const hash = await page.evaluate(() => location.hash);
       ok(s.open && s.heading === "Share this view", `${where}: dialog heading "${s.heading}"`);
       ok(s.url === s.canonical + hash, `${where}: link is "${s.url}", expected canonical + "${hash}"`);
-      ok((await w90.count()) === 0 || /w=90/.test(s.url), `${where}: the 90-day filter is not in the link (${s.url})`);
+      ok((await w90.count()) === 0 || /w=30/.test(s.url), `${where}: the 30-day filter is not in the link (${s.url})`);
       checkNets(where, s);
       await closeDialog(page);
     }

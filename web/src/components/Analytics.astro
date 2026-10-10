@@ -1,12 +1,48 @@
 ---
-// Cloudflare Web Analytics — privacy-friendly, no cookie banner needed.
-// Set PUBLIC_CF_ANALYTICS_TOKEN in the environment to enable; renders nothing otherwise.
-const token = import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN;
+// Visit counting. Two tools, both on every page except embeds (EmbedLayout has neither, so a
+// chart embedded on someone else's site sets nothing):
+//
+// 1. Cloudflare Web Analytics — cookieless totals. On when PUBLIC_CF_ANALYTICS_TOKEN is set.
+//
+// 2. Google Analytics 4 (Peter, 2026-10-10), with Google consent mode by region:
+//    - EEA, UK and Switzerland: analytics_storage denied, so GA sets no cookie and sends
+//      cookieless pings only. Nothing on the site asks for consent yet; a Google consent
+//      message (the one AdSense needs) can later grant it through the same consent mode.
+//    - Everywhere else: analytics_storage granted (first-party _ga cookies), unless the browser
+//      sends Global Privacy Control, which is treated as a refusal.
+//    - ad_storage, ad_user_data, ad_personalization: denied everywhere. Change only when ads
+//      are switched on, through the consent message, and update /privacy/ first.
+//    - Google signals and ad personalisation off in the config; cookies last 13 months.
+//    - Property settings (GA admin, not code): data retention 14 months, Google signals off.
+//    The stream's enhanced measurement must keep outbound clicks, file downloads and
+//    history-based page views OFF: otherwise share links would be recorded (privacy page:
+//    "We do not record what you share"), CSV downloads would be logged per visitor, and every
+//    trade-map filter change (it rewrites the URL hash) would count as a page view.
+//    The ID is public by design (it is in every page's HTML); PUBLIC_GA_MEASUREMENT_ID
+//    overrides it, and an empty value turns GA off.
+const cfToken = import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN;
+const GA_MEASUREMENT_ID = "G-Y9940NMJKF"; // property spotthemoney.com (558401102), account spotthemoney.com (411497541)
+const gaId: string = (import.meta.env.PUBLIC_GA_MEASUREMENT_ID ?? GA_MEASUREMENT_ID).trim();
+// EU member states + Iceland, Liechtenstein, Norway (EEA), United Kingdom, Switzerland.
+const CONSENT_REGIONS = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "GB", "CH"];
 ---
-{token && (
+{gaId && (
+  <script is:inline define:vars={{ gaId, regions: CONSENT_REGIONS }}>
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    var deny = { ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied", analytics_storage: "denied" };
+    var gpc = false; try { gpc = navigator.globalPrivacyControl === true; } catch (e) {}
+    gtag("consent", "default", Object.assign({}, deny, { region: regions }));
+    gtag("consent", "default", Object.assign({}, deny, { analytics_storage: gpc ? "denied" : "granted" }));
+    gtag("js", new Date());
+    gtag("config", gaId, { allow_google_signals: false, allow_ad_personalization_signals: false, cookie_expires: 34128000 }); // 395 days ≈ 13 months, as /privacy/ states
+  </script>
+  <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}></script>
+)}
+{cfToken && (
   <script
     defer
     src="https://static.cloudflareinsights.com/beacon.min.js"
-    data-cf-beacon={`{"token": "${token}"}`}
+    data-cf-beacon={`{"token": "${cfToken}"}`}
   ></script>
 )}
