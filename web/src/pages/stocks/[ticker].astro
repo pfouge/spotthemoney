@@ -8,6 +8,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
@@ -81,7 +82,7 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
 <BaseLayout title={[`${s.ticker} Insider Trades & Congress Trades — ${name}`, `${s.ticker} Insider & Congress Trades — ${name}`, `${s.ticker} Insider Trades & Congress Trades`]} description={description} noindex={txns.length === 0} section="Stocks">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }, { name: s.ticker, path }]} />
   <p class="eyebrow">Stock <span class="x">/</span> {s.type}</p>
-  <h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1>
+  <div class="title-row"><h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1><Follow kind="stock" entity={s.ticker} label={s.ticker} /></div>
   <dl class="facts" data-entity-facts>
     {company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     <div><dt>Security</dt><dd>{s.type === "etf" ? "ETF" : s.type === "adr" ? "ADR" : s.type.charAt(0).toUpperCase() + s.type.slice(1)}</dd></div>

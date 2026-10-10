@@ -1,0 +1,13 @@
+---
+// "Follow" button for a member, insider, stock or company page (suggestions item 4). Static
+// markup, hidden until src/scripts/account.ts knows accounts are on; the script fills in
+// "Following" for a signed-in visitor and sends a signed-out one to sign in first, then follows
+// on their return. `entity` is the same slug or ticker the page's URL uses.
+import type { Kind } from "../lib/account";
+interface Props { kind: Kind; entity: string; label: string }
+const { kind, entity, label } = Astro.props;
+---
+<button type="button" class="follow-btn" data-follow data-kind={kind} data-key={entity.toLowerCase()} data-label={label} aria-pressed="false" hidden>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+  <span data-follow-text>Follow</span>
+</button>

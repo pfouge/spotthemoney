@@ -11,6 +11,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
@@ -67,7 +68,7 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 <BaseLayout title={[`${c.name} Insider Trades, Contracts & Lobbying`, `${c.name} Insider Trades & Contracts`, `${c.name} Insider Trades`]} description={description} section="Companies">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: c.name, path }]} />
   <p class="eyebrow">Company{c.cik ? <> <span class="x">/</span> CIK {c.cik}</> : null}</p>
-  <h1>{c.name}</h1>
+  <div class="title-row"><h1>{c.name}</h1><Follow kind="company" entity={c.slug!} label={c.name} /></div>
   <dl class="facts" data-entity-facts>
     {securities.length > 0 && <div><dt>{securities.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{[...new Map(securities.map((s) => [s.ticker, s])).values()].map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}</dd></div>}
     {size && <div><dt>Size, estimated from filings</dt><dd>{size.label} ({size.range})</dd></div>}

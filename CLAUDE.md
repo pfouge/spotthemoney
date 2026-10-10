@@ -1689,3 +1689,62 @@ region; keep Cloudflare Web Analytics alongside.
   `verify-share` 250/250, `verify-a11y` 100, `verify-filters` 0 mismatches; in Chromium the page
   queues the region default, then `granted` (or `denied` with GPC), then config with the ID;
   embeds load no Google script. GA receiving hits is checked on the live site after the push.
+
+### Accounts and watchlists with WorkOS (2026-10-10) — Peter: "start item 4 (watchlists and alerts) on spotthemoney with WorkOS"
+
+Peter's choices: one WorkOS team (`pfouge.com`) for all his sites, one project per site
+(`spotthemoney`); sign-in by emailed code plus Google, Microsoft and GitHub (no Apple); alerts
+on the site now, email alerts with item 5; lists private until shared with a link.
+
+- **WorkOS (set up in Chrome; Peter created the team and added billing himself):** project
+  `spotthemoney`, Production environment `environment_01M4KVTRT7PSY6KV0GBQ3ZQQQ0`, application
+  `spotthemoney.com`, **client ID `client_01M4KVTS09DN5NFTRKV5GH7ZCG`** (public). Magic Auth on
+  (email code). Redirect URI `https://spotthemoney.com/auth/callback`; initiate-login URI
+  `/auth/login`; sign-out URI `https://spotthemoney.com/`. Sessions: 365-day max, 5-minute access
+  token, **30-day inactivity** (was 2). JWT template `{"role": "authenticated"}` (Supabase needs
+  it). Google / Microsoft / GitHub: not yet enabled — each needs an OAuth app at that company and
+  its client ID + secret pasted into WorkOS → Authentication → Providers (Peter pastes secrets).
+- **Supabase:** Third-party auth → WorkOS, issuer
+  `https://api.workos.com/user_management/client_01M4KVTS09DN5NFTRKV5GH7ZCG` (enabled). The Worker
+  uses the publishable key `sb_publishable_…` (public by design; in `web/wrangler.jsonc` vars).
+- **Database:** `db/migrations/0017_accounts_watchlists.sql` replaces the unused 0002 account
+  tables (refuses if any has rows) with `accounts` (WorkOS user id, text), `watchlists`,
+  `watchlist_items` (kind member/insider/stock/company + the page's slug or ticker). RLS keys on
+  `app_user_id()` = `auth.jwt()->>'sub'`. All access goes through functions called by PostgREST
+  as the visitor: `my_state`, `account_touch`, `follow`, `list_save`, `item_move`, `watch_feed`
+  (+`watch_feed_rows`), `mark_feed_seen`, `list_copy`, `account_delete`; `public_watchlist` is
+  the only definer-rights function and returns no account id or email. Limits: 20 lists, 500 items.
+- **Worker routes (first on-demand routes on the site):** `/auth/login` (state cookie, canonical
+  host), `/auth/callback`, `/auth/logout` (POST only), `/api/[action]` (me, feed, follow, list,
+  move, copy, seen, delete-account, public). Code: `web/src/lib/account.ts` (pure),
+  `web/src/lib/server/session.ts` (WorkOS SDK `@workos-inc/node` 10.14.0, sealed session cookie,
+  refresh, `rpc()`). POSTs must carry the request's own Origin. Responses `private, no-store`.
+- **Build output moved:** with on-demand routes the adapter writes `web/dist/server/wrangler.json`
+  (Worker + assets) instead of `dist/client/wrangler.json`. `deploy.yml` must deploy whichever
+  exists — new copy in `_workflows-2026-10-10/deploy.yml` (Peter copies it into
+  `.github/workflows/`; the bridge cannot write there). Static pages are still served as assets
+  without running the Worker. `postgres` must never be imported by an on-demand route, and an
+  on-demand page may not use `BaseLayout` (its ticker tape reads the database) — the watchlist
+  pages are static shells filled by `src/scripts/watchlist.ts`.
+- **Pages:** `Follow.astro` beside the h1 on member, insider, stock and company pages; header
+  bookmark link `#acctBtn` with a new-trades badge; `/watchlist/` and `/watchlist/shared/#<slug>`
+  (noindex). Anonymous visitors never call the Worker: `src/scripts/account.ts` asks `/api/me`
+  only when the readable `stm_signed_in` cookie exists. Master switch `ACCOUNTS_ENABLED` in
+  `web/src/lib/account.ts` — **false in the first push** (secrets cannot be added to an
+  assets-only Worker), flipped to true once `WORKOS_API_KEY` and `WORKOS_COOKIE_PASSWORD` are
+  set as Worker secrets.
+- **Words:** privacy page `#accounts` (what an account keeps, WorkOS, three cookies, session
+  storage, shared lists, deletion, 7-day backups, no emails yet); Terms `#accounts` (date
+  2026-10-10); About credits WorkOS; new guide `how-to-follow-members-insiders-and-stocks`;
+  member and Form 4 guides mention the Follow button.
+- **Verifiers:** `node scripts/verify-accounts-db.mjs <local-db>` (35 checks: anon refused,
+  isolation between two users, sharing, copy, limits, unpublished rows never in the feed,
+  delete); `node scripts/verify-accounts-e2e.mjs <local-db>` (36 checks: the real Worker under
+  `wrangler dev --local-upstream` against `scripts/accounts-fakes.mjs` — fake WorkOS with RS256
+  tokens and fake PostgREST over local Postgres — sign-in, follow-after-sign-in, cookies,
+  badge, feed, share, copy, cross-user refusal, token refresh, sign-out, delete); unit tests
+  `scripts/account.test.ts`. The e2e run is flaky in this sandbox (wrangler dev's proxy drops
+  connections now and then; a stray workerd on port 8787 also caused false 403s) — it passed
+  36/36 on clean runs, with `ACCOUNTS_ENABLED` true.
+- Verified locally: `astro check` 0 errors, the two account verifiers, `verify-guides` (21),
+  `verify-live --all`, `verify-a11y` 104, `verify-share` 250, `verify-filters`, 96 unit tests.

@@ -10,6 +10,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
@@ -100,7 +101,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
 <BaseLayout title={[`${p.name} Stock Trades — STOCK Act Disclosures`, `${p.name} Stock Trades`]} description={description} noindex={noindex} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: p.name, path }]} />
   <p class="eyebrow">Congress <span class="x">/</span> {role.chamber === "senate" ? "Senate" : "House"}</p>
-  <h1>{p.name}</h1>
+  <div class="title-row"><h1>{p.name}</h1><Follow kind="member" entity={p.slug!} label={p.name} /></div>
   <p class="lede">{title}{former && <span class="tag">Former member</span>}</p>
 
   <dl class="facts" data-profile-facts>

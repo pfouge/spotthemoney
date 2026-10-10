@@ -95,6 +95,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
           <a href="/rates/" aria-current={current("/rates/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19l5-6 4 3 7-9M15 7h5v5"/></svg><span>Rates</span><i class="chev" aria-hidden="true">›</i></a>
           <a href="/guides/" aria-current={current("/guides/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21a2 2 0 0 0 2 2h13v-4M8 7h7M8 11h5"/></svg><span>Guides</span><i class="chev" aria-hidden="true">›</i></a>
         </nav>
+        <a class="icon-btn acct-btn" id="acctBtn" href="/watchlist/" aria-label="Watchlist" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg><span class="acct-badge" hidden></span></a>
         <button class="icon-btn theme-btn" id="themeBtn" type="button" aria-label="Switch color theme">
           <span class="if-light"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span><span class="if-dark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg></span>
         </button>
@@ -196,6 +197,9 @@ const current = (href: string) => (path === href ? "page" : undefined);
     </script>
     <script>
       import "../scripts/share";
+    </script>
+    <script>
+      import "../scripts/account";
     </script>
   </body>
 </html>

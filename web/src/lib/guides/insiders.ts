@@ -9,7 +9,7 @@ const FORM4 = "https://www.sec.gov/files/form4data.pdf";
 export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "what-is-form-4", group: "insiders", updated: "2026-10-09",
+    slug: "what-is-form-4", group: "insiders", updated: "2026-10-10",
     title: "What is SEC Form 4?",
     seoTitle: ["What Is SEC Form 4? Insider Trading Filings Explained", "What Is SEC Form 4? Insider Filings Explained"],
     description: ["Form 4 is the SEC filing a company's officers, directors and 10% owners must make within two business days of trading its stock. What it shows and how to read it.", "Form 4 is the SEC filing company insiders make within two business days of trading their company's stock. What it shows."],
@@ -52,7 +52,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
 <li><strong>A company's page</strong> adds federal contracts and lobbying filings under the company's exact name, the members of Congress who traded its stock, and related companies.</li>
 </ul>
-<p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more.</p>` },
+<p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more. A <strong>Follow</strong> button beside the name on all three adds the page to your free watchlist; see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}.</p>` },
     ],
     faqs: [
       { q: "What is a Form 4 filing?", a: "Form 4 is the SEC filing that a company's officers, directors and owners of more than 10% of its stock must make within two business days of trading that stock. It shows the date, shares, price and holdings afterwards.", on: ["insiders", "stocks"] },

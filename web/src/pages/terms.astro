@@ -9,7 +9,7 @@ import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import Answer from "../components/Answer.astro";
 
-const TERMS_UPDATED = "2026-10-09";
+const TERMS_UPDATED = "2026-10-10";
 const description = "The terms for using Spot the Money: what the site is, what it is not (investment advice), how its data may be reused, and the limits of our responsibility.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/terms/#page`, name: "Terms of use", url: `${SITE_URL}/terms/`, description, dateModified: TERMS_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
@@ -35,6 +35,9 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
 
   <h2 id="use">Acceptable use</h2>
   <p>You may browse, search, link to and share the site freely. Please do not: interfere with the site or try to get around its security; crawl it at a rate that strains it (an automated reader should identify itself and keep to a modest pace); present the site's pages as your own service; or use anything here to break the law, to harass anyone, or to mislead people about what a record shows. If you need the data in volume, write to us first. We may limit or block access that breaks these rules.</p>
+
+  <h2 id="accounts">Accounts</h2>
+  <p>Accounts are optional and free, for one person each. Keep your email account and any account you sign in with secure: whoever can sign in as you can change your watchlists. Do not use a shared list's name to impersonate anyone or to publish anything unlawful or abusive; we may turn sharing off for such a list or close an account that breaks these terms. You can delete your account at any time from your watchlist page. A watchlist shows public filings for the pages you follow; it is not advice and not a recommendation to trade. How account data is handled is in the <a href="/privacy/#accounts">Privacy policy</a>.</p>
 
   <h2 id="reuse">Reusing the data</h2>
   <p>The underlying records are public. You are welcome to quote figures, tables and charts from this site, including in news reports, research and commentary, with a credit to spotthemoney.com and a link to the page you used. Embeddable charts may be placed on other sites unaltered, with their source line intact.</p>

@@ -3,14 +3,24 @@
 // dist/client/wrangler.json (assets directory, plus the Worker entrypoint once any route
 // opts out of prerendering) — deploy with:
 //   npx wrangler deploy --config dist/client/wrangler.json      (from web/)
-// as .github/workflows/deploy.yml does. Runtime secrets (none while the site is fully static)
-// go in via `wrangler secret put`, never in this file. Docs: docs/01-architecture.md §3.
+// as .github/workflows/deploy.yml does. Runtime secrets go in via `wrangler secret put`, never
+// in this file. Docs: docs/01-architecture.md §3.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "spotthemoney",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Public settings for the sign-in and watchlist routes (src/lib/server/session.ts). None of
+  // these is secret: the client id and the publishable key are sent to browsers by design.
+  // The secrets WORKOS_API_KEY and WORKOS_COOKIE_PASSWORD are set on the Worker with
+  // `npx wrangler secret put` and survive deploys.
+  "vars": {
+    "WORKOS_CLIENT_ID": "client_01M4KVTS09DN5NFTRKV5GH7ZCG",
+    "SUPABASE_URL": "https://phjjhazaiejrykmbyrpy.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_t0cGSKZ4QnTdAAlAb9r1KA_xXS1vbBw",
+    "SITE_URL": "https://spotthemoney.com"
+  },
   "routes": [
     { "pattern": "spotthemoney.com", "custom_domain": true },
     { "pattern": "www.spotthemoney.com", "custom_domain": true }

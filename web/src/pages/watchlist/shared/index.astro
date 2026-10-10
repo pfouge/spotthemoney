@@ -1,0 +1,18 @@
+---
+// /watchlist/shared/#<slug> — a list someone chose to share (2026-10-10, item 4). The slug is
+// in the hash so it never reaches a server log or an analytics page address; the script asks
+// /api/public for the list. noindex: these are visitors' lists, not site content.
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import Crumbs from "../../../components/Crumbs.astro";
+---
+<BaseLayout title="Shared watchlist | Spot the Money" description="A watchlist of members of Congress, insiders, stocks and companies shared by a Spot the Money visitor." noindex={true} section="Watchlist">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Watchlist", path: "/watchlist/" }, { name: "Shared", path: "/watchlist/shared/" }]} />
+  <h1>Shared watchlist</h1>
+  <div data-watchlist-shared>
+    <div data-wl-shared><p class="note">Loading…</p></div>
+    <noscript><p class="note">Shared watchlists need JavaScript.</p></noscript>
+  </div>
+  <script>
+    import "../../../scripts/watchlist";
+  </script>
+</BaseLayout>

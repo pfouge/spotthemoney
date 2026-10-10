@@ -229,4 +229,51 @@ ${table(["Style", "Example"], examples)}
       facts: [],
     };
   },
+
+  // ───────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "how-to-follow-members-insiders-and-stocks", group: "site", updated: "2026-10-10",
+    title: "How to follow members, insiders and stocks",
+    seoTitle: ["How to Follow Congress, Insider and Stock Trades: Watchlists", "How Spot the Money Watchlists Work"],
+    description: ["Follow a member of Congress, a corporate insider, a stock or a company and see every newly disclosed trade on one watchlist page. How it works, what it costs (nothing) and what it keeps.", "Free watchlists for members of Congress, insiders, stocks and companies, and how new trades show up."],
+    answer: "Press Follow on any member, insider, stock or company page and sign in with an emailed code, Google, Microsoft or GitHub; the account is free. Your watchlist page then lists every trade disclosed by what you follow, newest first, with the ones that arrived since your last visit marked New.",
+    keyFacts: [
+      "Follow buttons are on every member, insider, stock and company page.",
+      "An account is free and needs only an email address; there is no password.",
+      `A trade appears when it is disclosed: up to ${c.congressDeadlineDays} days after the trade for Congress, usually within days for insiders.`,
+      "Lists are private until you share one; a shared list is visible to anyone with its link.",
+      "You can delete your account and everything in it from the watchlist page.",
+    ],
+    sections: [
+      { id: "follow", h: "How do I follow someone?", html: `
+<p>Open the page of the member of Congress, corporate insider, stock or company you want to keep an eye on and press <strong>Follow</strong> beside the name. If you are not signed in, the site takes you to the sign-in page and brings you back to the same page, where the follow is completed for you. Press the button again (it then reads <strong>Following</strong>) to stop following.</p>
+<p>Following a stock covers every trade in that ticker, by members of Congress and by insiders. Following a company covers all of its listed share classes. Following a person covers every trade they report, whatever the stock. Use the search box or the <a href="/congress/">Congress</a>, <a href="/insiders/">Insiders</a> and <a href="/stocks/">Stocks</a> lists to find a page.</p>` },
+      { id: "watchlist", h: "What does the watchlist page show?", html: `
+<p><a href="/watchlist/">Your watchlist</a> starts with the trades disclosed by what you follow since you last opened it, each marked <strong>New</strong>, then the earlier trades from the last twelve months. Each row gives the date the trade was disclosed, who filed it, what it was, the stock, its size as filed and a link to the original filing. The bookmark icon at the top of every page shows how many new trades are waiting.</p>
+<p>Sizes are shown as filed: a dollar range for Congress (see ${`<a href="/guides/congress-trade-amount-ranges/">amount ranges</a>`}) and shares at a price for insiders. The stock and person pages apply the site's rules for options and joint filings; the watchlist does not repeat them, so check the full page before adding up figures.</p>
+<p>A trade appears when it becomes public, not when it happened. Members of Congress have up to ${c.congressDeadlineDays} days to report, so a trade can arrive weeks after its date; insider Form 4 filings are due within two business days. See ${`<a href="/guides/late-congressional-trade-disclosures/">late disclosures</a>`}.</p>` },
+      { id: "lists", h: "Can I keep more than one list?", html: `
+<p>Yes. Everything you follow starts on <strong>My watchlist</strong>. On the watchlist page you can create more lists (up to 20, each with up to 500 pages), rename them, move a page from one list to another and delete lists you no longer need. Your first list cannot be deleted. The trades section always covers every list together.</p>` },
+      { id: "share", h: "How do I share a list?", html: `
+<p>Press <strong>Share with a link</strong> on a list. Anyone with the link can see the list's name, the pages on it and their trades disclosed in the last 90 days; they never see your email address. Someone who is signed in can press <strong>Copy to my watchlist</strong> to start their own copy. Press <strong>Stop sharing</strong> and the link stops working at once. A shared list shows what someone chose to follow; it is not a recommendation.</p>` },
+      { id: "account", h: "What does an account keep, and how do I delete it?", html: `
+<p>Your email address, the pages you follow, your lists and when you last opened the watchlist page, so the site can mark what is new. Sign-in is handled by WorkOS; the site never sees a password. The details are in the <a href="/privacy/#accounts">privacy policy</a>. To leave, press <strong>Delete my account</strong> on the watchlist page: the account, its lists and the sign-in are removed straight away.</p>
+<p>Email alerts are not offered yet. When they are, they will be something you switch on yourself, with an unsubscribe link in every message.</p>` },
+    ],
+    faqs: [
+      { q: "Does a Spot the Money account cost anything?", a: "No. Accounts and watchlists are free, and the site never asks for a payment." },
+      { q: "How quickly does a new trade show up on my watchlist?", a: `As soon as the site has loaded the filing, usually within a day of it becoming public. Members of Congress can report up to ${c.congressDeadlineDays} days after a trade, so the trade itself may be weeks old.` },
+      { q: "Can other people see what I follow?", a: "Only if you share a list, and then only that list: its name, the pages on it and their recent trades. Your email address is never shown." },
+      { q: "Will I get email alerts?", a: "Not yet. New trades appear on your watchlist page and as a count on the bookmark icon. Email alerts, when added, will be opt-in." },
+    ],
+    sources: [
+      { name: "SEC: Form 4 filing deadline (Exchange Act Section 16(a))", url: "https://www.sec.gov/files/form4data.pdf" },
+      { name: "5 U.S.C. § 13105, filing of congressional reports", url: "https://www.law.cornell.edu/uscode/text/5/13105" },
+    ],
+    related: ["how-to-use-the-trade-map", "late-congressional-trade-disclosures", "congress-trade-amount-ranges", "what-disclosure-data-cannot-tell-you"],
+    seeLive: [{ label: "Your watchlist", href: "/watchlist/" }, { label: "Privacy policy: accounts", href: "/privacy/#accounts" }],
+    covers: ["db/migrations/0017_accounts_watchlists.sql", "web/src/lib/account.ts", "web/src/scripts/account.ts", "web/src/scripts/watchlist.ts", "web/src/components/Follow.astro"],
+    ui: [{ text: "data-follow-text>Follow<", on: "/stocks/aapl/" }, { text: "Your watchlist", on: "/watchlist/" }, { text: "Sign in or create a free account", on: "/watchlist/" }],
+    facts: ["stockAct"],
+  }),
 ];

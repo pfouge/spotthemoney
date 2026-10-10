@@ -9,6 +9,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
@@ -72,7 +73,7 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 <BaseLayout title={[...(company ? [`${p.name} Insider Trades at ${company.name}`] : []), ...(primary ? [`${p.name} Insider Trades (${primary.ticker})`] : []), `${p.name} Insider Trades`]} description={description} noindex={txns.length === 0} section="Insiders">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Insiders", path: "/insiders/" }, { name: p.name, path }]} />
   <p class="eyebrow">Insider <span class="x">/</span> {company ? (cpath ? <a href={cpath}>{company.name}</a> : company.name) : "SEC Form 4 filer"}</p>
-  <h1>{p.name}</h1>
+  <div class="title-row"><h1>{p.name}</h1><Follow kind="insider" entity={p.slug!} label={p.name} /></div>
   <p class="lede">{title}</p>
 
   <dl class="facts" data-entity-facts>

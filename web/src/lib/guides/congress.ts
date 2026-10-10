@@ -72,7 +72,7 @@ export const congressGuides: ((c: GuideCtx) => Guide)[] = [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: U,
+    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-10-10",
     title: "How to read a congressional trade report",
     seoTitle: ["How to Read a Congressional Stock Trade Report (PTR)", "How to Read a Congressional Trade Report"],
     description: ["A periodic transaction report lists the asset, owner, type, trade date, filing date and a dollar range. What each column means, with the House and Senate codes.", "What each column of a congressional trade report means: owner, type, dates and the dollar range, with House and Senate codes."],
@@ -99,7 +99,7 @@ ${table(["Column", "What it tells you"], [
 ])}
 <p>On this site the same fields appear in each member's table as Security, Side, Trade date, Disclosed, Lag, Value and Flags, with a link to the source document in the last column.</p>` },
       { id: "member-page", h: "What does a member's page on this site show?", html: `
-<p>Each member with a report on record has a page that starts with the seat, party, the date the current term began and the member's committees, followed by one paragraph that sums up the record. Below that, in order:</p>
+<p>Each member with a report on record has a page that starts with the seat, party, the date the current term began and the member's committees, followed by one paragraph that sums up the record. The <strong>Follow</strong> button beside the name adds the member to your free watchlist, which then shows each new report as it is disclosed (see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}). Below that, in order:</p>
 <ul>
 <li><strong>Most-traded stocks.</strong> The tickers that appear most often in the member's reports, with the number of purchases and sales and the sum of the ranges as filed. An "Also on record" note means the company's own page here lists lobbying reports or federal contract awards. It describes the company, not the member.</li>
 <li><strong>Year by year, and whose trades.</strong> Trades counted by the year of the trade, and by the owner the report names: the member, the spouse, a dependent child or a joint holding.</li>

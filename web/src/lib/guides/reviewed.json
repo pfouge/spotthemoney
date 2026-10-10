@@ -50,25 +50,35 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-10-10",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "56931901139ea42c",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
-      "web/src/pages/terms.astro": "a484ae29c77788c9",
+      "web/src/pages/terms.astro": "2b180221869230af",
       "web/src/lib/downloads.ts": "0e86fbe2a0ff27fe",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "670a16ece37ab883",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"
     }
   },
+  "how-to-follow-members-insiders-and-stocks": {
+    "reviewed": "2026-10-10",
+    "covers": {
+      "db/migrations/0017_accounts_watchlists.sql": "4a5e6b6c524d3c41",
+      "web/src/lib/account.ts": "f0618da1a8f24fc7",
+      "web/src/scripts/account.ts": "96a69b4a988020d6",
+      "web/src/scripts/watchlist.ts": "80d3634d2a26cc0c",
+      "web/src/components/Follow.astro": "08c98b2cdae7c3b9"
+    }
+  },
   "how-to-read-a-congressional-trade-report": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-10-10",
     "covers": {
       "web/src/components/TxnTable.astro": "1854b63be4ae16ae",
       "ingest/py/senate_import.py": "b2717cb2bd239da8",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "8eca50cc199c21ca"
+      "web/src/pages/congress/[slug].astro": "5ed585a6b83326aa"
     }
   },
   "how-to-use-the-trade-map": {
@@ -145,24 +155,24 @@
     }
   },
   "what-disclosure-data-cannot-tell-you": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-10-10",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "shared/src/tradevalue.ts": "fa250c11636cb867",
       "web/src/lib/coverage.ts": "848dc9f0b01c472b",
-      "web/src/pages/terms.astro": "a484ae29c77788c9"
+      "web/src/pages/terms.astro": "2b180221869230af"
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-10-10",
     "covers": {
       "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11",
       "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
       "web/src/lib/entity.ts": "4770bf63df3f89d9",
       "web/src/lib/links.ts": "5e32b90da3079fca",
-      "web/src/pages/stocks/[ticker].astro": "c15ff7589ce47a54",
-      "web/src/pages/insiders/[slug].astro": "b25f155dcf01d2e0",
-      "web/src/pages/companies/[slug].astro": "d6279c8ec7930da6"
+      "web/src/pages/stocks/[ticker].astro": "05ce3711650934fc",
+      "web/src/pages/insiders/[slug].astro": "d42cdea9c140c330",
+      "web/src/pages/companies/[slug].astro": "f8e2d37804fd84ef"
     }
   }
 }
