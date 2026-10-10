@@ -236,7 +236,7 @@ ${table(["Style", "Example"], examples)}
     title: "How to follow members, insiders and stocks",
     seoTitle: ["How to Follow Congress, Insider and Stock Trades: Watchlists", "How Spot the Money Watchlists Work"],
     description: ["Follow a member of Congress, a corporate insider, a stock or a company and see every newly disclosed trade on one watchlist page. How it works, what it costs (nothing) and what it keeps.", "Free watchlists for members of Congress, insiders, stocks and companies, and how new trades show up."],
-    answer: "Press Follow on any member, insider, stock or company page and sign in with an emailed code, Google, Microsoft or GitHub; the account is free. Your watchlist page then lists every trade disclosed by what you follow, newest first, with the ones that arrived since your last visit marked New.",
+    answer: "Press Follow on any member, insider, stock or company page and sign in with an emailed code or a Google or GitHub account; the account is free. Your watchlist page then lists every trade disclosed by what you follow, newest first, with the ones that arrived since your last visit marked New.",
     keyFacts: [
       "Follow buttons are on every member, insider, stock and company page.",
       "An account is free and needs only an email address; there is no password.",

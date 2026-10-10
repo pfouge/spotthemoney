@@ -152,6 +152,27 @@ try {
   const refreshed = (await ctxC.cookies(BASE)).find((c) => c.name === "stm_session");
   ok(!!refreshed, "refresh keeps a session cookie");
 
+  // two requests that both find the access token expired: WorkOS refresh tokens are single-use,
+  // so one refresh fails. That failure must not sign the visitor out (live bug, 2026-10-10).
+  fakes.setAccessTtl(3);
+  fakes.setNextUser(A);
+  const ctxD = await browser.newContext(); const pd = await ctxD.newPage();
+  await pd.goto(`${BASE}/auth/login?return=/watchlist/`, { waitUntil: "networkidle" });
+  fakes.setAccessTtl(300);
+  await sleep(4500);
+  const pair = await pd.evaluate(async () => Promise.all([fetch("/api/me").then((r) => r.json()), fetch("/api/me").then((r) => r.json())]));
+  ok(pair.some((m) => m.signedIn === true), "one of two simultaneous refreshes succeeds", JSON.stringify(pair).slice(0, 160));
+  const afterPair = await pd.evaluate(async () => (await fetch("/api/me")).json());
+  ok(afterPair.signedIn === true, "a failed simultaneous refresh does not sign the visitor out", JSON.stringify(afterPair).slice(0, 120));
+  ok((await ctxD.cookies(BASE)).some((c) => c.name === "stm_signed_in" && c.value === "1"), "the signed-in flag cookie survives");
+
+  // the watchlist page asks /api/me once on load (header script and page share one request)
+  const meCalls = [];
+  pd.on("request", (r) => { if (r.url().endsWith("/api/me")) meCalls.push(r.url()); });
+  await pd.goto(`${BASE}/watchlist/`, { waitUntil: "networkidle" });
+  ok(meCalls.length === 1, "the watchlist page makes one /api/me request", meCalls.length);
+  await ctxD.close();
+
   // unshare: the old link stops working
   await page.goto(`${BASE}/watchlist/`, { waitUntil: "networkidle" });
   await page.locator("button", { hasText: "Stop sharing" }).first().click();

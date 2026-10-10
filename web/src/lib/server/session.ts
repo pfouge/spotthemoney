@@ -57,24 +57,32 @@ export interface Session {
 
 /**
  * The visitor's session, or null. An expired access token is refreshed once with the refresh
- * token inside the cookie; a cookie that cannot be opened or refreshed means signed out.
+ * token inside the cookie.
+ *
+ * Only a cookie that cannot be opened at all is cleared here. A refresh that fails leaves the
+ * cookies alone: WorkOS refresh tokens are single-use, so when two requests from one page
+ * refresh at the same moment, one wins and sets a new cookie and the other fails — clearing
+ * cookies on that failure signed people out a few minutes after they signed in (2026-10-10).
+ * A session that has really ended stays signed out without it, and /auth/logout clears it.
  */
 export async function getSession(request: Request): Promise<{ session: Session | null; setCookies: string[] }> {
   const sealed = readCookie(request.headers.get("cookie"), COOKIE);
-  if (!sealed || !configured()) return { session: null, setCookies: sealed ? signedOutCookies() : [] };
+  if (!sealed || !configured()) return { session: null, setCookies: [] };
   try {
     const s = workos().userManagement.loadSealedSession({ sessionData: sealed, cookiePassword: cookiePassword() });
     const auth = await s.authenticate();
     if (auth.authenticated) {
       return { session: { userId: auth.user.id, email: auth.user.email ?? null, sessionId: auth.sessionId, accessToken: auth.accessToken, setCookies: [] }, setCookies: [] };
     }
+    if (auth.reason === "invalid_session_cookie") return { session: null, setCookies: signedOutCookies() };
     const r = await s.refresh({ cookiePassword: cookiePassword() });
     if (r.authenticated && r.sealedSession && r.session) {
       const set = sessionCookies(r.sealedSession);
       return { session: { userId: r.user.id, email: r.user.email ?? null, sessionId: r.sessionId, accessToken: r.session.accessToken, setCookies: set }, setCookies: set };
     }
-  } catch { /* unreadable cookie: treated as signed out */ }
-  return { session: null, setCookies: signedOutCookies() };
+    if (!r.authenticated && r.reason === "invalid_session_cookie") return { session: null, setCookies: signedOutCookies() };
+  } catch { /* network or WorkOS error: signed out for this request only */ }
+  return { session: null, setCookies: [] };
 }
 
 export class DbError extends Error {

@@ -1753,3 +1753,20 @@ on the site now, email alerts with item 5; lists private until shared with a lin
   signed-out POST → 401. `ACCOUNTS_ENABLED` then set to true.
 - Verified locally: `astro check` 0 errors, the two account verifiers, `verify-guides` (21),
   `verify-live --all`, `verify-a11y` 104, `verify-share` 250, `verify-filters`, 96 unit tests.
+- **Sign-in providers (later the same day):** GitHub (OAuth app "Spot the Money" under
+  github.com/pfouge, client `Ov23liwLFLJbqNTZKX9Z`) and Google (Cloud project `spotthemoney-511223`
+  in the pfouge.com organisation, owner peter@pfouge.com; consent screen External, **In
+  production**, no logo so no Google review; client `881333258431-iseqkn648lf9hfmcnc5734rabfpn0mud`)
+  are enabled in WorkOS Production. "Return OAuth tokens" stays OFF for every provider. Google's
+  screen says "continue to workos.com" until a WorkOS custom auth domain exists. **Microsoft is not
+  set up:** it needs an Entra directory Peter owns (peter@pfouge.com had none; never register it
+  in a work account's directory). An unused Google project `spotthemoney-511222` exists under pfouge@gmail.com.
+- **Sign-out bug fixed (same push):** WorkOS refresh tokens are single-use. The watchlist page
+  asked `/api/me` twice at once (header script + page), both refreshed an expired 5-minute token,
+  one failed, and the failure cleared the cookies. Now `loadMe()` shares an in-flight request and
+  `getSession()` clears cookies only when the cookie itself is unreadable; `verify-accounts-e2e`
+  checks both (40 checks). `/auth/callback` with no code and no state now says "Sign-in did not
+  complete": in Peter's main Chrome profile AuthKit returns to the callback with nothing (seen
+  in Worker logs; a clean browser works) — cause not found, likely that profile's WorkOS state.
+- Cloudflare Workers observability (Logs) works on the free plan: dashboard → spotthemoney →
+  Observability shows every Worker request with its full URL. Bots probe `/api/.env` etc. daily (404s).

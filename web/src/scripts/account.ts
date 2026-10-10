@@ -15,15 +15,22 @@ export interface Me {
 const INTENT = "stm_follow_intent";
 const signedInHint = (): boolean => document.cookie.split(";").some((c) => c.trim() === `${SIGNED_IN}=1`);
 
+// One /api/me request at a time per page. Two at once (the header script and the watchlist
+// page both asking on load) could both refresh an expired session with the same single-use
+// refresh token; see getSession() in src/lib/server/session.ts. `force` re-asks only once the
+// request in flight, if any, has finished.
 let mePromise: Promise<Me> | null = null;
+let meInFlight = false;
 export function loadMe(force = false): Promise<Me> {
   if (!ACCOUNTS_ENABLED) return Promise.resolve({ signedIn: false, available: false });
-  if (!force && mePromise) return mePromise;
-  mePromise = signedInHint()
+  if (mePromise && (!force || meInFlight)) return mePromise;
+  meInFlight = true;
+  mePromise = (signedInHint()
     ? fetch("/api/me", { credentials: "same-origin", headers: { Accept: "application/json" } })
         .then((r) => (r.ok ? r.json() : { signedIn: false, available: true }))
         .catch(() => ({ signedIn: false, available: true }))
-    : Promise.resolve({ signedIn: false, available: true });
+    : Promise.resolve({ signedIn: false, available: true })
+  ).finally(() => { meInFlight = false; }) as Promise<Me>;
   return mePromise;
 }
 

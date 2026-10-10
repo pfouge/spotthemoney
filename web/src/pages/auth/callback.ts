@@ -15,6 +15,9 @@ export const GET: APIRoute = async ({ url, request }) => {
   const [nonce, ret = ""] = (url.searchParams.get("state") ?? "").split(".");
   const expected = readCookie(request.headers.get("cookie"), STATE_COOKIE);
   if (url.searchParams.get("error")) return fail("cancelled");
+  // Arrived with nothing at all: WorkOS's sign-in page sent the browser back without finishing
+  // (seen 2026-10-10 in one browser profile that is also signed in to the WorkOS dashboard).
+  if (!code && !url.searchParams.get("state")) return fail("incomplete");
   if (!code || !nonce || !expected || nonce !== expected) return fail("expired");
   let returnTo = "/watchlist/";
   try { returnTo = safeReturnPath(atob(ret)); } catch { /* keep the default */ }

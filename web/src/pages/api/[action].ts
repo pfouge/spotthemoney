@@ -55,7 +55,7 @@ async function handle(method: "GET" | "POST", action: string, request: Request):
     if (action === "feed") return json({ rows: data }, 200, setCookies);
     return json(data, 200, setCookies);
   } catch (e) {
-    if (e instanceof DbError) return json({ error: e.message }, e.status, e.status === 401 ? signedOutCookies() : setCookies);
+    if (e instanceof DbError) return json({ error: e.message }, e.status, setCookies);
     return json({ error: "Something went wrong. Please try again." }, 500, setCookies);
   }
 }
