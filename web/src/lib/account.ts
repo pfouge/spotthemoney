@@ -17,7 +17,7 @@
  * Worker has its WorkOS and Supabase settings (src/lib/server/session.ts); the API also answers
  * "available: false" without them, so a wrong switch shows nothing worse than hidden buttons.
  */
-export const ACCOUNTS_ENABLED = false;
+export const ACCOUNTS_ENABLED = true;
 
 export const COOKIE = "stm_session";
 export const SIGNED_IN = "stm_signed_in";

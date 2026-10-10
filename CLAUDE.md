@@ -1746,5 +1746,10 @@ on the site now, email alerts with item 5; lists private until shared with a lin
   `scripts/account.test.ts`. The e2e run is flaky in this sandbox (wrangler dev's proxy drops
   connections now and then; a stray workerd on port 8787 also caused false 403s) — it passed
   36/36 on clean runs, with `ACCOUNTS_ENABLED` true.
+- **Second push (same day):** `ba374ba` deployed; Peter set `WORKOS_API_KEY` (Production key
+  `spotthemoney-worker`) and `WORKOS_COOKIE_PASSWORD` as Worker secrets in the Cloudflare
+  dashboard. Live checks before the flip: `/api/me` → `{signedIn:false, available:true}`,
+  `/api/public` reaches Supabase with the publishable key, `/auth/login` redirects to WorkOS,
+  signed-out POST → 401. `ACCOUNTS_ENABLED` then set to true.
 - Verified locally: `astro check` 0 errors, the two account verifiers, `verify-guides` (21),
   `verify-live --all`, `verify-a11y` 104, `verify-share` 250, `verify-filters`, 96 unit tests.
