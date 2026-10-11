@@ -81,6 +81,11 @@ for (const [label, path, dark, viewport] of [
   ok(JSON.stringify(got.groups) === JSON.stringify([want(s[1]), want(co[1])]), `${label}: who-traded counts match the card files ${JSON.stringify(got.groups)}`);
   ok(got.people[0].includes(`${m[1].rows} trade`) && got.people[1].includes(`${ins[1].rows} row`), `${label}: person totals match the card files`);
   ok(!got.overflow, `${label}: no sideways scrolling`);
+  // The chart must actually start loading once on screen (TradingView itself is blocked here, so
+  // the check is that our loader mounted the widget into the slot).
+  await page.locator("[data-tv-mini]").first().scrollIntoViewIfNeeded();
+  const mounted = await page.waitForFunction(() => !!document.querySelector("[data-tv-mini]")?.getAttribute("data-tv-mounted"), null, { timeout: 8000 }).then(() => true, () => false);
+  ok(mounted, `${label}: the first chart starts loading once it is on screen`);
   ok(errors.length === 0, `${label}: no page errors ${errors.join("; ")}`);
   await page.addScriptTag({ content: axeSrc });
   const v = await page.evaluate(async () => (await window.axe.run(document.querySelector("main"), { runOnly: ["wcag2a", "wcag2aa", "wcag21aa"] })).violations.map((x) => `${x.id} (${x.nodes.length}): ${x.nodes[0]?.target.join(" ")}`));

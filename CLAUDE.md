@@ -1815,3 +1815,10 @@ them too; and each stock's line lists the insiders (and members) who traded it i
   building and renders (price, change, 3-month line). Check a real watchlist after deploy.
 - Not done: a window switch (30/90/365) on the cards; cards are as fresh as the last deploy, the
   trade list above them is live.
+- **Live check of `754cc0f` (deploy #53):** 60 card files served (stock 1,218 / company 968 /
+  member 542 / insider 12,771 cards; 8 MB in all, largest file 209 KB). Rendered on the live
+  shared-list page in Chrome with a sample list fed in the browser: NVDA and AAPL mini charts load
+  with real "who traded" lists, member (Alan Armstrong) and insider (Huang Jen Hsun) rows show bars,
+  latest trade and totals; no sideways scroll. Note: the Claude desktop browser pane, when hidden,
+  pauses IntersectionObserver, so charts there stay empty — check in Chrome or a visible pane.
+  `verify-watchlist` now also requires the first chart to mount once on screen.
