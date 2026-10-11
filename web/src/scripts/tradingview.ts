@@ -57,3 +57,39 @@ export function initTradingView(): void {
     for (const root of roots) if (root.dataset.tvMounted && root.dataset.tvMounted !== theme()) mount(root);
   });
 }
+
+// ── Mini charts (watchlist cards, 2026-10-10) ───────────────────────────────────────────────
+// TradingView's Mini Chart: price, change over the range and a small line, in TradingView's own
+// frame (no price data passes through this site). One per followed stock, each mounted when it
+// scrolls near the viewport and rebuilt on a theme change. Clicking it opens our stock page.
+const minis = new Set<HTMLElement>();
+let miniIO: IntersectionObserver | null = null;
+let miniThemeHooked = false;
+
+function mountMini(slot: HTMLElement): void {
+  const symbol = slot.dataset.tvMini;
+  if (!symbol) return;
+  const t = theme();
+  mountWidget(slot, "embed-widget-mini-symbol-overview.js", {
+    symbol, width: "100%", height: "100%", locale: "en", dateRange: slot.dataset.tvRange || "3M", colorTheme: t,
+    isTransparent: true, autosize: true, chartOnly: false, noTimeScale: false,
+    largeChartUrl: slot.dataset.tvHref ? new URL(slot.dataset.tvHref, location.origin).href : "",
+  });
+  slot.dataset.tvMounted = t;
+}
+
+/** Mount a mini chart in `slot` (data-tv-mini="<symbol>", optional data-tv-range, data-tv-href) once it is near the screen. */
+export function observeMini(slot: HTMLElement): void {
+  minis.add(slot);
+  if (!miniThemeHooked) {
+    miniThemeHooked = true;
+    window.addEventListener("themechange", () => {
+      for (const s of minis) if (!s.isConnected) minis.delete(s); else if (s.dataset.tvMounted && s.dataset.tvMounted !== theme()) mountMini(s);
+    });
+  }
+  if (!("IntersectionObserver" in window)) { mountMini(slot); return; }
+  miniIO ??= new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { miniIO!.unobserve(e.target); mountMini(e.target as HTMLElement); }
+  }, { rootMargin: "400px 0px" });
+  miniIO.observe(slot);
+}

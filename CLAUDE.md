@@ -1775,3 +1775,43 @@ on the site now, email alerts with item 5; lists private until shared with a lin
   in Worker logs; a clean browser works) — cause not found, likely that profile's WorkOS state.
 - Cloudflare Workers observability (Logs) works on the free plan: dashboard → spotthemoney →
   Observability shows every Worker request with its full URL. Bots probe `/api/.env` etc. daily (404s).
+
+### Watchlist cards (2026-10-10, evening) — Peter: "widgets next to each stock I follow, stacked"
+
+Peter's choices: widgets for every kind of followed page; 3-month price charts; shared lists show
+them too; and each stock's line lists the insiders (and members) who traded it in the window.
+
+- **What a row shows** (`/watchlist/` and `/watchlist/shared/`): name | widget | details on one
+  line (stacked under 900px). Stock or company: TradingView's free **Mini Chart**
+  (`embed-widget-mini-symbol-overview.js`, `dateRange: "3M"`, `largeChartUrl` = our stock or
+  company page) beside **Who traded it, last 90 days**: corporate insiders and members of Congress,
+  five of each (bought / sold, or buys, sales and range sum; latest date), "N more on the page".
+  Member or insider: bars of trades disclosed per month for 12 months (buys up, sales down; counts),
+  latest trade, last-90-day totals, tickers traded. Members' seats are short ("Rep. D-AZ-4").
+- **No price data passes through the site** (docs/04 #33 unchanged): the chart is TradingView's
+  frame; only the slot is ours. Charted only for equity / ETF / ADR, the stock page's rule.
+- **Data:** build-time `/data/watch/<kind>-<n>.json` (60 files: stock 16, company 8, member 4,
+  insider 32 shards; `shardOf` = FNV-1a, in `web/src/lib/watchcards.ts`, which is pure and loaded
+  by the browser). Built by `web/src/lib/watchcards-build.ts` from the same `insiderRows` /
+  `memberRows` / labels the pages use, so cards cannot disagree with pages — only cover a shorter
+  window (`WATCH_WINDOW_DAYS` = 90, by disclosure date, counted back from the build). One file per
+  page was rejected: ~14,000 insider files against the 20,000-file limit.
+- **Browser:** `web/src/scripts/watchcards.ts` (fetches only the shards a list needs, renders the
+  cards), `scripts/dom.ts` (shared `h()`), `observeMini()` in `scripts/tradingview.ts` (lazy, one
+  IntersectionObserver, rebuilt on theme change). No database or API change.
+- **Words:** privacy page TradingView paragraph now names watchlists and shared lists (TradingView
+  gets IP, browser and the ticker; never the account, email or lists). Guide
+  `how-to-follow-members-insiders-and-stocks` describes the cards (window from `ctx.watchWindowDays`)
+  and has a FAQ on where the charts come from.
+- **Verifier:** `node scripts/verify-watchlist.mjs <base-url>` — reads the served card files, picks
+  a stock, company, member and insider with trades, renders own list (desktop light, phone dark) and
+  shared list with the account API answered in the browser; checks rows, chart slots, bars, counts
+  vs the files, no overflow, no page errors, axe clean. Works against the live site. Unit tests:
+  `npx tsx --test scripts/watchcards.test.ts` (4).
+- Verified locally (synthetic data in `stm_acct`): `astro check` 0 errors, 84 unit tests,
+  `verify-watchlist` all pass, `verify-guides` (21), `verify-live --all` (198 pages),
+  `verify-accounts-e2e` 40/40 (one clean run after two flaky ones). TradingView is blocked in the
+  sandbox; the mini chart itself was mounted on the live NVDA page in the browser pane before
+  building and renders (price, change, 3-month line). Check a real watchlist after deploy.
+- Not done: a window switch (30/90/365) on the cards; cards are as fresh as the last deploy, the
+  trade list above them is live.

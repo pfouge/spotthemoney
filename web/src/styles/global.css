@@ -688,9 +688,50 @@ button.btn { background: transparent; font: inherit; font-size: 15px; font-weigh
 .wl-list-head { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
 .wl-list-head h3 { margin: 0 auto 0 0; display: flex; align-items: center; gap: 8px; }
 .wl-items { list-style: none; padding: 0; margin: 8px 0 0; }
-.wl-items li { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.wl-kind { font-size: 12.5px; color: var(--ink-soft); min-width: 9.5em; }
+/* One followed page per row: name | chart | who traded (stacked under 900px). */
+.wl-row { display: grid; grid-template-columns: minmax(170px, 0.9fr) minmax(240px, 300px) minmax(240px, 1.5fr); gap: 12px 20px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.wl-row:last-child { border-bottom: 0; }
+.wl-row.wl-row-plain { grid-template-columns: 1fr; padding: 10px 0; }
+.wl-main { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.wl-name { font-family: var(--font-display); font-size: 17px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.wl-sub { font-size: 13.5px; color: var(--ink-soft); line-height: 1.35; }
+.wl-kind { font-size: 12.5px; color: var(--ink-soft); }
+.wl-main .wl-item-actions { margin: 6px 0 0; }
 .wl-item-actions { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.wl-chart { height: 150px; min-width: 0; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; background: var(--surface); }
+.wl-chart .tradingview-widget-container, .wl-chart .tradingview-widget-container__widget { height: 100%; }
+.wl-chart-none { display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center; font-size: 13.5px; color: var(--ink-soft); }
+.wl-chart-none p { margin: 0; }
+.wl-chart-bars { height: auto; padding: 10px 10px 6px; }
+.wl-bars { display: block; width: 100%; height: 64px; }
+.wl-bars-axis { stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.wl-bar-buy { fill: var(--viz-buy); }
+.wl-bar-sell { fill: var(--viz-sell); }
+.wl-bars-scale { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--ink-soft); }
+.wl-bars-key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin: 0 4px 0 6px; vertical-align: baseline; }
+.wl-bars-key .k-buy { background: var(--viz-buy); }
+.wl-bars-key .k-sell { background: var(--viz-sell); }
+.wl-who { min-width: 0; font-size: 14px; line-height: 1.45; }
+.wl-who p { margin: 0 0 6px; }
+.wl-who-head { font-weight: 600; }
+.wl-who-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0 20px; }
+.wl-who-group { min-width: 0; }
+.wl-who-group h4 { margin: 6px 0 2px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.wl-who-group ul { list-style: none; padding: 0; margin: 0; }
+.wl-who-group li { padding: 3px 0; min-width: 0; }
+.wl-who-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl-who-name a { font-weight: 500; }
+.wl-who-role { font-size: 13px; color: var(--ink-soft); }
+.wl-who-fig { display: block; font-size: 13px; color: var(--ink-soft); }
+.wl-who-more { font-size: 13px; }
+.wl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wl-tk { display: inline-block; padding: 2px 10px; border-radius: var(--r-pill); background: var(--chip); font-size: 13px; text-decoration: none; }
+.wl-tk:hover { background: var(--chip-hover); }
+.wl-cards-note { margin: 4px 0 8px; }
+@media (max-width: 900px) {
+  .wl-row { grid-template-columns: 1fr; gap: 10px; }
+  .wl-chart { height: 140px; }
+}
 .wl-item-actions select { height: 32px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: transparent; color: var(--ink); padding: 0 10px; font: inherit; font-size: 14px; }
 .wl-share { margin: 10px 0 0; }
 .wl-new-list { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; margin: 18px 0 8px; }

@@ -1,6 +1,7 @@
 // Live values the guides are written against: constants from the code, counts from the model,
 // the current I-Bond rate from the database. A guide that quotes one of these can never
 // disagree with the site, because both read the same thing.
+import { WATCH_WINDOW_DAYS } from "../watchcards";
 import { getFlagship, senateShown, CONGRESS_DEADLINE_DAYS, FORM4_DEADLINE_DAYS, num } from "../flagship";
 import { CAP_BANDS } from "../capband";
 import { JOINT_MIN_VALUE } from "../joint";
@@ -15,6 +16,8 @@ export interface GuideCtx {
   facts: typeof FACTS;
   /** Days a member of Congress has to report a trade (the site's late rule). */
   congressDeadlineDays: number;
+  /** Days of trades counted in the watchlist cards (lib/watchcards.ts). */
+  watchWindowDays: number;
   /** Calendar days after which the site flags a Form 4 as late. */
   form4LateAfterDays: number;
   capBands: { label: string; range: string }[];
@@ -45,6 +48,7 @@ async function build(): Promise<GuideCtx> {
   return {
     facts: FACTS,
     congressDeadlineDays: CONGRESS_DEADLINE_DAYS,
+    watchWindowDays: WATCH_WINDOW_DAYS,
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
     capBands: CAP_BANDS.map((b) => ({ label: b.label, range: b.range })),
     jointMinUsd: usd(JOINT_MIN_VALUE),
