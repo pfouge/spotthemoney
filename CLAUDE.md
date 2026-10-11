@@ -1702,8 +1702,9 @@ on the site now, email alerts with item 5; lists private until shared with a lin
   (email code). Redirect URI `https://spotthemoney.com/auth/callback`; initiate-login URI
   `/auth/login`; sign-out URI `https://spotthemoney.com/`. Sessions: 365-day max, 5-minute access
   token, **30-day inactivity** (was 2). JWT template `{"role": "authenticated"}` (Supabase needs
-  it). Google / Microsoft / GitHub: not yet enabled — each needs an OAuth app at that company and
-  its client ID + secret pasted into WorkOS → Authentication → Providers (Peter pastes secrets).
+  it). Google, Microsoft and GitHub sign-in are enabled (see "Sign-in providers" below); each is an
+  OAuth app at that company whose client ID + secret is pasted into WorkOS → Authentication →
+  Providers (Peter pastes secrets).
 - **Supabase:** Third-party auth → WorkOS, issuer
   `https://api.workos.com/user_management/client_01M4KVTS09DN5NFTRKV5GH7ZCG` (enabled). The Worker
   uses the publishable key `sb_publishable_…` (public by design; in `web/wrangler.jsonc` vars).
@@ -1758,9 +1759,13 @@ on the site now, email alerts with item 5; lists private until shared with a lin
   in the pfouge.com organisation, owner peter@pfouge.com; consent screen External, **In
   production**, no logo so no Google review; client `881333258431-iseqkn648lf9hfmcnc5734rabfpn0mud`)
   are enabled in WorkOS Production. "Return OAuth tokens" stays OFF for every provider. Google's
-  screen says "continue to workos.com" until a WorkOS custom auth domain exists. **Microsoft is not
-  set up:** it needs an Entra directory Peter owns (peter@pfouge.com had none; never register it
-  in a work account's directory). An unused Google project `spotthemoney-511222` exists under pfouge@gmail.com.
+  screen says "continue to workos.com" until a WorkOS custom auth domain exists. **Microsoft:** app
+  "Spot the Money" in Peter's own free Entra directory "Default Directory" (peterpfouge.onmicrosoft.com,
+  signed in as peter@pfouge.com; never register it in a work account's directory), any Entra tenant +
+  personal Microsoft accounts, Web redirect = the WorkOS Microsoft callback, client
+  `3120d97b-c8e2-4498-a455-62569d2f6f0c`. Its client secret "WorkOS" **expires 2028-10-09**: make a
+  new one under Certificates & secrets and paste its *Value* (not the Secret ID) into WorkOS before
+  then. A Google project made by mistake under pfouge@gmail.com (`spotthemoney-511222`) was shut down.
 - **Sign-out bug fixed (same push):** WorkOS refresh tokens are single-use. The watchlist page
   asked `/api/me` twice at once (header script + page), both refreshed an expired 5-minute token,
   one failed, and the failure cleared the cookies. Now `loadMe()` shares an in-flight request and
