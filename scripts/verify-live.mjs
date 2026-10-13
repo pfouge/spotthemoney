@@ -15,20 +15,33 @@
 // page in a sitemap has at least one data row (empty ones must be noindex and unlisted).
 // `--all` checks every URL in every sitemap instead of a sample.
 // Exit code 1 on any failure; prints a summary either way.
+//
+// Cloudflare challenges (2026-10-12): from cloud networks (GitHub's runners) Bot Fight Mode can
+// answer with a challenge page instead of the site. Such a response is INCONCLUSIVE: its checks
+// are skipped, it is counted and reported as a warning, and it never fails the run on its own
+// (scripts/lib/cf-challenge.mjs). Everything that did come back is checked as before. deploy.yml
+// therefore also runs this script against the build itself before it ships, where nothing is
+// challenged. `--fail-on-challenge` turns challenges into failures (for runs from a home network).
+
+import { isCloudflareChallenge, warn } from "./lib/cf-challenge.mjs";
 
 const base = (process.argv[2] ?? "https://spotthemoney.com").replace(/\/$/, "");
+const FAIL_ON_CHALLENGE = process.argv.includes("--fail-on-challenge");
 const sampleArg = process.argv.indexOf("--sample");
 const SAMPLE = process.argv.includes("--all") ? Infinity : sampleArg > 0 ? Number(process.argv[sampleArg + 1]) : 3;
 
 const failures = [];
 const notes = [];
 const ok = (cond, msg) => { if (!cond) failures.push(msg); return cond; };
+const challenged = [];
 
 async function get(path) {
   const url = path.startsWith("http") ? path : base + path;
   const res = await fetch(url, { headers: { "user-agent": "spotthemoney verify-live (pfouge@gmail.com)" }, redirect: "follow" });
   const text = await res.text();
-  return { url, status: res.status, type: res.headers.get("content-type") ?? "", text };
+  const challenge = isCloudflareChallenge(res.status, res.headers, text);
+  if (challenge) challenged.push(path);
+  return { url, status: res.status, type: res.headers.get("content-type") ?? "", text, challenge };
 }
 
 function locs(xml) { return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim()); }
@@ -50,34 +63,40 @@ const expectedType = (path) =>
 // 1. robots.txt
 {
   const r = await get("/robots.txt");
+  if (!r.challenge) {
   ok(r.status === 200, `robots.txt status ${r.status}`);
   ok(/^text\/plain/.test(r.type), `robots.txt content-type ${r.type}`);
   for (const ua of ["GPTBot", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "CCBot"]) ok(new RegExp(`User-agent: ${ua}\\s+Allow: /`).test(r.text), `robots.txt missing allow for ${ua}`);
   ok(/Sitemap: .*\/sitemap-index\.xml/.test(r.text), "robots.txt missing Sitemap line");
+  }
 }
 // 2. llms.txt
 {
   const r = await get("/llms.txt");
+  if (!r.challenge) {
   ok(r.status === 200, `llms.txt status ${r.status}`);
   ok(/^text\/plain/.test(r.type), `llms.txt content-type ${r.type}`);
   ok(r.text.startsWith("# Spot the Money"), "llms.txt does not start with the site heading");
   ok(r.text.includes("/methodology/"), "llms.txt does not mention the methodology page");
+  }
 }
 // 3. sitemaps
 const sampled = [];
 {
   const idx = await get("/sitemap-index.xml");
+  if (!idx.challenge) {
   ok(idx.status === 200, `sitemap-index.xml status ${idx.status}`);
   ok(/xml/.test(idx.type), `sitemap-index.xml content-type ${idx.type}`);
   ok(idx.text.includes("<sitemapindex"), "sitemap-index.xml is not a sitemapindex");
   const alias = await get("/sitemap.xml");
-  ok(alias.status === 200 && alias.text.includes("<sitemapindex"), `sitemap.xml status ${alias.status} / not an index`);
+  if (!alias.challenge) ok(alias.status === 200 && alias.text.includes("<sitemapindex"), `sitemap.xml status ${alias.status} / not an index`);
   const children = locs(idx.text);
   ok(children.length >= 1, `sitemap index lists ${children.length} children`);
   if (children.length < 2) notes.push("WARNING: only the static-pages sitemap exists — entity tables are empty (no insiders/congress/companies/stocks yet)");
   let total = 0;
   for (const c of children) {
     const child = await get(c.replace(/^https?:\/\/[^/]+/, ""));
+    if (child.challenge) continue;
     const urls = locs(child.text);
     ok(child.status === 200 && child.text.includes("<urlset"), `child ${c} status ${child.status} / not a urlset`);
     ok(urls.length > 0, `child ${c} has no URLs`);
@@ -92,11 +111,13 @@ const sampled = [];
     for (const p of pick) sampled.push(p);
   }
   notes.push(`total URLs in sitemaps: ${total}`);
+  }
 }
 // 4. sample pages
 const titles = new Map();
 for (const path of sampled) {
   const r = await get(path);
+  if (r.challenge) continue;
   if (!ok(r.status === 200, `${path} status ${r.status}`)) continue;
   const html = r.text;
   const ld = jsonLdBlocks(html);
@@ -132,14 +153,23 @@ for (const path of sampled) {
 
 for (const [t, n] of titles) if (n > 1) failures.push(`duplicate title on ${n} pages: ${t}`);
 // the share image itself
-{ const r = await fetch(base + "/og.png"); ok(r.status === 200 && /image\/png/.test(r.headers.get("content-type") ?? ""), `og.png status ${r.status}`); }
+{
+  const r = await fetch(base + "/og.png", { headers: { "user-agent": "spotthemoney verify-live (pfouge@gmail.com)" } });
+  const body = /image\/png/.test(r.headers.get("content-type") ?? "") ? "" : await r.text();
+  if (isCloudflareChallenge(r.status, r.headers, body)) challenged.push("/og.png");
+  else ok(r.status === 200 && /image\/png/.test(r.headers.get("content-type") ?? ""), `og.png status ${r.status}`);
+}
 
 console.log(`verify-live against ${base}`);
 for (const n of notes) console.log(`  · ${n}`);
 console.log(`  · sampled ${sampled.length} pages`);
+if (challenged.length) {
+  const msg = `${challenged.length} request(s) to ${base} got a Cloudflare challenge instead of the site (${challenged.slice(0, 4).join(", ")}${challenged.length > 4 ? ", …" : ""}); those checks are inconclusive, not failed.`;
+  if (FAIL_ON_CHALLENGE) failures.push(msg); else warn(msg);
+}
 if (failures.length) {
   console.log(`✗ ${failures.length} failure(s):`);
   for (const f of failures) console.log(`  - ${f}`);
   process.exit(1);
 }
-console.log("✓ all checks passed");
+console.log(challenged.length && !FAIL_ON_CHALLENGE ? `✓ no failures (${challenged.length} inconclusive — Cloudflare challenge)` : "✓ all checks passed");

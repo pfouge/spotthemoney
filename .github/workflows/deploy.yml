@@ -11,7 +11,10 @@
 #   - Migrations run before the build so the schema always exists when pages read it.
 #   - DATABASE_URL is the Supabase SESSION pooler string (port 5432), never the Transaction
 #     pooler (6543) — db/migrate.mjs refuses the latter.
-#   - The deploy is verified by fetching the live site, not by wrangler's exit code.
+#   - The deploy is verified by Cloudflare's API (the new version serves 100% of traffic) and by
+#     fetching the live site, not by wrangler's exit code. Since 2026-10-11 Bot Fight Mode
+#     challenges GitHub's runners; a challenge is reported as inconclusive, never as a failure,
+#     and the discovery checks also run on the build itself before it ships.
 
 name: deploy
 
@@ -25,6 +28,9 @@ on:
       - "package.json"
       - "package-lock.json"
       - "scripts/verify-live.mjs"
+      - "scripts/probe-live.mjs"
+      - "scripts/check-deployed-version.mjs"
+      - "scripts/lib/**"
       - "scripts/indexnow-ping.mjs"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
@@ -82,39 +88,52 @@ jobs:
           # under dist/client/. Deploy whichever exists.
           test -f web/dist/server/wrangler.json || test -f web/dist/client/wrangler.json
 
+      # Discovery plumbing must be valid in every build (roadmap B.2): sitemap index + children,
+      # robots.txt AI allow lines, llms.txt, JSON-LD on a sample of pages, no empty tables, no
+      # "Soon" tags. Checked on the exact files about to ship, served from this runner, so a
+      # Cloudflare challenge can never hide a regression (2026-10-12). Fails before deploying.
+      - name: Check the build (sitemaps, robots, llms.txt, JSON-LD)
+        run: |
+          set -o pipefail
+          (cd web/dist/client && python3 -m http.server 4321 --bind 127.0.0.1 >/dev/null 2>&1 &)
+          sleep 2
+          node scripts/verify-live.mjs http://127.0.0.1:4321 --sample 5 --fail-on-challenge
+
       - name: Deploy to Cloudflare Workers
         working-directory: web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          set -o pipefail
           cfg=dist/server/wrangler.json
           [ -f "$cfg" ] || cfg=dist/client/wrangler.json
           echo "deploying with $cfg"
-          npx wrangler deploy --config "$cfg"
+          echo "cfg=$cfg" >> "$GITHUB_ENV"
+          npx wrangler deploy --config "$cfg" 2>&1 | tee ../deploy.log
 
-      - name: Verify the live site
-        # Edge propagation is not instant and a single fetch can catch a 5xx/challenge, so
-        # retry for up to ~2 minutes and print the HTTP status on every miss (2026-09-27:
-        # a one-shot check failed 15 s after a deploy that was in fact live).
+      # Proof that the deploy worked, from Cloudflare's API: the version just uploaded must serve
+      # 100% of traffic. Unlike fetching the website, this cannot be blocked by Bot Fight Mode,
+      # which challenges GitHub's runners since 2026-10-11 (and cannot be skipped by WAF rules).
+      - name: Verify the deployed version
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -o pipefail
-          url="${PUBLIC_SITE_URL}/rates/i-bonds/?v=${GITHUB_SHA}"
-          for attempt in 1 2 3 4 5 6 7 8; do
-            sleep 15
-            status=$(curl -sSL -A "spotthemoney-deploy-check (+https://spotthemoney.com)" \
-              -o body.html -w "%{http_code}" "$url" || echo "000")
-            if [ "$status" = "200" ] && grep -q "I-Bond Rate Today" body.html; then
-              echo "✓ live (attempt $attempt): $url"; exit 0
-            fi
-            echo "… attempt $attempt: HTTP $status, expected text not found yet"
-          done
-          echo "✗ live check failed for $url after 8 attempts"; head -c 600 body.html; exit 1
+          npx wrangler deployments status --config "$cfg" --json > ../deploy-status.json
+          node ../scripts/check-deployed-version.mjs ../deploy.log ../deploy-status.json
 
-      # Discovery plumbing must be live and valid after every deploy (roadmap B.2): sitemap
-      # index + children, robots.txt AI allow lines, llms.txt, JSON-LD on a sample of pages,
-      # no empty tables, no "Soon" tags. Fails the run if anything regresses.
-      - name: Verify sitemaps, robots, llms.txt and JSON-LD
+      # Is the new build serving on the public domain? Passes on HTTP 200 + expected text, fails
+      # on 5xx / 404 / wrong content, and reports a Cloudflare challenge as INCONCLUSIVE (a
+      # warning, not a failure) — scripts/probe-live.mjs.
+      - name: Verify the live site
+        run: node scripts/probe-live.mjs "${PUBLIC_SITE_URL}/rates/i-bonds/?v=${GITHUB_SHA}" "I-Bond Rate Today"
+
+      # The same discovery checks against the public domain, after one edge TTL. Challenged
+      # requests are inconclusive (warning); anything that does come back must pass.
+      - name: Verify sitemaps, robots, llms.txt and JSON-LD (live)
         run: |
           set -o pipefail
           sleep 120   # prerendered HTML carries s-maxage=120; wait one edge TTL so we test the new build

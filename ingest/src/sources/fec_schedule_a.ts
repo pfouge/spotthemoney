@@ -18,8 +18,14 @@
 //
 // BUDGET: a standard key allows 1,000 calls an hour. Committees are visited least-recently-
 // checked first (committees.donations_checked_at, migration 0010) and the run stops at
-// FEC_MAX_REQUESTS (default 850) or FEC_MAX_MINUTES (default 25), whichever comes first; the
+// FEC_MAX_REQUESTS (default 850) or FEC_MAX_MINUTES (default 35), whichever comes first; the
 // rest are picked up by the next run. A 429 ends the run "partial" the same way.
+// Since 2026-10-12 the pass has its own ingest job (no longer behind usaspending), hence 35.
+//
+// SET-ASIDE (2026-10-12, migration 0018): a few large committees answer 504 every day. A
+// request is retried once (not three times), and a committee whose pass fails on a 5xx or
+// network error is set aside for FEC_SET_ASIDE_DAYS (default 3) via donations_retry_after —
+// without touching donations_checked_at, so no receipts are skipped when it comes back.
 //
 // PAGINATION: schedule_a paginates by CURSOR, not by page number. Each response's
 // pagination.last_indexes gives { last_index, last_contribution_receipt_date };
@@ -140,7 +146,7 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
   const maxRequests = Number(process.env.FEC_MAX_REQUESTS ?? 850);
   // Wall-clock budget: the run must end itself well inside the 55-minute Actions job, whatever
   // the API's response times are. Unfinished committees carry over to the next run.
-  const maxMinutes = Number(process.env.FEC_MAX_MINUTES ?? 25);
+  const maxMinutes = Number(process.env.FEC_MAX_MINUTES ?? 35);
   const startedAt = Date.now();
   const outOfTime = (): boolean => Date.now() - startedAt > maxMinutes * 60_000;
   // The site shows a 90-day window; receipts older than this are not worth a request.
@@ -156,8 +162,14 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
   const dbCommitteeRows = await sql<{ fec_id: string; checked: string | null }[]>`
     select fec_id, (donations_checked_at at time zone 'utc')::date::text as checked
       from committees where fec_id is not null
+       and (donations_retry_after is null or donations_retry_after <= now())
      order by donations_checked_at asc nulls first, id
   `;
+  const [setAsideRow] = await sql<{ n: number }[]>`
+    select count(*)::int as n from committees where fec_id is not null and donations_retry_after > now()`;
+  const setAsideNow = setAsideRow?.n ?? 0;
+  const setAsideDays = Number(process.env.FEC_SET_ASIDE_DAYS ?? 3);
+  const setAside: string[] = [];
   const lastChecked = new Map(dbCommitteeRows.map((r) => [r.fec_id, r.checked]));
   const dbCommitteeIds = dbCommitteeRows.map((r) => r.fec_id);
 
@@ -232,13 +244,18 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
       let data: ScheduleAPage;
       try {
         requests++;
-        data = await fetchJson<ScheduleAPage>(url);
+        data = await fetchJson<ScheduleAPage>(url, { retries: 1 });
       } catch (err) {
         // lib/http errors carry host+path only — never the query string or the key.
         const message = err instanceof Error ? err.message : String(err);
         ctx.quarantine(`${SOURCE}:${committeeId}`, message);
         failed = true;
         if (message.includes("429")) stoppedReason = "rate limited (429)";
+        else if (/HTTP 5\d\d|network|fetch failed|timed? ?out|ECONN|ETIMEDOUT/i.test(message)) {
+          // Set aside, keep its load-date floor (see header).
+          await sql`update committees set donations_retry_after = now() + make_interval(days => ${setAsideDays}) where fec_id = ${committeeId}`;
+          setAside.push(committeeId);
+        }
         break;
       }
       pages++;
@@ -320,6 +337,10 @@ export async function ingestFecScheduleA(): Promise<IngestRunResult> {
     }
   }
 
+  ctx.extra["committees_set_aside_this_run"] = setAside.length;
+  ctx.extra["committees_set_aside_sample"] = setAside.slice(0, 10);
+  ctx.extra["committees_already_set_aside"] = setAsideNow;
+  ctx.extra["set_aside_days"] = setAsideDays;
   ctx.extra["committees_in_scope"] = committeeScope.length;
   ctx.extra["committees_done"] = committeesDone;
   ctx.extra["committees_deferred"] = committeeScope.length - committeesDone;

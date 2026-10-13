@@ -6,15 +6,19 @@
 // `ingest_runs` is the diagnostic of record — and reports one line per source:
 //
 //   OK              ran recently and its newest record is recent
+//   WARN            the last run failed, but a successful run is within the allowance (48 h for
+//                   daily sources) — a one-day upstream outage; shown, never fails (2026-10-12)
 //   NOT CONFIGURED  the job no-ops because a key/account is missing (listed, never fails)
 //   STALE           ran, but the newest record is older than the source's allowance
-//   FAILING         the last run failed, or there has been no successful run recently
+//   FAILING         no successful run within the allowance — the failure persisted
+// The rule lives in scripts/lib/freshness-rule.mjs (tested in scripts/freshness.test.ts).
 //
 // Exit code 1 when anything is STALE or FAILING (ingest.yml runs this last, so GitHub emails
 // the failure). Writes the same table to $GITHUB_STEP_SUMMARY when set. `--json` prints JSON.
 //
 // Allowances are in days and deliberately loose enough for weekends and federal holidays.
 import postgres from "postgres";
+import { classify, FAILS } from "./lib/freshness-rule.mjs";
 import { appendFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,7 +62,9 @@ const CHECKS = [
 
 const sql = postgres(process.env.DATABASE_URL, { max: 1 });
 const days = (d) => (d == null ? null : Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
+const hours = (d) => (d == null ? null : (Date.now() - new Date(d).getTime()) / 3600000);
 const rows = [];
+const warnings = [];
 let bad = 0;
 
 try {
@@ -77,19 +83,15 @@ try {
 
   for (const c of CHECKS) {
     const run = byCode.get(c.code);
-    const okAge = days(okByCode.get(c.code));
+    const okAgeHours = hours(okByCode.get(c.code));
     let newest = null;
     if (c.newest) { const [n] = await sql.unsafe(c.newest); newest = n ? Object.values(n)[0] : null; }
     const newestStr = newest ? new Date(newest).toISOString().slice(0, 10) : "—";
     const dataAge = days(newest);
 
-    let state = "OK", why = "";
-    if (!run) { state = "FAILING"; why = "never ran"; }
-    else if (run.skipped) { state = "NOT CONFIGURED"; why = run.skipped; }
-    else if (run.status === "failed") { state = "FAILING"; why = run.error ?? "last run failed"; }
-    else if (okAge == null || okAge > c.runDays) { state = "FAILING"; why = `no successful run in ${okAge ?? "∞"} days`; }
-    else if (c.newest && (dataAge == null || dataAge > c.dataDays)) { state = "STALE"; why = `newest record ${newestStr}, allowance ${c.dataDays} days`; }
-    if (state === "STALE" || state === "FAILING") bad++;
+    const { state, why } = classify({ run, okAgeHours, runDays: c.runDays, hasNewest: !!c.newest, dataAgeDays: dataAge, dataDays: c.dataDays, newestStr });
+    if (FAILS.has(state)) bad++;
+    if (state === "WARN") warnings.push(`${c.label}: ${why}`);
 
     rows.push({
       source: c.label, code: c.code, state,
@@ -119,7 +121,7 @@ try {
   bad += extra.filter((e) => e.fail).length;
 
   if (asJson) {
-    console.log(JSON.stringify({ checkedAt: new Date().toISOString(), ok: bad === 0, sources: rows, classification: extra }, null, 2));
+    console.log(JSON.stringify({ checkedAt: new Date().toISOString(), ok: bad === 0, warnings, sources: rows, classification: extra }, null, 2));
   } else {
     const md = [
       `## Data freshness — ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`,
@@ -132,9 +134,12 @@ try {
       "|---|---:|---|---|",
       ...extra.map((e) => `| ${e.check} | ${e.n} | ${e.fail ? "FAIL" : "ok"} | ${e.note} |`),
       "",
-      bad === 0 ? "All configured sources are updating." : `${bad} problem(s) — see STALE / FAILING / FAIL rows.`,
+      bad === 0 ? (warnings.length ? `All configured sources are updating; ${warnings.length} warning(s) — a failed last run with a success inside the allowance.` : "All configured sources are updating.") : `${bad} problem(s) — see STALE / FAILING / FAIL rows.${warnings.length ? ` Also ${warnings.length} warning(s) (WARN rows).` : ""}`,
+      "",
+      "_Rule: one failed run is WARN while a success is within the allowance (48 h for daily sources); FAILING once that passes. STALE = newest record older than its allowance._",
     ].join("\n");
     console.log(md);
+    if (process.env.GITHUB_ACTIONS) for (const w of warnings) console.log(`::warning title=Source warning::${w}`);
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n");
   }
 } finally {

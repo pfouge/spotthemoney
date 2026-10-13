@@ -3,7 +3,8 @@
 # Shape (2026-09-27): migrate once, then the sources run as PARALLEL groups so the daily
 # batch stays inside the job budget as sources are added (sec_form4 alone is ~30 min cold).
 # Each group runs `npm run ingest -- <sources…>` in order; a group's failure does not stop
-# the others, and the retry job re-runs only the failed groups on a fresh runner (new IP).
+# the others, and the retry job re-runs only the unfinished sources on fresh runners (new IPs),
+# after a failure or a timeout.
 # The deploy runs whenever the migrate job succeeded — it rebuilds from whatever is in the
 # database, so one bad source never blocks fresh data from the rest. (Until 2026-10-04 the
 # condition tested the matrix result, which is "failure" if ANY group fails; with FEC 403ing
@@ -26,6 +27,10 @@ on:
         description: "Source(s) to run, space-separated (blank = the daily groups)"
         required: false
         default: ""
+      job_timeout_minutes:
+        description: "Time limit for each ingest group (test knob — a small value forces a timeout to exercise the retry)"
+        required: false
+        default: "55"
 
 concurrency:
   group: ingest
@@ -40,7 +45,12 @@ jobs:
     timeout-minutes: 10
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    outputs:
+      started: ${{ steps.clock.outputs.started }}
     steps:
+      # The retry job skips sources that already finished after this moment (--skip-done-since).
+      - id: clock
+        run: echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -59,10 +69,14 @@ jobs:
           set -o pipefail
           npm run ingest -- universe
 
+  # Groups (2026-10-12): the old "money" group ran senate_lda, usaspending, fec_committees and
+  # fec_schedule_a in series and hit the 55-minute limit on Oct 9 and 10 (usaspending ~25 min +
+  # FEC ~25 min + retries). Lobbying/contracts and donations now run in parallel, and every slow
+  # source stops itself on a time budget well inside 55 minutes (usaspending 35, FEC 35).
   ingest:
     needs: migrate
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: ${{ fromJSON(github.event.inputs.job_timeout_minutes || '55') }}
     strategy:
       fail-fast: false
       matrix:
@@ -71,8 +85,10 @@ jobs:
             sources: congress_roster ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
           - name: filings
             sources: sec_form4
-          - name: money
-            sources: senate_lda usaspending fec_committees fec_schedule_a
+          - name: lobbying-contracts
+            sources: senate_lda usaspending
+          - name: donations
+            sources: fec_committees fec_schedule_a
           - name: prices
             sources: twelvedata_eod
     name: ingest (${{ matrix.group.name }})
@@ -103,12 +119,31 @@ jobs:
             npm run ingest -- ${{ matrix.group.sources }}
           fi
 
-  # Fresh runner (new IP) if a government source blocked the first attempt.
+  # Fresh runners (new IPs) for any group that failed OR timed out. GitHub reports a job killed
+  # by timeout-minutes as "cancelled", not "failure", so until 2026-10-12 no retry ran after the
+  # Oct 9 and 10 timeouts. `!cancelled()` still skips the retry when a person cancels the run.
+  # Same groups in parallel; each repeats only the sources that have not finished since the
+  # run began (--skip-done-since), so a retry never re-does the whole daily batch in one job.
   ingest-retry:
-    needs: ingest
-    if: always() && contains(needs.ingest.result, 'failure')
+    needs: [migrate, ingest]
+    if: ${{ !cancelled() && needs.migrate.result == 'success' && (needs.ingest.result == 'failure' || needs.ingest.result == 'cancelled') }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - name: rates
+            sources: congress_roster ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
+          - name: filings
+            sources: sec_form4
+          - name: lobbying-contracts
+            sources: senate_lda usaspending
+          - name: donations
+            sources: fec_committees fec_schedule_a
+          - name: prices
+            sources: twelvedata_eod
+    name: ingest-retry (${{ matrix.group.name }})
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
@@ -126,8 +161,14 @@ jobs:
       - run: |
           set -o pipefail
           npm ci --no-audit --no-fund
-      - name: Run ingest (retry, all daily sources — already-ingested rows are skipped)
-        run: npm run ingest -- ${{ github.event.inputs.source }}
+      - name: Run ingest (retry — sources already finished in this run are skipped)
+        run: |
+          set -o pipefail
+          if [ -n "${{ github.event.inputs.source }}" ]; then
+            if [ "${{ matrix.group.name }}" = "rates" ]; then npm run ingest -- --skip-done-since=${{ needs.migrate.outputs.started }} ${{ github.event.inputs.source }}; else echo "skipped (manual run)"; fi
+          else
+            npm run ingest -- --skip-done-since=${{ needs.migrate.outputs.started }} ${{ matrix.group.sources }}
+          fi
 
   # Rebuild + deploy from the refreshed database (same pipeline as a push to main).
   deploy:

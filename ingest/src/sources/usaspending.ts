@@ -46,7 +46,8 @@ import { optionalEnv, normalizeOrgName } from "@stm/shared";
 import type { IngestRunResult } from "@stm/shared";
 
 const SOURCE = "usaspending";
-const SEARCH_URL = "https://api.usaspending.gov/api/v2/search/spending_by_award/";
+// USASPENDING_API_BASE exists for the local mock test only; production never sets it.
+const SEARCH_URL = `${process.env.USASPENDING_API_BASE ?? "https://api.usaspending.gov"}/api/v2/search/spending_by_award/`;
 const PAGE_LIMIT = 100;
 const SLICE_DAYS = 30;
 const SORT = "Award Amount";
@@ -120,9 +121,32 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   const sql = getDb();
   const ctx = createRunContext(SOURCE);
 
-  const windowDays = Number(optionalEnv("USASPENDING_WINDOW_DAYS") ?? "400");
+  const fullWindowDays = Number(optionalEnv("USASPENDING_WINDOW_DAYS") ?? "400");
+  const recentDays = Number(optionalEnv("USASPENDING_RECENT_DAYS") ?? "60");
+  const fullEveryDays = Number(optionalEnv("USASPENDING_FULL_EVERY_DAYS") ?? "7");
+  const maxMinutes = Number(optionalEnv("USASPENDING_MAX_MINUTES") ?? "35");
   const pagesPerSlice = Number(optionalEnv("USASPENDING_PAGES_PER_SLICE") ?? "3");
   const companyCap = Number(optionalEnv("USASPENDING_MAX_COMPANIES") ?? "400");
+
+  // INCREMENTAL (2026-10-12). Re-reading all 400 days every day took 23–26 minutes and pushed
+  // the "money" ingest group past its 55-minute limit. Awards that started long ago rarely
+  // change, and nothing here deletes rows, so the daily pass covers the newest
+  // USASPENDING_RECENT_DAYS (default 60) and a FULL sweep of the whole window runs when the
+  // last complete one is older than USASPENDING_FULL_EVERY_DAYS (default 7). A run stops
+  // cleanly at USASPENDING_MAX_MINUTES (default 35) and reports "partial"; an unfinished full
+  // sweep is simply due again next run. USASPENDING_MODE=full|recent forces a mode.
+  const forcedMode = optionalEnv("USASPENDING_MODE");
+  const [lastFull] = await sql<{ finished_at: Date | null }[]>`
+    select r.finished_at from ingest_runs r join sources s on s.id = r.source_id
+     where s.code = ${SOURCE} and r.stats->>'full_sweep_complete' = 'true'
+     order by r.id desc limit 1`;
+  const lastFullAt = lastFull?.finished_at ? new Date(lastFull.finished_at) : null;
+  const fullDue = !lastFullAt || Date.now() - lastFullAt.getTime() > fullEveryDays * 86_400_000;
+  const mode: "full" | "recent" = forcedMode === "full" || forcedMode === "recent" ? forcedMode : fullDue ? "full" : "recent";
+  const windowDays = mode === "full" ? fullWindowDays : Math.min(recentDays, fullWindowDays);
+  const startedAt = Date.now();
+  const outOfTime = (): boolean => Date.now() - startedAt > maxMinutes * 60_000;
+  let stopped: string | null = null;
 
   const today = new Date();
   const slices = windowSlices(today, windowDays);
@@ -210,9 +234,11 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   // 1. Largest new awards, slice by slice.
   let largestKept = 0;
   for (const slice of slices) {
+    if (stopped) break;
     let page = 1;
     let hasNext = true;
     while (hasNext && page <= pagesPerSlice) {
+      if (outOfTime()) { stopped = "time budget reached"; break; }
       const resp = await search(slice, page);
       for (const row of resp.results ?? []) {
         if (await store(row, `slice ${slice.start} page ${page}`)) largestKept++;
@@ -237,6 +263,7 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   let companyKept = 0;
   let companyFailures = 0;
   for (const r of companyRows) {
+    if (stopped || outOfTime()) { stopped ??= "time budget reached"; break; }
     const name = String(r.name);
     const key = normalizeOrgName(name);
     const text = recipientSearchText(name);
@@ -247,6 +274,7 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
       let page = 1;
       let hasNext = true;
       while (hasNext && page <= COMPANY_PAGES) {
+        if (outOfTime()) { stopped = "time budget reached"; break; }
         const resp = await search(wholeWindow, page, text);
         for (const row of resp.results ?? []) {
           if (normalizeOrgName(row["Recipient Name"] as string | null) !== key) continue;
@@ -266,6 +294,12 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
     }
   }
 
+  ctx.extra["mode"] = mode;
+  ctx.extra["full_sweep_complete"] = mode === "full" && !stopped;
+  ctx.extra["last_full_sweep_at"] = lastFullAt ? lastFullAt.toISOString() : null;
+  ctx.extra["max_minutes"] = maxMinutes;
+  ctx.extra["elapsed_seconds"] = Math.round((Date.now() - startedAt) / 1000);
+  ctx.extra["stopped"] = stopped;
   ctx.extra["window_days"] = windowDays;
   ctx.extra["window_start"] = windowStart;
   ctx.extra["window_end"] = windowEnd;
@@ -276,6 +310,7 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   ctx.extra["largest_rows_kept"] = largestKept;
   ctx.extra["rows_outside_window"] = outsideWindow;
   ctx.extra["companies_searched"] = companiesSearched;
+  if (stopped) ctx.warn(`usaspending ${mode} pass stopped early: ${stopped} (${companiesSearched} of ${companyRows.length} companies searched)`);
   ctx.extra["companies_with_awards"] = companiesWithAwards;
   ctx.extra["company_rows_kept"] = companyKept;
   ctx.extra["company_search_failures"] = companyFailures;
@@ -285,7 +320,8 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
     source: SOURCE,
     rowsSeen: ctx.rowsSeen,
     rowsChanged: ctx.rowsChanged,
-    status: "success",
+    status: stopped ? "partial" : "success",
+    ...(stopped ? { error: `${mode} pass stopped early: ${stopped} after ${companiesSearched} companies` } : {}),
     stats: ctx.stats(),
   };
 }

@@ -1822,3 +1822,50 @@ them too; and each stock's line lists the insiders (and members) who traded it i
   latest trade and totals; no sideways scroll. Note: the Claude desktop browser pane, when hidden,
   pauses IntersectionObserver, so charts there stay empty — check in Chrome or a visible pane.
   `verify-watchlist` now also requires the first chart to mount once on screen.
+
+### Daily import failures fixed (2026-10-12) — Peter: "fix the setup first, then re-run"
+
+Diagnosed from the Actions logs of runs 38152113545, 38294749376, 38312732656 (deploy check)
+and 37957144123, 38063262128 (timeouts) before anything was changed.
+
+- **Deploy check blocked by Cloudflare.** Since about 10:47 UTC on 2026-10-11 every request
+  from a GitHub runner to spotthemoney.com gets a managed challenge ("Just a moment...",
+  `cf-mitigated: challenge`). Cause: **Bot Fight Mode** on the zone (Free plan), almost certainly
+  switched on in the security-settings session that morning; the toggle is not in the audit
+  log. Bot Fight Mode cannot be skipped by WAF custom/skip rules or Page Rules (Cloudflare docs),
+  so a secret-header skip rule would not work; the workers.dev URL would need workers.dev turned
+  on for the Worker, which publishes a copy of the site outside Bot Fight Mode — **keep
+  workers.dev off**. Chosen: a challenge is **inconclusive, never a failure**, and the proof of
+  the deploy moved off the public website:
+  `scripts/check-deployed-version.mjs` (the version `wrangler deploy` printed must serve 100% of
+  traffic per `wrangler deployments status --json`), `scripts/verify-live.mjs` run against the
+  build itself on the runner before deploying (`--fail-on-challenge`), then `scripts/probe-live.mjs`
+  and `verify-live` against the live site, where a challenge is an Actions warning.
+  Shared detector: `scripts/lib/cf-challenge.mjs`. Tests: `scripts/deploycheck.test.ts`.
+- **Crawlers (read from Cloudflare's firewall events):** crawlers on Cloudflare's
+  verified-bot list pass. **PerplexityBot and AzureAI-SearchBot
+  are mostly challenged** — Peter's call whether to allow their published IP ranges with IP
+  Access rules (the only thing that bypasses Bot Fight Mode on Free).
+- **"money" group timeouts.** usaspending re-read 400 days every day (23–26 min) and FEC spent
+  ~2.5 min a run retrying the same committees that answer 504, in series in one 55-minute job.
+  Now: groups `lobbying-contracts` (senate_lda, usaspending) and `donations` (fec_committees,
+  fec_schedule_a) run in parallel; usaspending does the newest 60 days daily and a full 400-day
+  sweep when the last complete one is over 7 days old (`stats.mode`, `full_sweep_complete`),
+  stopping at 35 minutes as "partial"; FEC's budget is 35 minutes, a request gets one retry, and
+  a committee that answers 5xx is set aside for 3 days (`committees.donations_retry_after`,
+  migration 0018) without moving its load-date floor. `politeFetch` gained a `retries` option.
+- **Retry never ran after a timeout.** GitHub reports a job killed by `timeout-minutes` as
+  "cancelled", and the retry only ran on "failure". It now runs on either (still not when a
+  person cancels the run), per group, and passes `--skip-done-since=<migrate start>` so sources
+  that already finished in this run are skipped. Test knob: dispatch `ingest` with
+  `job_timeout_minutes` (default 55).
+- **One upstream outage failed the whole run.** Rule in `scripts/lib/freshness-rule.mjs`
+  (tests `scripts/freshness.test.ts`): a failed last run is **WARN** (Actions warning, run stays
+  green) while a successful run happened within the allowance (`runDays × 24 h`, 48 h for daily
+  sources); **FAILING** once that passes. STALE and NOT CONFIGURED unchanged.
+- Verified locally: 89 unit tests, ingest `tsc`; migration 0018 twice; freshness check with
+  faked runs (one-day failure → WARN and not counted, long failure → FAILING with last error);
+  `--skip-done-since` skips and runs as expected; FEC set-aside and usaspending
+  budget/full/recent against a fake API (`FEC_API_BASE`, `USASPENDING_API_BASE` — tests only);
+  the build check under `python3 -m http.server` exactly as the workflow runs it (198 URLs).
+  **The real proof is the Actions runs after the push** — see the next entry.

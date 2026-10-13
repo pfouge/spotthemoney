@@ -51,13 +51,18 @@ export interface PoliteFetchOptions {
   minGapMs?: number;
   /** Fail a 429 at once instead of backing off — for callers that pace themselves. */
   noRetryOn429?: boolean;
+  /** Retries after the first attempt (default 3). A caller whose failures repeat for the same
+   *  request every day (FEC Schedule A answering 504 for a few large committees) passes 1 so a
+   *  known-bad request costs ~10 seconds, not ~40 s of backoff plus four server timeouts. */
+  retries?: number;
 }
 
 async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Promise<Response> {
   const u = new URL(String(url));
   let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  const maxRetries = opts.retries == null || !Number.isFinite(opts.retries) ? MAX_RETRIES : Math.max(0, Math.floor(opts.retries));
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     await politeDelay(u.host, opts.minGapMs);
     let res: Response;
     try {
@@ -74,7 +79,7 @@ async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Pr
     } catch (err) {
       // Network-level failure: retry with backoff.
       lastError = err instanceof Error ? err : new Error(String(err));
-      if (attempt < MAX_RETRIES) await sleep(backoffMs(attempt));
+      if (attempt < maxRetries) await sleep(backoffMs(attempt));
       continue;
     }
 
@@ -87,7 +92,7 @@ async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Pr
       if (wait > MAX_RETRY_AFTER_MS || (res.status === 429 && opts.noRetryOn429)) {
         throw new Error(`HTTP ${res.status} from ${u.host}${u.pathname} (retry-after ${Math.round(wait / 1000)}s — not waiting)`);
       }
-      if (attempt < MAX_RETRIES) await sleep(wait);
+      if (attempt < maxRetries) await sleep(wait);
       continue;
     }
 
@@ -103,7 +108,7 @@ async function politeFetch(url: string | URL, opts: PoliteFetchOptions = {}): Pr
   }
 
   throw new Error(
-    `Exhausted ${MAX_RETRIES + 1} attempts for ${u.host}${u.pathname}: ${lastError?.message ?? "unknown error"}`,
+    `Exhausted ${maxRetries + 1} attempts for ${u.host}${u.pathname}: ${lastError?.message ?? "unknown error"}`,
   );
 }
 

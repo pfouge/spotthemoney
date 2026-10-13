@@ -117,7 +117,26 @@ const toRun = requested.length > 0
   ? requested
   : Object.entries(REGISTRY).filter(([, e]) => e.daily).map(([code]) => code);
 
+// --skip-done-since=<ISO time> (ingest.yml's retry job, 2026-10-12): skip a source that already
+// finished (success or partial) in a run that started at or after that time — i.e. earlier in
+// the same workflow run. A source whose job timed out is left "running" or "failed", so the
+// retry repeats exactly the unfinished sources instead of the whole daily batch.
+const skipArg = process.argv.find((a) => a.startsWith("--skip-done-since="));
+const skipSince = skipArg ? new Date(skipArg.slice("--skip-done-since=".length)) : null;
+if (skipArg && (!skipSince || Number.isNaN(skipSince.getTime()))) {
+  console.error(`✗ bad --skip-done-since value: ${skipArg}`);
+  process.exit(2);
+}
+let done = new Set<string>();
+if (skipSince) {
+  const rows = await getDb()<{ code: string }[]>`
+    select distinct s.code from ingest_runs r join sources s on s.id = r.source_id
+     where r.started_at >= ${skipSince} and r.status in ('success', 'partial')`;
+  done = new Set(rows.map((r) => r.code));
+}
+
 for (const code of toRun) {
+  if (done.has(code)) { console.log(`↷ ${code}: already finished in this run (since ${skipSince!.toISOString()}) — skipped`); continue; }
   await runSource(code);
 }
 
