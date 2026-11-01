@@ -1869,3 +1869,53 @@ and 37957144123, 38063262128 (timeouts) before anything was changed.
   budget/full/recent against a fake API (`FEC_API_BASE`, `USASPENDING_API_BASE` — tests only);
   the build check under `python3 -m http.server` exactly as the workflow runs it (198 URLs).
   **The real proof is the Actions runs after the push** — see the next entry.
+
+## Writing section (2026-11-01)
+
+An articles section so an outside contributor can publish by adding one Markdown file and opening
+a pull request. Built as a second content type beside the data-driven guides; nothing about the
+guides changed.
+
+- **Content.** `web/src/content.config.ts` defines two collections (Astro content layer, glob
+  loader; `z` from `astro/zod`, `reference` from `astro:content`). `articles`:
+  `web/src/content/articles/<slug>.md`, the file name is the URL slug (must match
+  `^[a-z0-9]+(-[a-z0-9]+)*$`, otherwise the build throws a clear error). Fields: title (1–60),
+  deck (70–155), published, updated?, author (reference to `authors`), tags (lowercase, default
+  `[]`), original? (http/https URL), image? (path starting `/writing/`, file in
+  `web/public/writing/<slug>/`), draft (default false). `authors`: `web/src/content/authors/<slug>.json`
+  with name, bio (≤300), url, x, linkedin, github (handles or URLs). Both folders hold only a
+  `.gitkeep`: **no sample article or author is committed**, and the build passes with none.
+- **Data.** `web/src/lib/articles.ts`: `getArticles({ publicOnly? })` (newest first; excludes
+  `draft: true` and `published` later than today UTC), `getAuthors`, `articlePath`, `authorPath`,
+  `readingMinutes` (220 wpm, minimum 2). A missing author file fails the build with a message
+  naming the article. **Scheduling:** a future-dated article goes live on its own at the first
+  daily deploy on or after its date (ingest calls deploy every day); no second commit.
+  `PUBLIC_SHOW_DRAFTS=1` (local preview only) also builds drafts and future-dated articles with a
+  "Draft — not public" banner and noindex; sitemap, `llms.txt` and RSS always use `publicOnly`.
+- **Pages.** `web/src/pages/writing/index.astro` (hub; empty state and noindex while nothing is
+  published; CollectionPage + ItemList), `writing/[slug].astro` (article: byline, "Originally
+  published at", hero image, body in `.prose.article-body`, tags, author box, More writing,
+  disclaimer; Article JSON-LD with Person author, `isBasedOn`/`sameAs` when `original` is set),
+  `writing/authors/[slug].astro` (Person JSON-LD; noindex when the author has no published
+  article), `writing/rss.xml.ts` (hand-written RSS 2.0, newest 50). CSS at the end of
+  `web/src/styles/writing.css` ("Writing section"), reusing `.guide-cards`, `.prose`, `.chip`, `.tag`.
+- **Layout.** `BaseLayout.astro` gained optional `author`, `canonical`, `ogImage`, `ogType`,
+  `published` props and a `head` slot (used for the RSS `<link rel="alternate">`); a page that
+  passes none renders as before. An article with `original` set passes it as `canonical`. The
+  footer links "Writing" next to "Guides" (the header nav is unchanged); the footer link is always
+  present, even before the first article, and leads to the noindex empty hub.
+- **Sitemap and llms.txt.** `lib/sitemap.ts` adds `/writing/` (only with ≥1 published article),
+  each published article (lastmod = updated ?? published) and each author with ≥1 published
+  article, all in the `pages` child sitemap. `llms.txt` gets a `## Writing` section (title link:
+  deck) only when there is at least one.
+- **Checker.** `scripts/check-articles.mjs`, run as `npm run check:articles` (root `package.json`).
+  Plain Node, tiny front-matter parser, no dependencies. Checks every article and author file
+  against the schema above plus: author file exists and parses, `updated` ≥ `published`, image
+  file exists, links in the body to `/writing/<slug>/`, `/writing/authors/<slug>/` and files under
+  `/writing/` resolve. One line per file, WARN for a future `published` date, exit 1 on any error.
+  CI (`ci.yml`) does not run it; the build enforces the schema anyway.
+- **Contributor guide.** `PUBLISHING-ARTICLES.md` at the repo root (not `docs/`: `/docs/` is
+  gitignored here because it is the private nested docs repo). Branch `article/<slug>`, one article
+  per pull request, open as draft against `main`; Peter merges and the next deploy publishes.
+
+Live 2026-11-01 as 1de5782 (deploy 41363903954 green; /writing/ empty state, noindex, rss.xml 200, footer link checked in Chrome).
