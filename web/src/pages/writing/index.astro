@@ -1,0 +1,44 @@
+---
+// /writing/ — every published article, newest first. Articles are Markdown files in
+// src/content/articles/ (PUBLISHING-ARTICLES.md); data helpers are in lib/articles.ts.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getArticles, getAuthorMap, articlePath } from "../../lib/articles";
+import { formatDate } from "../../lib/format";
+import { SITE_URL } from "../../lib/seo";
+
+const articles = await getArticles();
+const authors = await getAuthorMap();
+const hasPublic = articles.some((a) => !a.preview);
+const description = "Articles on congressional and insider stock trades, campaign money, lobbying and Treasury rates, written by contributors to Spot the Money.";
+const updated = articles.filter((a) => !a.preview).map((a) => a.modified).sort().at(-1) ?? null;
+const ld = [
+  { "@context": "https://schema.org", "@type": "CollectionPage", "@id": `${SITE_URL}/writing/#page`, name: "Writing", url: `${SITE_URL}/writing/`, description, ...(updated ? { dateModified: updated } : {}), isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } },
+  { "@context": "https://schema.org", "@type": "ItemList", itemListElement: articles.filter((a) => !a.preview).map((a, i) => ({ "@type": "ListItem", position: i + 1, name: a.title, url: `${SITE_URL}${articlePath(a.slug)}` })) },
+];
+---
+<BaseLayout title={["Writing: Articles on Public Money Records | Spot the Money", "Writing | Spot the Money"]} description={description} section="Writing" noindex={!hasPublic}>
+  <link slot="head" rel="alternate" type="application/rss+xml" title="Spot the Money: Writing" href="/writing/rss.xml" />
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Writing", path: "/writing/" }]} />
+  <p class="eyebrow">Writing</p>
+  <h1>Writing</h1>
+  <p class="lede">Articles from contributors on what public records show about money, markets and Washington.</p>
+  {articles.length === 0 ? (
+    <p class="writing-empty">No articles are published yet.</p>
+  ) : (
+    <ul class="guide-cards writing-cards">
+      {articles.map((a) => (
+        <li>
+          <a class="guide-card" href={articlePath(a.slug)}>
+            <strong>{a.title}{a.preview && <span class="tag">Draft</span>}</strong>
+            <span>{a.deck}</span>
+            <em>{authors.get(a.authorId)?.name ?? a.authorId} · <time datetime={a.published}>{formatDate(a.published)}</time> · {a.minutes} min read</em>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
+  <p class="disclaimer"><strong>Not investment advice.</strong> Articles are written by their authors. They present public records and make no recommendation to buy or sell anything. <a href="/writing/rss.xml">RSS feed</a></p>
+  <JsonLd data={ld} />
+</BaseLayout>

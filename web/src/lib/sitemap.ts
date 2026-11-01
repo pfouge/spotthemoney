@@ -7,6 +7,7 @@
 import { getFlagship, personPath, companyPath, securityPath } from "./flagship";
 import { SITE_URL } from "./seo";
 import { getGuides, guidePath } from "./guides";
+import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
 
 export interface SitemapUrl { loc: string; lastmod: string; changefreq?: string; priority?: number }
 export interface ChildSitemap { name: string; urls: SitemapUrl[] }
@@ -18,6 +19,17 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   const built = model.builtAt.slice(0, 10);
   const latestTxn = model.txns[0]?.filedAt ?? model.builtAt;
   const guides = await getGuides();
+  // Writing: published articles only (never drafts or future-dated ones), and /writing/ plus author
+  // pages only when there is something published to list.
+  const articles = await getArticles({ publicOnly: true });
+  const authorsWithArticles = (await getAuthors()).filter((a) => articles.some((x) => x.authorId === a.id));
+  const writing: SitemapUrl[] = articles.length === 0 ? [] : [
+    { loc: "/writing/", lastmod: articles.map((x) => x.modified).sort().at(-1)!, changefreq: "weekly", priority: 0.6 },
+    ...articles.map((x) => ({ loc: articlePath(x.slug), lastmod: x.modified, changefreq: "monthly" as const, priority: 0.6 })),
+    ...authorsWithArticles.map((a) => ({
+      loc: authorPath(a.id), lastmod: articles.filter((x) => x.authorId === a.id).map((x) => x.modified).sort().at(-1)!, changefreq: "monthly" as const, priority: 0.4,
+    })),
+  ];
 
   const pages: SitemapUrl[] = [
     { loc: "/", lastmod: built, changefreq: "daily", priority: 1 },
@@ -43,6 +55,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/downloads/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/faq/", lastmod: guides.map((g) => g.updated).sort().at(-1) ?? built, changefreq: "weekly", priority: 0.6 },
     ...guides.map((g) => ({ loc: guidePath(g.slug), lastmod: g.updated, changefreq: "monthly" as const, priority: 0.6 })),
+    ...writing,
   ];
 
   const insiders: SitemapUrl[] = [];

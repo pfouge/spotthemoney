@@ -1,0 +1,53 @@
+---
+// /writing/authors/<slug>/ — one contributor and their published articles. An author with no
+// published article keeps a page but it is noindex and stays out of the sitemap.
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import Crumbs from "../../../components/Crumbs.astro";
+import JsonLd from "../../../components/JsonLd.astro";
+import { getArticles, getAuthors, getAuthorMap, articlePath, authorPath, type Article, type Author } from "../../../lib/articles";
+import { formatDate } from "../../../lib/format";
+import { SITE_URL } from "../../../lib/seo";
+
+export async function getStaticPaths() {
+  const articles = await getArticles();
+  const publicIds = new Set((await getArticles({ publicOnly: true })).map((x) => x.authorId));
+  return (await getAuthors()).map((author) => ({
+    params: { slug: author.id },
+    props: { author, articles: articles.filter((x) => x.authorId === author.id), indexable: publicIds.has(author.id) },
+  }));
+}
+interface Props { author: Author; articles: Article[]; indexable: boolean }
+const { author, articles, indexable } = Astro.props;
+const path = authorPath(author.id);
+const description = author.bio ?? `Articles by ${author.name} on Spot the Money.`;
+const ld = {
+  "@context": "https://schema.org", "@type": "Person", "@id": `${SITE_URL}${path}#person`, name: author.name, url: `${SITE_URL}${path}`,
+  ...(author.bio ? { description: author.bio } : {}),
+  ...(author.links.length ? { sameAs: author.links.map((l) => l.href) } : {}),
+};
+---
+<BaseLayout title={[`${author.name}: Writing | Spot the Money`, `${author.name} | Spot the Money`]} description={description} section="Writing" noindex={!indexable}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Writing", path: "/writing/" }, { name: author.name, path }]} />
+  <p class="eyebrow">Writing</p>
+  <h1>{author.name}</h1>
+  {author.bio && <p class="lede">{author.bio}</p>}
+  {author.links.length > 0 && <p class="author-links">{author.links.map((l) => <a href={l.href} rel="noopener">{l.label}</a>)}</p>}
+  <h2>Articles</h2>
+  {articles.length === 0 ? (
+    <p class="writing-empty">No articles are published yet.</p>
+  ) : (
+    <ul class="guide-cards writing-cards">
+      {articles.map((x) => (
+        <li>
+          <a class="guide-card" href={articlePath(x.slug)}>
+            <strong>{x.title}{x.preview && <span class="tag">Draft</span>}</strong>
+            <span>{x.deck}</span>
+            <em><time datetime={x.published}>{formatDate(x.published)}</time> · {x.minutes} min read</em>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
+  <p class="disclaimer"><strong>Not investment advice.</strong> Articles are written by their authors. They present public records and make no recommendation to buy or sell anything. <a href="/writing/">All writing</a></p>
+  <JsonLd data={ld} />
+</BaseLayout>

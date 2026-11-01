@@ -1,0 +1,28 @@
+/* Writing section (2026-11-01): /writing/, article pages, author pages. Cards reuse .guide-cards. */
+.writing-empty { color: var(--ink-soft); margin: 1.4rem 0; }
+.writing-cards { margin-top: 1.2rem; }
+.writing-cards .tag { margin-left: 8px; }
+.article-byline { color: var(--ink-soft); font-size: 14.5px; margin: 0.9rem 0 0.3rem; }
+.article-byline a { color: var(--ink); }
+.article-original { color: var(--ink-soft); font-size: 14px; margin: 0 0 0.9rem; }
+.article-hero { margin: 1.2rem 0; max-width: 72ch; }
+.article-hero img { display: block; max-width: 100%; height: auto; border-radius: var(--r-md); }
+.article-body { margin-top: 1.2rem; }
+.article-body h2 { scroll-margin-top: 96px; }
+.article-body ol { max-width: 72ch; padding-left: 1.3rem; }
+.article-body img { max-width: 100%; height: auto; border-radius: var(--r-sm); }
+.article-body blockquote { max-width: 72ch; margin: 1rem 0; padding: 0.1rem 1rem; border-left: 3px solid var(--line-strong); color: var(--ink-soft); }
+.article-body pre { max-width: 80ch; overflow-x: auto; margin: 0 0 1rem; padding: 0.8rem 1rem; font-size: 13.5px; background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.article-body code { font-size: 0.92em; }
+.article-body table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 0 0 1rem; font-size: 14.5px; }
+.article-body th, .article-body td { padding: 8px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.article-body a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.article-tags { color: var(--ink-soft); font-size: 14px; margin: 1.4rem 0 0; }
+.author-box { background: var(--surface-alt); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0.9rem 1.25rem 0.6rem; margin: 1.6rem 0; max-width: 80ch; }
+.author-box h2 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+.author-name { font-weight: 600; margin: 0 0 0.3rem; }
+.author-bio { margin: 0 0 0.6rem; }
+.author-links { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14.5px; margin: 0.6rem 0; }
+.author-links a { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.more-writing h2 { margin-top: 2rem; }
+.draft-banner { max-width: none; margin: 0 0 1rem; padding: 0.6rem 0.9rem; font-size: 14px; color: var(--ink); background: color-mix(in srgb, var(--viz-late) 12%, transparent); border: 1px solid var(--viz-late); border-radius: var(--r-sm); }

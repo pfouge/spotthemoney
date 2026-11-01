@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import "../styles/writing.css";
 import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
 import Wordmark from "../components/Wordmark.astro";
@@ -12,13 +13,23 @@ import Tape from "../components/Tape.astro";
 // yet (a member with no filings on record) — kept out of search and out of the sitemap.
 // modified: ISO date the page's content last changed, for citation metadata; defaults to the
 // build date, which is right for data pages (they are rebuilt whenever the data changes).
-interface Props { title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean; modified?: string | null }
-const { noindex = false } = Astro.props;
+// Writing pages (articles by contributors) also pass: author (a person's name instead of "Spot the
+// Money" in the author / citation_author / dcterms.creator tags), canonical (an absolute URL, for
+// an article first published elsewhere), ogImage (site path or absolute URL), ogType ("article")
+// and published (ISO date: citation_publication_date and article:published_time). Pages that pass
+// none of these render exactly as before.
+interface Props {
+  title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean; modified?: string | null;
+  author?: string; canonical?: string; ogImage?: string; ogType?: string; published?: string | null;
+}
+const { noindex = false, author = "Spot the Money", ogType = "website" } = Astro.props;
 const title = fitTitle(Astro.props.title);
 const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: disclosed trades on one heatmap, updated daily, free.");
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
-const ogImage = `${siteUrl}/og.png`;
-const canonical = new URL(Astro.url.pathname, siteUrl).toString();
+const customImage = Astro.props.ogImage ? new URL(Astro.props.ogImage, siteUrl + "/").toString() : null;
+const ogImage = customImage ?? `${siteUrl}/og.png`;
+const canonical = Astro.props.canonical ?? new URL(Astro.url.pathname, siteUrl).toString();
+const published = Astro.props.published ? Astro.props.published.slice(0, 10) : null;
 const year = new Date().getFullYear();
 const modified = (Astro.props.modified ?? new Date().toISOString()).slice(0, 10);
 // The title as a citation should carry it: without the site-name suffix.
@@ -35,29 +46,32 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={noindex ? "noindex, follow" : "index, follow, max-snippet:-1, max-image-preview:large"} />
-    <meta name="author" content="Spot the Money" />
+    <meta name="author" content={author} />
     <link rel="license" href={`${siteUrl}/terms/#reuse`} />
     <meta name="citation_title" content={citeTitle} />
-    <meta name="citation_author" content="Spot the Money" />
-    <meta name="citation_publication_date" content={modified.replace(/-/g, "/")} />
+    <meta name="citation_author" content={author} />
+    <meta name="citation_publication_date" content={(published ?? modified).replace(/-/g, "/")} />
     <meta name="citation_public_url" content={canonical} />
     <meta name="dcterms.title" content={citeTitle} />
-    <meta name="dcterms.creator" content="Spot the Money" />
+    <meta name="dcterms.creator" content={author} />
     <meta name="dcterms.publisher" content="Spot the Money" />
     <meta name="dcterms.modified" content={modified} />
     <meta name="dcterms.rights" content={`${siteUrl}/terms/#reuse`} />
     <meta property="article:modified_time" content={modified} />
+    {published && <meta property="article:published_time" content={published} />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content="Spot the Money" />
     <meta property="og:image" content={ogImage} />
+    {customImage ? <meta property="og:image:alt" content={title} /> : <>
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Spot the Money — Congress and insider stock trades on one heatmap" />
+    </>}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
@@ -73,6 +87,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
       })();
     </script>
     <link rel="preload" href="/fonts/outfit-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <slot name="head" />
     <Analytics />
   </head>
   <body>
@@ -175,6 +190,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
         <nav class="foot-links" aria-label="About this site">
           <a href="/about/">About</a>
           <a href="/guides/">Guides</a>
+          <a href="/writing/">Writing</a>
           <a href="/faq/">FAQ</a>
           <a href="/methodology/">Methodology</a>
           <a href="/downloads/">Downloads</a>

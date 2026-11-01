@@ -1,0 +1,87 @@
+---
+// /writing/<slug>/ — one article. The Markdown body is rendered by Astro inside .prose. Draft and
+// future-dated articles only exist in a PUBLIC_SHOW_DRAFTS=1 build, with a banner and noindex.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { render } from "astro:content";
+import { getArticles, getAuthorMap, articlePath, authorPath, type Article } from "../../lib/articles";
+import { formatDate } from "../../lib/format";
+import { SITE_URL, PUBLISHER } from "../../lib/seo";
+
+export async function getStaticPaths() {
+  const articles = await getArticles();
+  return articles.map((a) => ({ params: { slug: a.slug }, props: { a, all: articles } }));
+}
+interface Props { a: Article; all: Article[] }
+const { a, all } = Astro.props;
+const authors = await getAuthorMap();
+const author = authors.get(a.authorId)!;
+const { Content } = await render(a.entry);
+const path = articlePath(a.slug);
+const more = all.filter((x) => x.slug !== a.slug).slice(0, 3);
+const host = a.original ? new URL(a.original).hostname.replace(/^www\./, "") : null;
+const ld = [
+  {
+    "@context": "https://schema.org", "@type": "Article", "@id": `${SITE_URL}${path}#article`, headline: a.title, description: a.deck,
+    datePublished: a.published, dateModified: a.modified, inLanguage: "en-US",
+    mainEntityOfPage: `${SITE_URL}${path}`,
+    image: a.image ? `${SITE_URL}${a.image}` : `${SITE_URL}/og.png`,
+    ...(a.tags.length ? { keywords: a.tags.join(", ") } : {}),
+    author: { "@type": "Person", name: author.name, url: `${SITE_URL}${authorPath(author.id)}`, ...(author.links.length ? { sameAs: author.links.map((l) => l.href) } : {}) },
+    publisher: PUBLISHER,
+    ...(a.original ? { isBasedOn: a.original, sameAs: a.original } : {}),
+  },
+];
+---
+<BaseLayout title={a.title} description={a.deck} section="Writing" modified={a.modified} published={a.published} author={author.name} canonical={a.original ?? undefined} ogImage={a.image ?? undefined} ogType="article" noindex={a.preview}>
+  <link slot="head" rel="alternate" type="application/rss+xml" title="Spot the Money: Writing" href="/writing/rss.xml" />
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Writing", path: "/writing/" }, { name: a.title, path }]} />
+  <p class="eyebrow">Writing</p>
+  {a.preview && <p class="draft-banner" role="note"><strong>Draft — not public.</strong> This page exists only in a local preview build and is marked noindex.</p>}
+  <article class="article">
+    <h1>{a.title}</h1>
+    <p class="lede">{a.deck}</p>
+    <p class="article-byline">
+      <a href={authorPath(author.id)}>{author.name}</a>
+      <span> · <time datetime={a.published}>{formatDate(a.published)}</time></span>
+      {a.updated && <span> · Updated <time datetime={a.updated}>{formatDate(a.updated)}</time></span>}
+      <span> · {a.minutes} min read</span>
+    </p>
+    {a.original && <p class="article-original">Originally published at <a href={a.original} rel="noopener">{host}</a></p>}
+    {a.image && <figure class="article-hero"><img src={a.image} alt="" width="1200" height="630" loading="eager" decoding="async" /></figure>}
+
+    <div class="prose article-body">
+      <Content />
+    </div>
+
+    {a.tags.length > 0 && <p class="article-tags"><span>Tags:</span> {a.tags.map((t) => <span class="chip">{t}</span>)}</p>}
+
+    <aside class="author-box" aria-labelledby="about-author">
+      <h2 id="about-author">About the author</h2>
+      <p class="author-name"><a href={authorPath(author.id)}>{author.name}</a></p>
+      {author.bio && <p class="author-bio">{author.bio}</p>}
+      {author.links.length > 0 && <p class="author-links">{author.links.map((l) => <a href={l.href} rel="noopener">{l.label}</a>)}</p>}
+    </aside>
+
+    {more.length > 0 && (
+      <section class="more-writing" aria-labelledby="more-writing">
+        <h2 id="more-writing">More writing</h2>
+        <ul class="guide-cards writing-cards">
+          {more.map((x) => (
+            <li>
+              <a class="guide-card" href={articlePath(x.slug)}>
+                <strong>{x.title}{x.preview && <span class="tag">Draft</span>}</strong>
+                <span>{x.deck}</span>
+                <em>{authors.get(x.authorId)?.name ?? x.authorId} · {x.minutes} min read</em>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <p class="disclaimer"><strong>Not investment advice.</strong> This article is the author's own writing. It presents public records and makes no recommendation to buy or sell anything. <a href="/writing/">All writing</a> · <a href="/corrections/">Report an error</a></p>
+  </article>
+  <JsonLd data={ld} />
+</BaseLayout>

@@ -18,6 +18,7 @@
     "preview": "npm run preview -w @stm/web",
     "ingest": "npm run start -w @stm/ingest --",
     "migrate": "node db/migrate.mjs",
-    "typecheck": "tsc -b --pretty"
+    "typecheck": "tsc -b --pretty",
+    "check:articles": "node scripts/check-articles.mjs"
   }
 }

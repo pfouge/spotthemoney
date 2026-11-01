@@ -4,12 +4,16 @@ import type { APIRoute } from "astro";
 import { getFlagship, num } from "../lib/flagship";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import { getGuides, byGroup, guidePath } from "../lib/guides";
+import { getArticles, articleUrl } from "../lib/articles";
 
 export const GET: APIRoute = async () => {
   const m = await getFlagship();
   const c = m.counts;
   const guides = await getGuides();
   const guideLines = byGroup(guides).map((g) => `### ${g.label}\n` + g.guides.map((x) => `- [${x.title}](${SITE_URL}${guidePath(x.slug)}): ${x.description.at(-1)}`).join("\n")).join("\n\n");
+  // Published articles only; the section is left out entirely while there are none.
+  const articles = await getArticles({ publicOnly: true });
+  const writing = articles.length === 0 ? "" : `## Writing\n${articles.map((a) => `- [${a.title}](${articleUrl(a.slug)}): ${a.deck}`).join("\n")}\n\n`;
   const body = `# Spot the Money
 
 > See where the money really moves — in the markets and in Washington. Free public U.S. data
@@ -54,7 +58,7 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 
 ${guideLines}
 
-## Optional
+${writing}## Optional
 - [Methodology](${SITE_URL}/methodology/): sources, cadence, publishing bar, lag and late rules, flag definitions, matching rules.
 - [Corrections](${SITE_URL}/corrections/): how to report an error; five-working-day response.
 - Structured data: JSON-LD (Person, Organization, Dataset, DataCatalog, BreadcrumbList) on every page listed above.
