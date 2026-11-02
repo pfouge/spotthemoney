@@ -1,0 +1,282 @@
+# Put every pending article live at once: Actions > publish > Run workflow.
+#
+# "Pending" means every open pull request against main from a branch of this repository whose changed
+# files are ALL articles, authors or images (web/src/content/articles/, web/src/content/authors/,
+# web/public/writing/). A pull request that also changes anything else (code, workflows, packages) is
+# reported as skipped and never merged here: merge it by hand after review.
+#
+# What it does, in order (job "merge"):
+#   1. Lays the qualifying pull requests over main exactly as qa.yml does (scripts/pending-articles.sh),
+#      runs `npm run check:articles` and a full site build of the combined tree. If either fails,
+#      NOTHING is merged.
+#   2. Merges each qualifying pull request, oldest first (draft pull requests are marked ready first):
+#      squash, branch deleted. Writes a job summary: merged, skipped (with the reason), and any merged
+#      article that still says `draft: true` or has a future `published` date (it stays hidden).
+# Then job "deploy" builds and deploys main with deploy.yml, and job "qa" re-runs qa.yml.
+# Merges made with the workflow token do not trigger the push-to-main workflows, so these two jobs
+# are what publish the articles and refresh the QA copy.
+#
+# dry_run: does steps 1 and the summary only, merges nothing and deploys nothing. The summary says
+# what would happen.
+#
+# Needs: the repository's Actions permissions must let the workflow token write (the permissions
+# below) and branch protection on main must allow the merge.
+
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: check everything and report what would be merged, but merge nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Never two publishes at once, and never cancel one half way through its merges.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    # Only the copy of this workflow on main may merge pull requests.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PUBLIC_SITE_URL: https://spotthemoney.com
+      PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
+      PUBLIC_AD_CLIENT: ${{ vars.PUBLIC_AD_CLIENT }}
+      PUBLIC_SHOW_DRAFTS: "1"
+      ASTRO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # Qualifying pull requests only (every changed file is an article, author or image file).
+      - name: Add the pending articles to main
+        id: combine
+        run: bash scripts/pending-articles.sh publish
+
+      - uses: actions/setup-node@v4
+        if: steps.combine.outputs.included != '0'
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install
+        if: steps.combine.outputs.included != '0'
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+
+      - name: Check the articles
+        id: check
+        if: steps.combine.outputs.included != '0'
+        run: |
+          set -o pipefail
+          npm run check:articles 2>&1 | tee check.log
+
+      # The build also validates the content schema and every page; nothing is merged unless it passes.
+      - name: Build the combined site
+        id: build
+        if: steps.combine.outputs.included != '0'
+        run: |
+          set -o pipefail
+          npm run build --workspace=@stm/web 2>&1 | tee build.log
+
+      - name: Report a failed check or build
+        if: failure() && (steps.check.outcome == 'failure' || steps.build.outcome == 'failure')
+        run: |
+          {
+            echo "## publish: stopped, nothing merged"
+            echo
+            if [ "${{ steps.check.outcome }}" = "failure" ]; then
+              echo "\`npm run check:articles\` failed on main plus the pending pull requests:"
+              echo
+              echo '```'
+              grep -v '^OK' check.log | tail -40 || true
+              echo '```'
+            else
+              echo "The site build failed on main plus the pending pull requests. Last lines of the build log:"
+              echo
+              echo '```'
+              tail -40 build.log || true
+              echo '```'
+            fi
+            echo
+            echo "Fix the pull request named in the message above (the QA comment on it links the same view), then run publish again."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Merge the pull requests
+        id: merge
+        run: |
+          set -uo pipefail
+          echo "merged=0" >> "$GITHUB_OUTPUT"
+          summary=summary.md
+          trap 'cat summary.md >> "$GITHUB_STEP_SUMMARY"' EXIT
+
+          # Front matter of an article, without the --- lines.
+          fm() { awk 'NR == 1 { if ($0 !~ /^---[ \t]*$/) exit; next } /^---[ \t]*$/ { exit } { print }' "$1"; }
+          esc() { sed 's/|/\\|/g'; }
+
+          merge_pr() {
+            local n=$1 try state
+            for try in 1 2 3 4; do
+              if last_error=$(gh pr merge "$n" --repo "$REPO" --squash --delete-branch 2>&1); then return 0; fi
+              # The merge can succeed while deleting the branch fails: the pull request state decides.
+              state=$(gh pr view "$n" --repo "$REPO" --json state --jq .state 2>/dev/null || true)
+              if [ "$state" = "MERGED" ]; then return 0; fi
+              echo "merge of #$n, attempt $try: $last_error"
+              sleep $((try * 8))
+            done
+            return 1
+          }
+
+          if [ "$DRY_RUN" = "true" ]; then title="publish (dry run: nothing merged)"; else title="publish"; fi
+          main_short=$(jq -r '.main_sha[0:7]' pending.json)
+          {
+            echo "## $title"
+            echo
+            echo "Main commit \`$main_short\`. $(jq '.prs | length' pending.json) open pull request(s) against main from this repository."
+            echo
+          } > "$summary"
+
+          merged=(); failed=(); hidden=()
+          while IFS= read -r pr; do
+            n=$(jq -r '.number' <<<"$pr")
+            draft=$(jq -r '.draft' <<<"$pr")
+            echo "::group::pull request #$n"
+            ok=0
+            if [ "$DRY_RUN" = "true" ]; then
+              [ "$draft" = "true" ] && echo "would mark #$n ready for review"
+              echo "would squash-merge #$n and delete its branch"
+              merged+=("$n"); ok=1
+            else
+              if [ "$draft" = "true" ] && ! gh pr ready "$n" --repo "$REPO"; then
+                echo "::error::#$n could not be marked ready for review"
+                failed+=("$n"$'\t'"could not be marked ready for review")
+                echo "::endgroup::"; continue
+              fi
+              if merge_pr "$n"; then
+                echo "merged #$n"
+                merged+=("$n"); ok=1
+              else
+                echo "::error::#$n was not merged: $last_error"
+                failed+=("$n"$'\t'"$(printf '%s' "$last_error" | tr '\n' ' ' | cut -c1-300)")
+              fi
+            fi
+            echo "::endgroup::"
+            if [ "$ok" = 1 ]; then
+              for slug in $(jq -r '.articles[]' <<<"$pr"); do
+                f="web/src/content/articles/$slug.md"
+                [ -f "$f" ] || continue
+                if fm "$f" | grep -Eq '^draft:[[:space:]]*true([[:space:]]|#|$)'; then
+                  hidden+=("$slug (#$n): draft: true, stays hidden until the line is removed")
+                fi
+                pub=$(fm "$f" | sed -nE 's/^published:[[:space:]]*"?([0-9]{4}-[0-9]{2}-[0-9]{2}).*/\1/p' | head -1)
+                if [ -n "$pub" ] && [[ "$pub" > "$(date -u +%F)" ]]; then
+                  hidden+=("$slug (#$n): published $pub is in the future, goes live on the first daily deploy on or after that date")
+                fi
+              done
+            fi
+          done < <(jq -c '.prs[] | select(.included)' pending.json)
+
+          {
+            if [ "$DRY_RUN" = "true" ]; then echo "### Would merge (${#merged[@]})"; else echo "### Merged (${#merged[@]})"; fi
+            echo
+            if [ "${#merged[@]}" -gt 0 ]; then
+              echo "| Pull request | Title | Articles |"
+              echo "|---|---|---|"
+              for n in "${merged[@]}"; do
+                jq -r --argjson n "$n" --arg dry "$DRY_RUN" '.prs[] | select(.number == $n) | "| #\(.number)\(if .draft then (if $dry == "true" then " (draft, would be marked ready)" else " (was a draft, marked ready)" end) else "" end) | \(.title | gsub("\\|"; "/")) | \(if (.articles | length) > 0 then (.articles | join(", ")) else "none (author or image files only)" end) |"' pending.json
+              done
+            else
+              echo "Nothing to merge: no open pull request qualifies."
+            fi
+            echo
+            if [ "${#failed[@]}" -gt 0 ]; then
+              echo "### Merge failed (${#failed[@]})"
+              echo
+              echo "| Pull request | Error |"
+              echo "|---|---|"
+              for x in "${failed[@]}"; do echo "| #${x%%$'\t'*} | $(printf '%s' "${x#*$'\t'}" | esc) |"; done
+              echo
+            fi
+            skipped=$(jq -r '.prs[] | select(.included | not) | "| #\(.number) | \(.title | gsub("\\|"; "/")) | \(.reason) |"' pending.json)
+            echo "### Skipped ($(printf '%s' "$skipped" | grep -c . || true))"
+            echo
+            if [ -n "$skipped" ]; then
+              echo "| Pull request | Title | Reason |"
+              echo "|---|---|---|"
+              printf '%s\n' "$skipped"
+              echo
+              echo "Skipped pull requests are never merged by publish. Review and merge them by hand."
+            else
+              echo "None."
+            fi
+            echo
+            if [ "$(jq '.overlaps | length' pending.json)" -gt 0 ]; then
+              echo "### Same file changed by two pull requests"
+              echo
+              jq -r '.overlaps[] | "- \(.)"' pending.json
+              echo
+            fi
+            if [ "${#hidden[@]}" -gt 0 ]; then
+              if [ "$DRY_RUN" = "true" ]; then echo "### Would stay hidden after publishing"; else echo "### Merged but still hidden"; fi
+              echo
+              for h in "${hidden[@]}"; do echo "- $h"; done
+              echo
+            fi
+            if [ "$DRY_RUN" != "true" ] && [ "${#merged[@]}" -gt 0 ]; then
+              echo "The deploy job now builds and deploys main; the qa job then refreshes https://qa.spotthemoney.com/writing/."
+            fi
+          } >> "$summary"
+
+          echo "merged=${#merged[@]}" >> "$GITHUB_OUTPUT"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "dry run: ${#merged[@]} pull request(s) would be merged"
+            echo "merged=0" >> "$GITHUB_OUTPUT"
+          fi
+          [ "${#failed[@]}" -eq 0 ]
+
+  # Publishes what the merge job merged. Runs even when some merge failed, as long as at least one
+  # pull request is in main. The three secrets are passed explicitly: they are not inherited.
+  deploy:
+    needs: merge
+    if: ${{ always() && !inputs.dry_run && needs.merge.outputs.merged != '' && needs.merge.outputs.merged != '0' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy.yml
+    secrets:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # Merges made with the workflow token do not trigger qa.yml (push to main), so run it here:
+  # the QA copy then shows main plus the pull requests that are still open.
+  qa:
+    needs: [merge, deploy]
+    if: ${{ always() && !inputs.dry_run && needs.merge.outputs.merged != '' && needs.merge.outputs.merged != '0' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Run the qa workflow
+        run: gh workflow run qa.yml --repo "$REPO" --ref main

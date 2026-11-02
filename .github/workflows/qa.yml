@@ -1,49 +1,58 @@
-# QA copy of the site for every pull request that adds or changes an article.
+# QA copy of the site: main plus EVERY article that is not live yet.
 #
-# Builds the PR the same way deploy.yml builds main, with PUBLIC_SHOW_DRAFTS=1 so unpublished
-# articles (marked draft or dated in the future) are included with a banner and noindex, deploys it as a
-# separate Worker "spotthemoney-qa" on https://qa.spotthemoney.com, and keeps ONE comment on the
-# pull request with the links (marker: <!-- stm-qa -->), so the repo owner and the article author
-# are notified by GitHub.
+# Builds main with the articles, authors and images of all open pull requests against main added on
+# top (scripts/pending-articles.sh), with PUBLIC_SHOW_DRAFTS=1 so unpublished articles (marked draft or
+# dated in the future) are included with a banner and noindex. It deploys the result as a separate
+# Worker "spotthemoney-qa" on https://qa.spotthemoney.com, and keeps ONE comment on each included pull
+# request with the links (marker: <!-- stm-qa -->), so the repo owner and the article author are
+# notified by GitHub. https://qa.spotthemoney.com/writing/ lists every article not live yet.
+#
+# Every run rebuilds the whole picture, so the newest run wins (concurrency "qa", cancel in progress).
+# It runs when a pull request is opened, updated, reopened, marked ready or closed (a closed or merged
+# pull request drops out of the picture), when main changes, and on demand: Actions > qa > Run workflow.
+# publish.yml triggers it after it merges pull requests.
 #
 # Safety rails:
-#   - Only pull requests whose head branch lives in this repository run: a fork gets no secrets.
+#   - From each pull request ONLY files under web/src/content/articles/, web/src/content/authors/ and
+#     web/public/writing/ are used, and only from branches of this repository. No code, workflow or
+#     package file of a pull request is ever taken, so a pull request cannot run its own code here.
+#     (A fork gets no secrets and is not built.)
 #   - The production Worker name and routes are never touched. The generated wrangler.json is
 #     rewritten before the deploy (name spotthemoney-qa, route qa.spotthemoney.com only).
 #   - The QA site is not indexable: X-Robots-Tag noindex on every static response and a
 #     robots.txt that disallows everything. No IndexNow ping, no live checks, no search engine call.
 #   - db/migrate.mjs is NOT run here: a pull request must never change the production schema.
 #     QA builds against the schema main already applied.
-#
-# Re-run for an existing pull request: Actions > qa > Run workflow, enter the pull request number.
 
 name: qa
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, closed]
     branches: [main]
     paths:
       - "web/src/content/**"
+      - "web/public/writing/**"
+  push:
+    branches: [main]
+    paths:
+      - "web/src/content/**"
+      - "web/public/writing/**"
   workflow_dispatch:
-    inputs:
-      pr_number:
-        description: "Pull request number to build a QA copy of"
-        required: true
-        type: string
 
 permissions:
   contents: read
   pull-requests: write
 
+# One QA build at a time, the newest wins. A pull request from a fork is not built (no secrets), so its
+# events get their own group and must not cancel a real build.
 concurrency:
-  group: qa
+  group: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) && format('qa-fork-{0}', github.run_id) || 'qa' }}
   cancel-in-progress: true
 
 jobs:
   qa:
-    # pull_request: only branches of this repository. workflow_dispatch: checked in the first step.
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -57,26 +66,15 @@ jobs:
       ASTRO_TELEMETRY_DISABLED: "1"
       WRANGLER_SEND_METRICS: "false"
     steps:
-      - name: Find the pull request
-        id: pr
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
-        run: |
-          set -euo pipefail
-          [[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || { echo "bad pull request number: $PR_NUMBER"; exit 1; }
-          gh api "repos/$REPO/pulls/$PR_NUMBER" > pr.json
-          head_repo=$(jq -r '.head.repo.full_name // ""' pr.json)
-          if [ "$head_repo" != "$REPO" ]; then
-            echo "pull request head is '$head_repo', not $REPO: no QA copy for forks"
-            exit 1
-          fi
-          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "sha=$(jq -r '.head.sha' pr.json)" >> "$GITHUB_OUTPUT"
-
-      # The merge of the pull request into main, so QA shows what main will look like after merging.
+      # Always main, whatever started this run: the pending articles are laid over it below.
       - uses: actions/checkout@v4
         with:
-          ref: refs/pull/${{ steps.pr.outputs.number }}/merge
+          ref: main
+
+      # Open pull requests against main from this repository (drafts included), oldest first; the
+      # article, author and image files of each are copied over main. Writes pending.json.
+      - name: Add the pending articles to main
+        run: bash scripts/pending-articles.sh qa
 
       - uses: actions/setup-node@v4
         with:
@@ -123,39 +121,68 @@ jobs:
           echo "deploying with $cfg"
           npx wrangler deploy --config "$cfg"
 
-      - name: Comment on the pull request
-        if: success() || failure()
+      # One comment (marker <!-- stm-qa -->) on every pull request in the picture: created once,
+      # edited on later runs (and left alone when nothing changed).
+      - name: Comment on the pull requests
+        run: |
+          set -euo pipefail
+          main_short=$(jq -r '.main_sha[0:7]' pending.json)
+          publish_url="https://github.com/$REPO/actions/workflows/publish.yml"
+          while IFS= read -r pr; do
+            n=$(jq -r '.number' <<<"$pr")
+            head_short=$(jq -r '.sha[0:7]' <<<"$pr")
+            {
+              echo '<!-- stm-qa -->'
+              echo '**QA ready**'
+              echo
+              if [ "$(jq '.articles | length' <<<"$pr")" -gt 0 ]; then
+                jq -r '.articles[] | "- Article: https://qa.spotthemoney.com/writing/\(.)/"' <<<"$pr"
+              else
+                echo '- This pull request has no article file; its author and image files are in the QA copy.'
+              fi
+              echo '- All articles not live yet: https://qa.spotthemoney.com/writing/'
+              echo
+              echo "Main commit \`$main_short\`, pull request head \`$head_short\`."
+              echo
+              echo 'QA copy only, not indexed.'
+              if [ "$(jq '.other | length' <<<"$pr")" -gt 0 ]; then
+                echo
+                echo "This pull request also changes $(jq '.other | length' <<<"$pr") file(s) outside articles, authors and images. QA does not use them, and publish skips this pull request."
+              fi
+              echo
+              echo "To put every pending article live: [Actions → publish → Run workflow]($publish_url). To publish only this one, merge this pull request."
+            } > qa-comment.md
+            existing=$(gh api --paginate "repos/$REPO/issues/$n/comments" \
+                         --jq '[.[] | select(.body | contains("<!-- stm-qa -->"))][0] // empty | [.id, .body] | @json' | head -1 || true)
+            if [ -n "$existing" ]; then
+              id=$(jq -r '.[0]' <<<"$existing")
+              if [ "$(jq -r '.[1]' <<<"$existing" | tr -d '\r')" = "$(cat qa-comment.md)" ]; then
+                echo "#$n: comment is up to date"
+                continue
+              fi
+              gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@qa-comment.md > /dev/null
+              echo "#$n: comment updated"
+            else
+              gh api -X POST "repos/$REPO/issues/$n/comments" -F body=@qa-comment.md > /dev/null
+              echo "#$n: comment created"
+            fi
+          done < <(jq -c '.prs[] | select(.included)' pending.json)
+
+      # The build or deploy failed: tell the pull request that started this run (a pull request event),
+      # with a link to the run. Runs for pushes and manual runs have no pull request to tell.
+      - name: Comment on the pull request when QA failed
+        if: failure() && github.event_name == 'pull_request'
         env:
-          PR_NUMBER: ${{ steps.pr.outputs.number }}
-          SHA: ${{ steps.pr.outputs.sha }}
-          JOB_STATUS: ${{ job.status }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          short=${SHA:0:7}
           {
             echo '<!-- stm-qa -->'
-            if [ "$JOB_STATUS" = "success" ]; then
-              echo '**QA ready**'
-              echo
-              gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
-                --jq '.[] | select(.status != "removed") | .filename' \
-                | grep -E '^web/src/content/articles/[^/]+\.md$' | sort > articles.txt || true
-              while read -r f; do
-                [ -n "$f" ] || continue
-                slug=$(basename "$f" .md)
-                echo "- Article: https://qa.spotthemoney.com/writing/$slug/"
-              done < articles.txt
-              echo "- All writing: https://qa.spotthemoney.com/writing/"
-              echo
-              echo "Commit: \`$short\`"
-              echo
-              echo 'QA copy only, not indexed. Goes live on spotthemoney.com when this PR is merged.'
-            else
-              echo '**QA failed**'
-              echo
-              echo "The QA build for commit \`$short\` did not finish. See the run: $RUN_URL"
-            fi
+            echo '**QA failed**'
+            echo
+            echo "The QA build with pull request head \`${SHA:0:7}\` did not finish. See the run: $RUN_URL"
           } > qa-comment.md
           id=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
                  --jq '.[] | select(.body | contains("<!-- stm-qa -->")) | .id' | head -1 || true)

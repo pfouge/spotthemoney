@@ -1,6 +1,6 @@
 # Publishing an article on Spot the Money
 
-An article is one Markdown file. Add the file, open a pull request, and once it is merged the next deploy publishes it at `https://spotthemoney.com/writing/<name>/`.
+An article is one Markdown file. Add the file, open a pull request, and once it is merged the next deploy publishes it at `https://spotthemoney.com/writing/<name>/`. Several articles can wait in their own pull requests at the same time; you can look at them all together on the QA site and put them all live in one go.
 
 ## Where the files go
 
@@ -127,8 +127,20 @@ Then open `http://localhost:4321/writing/`.
 - Branch name: `article/<name>`.
 - One article per pull request. Include the author file if it is your first article.
 - Open it as a draft pull request against `main`.
-- Peter merges it, and the next deploy publishes it.
+- You can have several articles open at the same time, each in its own pull request.
+- Peter publishes them (see "Publishing" below).
 
 ## QA
 
-After you open the pull request, a QA copy of the whole site is built with your article in it. Within about 10 minutes a comment appears on the pull request with a link to your article at `https://qa.spotthemoney.com/writing/<name>/`, and the comment updates on every push. Check the article there (a draft or future-dated article shows a banner) before you ask for a merge. The QA copy is not indexed by search engines and is replaced by the next pull request, so do not share its link. If the comment says QA failed, open the run it links to and read the build error.
+After you open the pull request, a QA copy of the whole site is built: main plus your article plus every other article that is not live yet (all open article pull requests, drafts included). Within about 10 minutes a comment appears on your pull request with a link to your article at `https://qa.spotthemoney.com/writing/<name>/`, and the comment updates on every push. `https://qa.spotthemoney.com/writing/` lists all articles not live yet, together. Check your article there (a draft or future-dated article shows a banner) before you ask for a merge. The QA copy is not indexed by search engines. Do not share its link: it changes whenever any article pull request changes, and a pull request that is merged or closed drops out of it. If the comment says QA failed, open the run it links to and read the build error.
+
+Only the article, author and image files of a pull request (`web/src/content/articles/`, `web/src/content/authors/`, `web/public/writing/`) go into the QA copy. Anything else a pull request changes is ignored there.
+
+## Publishing
+
+Two ways, both by Peter:
+
+- **Everything at once.** When all pending articles look right on `qa.spotthemoney.com/writing/`, go to Actions, choose **publish**, and click **Run workflow** (tick "Dry run" first to see what would happen without merging anything). It checks the combined site (`npm run check:articles` and a full build), merges every open article pull request (oldest first, draft ones marked ready first) and deploys the site. The run summary lists what was merged, what was skipped and why, and any merged article that still says `draft: true` (it stays hidden). A pull request that also changes anything other than articles, authors and images is skipped: merge it by hand after review. If the check fails, nothing is merged.
+- **One article.** Merge that single pull request. The next deploy publishes it, and the other pull requests stay in QA.
+
+Either way, an article marked `draft: true` or dated in the future stays off the live site until the line is removed or the date arrives.
