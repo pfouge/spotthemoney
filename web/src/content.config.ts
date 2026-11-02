@@ -51,6 +51,9 @@ const articles = defineCollection({
   schema: z.object({
     title: z.string().min(1).max(60),
     deck: z.string().min(70).max(155),
+    // Optional answer-engine fields (PUBLISHING-ARTICLES.md, "Getting found in search and AI answers").
+    summary: z.string().min(80).max(320).optional(),
+    faqs: z.array(z.object({ q: z.string().min(10).max(150), a: z.string().min(40).max(600) })).max(8).optional(),
     published: z.coerce.date(),
     updated: z.coerce.date().optional(),
     author: reference("authors"),

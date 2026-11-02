@@ -37,6 +37,10 @@ Copy this block to the top of your file, then write the article below it in Mark
 ---
 title: "Your title, 60 characters or fewer"                     # page heading and search title
 deck: "One or two sentences that sum up the article, between 70 and 155 characters long."  # subtitle and search description
+summary: "Two sentences that answer the article's main question directly, 80 to 320 characters."   # optional, recommended: the answer AI answer engines quote
+faqs:                                  # optional, recommended: 3 to 5 real questions, up to 8
+  - q: "A question people really search, 10 to 150 characters?"
+    a: "The answer in one to three sentences, 40 to 600 characters."
 published: 2026-11-15                  # YYYY-MM-DD; a future date holds the article until then
 updated: 2026-11-20                    # optional: set only after a later edit
 author: jane-doe                       # your author file name, without .json
@@ -47,12 +51,14 @@ draft: false                           # true keeps the article off the site
 ---
 ```
 
-Put quotes around `title` and `deck`. A colon inside an unquoted value breaks the file.
+Put quotes around `title`, `deck`, `summary` and every `q` and `a`. A colon inside an unquoted value breaks the file. Keep each `q` and `a` on one line.
 
 ## What the build enforces
 
 - `title`: 1 to 60 characters.
 - `deck`: 70 to 155 characters.
+- `summary`, if set: 80 to 320 characters.
+- `faqs`, if set: at most 8 items, each with a `q` of 10 to 150 characters and an `a` of 40 to 600 characters.
 - `published`: a real date written `YYYY-MM-DD`. `updated`, if set, is a date too.
 - `author`: must match a file in `web/src/content/authors/`.
 - `tags`: lowercase.
@@ -62,6 +68,18 @@ Put quotes around `title` and `deck`. A colon inside an unquoted value breaks th
 - The file name: lowercase letters, digits and single hyphens.
 
 A file that breaks a rule fails the build with a message naming the file and the field.
+
+## Getting found in search and AI answers
+
+Both `summary` and `faqs` are optional, and both help. Search engines and AI answer engines (ChatGPT, Perplexity, Google's AI answers) quote pages that answer a question plainly.
+
+- **Title:** carry the main search phrase, as people would type it.
+- **Deck:** this is the search snippet. Say what the article answers.
+- **Summary:** the two-sentence answer to the article's main question. It appears in a boxed answer under the byline and is what answer engines quote. It also replaces the deck in `llms.txt`.
+- **First paragraph:** answer the question directly, before any background.
+- **Headings:** phrase each `##` heading as a question readers search ("How soon must a member of Congress report a trade?").
+- **Links:** link the Spot the Money page for anything you name: a [member](/congress/), an [insider](/insiders/), a [stock](/stocks/), a [company](/companies/), or a [guide](/guides/).
+- **Faqs:** 3 to 5 real questions people search, each answered in one to three sentences. They show as a "Questions and answers" section after the article.
 
 ## Drafts and scheduled publishing
 

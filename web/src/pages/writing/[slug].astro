@@ -4,6 +4,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
+import Answer from "../../components/Answer.astro";
 import { render } from "astro:content";
 import { getArticles, getAuthorMap, articlePath, authorPath, type Article } from "../../lib/articles";
 import { formatDate } from "../../lib/format";
@@ -30,8 +31,10 @@ const ld = [
     ...(a.tags.length ? { keywords: a.tags.join(", ") } : {}),
     author: { "@type": "Person", name: author.name, url: `${SITE_URL}${authorPath(author.id)}`, ...(author.links.length ? { sameAs: author.links.map((l) => l.href) } : {}) },
     publisher: PUBLISHER,
+    ...(a.summary ? { abstract: a.summary } : {}),
     ...(a.original ? { isBasedOn: a.original, sameAs: a.original } : {}),
   },
+  ...(a.faqs.length ? [{ "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}${path}#faq`, mainEntity: a.faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) }] : []),
 ];
 ---
 <BaseLayout title={a.title} description={a.deck} section="Writing" modified={a.modified} published={a.published} author={author.name} canonical={a.original ?? undefined} ogImage={a.image ?? undefined} ogType="article" noindex={a.preview}>
@@ -48,12 +51,27 @@ const ld = [
       {a.updated && <span> · Updated <time datetime={a.updated}>{formatDate(a.updated)}</time></span>}
       <span> · {a.minutes} min read</span>
     </p>
+    {a.summary && <Answer text={a.summary} updated={a.modified} sourceNote={`Article · ${author.name}`} />}
     {a.original && <p class="article-original">Originally published at <a href={a.original} rel="noopener">{host}</a></p>}
     {a.image && <figure class="article-hero"><img src={a.image} alt="" width="1200" height="630" loading="eager" decoding="async" /></figure>}
 
     <div class="prose article-body">
       <Content />
     </div>
+
+    {a.faqs.length > 0 && (
+      <section class="prose article-faqs" aria-labelledby="questions">
+        <h2 id="questions">Questions and answers</h2>
+        <div class="faq-list">
+          {a.faqs.map((f) => (
+            <div class="faq-item">
+              <h3>{f.q}</h3>
+              <p>{f.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
 
     {a.tags.length > 0 && <p class="article-tags"><span>Tags:</span> {a.tags.map((t) => <span class="chip">{t}</span>)}</p>}
 

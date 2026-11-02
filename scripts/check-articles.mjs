@@ -17,13 +17,17 @@ const ARTICLES = join(ROOT, "web/src/content/articles");
 const AUTHORS = join(ROOT, "web/src/content/authors");
 const PUBLIC = join(ROOT, "web/public");
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const ARTICLE_KEYS = ["title", "deck", "published", "updated", "author", "tags", "original", "image", "draft"];
+const ARTICLE_KEYS = ["title", "deck", "summary", "faqs", "published", "updated", "author", "tags", "original", "image", "draft"];
 const AUTHOR_KEYS = ["name", "bio", "url", "x", "linkedin", "github"];
 
 // ── A tiny parser for the simple YAML used in article front matter ─────────────────────────
 // Supports: `key: value` with plain, "double-quoted" and 'single-quoted' strings, true/false,
-// dates (2026-11-01), numbers, inline lists [a, "b"], dash lists on the following lines, and
-// # comments. Anything else (multi-line values, nesting) is reported as unsupported.
+// dates (2026-11-01), numbers, inline lists [a, "b"], dash lists on the following lines, a dash
+// list of objects (one level: `- q: "..."` then an indented `a: "..."`, used by faqs), and
+// # comments. Anything else (multi-line values, deeper nesting) is reported as unsupported.
+const KEY_RE = /^([A-Za-z_][A-Za-z0-9_-]*):(?:[ \t]+(.*))?$/;
+const isBlank = (l) => /^\s*(#.*)?$/.test(l);
+const isDash = (l) => /^\s*-(\s|$)/.test(l);
 function splitInline(s) {
   const out = [];
   let cur = "", q = null;
@@ -84,10 +88,30 @@ function parseFrontMatter(text) {
       const r = rest.trim();
       if (r === "" || r.startsWith("#")) {
         const items = [];
-        while (i + 1 < lines.length && /^\s*-(\s|$)/.test(lines[i + 1])) {
-          i++;
-          const item = parseScalar(lines[i].replace(/^\s*-\s*/, ""));
-          items.push(item.value);
+        // Index of the next line that is not blank or a comment (blank lines inside a list are allowed).
+        const nextReal = (from) => { let j = from; while (j < lines.length && isBlank(lines[j])) j++; return j; };
+        for (let j = nextReal(i + 1); j < lines.length && isDash(lines[j]); j = nextReal(i + 1)) {
+          i = j;
+          const dashIndent = lines[i].match(/^\s*/)[0].length;
+          const first = lines[i].replace(/^\s*-\s*/, "");
+          const kvItem = first.match(KEY_RE);
+          if (!kvItem) { items.push(parseScalar(first).value); continue; }
+          // An object item: `- key: value`, then more `key: value` lines indented deeper than the dash.
+          const obj = {};
+          const addKey = (m, ln) => {
+            const [, k, v = ""] = m;
+            if (Object.hasOwn(obj, k)) throw new Error(`"${k}" appears twice in one list item (line ${ln})`);
+            if (v.trim() === "" || v.trim().startsWith("#")) throw new Error(`"${k}" on line ${ln} has no value on the same line (multi-line values are not supported; put it on one line in double quotes)`);
+            obj[k] = parseScalar(v).value;
+          };
+          addKey(kvItem, i + 2);
+          for (let k = nextReal(i + 1); k < lines.length && !isDash(lines[k]) && lines[k].match(/^\s*/)[0].length > dashIndent; k = nextReal(i + 1)) {
+            const mm = lines[k].trim().match(KEY_RE);
+            if (!mm) throw new Error(`cannot read "${lines[k].trim()}" on line ${k + 2} inside a list item (expected "key: value")`);
+            i = k;
+            addKey(mm, k + 2);
+          }
+          items.push(obj);
         }
         if (items.length) fields.set(key, { type: "list", value: items });
         else fields.set(key, { type: "null", value: null });
@@ -164,6 +188,32 @@ function checkArticle(file) {
     else if (published && updated < published) errors.push(`updated (${updated}) is before published (${published})`);
   }
 
+  // Optional answer-engine fields: summary (80 to 320) and faqs (up to 8 of q 10-150, a 40-600).
+  if (f.has("summary")) {
+    const s = f.get("summary");
+    if (s.type === "null") errors.push("summary is empty: give it text in double quotes, or delete the line");
+    else if (s.type !== "string") errors.push(`summary must be text, got ${s.type}; wrap it in quotes`);
+    else if (s.value.length < 80 || s.value.length > 320) errors.push(`summary is ${s.value.length} characters; it must be 80 to 320`);
+  }
+  if (f.has("faqs")) {
+    const q = f.get("faqs");
+    if (q.type === "null") errors.push("faqs is empty: add questions as a list (see PUBLISHING-ARTICLES.md), or delete the line");
+    else if (q.type !== "list") errors.push(`faqs must be a list of questions, each with "q:" and "a:" lines, got ${q.type}`);
+    else {
+      if (q.value.length > 8) errors.push(`faqs has ${q.value.length} questions; the limit is 8`);
+      q.value.forEach((x, idx) => {
+        const at = `faqs item ${idx + 1}`;
+        if (!x || typeof x !== "object") { errors.push(`${at} must have a "q:" line and an "a:" line, got "${x}"`); return; }
+        for (const k of Object.keys(x)) if (k !== "q" && k !== "a") errors.push(`${at} has unknown key "${k}" (only q and a are allowed)`);
+        for (const [k, min, max] of [["q", 10, 150], ["a", 40, 600]]) {
+          if (!Object.hasOwn(x, k)) errors.push(`${at} is missing "${k}"`);
+          else if (typeof x[k] !== "string") errors.push(`${at}: ${k} must be text; wrap it in quotes`);
+          else if (x[k].length < min || x[k].length > max) errors.push(`${at}: ${k} is ${x[k].length} characters; it must be ${min} to ${max}`);
+        }
+      });
+    }
+  }
+
   const author = str("author");
   if (author) {
     if (author.type !== "string" || !SLUG_RE.test(author.value)) errors.push(`author must be an author file name without .json (lowercase letters, digits, hyphens), got "${author.value}"`);
@@ -174,7 +224,7 @@ function checkArticle(file) {
     const t = f.get("tags");
     if (t.type !== "list") errors.push('tags must be a list, like tags: [congress, disclosure]');
     else for (const x of t.value) {
-      if (typeof x !== "string" || x.trim() === "") errors.push(`tags must be non-empty text, got "${x}"`);
+      if (typeof x !== "string" || x.trim() === "") errors.push(`tags must be non-empty text, got ${typeof x === "object" && x ? "a key: value item" : `"${x}"`}`);
       else if (x !== x.toLowerCase()) errors.push(`tag "${x}" must be lowercase`);
     }
   }

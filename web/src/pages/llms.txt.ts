@@ -13,7 +13,7 @@ export const GET: APIRoute = async () => {
   const guideLines = byGroup(guides).map((g) => `### ${g.label}\n` + g.guides.map((x) => `- [${x.title}](${SITE_URL}${guidePath(x.slug)}): ${x.description.at(-1)}`).join("\n")).join("\n\n");
   // Published articles only; the section is left out entirely while there are none.
   const articles = await getArticles({ publicOnly: true });
-  const writing = articles.length === 0 ? "" : `## Writing\n${articles.map((a) => `- [${a.title}](${articleUrl(a.slug)}): ${a.deck}`).join("\n")}\n\n`;
+  const writing = articles.length === 0 ? "" : `## Writing\n${articles.map((a) => `- [${a.title}](${articleUrl(a.slug)}): ${a.summary ?? a.deck}`).join("\n")}\n\n`;
   const body = `# Spot the Money
 
 > See where the money really moves — in the markets and in Washington. Free public U.S. data

@@ -35,6 +35,10 @@ export interface Article {
   entry: CollectionEntry<"articles">;
   title: string;
   deck: string;
+  /** Optional two-sentence answer; shown in an answer block and used by llms.txt instead of the deck. */
+  summary: string | null;
+  /** Optional questions and answers (FAQPage). */
+  faqs: { q: string; a: string }[];
   /** ISO dates, YYYY-MM-DD. */
   published: string;
   updated: string | null;
@@ -65,7 +69,7 @@ export async function getArticles(opts: { publicOnly?: boolean } = {}): Promise<
     if (hidden && !includeHidden) continue;
     const updated = d.updated ? iso(d.updated) : null;
     out.push({
-      slug: entry.id, entry, title: d.title, deck: d.deck, published, updated, modified: updated ?? published,
+      slug: entry.id, entry, title: d.title, deck: d.deck, summary: d.summary ?? null, faqs: d.faqs ?? [], published, updated, modified: updated ?? published,
       authorId: d.author.id, tags: d.tags, original: d.original ?? null, image: d.image ?? null,
       minutes: readingMinutes(entry.body), preview: hidden,
     });
