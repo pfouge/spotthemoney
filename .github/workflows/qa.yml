@@ -1,0 +1,166 @@
+# QA copy of the site for every pull request that adds or changes an article.
+#
+# Builds the PR the same way deploy.yml builds main, with PUBLIC_SHOW_DRAFTS=1 so unpublished
+# articles (marked draft or dated in the future) are included with a banner and noindex, deploys it as a
+# separate Worker "spotthemoney-qa" on https://qa.spotthemoney.com, and keeps ONE comment on the
+# pull request with the links (marker: <!-- stm-qa -->), so the repo owner and the article author
+# are notified by GitHub.
+#
+# Safety rails:
+#   - Only pull requests whose head branch lives in this repository run: a fork gets no secrets.
+#   - The production Worker name and routes are never touched. The generated wrangler.json is
+#     rewritten before the deploy (name spotthemoney-qa, route qa.spotthemoney.com only).
+#   - The QA site is not indexable: X-Robots-Tag noindex on every static response and a
+#     robots.txt that disallows everything. No IndexNow ping, no live checks, no search engine call.
+#   - db/migrate.mjs is NOT run here: a pull request must never change the production schema.
+#     QA builds against the schema main already applied.
+#
+# Re-run for an existing pull request: Actions > qa > Run workflow, enter the pull request number.
+
+name: qa
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+    paths:
+      - "web/src/content/**"
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number to build a QA copy of"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: qa
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    # pull_request: only branches of this repository. workflow_dispatch: checked in the first step.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PUBLIC_SITE_URL: https://spotthemoney.com
+      PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
+      PUBLIC_AD_CLIENT: ${{ vars.PUBLIC_AD_CLIENT }}
+      PUBLIC_SHOW_DRAFTS: "1"
+      ASTRO_TELEMETRY_DISABLED: "1"
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - name: Find the pull request
+        id: pr
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          [[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || { echo "bad pull request number: $PR_NUMBER"; exit 1; }
+          gh api "repos/$REPO/pulls/$PR_NUMBER" > pr.json
+          head_repo=$(jq -r '.head.repo.full_name // ""' pr.json)
+          if [ "$head_repo" != "$REPO" ]; then
+            echo "pull request head is '$head_repo', not $REPO: no QA copy for forks"
+            exit 1
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "sha=$(jq -r '.head.sha' pr.json)" >> "$GITHUB_OUTPUT"
+
+      # The merge of the pull request into main, so QA shows what main will look like after merging.
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ steps.pr.outputs.number }}/merge
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install
+        run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+
+      - name: Build site from the database
+        run: |
+          set -o pipefail
+          npm run build --workspace=@stm/web 2>&1 | tee build.log
+          test -f web/dist/server/wrangler.json || test -f web/dist/client/wrangler.json
+
+      - name: Make the QA copy un-indexable
+        working-directory: web/dist/client
+        run: |
+          set -euo pipefail
+          touch _headers
+          printf '\n/*\n  X-Robots-Tag: noindex, nofollow\n' >> _headers
+          printf 'User-agent: *\nDisallow: /\n' > robots.txt
+
+      - name: Deploy to Cloudflare Workers as spotthemoney-qa
+        working-directory: web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -o pipefail
+          cfg=dist/server/wrangler.json
+          [ -f "$cfg" ] || cfg=dist/client/wrangler.json
+          node -e '
+            const fs = require("fs");
+            const f = process.argv[1];
+            const c = JSON.parse(fs.readFileSync(f, "utf8"));
+            c.name = "spotthemoney-qa";
+            c.routes = [{ pattern: "qa.spotthemoney.com", custom_domain: true }];
+            fs.writeFileSync(f, JSON.stringify(c, null, 2));
+          ' "$cfg"
+          node -e 'const c=require("./"+process.argv[1]); console.log("worker:", c.name, "routes:", JSON.stringify(c.routes)); if (c.name !== "spotthemoney-qa" || c.routes.length !== 1 || c.routes[0].pattern !== "qa.spotthemoney.com") process.exit(1)' "$cfg"
+          echo "deploying with $cfg"
+          npx wrangler deploy --config "$cfg"
+
+      - name: Comment on the pull request
+        if: success() || failure()
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          short=${SHA:0:7}
+          {
+            echo '<!-- stm-qa -->'
+            if [ "$JOB_STATUS" = "success" ]; then
+              echo '**QA ready**'
+              echo
+              gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" \
+                --jq '.[] | select(.status != "removed") | .filename' \
+                | grep -E '^web/src/content/articles/[^/]+\.md$' | sort > articles.txt || true
+              while read -r f; do
+                [ -n "$f" ] || continue
+                slug=$(basename "$f" .md)
+                echo "- Article: https://qa.spotthemoney.com/writing/$slug/"
+              done < articles.txt
+              echo "- All writing: https://qa.spotthemoney.com/writing/"
+              echo
+              echo "Commit: \`$short\`"
+              echo
+              echo 'QA copy only, not indexed. Goes live on spotthemoney.com when this PR is merged.'
+            else
+              echo '**QA failed**'
+              echo
+              echo "The QA build for commit \`$short\` did not finish. See the run: $RUN_URL"
+            fi
+          } > qa-comment.md
+          id=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
+                 --jq '.[] | select(.body | contains("<!-- stm-qa -->")) | .id' | head -1 || true)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@qa-comment.md > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@qa-comment.md > /dev/null
+          fi

@@ -128,3 +128,7 @@ Then open `http://localhost:4321/writing/`.
 - One article per pull request. Include the author file if it is your first article.
 - Open it as a draft pull request against `main`.
 - Peter merges it, and the next deploy publishes it.
+
+## QA
+
+After you open the pull request, a QA copy of the whole site is built with your article in it. Within about 10 minutes a comment appears on the pull request with a link to your article at `https://qa.spotthemoney.com/writing/<name>/`, and the comment updates on every push. Check the article there (a draft or future-dated article shows a banner) before you ask for a merge. The QA copy is not indexed by search engines and is replaced by the next pull request, so do not share its link. If the comment says QA failed, open the run it links to and read the build error.

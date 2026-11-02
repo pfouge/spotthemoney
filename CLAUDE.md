@@ -1919,3 +1919,5 @@ guides changed.
   per pull request, open as draft against `main`; Peter merges and the next deploy publishes.
 
 Live 2026-11-01 as 1de5782 (deploy 41363903954 green; /writing/ empty state, noindex, rss.xml 200, footer link checked in Chrome).
+
+QA copy for article pull requests (2026-11-01): `.github/workflows/qa.yml` ("qa") runs on every pull request to `main` that touches `web/src/content/**` (same-repo branches only; `workflow_dispatch` with `pr_number` re-runs one). It builds the merge of the PR like `deploy.yml` (no migrations) with `PUBLIC_SHOW_DRAFTS=1`, rewrites the generated `wrangler.json` to Worker `spotthemoney-qa` on the custom domain `qa.spotthemoney.com`, adds `X-Robots-Tag: noindex, nofollow` to `_headers` and a disallow-all `robots.txt`, deploys, and keeps one comment (`<!-- stm-qa -->`) on the PR with a QA link per changed article. Concurrency group `qa`, so the last PR built is what QA shows. Production Worker, routes and `deploy.yml` are untouched. Documented for contributors in `PUBLISHING-ARTICLES.md` ("QA").
