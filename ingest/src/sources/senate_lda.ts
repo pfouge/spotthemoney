@@ -94,7 +94,7 @@ function filingsUrl(filingYear: number, page: number): string {
 // 2026 deadline the Senate posted 1,200–2,000 filings a day, so ~14,000 filings were never
 // read and nothing said so. Now:
 //   1. NEWEST-FIRST pass: pages newest → oldest until a page is ALL already stored (caught
-//      up) or LDA_MAX_MINUTES (default 20) runs out. LDA_MAX_PAGES is an optional hard cap,
+//      up) or LDA_MAX_MINUTES (default 15) runs out. LDA_MAX_PAGES is an optional hard cap,
 //      applied only when set explicitly.
 //   2. If that pass stops on the budget or the cap before an all-known page, the run is
 //      "partial" with gap_possible=true and a gap range {gap_from, gap_to} in its stats:
@@ -222,8 +222,8 @@ export async function ingestSenateLda(deps: DailyDeps = {}): Promise<IngestRunRe
   const ctx = createRunContext(SOURCE);
   const now = deps.now ?? Date.now;
   const startedAt = now();
-  const budgetMin = Number(process.env.LDA_MAX_MINUTES ?? 20);
-  const deadline = startedAt + (Number.isFinite(budgetMin) && budgetMin > 0 ? budgetMin : 20) * 60_000;
+  const budgetMin = Number(process.env.LDA_MAX_MINUTES ?? 15);
+  const deadline = startedAt + (Number.isFinite(budgetMin) && budgetMin > 0 ? budgetMin : 15) * 60_000;
 
   const filingYear = Number(process.env.LDA_FILING_YEAR ?? new Date().getFullYear());
   // Optional hard cap on the newest-first pass; only when explicitly set.
