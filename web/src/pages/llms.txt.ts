@@ -16,7 +16,7 @@ export const GET: APIRoute = async () => {
   const writing = articles.length === 0 ? "" : `## Writing\n${articles.map((a) => `- [${a.title}](${articleUrl(a.slug)}): ${a.summary ?? a.deck}`).join("\n")}\n\n`;
   const body = `# Spot the Money
 
-> See where the money really moves — in the markets and in Washington. Free public U.S. data
+> See where the money really moves, in the markets and in Washington. Free public U.S. data
 > (Treasury rates, SEC insider trades, congressional stock trades, FEC donations, lobbying,
 > federal contracts), rendered as filed, updated daily, with a source link on every row.
 > Not investment advice: the site presents public records and historical facts only and never
@@ -48,10 +48,10 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - Reuse limits (congressional reports: 5 U.S.C. § 13107(c)): ${SITE_URL}/terms/#reuse
 
 ## Entity pages
-- Insider: ${SITE_URL}/insiders/<slug>/ — Person; Form 4 transactions with shares, price, value, lag, 10b5-1 flag, EDGAR link.
-- Member of Congress: ${SITE_URL}/congress/<slug>/ — Person; PTR trades with ranges, owner, days-to-report, late flag, filing link.
-- Ticker: ${SITE_URL}/stocks/<ticker>/ — Dataset; insider and congressional rows for one security.
-- Company: ${SITE_URL}/companies/<slug>/ — Organization; insiders, transactions, contracts and lobbying under the same name.
+- Insider: ${SITE_URL}/insiders/<slug>/: Person; Form 4 transactions with shares, price, value, lag, 10b5-1 flag, EDGAR link.
+- Member of Congress: ${SITE_URL}/congress/<slug>/: Person; PTR trades with ranges, owner, days-to-report, late flag, filing link.
+- Ticker: ${SITE_URL}/stocks/<ticker>/: Dataset; insider and congressional rows for one security.
+- Company: ${SITE_URL}/companies/<slug>/: Organization; insiders, transactions, contracts and lobbying under the same name.
 
 ## Guides (plain-language explanations; each opens with a two-sentence answer and ends with primary sources)
 - [All guides](${SITE_URL}/guides/) · [All questions and answers](${SITE_URL}/faq/)

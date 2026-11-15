@@ -42,7 +42,7 @@ const answer = all.length === 0
 const description = "Newest STOCK Act stock trades by members of Congress: most active traders, late filers against the 45-day deadline and most-traded tickers.";
 const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")?.path], name: "Congressional stock trade disclosures (STOCK Act PTRs)", path: "/congress/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["congress stock trades", "STOCK Act", "periodic transaction report", "late filers"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
 ---
-<BaseLayout title={`Congress Stock Trades ${year} — Newest Disclosures`} description={description} section="Congress">
+<BaseLayout title={`Congress Stock Trades ${year}: Newest Disclosures`} description={description} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Congress</p>
   <h1>Congressional stock trades</h1>
@@ -63,7 +63,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
 
   <h2 id="newest">Newest disclosures</h2>
   <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")} note="every congressional trade on record" />
-  <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet — the daily congress-ptr job fills this table." />
+  <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet. The daily congress-ptr job fills this table." />
 
   <AdSlot label="Advertisement" />
 

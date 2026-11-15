@@ -33,7 +33,7 @@ const description = `Senate lobbying disclosure filings for ${year}: the biggest
 const lobFile = (await getDownloads()).files.find((f) => f.kind === "lobbying");
 const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filings (Senate LDA)", path: "/lobbying/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["lobbying", "LDA", "Senate", "registrants", "clients"], sources: [SOURCES.lda], parentCatalogPath: "/washington/" });
 ---
-<BaseLayout title={`Lobbying ${year} — Top Clients, Firms & New Filings`} description={description} section="Washington · Lobbying">
+<BaseLayout title={`Lobbying ${year}: Top Clients, Firms & New Filings`} description={description} section="Washington · Lobbying">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Lobbying", path: "/lobbying/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Lobbying</p>
   <h1>Federal lobbying</h1>
@@ -75,6 +75,13 @@ const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filin
     </tbody></table></div>
   )}
 
+  <div class="prose">
+  <h2 id="about-this-page">What this page shows</h2>
+  <p>Companies, trade groups and other organisations that pay people to lobby Congress and federal agencies must say so in public. Each quarter the lobbying firm, or the organisation itself when it uses its own staff, files a report naming the client, the issues worked on and roughly how much was paid or spent. This page adds those reports up: the clients that reported the most this year, the firms that reported the most income, and the newest filings.</p>
+  <p>The figures say how much was spent on lobbying and on which broad subjects. They do not say what was asked for, who was met, or what came of it. The <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a> explains the forms and their limits.</p>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>The reports are filed under the Lobbying Disclosure Act with the Secretary of the Senate and published at lda.gov. This site reads new filings once a day and links each row to the Senate's own record.</p>
+  </div>
   <h2>How to read this</h2>
   <p>Coverage is every filing the Senate has posted since October 1, 2025. Amounts are the income (or, for in-house lobbyists, expenses) a registrant reports for the quarter, rounded as filed; where a report was later amended, only the latest version is counted; "primary issue" is the first issue code on the filing and the full list is on the Senate record. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>

@@ -29,11 +29,11 @@ const answer = rows.length === 0
 const description = "The largest federal contract awards that started in the last 180 days, from USAspending: top recipients, awarding agencies, and a link to every award record.";
 const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "federal-contracts.csv")?.path], name: "Largest federal contract awards (USAspending)", path: "/contracts/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["federal contracts", "USAspending", "government awards"], sources: [SOURCES.usaspending], parentCatalogPath: "/washington/" });
 ---
-<BaseLayout title="Federal Contracts — Largest Awards, Last 180 Days" description={description} section="Washington · Contracts">
+<BaseLayout title="Federal Contracts: Largest Awards, Last 180 Days" description={description} section="Washington · Contracts">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Contracts", path: "/contracts/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Contracts</p>
   <h1>Federal contracts</h1>
-  <p class="lede">The largest contract awards as published by USAspending — recipient, agency, award value, industry code — updated daily.</p>
+  <p class="lede">The largest contract awards as published by USAspending (recipient, agency, award value, industry code), updated daily.</p>
   <Answer text={answer} updated={rows[0]?.createdAt ?? model.builtAt} sourceNote="Source: USAspending.gov" />
   {(() => { const flows = contractFlows(model); const big = [...flows].filter((f) => f.left !== "Other agencies" && f.right !== "All other recipients").sort((a, b) => b.value - a.value)[0]; return (
     <div class="viz-grid">
@@ -59,6 +59,13 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
     </tbody></table></div>
   )}
 
+  <div class="prose">
+  <h2 id="about-this-page">What this page shows</h2>
+  <p>When a federal agency signs a contract with a company, the award is published. This page lists large contract awards that started in the last 180 days: which companies received the most, and the biggest single awards, with the agency that made each one.</p>
+  <p>An award value is the amount the government has committed to the contract so far. It is not money already paid, and it can go up or down as the contract is changed. The <a href="/guides/federal-contracts-usaspending/">guide to federal contract data</a> covers the terms.</p>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>The awards come from USAspending.gov, the government's official record of federal spending, which the Treasury Department runs from data the agencies report. This site reads it once a day and links each award to its USAspending page.</p>
+  </div>
   <h2>How to read this</h2>
   <p>Each row is one contract award. The date is the award's start date and the amount is its total award value to date as USAspending reports it, which is an obligation, not a payment, and can change as the contract is modified. The list is a defined slice, not every federal contract: the largest awards starting in each 30-day period (up to 300 each), plus awards to companies followed on this site whose recipient name matches exactly. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>

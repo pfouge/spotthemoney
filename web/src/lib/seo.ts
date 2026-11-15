@@ -142,7 +142,7 @@ export const SOURCES = {
   usaspending: { name: "USAspending.gov award data", url: "https://www.usaspending.gov/" },
   lda: { name: "Senate Lobbying Disclosure Act filings", url: "https://lda.gov/system/public/" },
   treasury: { name: "U.S. Treasury daily yield curve rates", url: "https://home.treasury.gov/resource-center/data-chart-center/interest-rates" },
-  fiscaldata: { name: "Treasury Fiscal Data — I Bonds interest rates", url: "https://fiscaldata.treasury.gov/datasets/i-bonds-interest-rates/" },
+  fiscaldata: { name: "Treasury Fiscal Data: I Bonds interest rates", url: "https://fiscaldata.treasury.gov/datasets/i-bonds-interest-rates/" },
   bls: { name: "BLS Consumer Price Index (CPI-U)", url: "https://www.bls.gov/cpi/" },
 };
 

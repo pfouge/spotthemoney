@@ -53,7 +53,7 @@ function contextFor(btn: HTMLElement): Ctx {
     const name = clean(fig?.querySelector("h3")?.textContent);
     return {
       ...common, kind, fig, url: fig?.id ? `${base}#${fig.id}` : base,
-      title: name ? `${name} — ${pageTitle()}` : pageTitle(),
+      title: name ? `${name}: ${pageTitle()}` : pageTitle(),
       text: clean(fig?.querySelector(".viz-sum")?.textContent) || clean(fig?.querySelector(".viz-q")?.textContent),
       embed: fig?.querySelector(".viz-embed code")?.textContent ?? "",
     };
@@ -67,7 +67,7 @@ function contextFor(btn: HTMLElement): Ctx {
     return { ...common, updated: btn.dataset.shareDate || common.updated, original, kind, fig: null, url: id ? `${page}#${id}` : page, title: clean(btn.dataset.shareText) || pageTitle(), text: "", embed: "" };
   }
   if (kind === "map") {
-    return { ...common, kind, fig: null, url: base + location.hash, title: `Trade map — ${pageTitle()}`, text: pageDesc(), embed: "" };
+    return { ...common, kind, fig: null, url: base + location.hash, title: `Trade map: ${pageTitle()}`, text: pageDesc(), embed: "" };
   }
   return { ...common, kind: "page", fig: null, url: base, title: pageTitle(), text: pageDesc(), embed: "" };
 }

@@ -128,7 +128,7 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 
   <h2 id="transactions">Transactions</h2>
   <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
-  <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet — the filings below may be amendments, holdings-only reports, or rows still under review." />
+  <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet. The filings below may be amendments, holdings-only reports, or rows still under review." />
 
   <AdSlot label="Advertisement" show={txns.length > 0} />
 

@@ -22,11 +22,11 @@ const cards = [
   { path: "/contracts/", title: "Federal contracts", body: "The largest contract awards that started in the last 180 days, from USAspending: recipient, agency, award value, NAICS, with a link to each award.", n: model.contracts.length, unit: "awards (180d)" },
 ];
 ---
-<BaseLayout title="Washington — Donations, Lobbying & Federal Contracts" description={description} section="Washington">
+<BaseLayout title="Washington: Donations, Lobbying & Federal Contracts" description={description} section="Washington">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Washington</p>
   <h1>Money in Washington</h1>
-  <p class="lede">Who gives, who lobbies, who gets paid — as filed with the FEC, the Senate and Treasury.</p>
+  <p class="lede">Who gives, who lobbies, who gets paid, as filed with the FEC, the Senate and Treasury.</p>
   <Answer text={answer} updated={model.builtAt} sourceNote="Sources: FEC; Senate LDA; USAspending" />
   <div class="grid">
     {cards.map((c) => (

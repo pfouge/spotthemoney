@@ -30,7 +30,7 @@ const description = hasData
   ? `Safe U.S. yields today: I-Bond rate ${pct(ibond?.compositeRate)}, 10-year Treasury ${pct(n10)}, 10-year TIPS real yield ${pct(r10)}. Official Treasury data, updated daily.`
   : "Today's I-Bond rate, the Treasury yield curve and TIPS real yields in one place, from official U.S. Treasury data, updated every business day.";
 ---
-<BaseLayout section="Rates" title="Rates Hub — I-Bonds, TIPS, Treasury Yields" description={description}>
+<BaseLayout section="Rates" title="Rates Hub: I-Bonds, TIPS, Treasury Yields" description={description}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }]} />
   <p class="eyebrow">Rates Hub</p>
   <h1>Safe yield, every day</h1>

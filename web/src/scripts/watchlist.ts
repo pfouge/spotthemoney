@@ -168,7 +168,7 @@ async function sharedPage(root: HTMLElement): Promise<void> {
   if (!/^[a-z0-9]{12}$/.test(slug)) { out.replaceChildren(h("p", { class: "empty-reason" }, "This link is incomplete. Ask whoever shared it to copy it again.")); return; }
   let list: { name: string; updated_at: string; items: { kind: Kind; key: string; label: string | null }[]; recent: FeedRow[] };
   try { list = await api("public?slug=" + slug); } catch (x) { out.replaceChildren(h("p", { class: "empty-reason" }, (x as Error).message)); return; }
-  document.title = `${list.name} — shared watchlist | Spot the Money`;
+  document.title = `${list.name}: shared watchlist | Spot the Money`;
   const cards = await loadCards(list.items);
   const copy = h("button", { type: "button", class: "btn" }, "Copy to my watchlist");
   copy.addEventListener("click", async () => {
