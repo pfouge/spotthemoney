@@ -267,7 +267,7 @@ ${table(["", "House", "Senate"], [
       { id: "paper", h: "What about paper filings?", html: `
 <p>Both chambers still accept some reports on paper. These are published as scanned images with no readable text. This site stores them but shows no trades from them until a person has typed them in${c.heldPaper ? `; ${c.heldPaper} are waiting now` : ""}. A member who files on paper will therefore look less active here than their filings show.</p>` },
       { id: "impossible-dates", h: "What if a filing has a trade date that cannot be right?", html: `
-<p>Now and then a report carries a trade date later than the day it was filed, which is a typing slip on the form. In either chamber, this site keeps the trade but leaves its trade date blank, and does not work out a reporting delay from it. The disclosure date, which is the filing date, is still shown.</p>` },
+<p>Now and then a report carries a trade date later than the day it was filed, which cannot be right. In either chamber, this site keeps the trade but leaves its trade date blank, and does not work out a reporting delay from it. The disclosure date, which is the filing date, is still shown.</p>` },
       { id: "former", h: "What happens when a member leaves office?", html: `
 <p>Their reports stay on this site, attached to their own page, with the dates of their term. A seat that changes hands does not change who filed what: reports filed by a former member are never moved to their successor.</p>` },
     ],
