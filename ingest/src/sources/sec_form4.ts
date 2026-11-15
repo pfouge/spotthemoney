@@ -449,6 +449,19 @@ function slugifyName(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * A Form 4 trade date later than the filing date cannot be true (found 2026-11-15: rows dated
+ * up to 2027-05-27). Returns the date to store: null when it is in the future of the filing,
+ * so the row stays but carries no impossible date (and no lag measured from it).
+ */
+export function guardFutureTxnDate(txnDate: string | null, filingDate: string | null): { date: string | null; nulled: boolean } {
+  if (txnDate && filingDate && /^\d{4}-\d{2}-\d{2}/.test(txnDate) && /^\d{4}-\d{2}-\d{2}/.test(filingDate)
+      && txnDate.slice(0, 10) > filingDate.slice(0, 10)) {
+    return { date: null, nulled: true };
+  }
+  return { date: txnDate, nulled: false };
+}
+
 function isoDateDiffDays(later: string | null, earlier: string | null): number | null {
   if (!later || !earlier) return null;
   const a = Date.parse(later);
@@ -526,6 +539,7 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
   let filingsSkippedExisting = 0;
   let filingsQuarantined = 0;
   let transactionsWritten = 0;
+  let futureDatesNulled = 0;
   let documentsArchived = 0;
   let stoppedOnBudget = false;
   let tickersTruncated = 0;
@@ -749,7 +763,9 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
 
           for (const txn of clean.transactions) {
             const side = codeToSide(txn.transactionCode);
-            const lagDays = isoDateDiffDays(clean.filingDate, txn.transactionDate);
+            const guarded = guardFutureTxnDate(txn.transactionDate, clean.filingDate);
+            if (guarded.nulled) futureDatesNulled++;
+            const lagDays = isoDateDiffDays(clean.filingDate, guarded.date);
             await sql`
               insert into transactions (
                 filing_id, person_id, security_id, side, txn_code, is_derivative,
@@ -758,7 +774,7 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
               )
               values (
                 ${filingId}, ${personId}, ${securityId}, ${side}, ${txn.transactionCode}, ${txn.isDerivative},
-                ${txn.transactionDate}, ${clean.filingDate}, ${txn.transactionShares}, ${txn.transactionPricePerShare}, ${lagDays},
+                ${guarded.date}, ${clean.filingDate}, ${txn.transactionShares}, ${txn.transactionPricePerShare}, ${lagDays},
                 1.0, 'auto_approved', ${clean.aff10b5One}, ${txn.ownership === "I" ? "indirect" : "self"},
                 ${txn.isDerivative ? "derivative" : "stock"}
               )
@@ -805,6 +821,7 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
   ctx.extra["filings_skipped_existing"] = filingsSkippedExisting;
   ctx.extra["filings_quarantined"] = filingsQuarantined;
   ctx.extra["transactions_written"] = transactionsWritten;
+  ctx.extra["future_dates_nulled"] = futureDatesNulled;
   ctx.extra["documents_archived"] = documentsArchived;
   ctx.extra["max_filings_per_ticker"] = maxFilingsPerTicker;
   if (history) {

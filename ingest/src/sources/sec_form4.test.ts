@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/sec_form4.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities, collectForm4Entries } from "./sec_form4.js";
+import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities, collectForm4Entries, guardFutureTxnDate } from "./sec_form4.js";
 
 const XML = `<?xml version="1.0"?>
 <ownershipDocument>
@@ -165,4 +165,13 @@ test("history listing: the per-ticker cap reports truncation", async () => {
   const r = await collectForm4Entries(f.fetchPage, { limit: 50, since: "2020-01-01" });
   assert.equal(r.entries.length, 50);
   assert.equal(r.truncated, true);
+});
+
+test("guardFutureTxnDate: a trade date after the filing date is nulled; others untouched", () => {
+  assert.deepEqual(guardFutureTxnDate("2027-05-27", "2026-09-17"), { date: null, nulled: true });
+  assert.deepEqual(guardFutureTxnDate("2026-09-18", "2026-09-17"), { date: null, nulled: true });
+  assert.deepEqual(guardFutureTxnDate("2026-09-17", "2026-09-17"), { date: "2026-09-17", nulled: false });
+  assert.deepEqual(guardFutureTxnDate("2026-09-15", "2026-09-17"), { date: "2026-09-15", nulled: false });
+  assert.deepEqual(guardFutureTxnDate(null, "2026-09-17"), { date: null, nulled: false });
+  assert.deepEqual(guardFutureTxnDate("2026-09-15", null), { date: "2026-09-15", nulled: false });
 });

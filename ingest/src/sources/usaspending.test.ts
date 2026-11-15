@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/usaspending.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { windowSlices, naicsCode, recipientSearchText } from "./usaspending.js";
+import { startDateVerdict, windowSlices, naicsCode, recipientSearchText } from "./usaspending.js";
 
 test("windowSlices: six 30-day slices cover 180 days with no gap or overlap", () => {
   const s = windowSlices(new Date("2026-10-05T15:00:00Z"), 180);
@@ -35,4 +35,12 @@ test("recipientSearchText: drops suffixes and share-class tails", () => {
   assert.equal(recipientSearchText("NVIDIA CORP"), "NVIDIA");
   assert.equal(recipientSearchText("Lockheed Martin Corporation"), "LOCKHEED MARTIN");
   assert.equal(recipientSearchText("Microsoft Corporation - Common Stock"), "MICROSOFT");
+});
+
+test("startDateVerdict: a start date after today is 'future', not stored as valid", () => {
+  assert.equal(startDateVerdict("2026-10-05", "2026-04-09", "2026-10-05"), "ok");
+  assert.equal(startDateVerdict("2026-10-06", "2026-04-09", "2026-10-05"), "future");
+  assert.equal(startDateVerdict("2027-03-01", "2026-04-09", "2026-10-05"), "future");
+  assert.equal(startDateVerdict("2026-04-08", "2026-04-09", "2026-10-05"), "before");
+  assert.equal(startDateVerdict(null, "2026-04-09", "2026-10-05"), "missing");
 });

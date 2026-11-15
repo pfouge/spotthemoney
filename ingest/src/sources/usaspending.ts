@@ -78,6 +78,14 @@ function isoDate(d: Date): string {
 }
 
 /** Consecutive slices covering the last `windowDays` up to `today`, newest first, no overlap. */
+/** Where a Start Date falls: inside the window, before it, after today, or missing. */
+export function startDateVerdict(startDate: string | null, windowStart: string, windowEnd: string): "ok" | "before" | "future" | "missing" {
+  if (!startDate) return "missing";
+  if (startDate > windowEnd) return "future";
+  if (startDate < windowStart) return "before";
+  return "ok";
+}
+
 export function windowSlices(today: Date, windowDays: number, sliceDays = SLICE_DAYS): Slice[] {
   const out: Slice[] = [];
   const day = 86_400_000;
@@ -160,6 +168,7 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
 
   let requests = 0;
   let outsideWindow = 0;
+  let futureStartDates = 0;
 
   async function search(slice: Slice, page: number, recipientText?: string): Promise<SearchResponse> {
     for (;;) {
@@ -204,7 +213,12 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
     }
     const clean = scrubDeep(row);
     const startDate = ((clean["Start Date"] as string | null | undefined) ?? "").slice(0, 10) || null;
-    if (!startDate || startDate < windowStart || startDate > windowEnd) {
+    const verdict = startDateVerdict(startDate, windowStart, windowEnd);
+    if (verdict !== "ok") {
+      // A start date after today is counted on its own (one future-dated award was found in
+      // production on 2026-11-15). It is skipped, never stored as a valid date: an award with
+      // no usable date could not appear on any dated page anyway.
+      if (verdict === "future") futureStartDates++;
       outsideWindow++;
       return false;
     }
@@ -309,6 +323,7 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   ctx.extra["naics_field"] = useNaics;
   ctx.extra["largest_rows_kept"] = largestKept;
   ctx.extra["rows_outside_window"] = outsideWindow;
+  ctx.extra["future_start_dates_skipped"] = futureStartDates;
   ctx.extra["companies_searched"] = companiesSearched;
   if (stopped) ctx.warn(`usaspending ${mode} pass stopped early: ${stopped} (${companiesSearched} of ${companyRows.length} companies searched)`);
   ctx.extra["companies_with_awards"] = companiesWithAwards;
