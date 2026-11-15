@@ -5,7 +5,7 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import Crumbs from "../../../components/Crumbs.astro";
 ---
-<BaseLayout title="Shared watchlist | Spot the Money" description="A watchlist of members of Congress, insiders, stocks and companies shared by a Spot the Money visitor." noindex={true} section="Watchlist">
+<BaseLayout title="Shared watchlist | Spot the Money" description="A watchlist of members of Congress, insiders, stocks and companies shared by a Spot the Money visitor." noindex={true} ads={false} section="Watchlist">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Watchlist", path: "/watchlist/" }, { name: "Shared", path: "/watchlist/shared/" }]} />
   <h1>Shared watchlist</h1>
   <div data-watchlist-shared>

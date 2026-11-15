@@ -5,8 +5,9 @@ import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
 import Wordmark from "../components/Wordmark.astro";
 
-import { fitTitle, fitDescription, CONTACT_EMAIL } from "../lib/seo";
+import { fitTitle, fitDescription } from "../lib/seo";
 import Tape from "../components/Tape.astro";
+import { adClient } from "../lib/ads";
 
 // title / description: a string, or preferred wording first with shorter fallbacks after it
 // (see fitTitle / fitDescription). noindex: pages that exist for navigation but have no data
@@ -18,11 +19,15 @@ import Tape from "../components/Tape.astro";
 // an article first published elsewhere), ogImage (site path or absolute URL), ogType ("article")
 // and published (ISO date: citation_publication_date and article:published_time). Pages that pass
 // none of these render exactly as before.
+// ads: false keeps the advertising tag off a page that has no publisher content of its own
+// (legal pages, contact, 404, sign-in shells). A noindex page never carries it either. With no
+// publisher ID in lib/ads.ts nothing is rendered anywhere.
 interface Props {
   title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean; modified?: string | null;
-  author?: string; canonical?: string; ogImage?: string; ogType?: string; published?: string | null;
+  author?: string; canonical?: string; ogImage?: string; ogType?: string; published?: string | null; ads?: boolean;
 }
-const { noindex = false, author = "Spot the Money", ogType = "website" } = Astro.props;
+const { noindex = false, author = "Spot the Money", ogType = "website", ads = true } = Astro.props;
+const adsense = ads && !noindex ? adClient() : "";
 const title = fitTitle(Astro.props.title);
 const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: disclosed trades on one heatmap, updated daily, free.");
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
@@ -77,18 +82,21 @@ const current = (href: string) => (path === href ? "page" : undefined);
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
     <meta name="theme-color" content="#F2F1EC" id="themeColor" />
+    <meta name="color-scheme" content="light" id="colorScheme" />
     <script is:inline>
       // Theme before first paint: light for everyone unless this browser chose dark.
       (function () {
         var t = "light";
         try { if (localStorage.getItem("theme") === "dark") t = "dark"; } catch (e) {}
         document.documentElement.classList.add(t, "js");
-        if (t === "dark") { var m = document.getElementById("themeColor"); if (m) m.setAttribute("content", "#0A0B0C"); }
+        if (t === "dark") { var m = document.getElementById("themeColor"); if (m) m.setAttribute("content", "#0A0B0C"); var c = document.getElementById("colorScheme"); if (c) c.setAttribute("content", "dark"); }
       })();
     </script>
     <link rel="preload" href="/fonts/outfit-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
     <slot name="head" />
     <Analytics />
+    {adsense && <meta name="google-adsense-account" content={adsense} />}
+    {adsense && <script is:inline async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsense}`} crossorigin="anonymous"></script>}
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to main content</a>
@@ -198,7 +206,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
           <a href="/corrections/">Corrections</a>
           <a href="/terms/">Terms</a>
           <a href="/privacy/">Privacy</a>
-          <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
+          <a href="/contact/">Contact</a>
           <a href="/llms.txt">llms.txt</a>
         </nav>
         <p>© {year} spotthemoney.com</p>

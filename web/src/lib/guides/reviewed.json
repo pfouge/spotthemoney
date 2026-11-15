@@ -55,7 +55,7 @@
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "56931901139ea42c",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
-      "web/src/pages/terms.astro": "2b180221869230af",
+      "web/src/pages/terms.astro": "4cc9d3c134940d24",
       "web/src/lib/downloads.ts": "a10fd7aeeb07dcd2",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "670a16ece37ab883",
@@ -81,7 +81,7 @@
       "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "5ed585a6b83326aa"
+      "web/src/pages/congress/[slug].astro": "8f02cd9ec5c177a9"
     }
   },
   "how-to-use-the-trade-map": {
@@ -158,12 +158,12 @@
     }
   },
   "what-disclosure-data-cannot-tell-you": {
-    "reviewed": "2026-10-10",
+    "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "shared/src/tradevalue.ts": "fa250c11636cb867",
       "web/src/lib/coverage.ts": "848dc9f0b01c472b",
-      "web/src/pages/terms.astro": "2b180221869230af"
+      "web/src/pages/terms.astro": "4cc9d3c134940d24"
     }
   },
   "what-is-form-4": {
@@ -173,8 +173,8 @@
       "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
       "web/src/lib/entity.ts": "4770bf63df3f89d9",
       "web/src/lib/links.ts": "5e32b90da3079fca",
-      "web/src/pages/stocks/[ticker].astro": "05ce3711650934fc",
-      "web/src/pages/insiders/[slug].astro": "d42cdea9c140c330",
+      "web/src/pages/stocks/[ticker].astro": "ad98f75d39233c61",
+      "web/src/pages/insiders/[slug].astro": "639105062b6ddef4",
       "web/src/pages/companies/[slug].astro": "f8e2d37804fd84ef"
     }
   }

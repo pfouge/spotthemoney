@@ -7,6 +7,7 @@ import JsonLd from "../../../components/JsonLd.astro";
 import { getArticles, getAuthors, getAuthorMap, articlePath, authorPath, type Article, type Author } from "../../../lib/articles";
 import { formatDate } from "../../../lib/format";
 import { SITE_URL } from "../../../lib/seo";
+import Answer from "../../../components/Answer.astro";
 
 export async function getStaticPaths() {
   const articles = await getArticles();
@@ -19,6 +20,8 @@ export async function getStaticPaths() {
 interface Props { author: Author; articles: Article[]; indexable: boolean }
 const { author, articles, indexable } = Astro.props;
 const path = authorPath(author.id);
+const shown = articles.filter((x) => !x.preview);
+const latest = shown.map((x) => x.modified).sort().at(-1) ?? null;
 const description = author.bio ?? `Articles by ${author.name} on Spot the Money.`;
 const ld = {
   "@context": "https://schema.org", "@type": "Person", "@id": `${SITE_URL}${path}#person`, name: author.name, url: `${SITE_URL}${path}`,
@@ -32,6 +35,7 @@ const ld = {
   <h1>{author.name}</h1>
   {author.bio && <p class="lede">{author.bio}</p>}
   {author.links.length > 0 && <p class="author-links">{author.links.map((l) => <a href={l.href} rel="noopener">{l.label}</a>)}</p>}
+  {latest && <Answer text={`This page lists the ${shown.length} ${shown.length === 1 ? "article" : "articles"} published on Spot the Money under the byline ${author.name}. The newest was last updated on ${formatDate(latest)}.`} updated={latest} sourceNote="Writing" />}
   <h2>Articles</h2>
   {articles.length === 0 ? (
     <p class="writing-empty">No articles are published yet.</p>

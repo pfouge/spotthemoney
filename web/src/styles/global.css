@@ -752,3 +752,16 @@ tr.is-new > td { background: color-mix(in srgb, var(--chip) 70%, transparent); }
 .tag-new { margin-left: 6px; }
 .wl-acct { margin-top: 32px; }
 .acct-btn[hidden], .follow-btn[hidden], .acct-badge[hidden] { display: none; }
+
+/* ---- Forced colours (Windows High Contrast and similar) ----
+   In these modes the browser replaces backgrounds, so a state or a focus ring shown by fill or
+   border colour alone disappears. These rules add a system-colour outline. They match nothing
+   in ordinary light or dark mode. */
+@media (forced-colors: active) {
+  input:focus, .search-top input:focus, .hm-input:focus { outline: 2px solid Highlight; outline-offset: 2px; }
+  svg.hm-scatter a.hm-dot:focus-visible { outline: 2px solid Highlight; }
+  .seg button.on, .viz-tabs button.on, .follow-btn.on, .hm-chart-ic.on, .search-row.on, nav.site a[aria-current="page"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .hm-toggle .knob { forced-color-adjust: none; background: ButtonText; }
+}
+/* The sign-in toast slides in; with reduced motion it simply appears. */
+@media (prefers-reduced-motion: reduce) { .acct-toast { transition: none; } }

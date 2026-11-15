@@ -1,0 +1,20 @@
+---
+// The page served for an address that does not exist. noindex, no advertising, and links to
+// the places people most often want.
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Page not found | Spot the Money" description="This address does not match a page on Spot the Money." noindex={true} ads={false}>
+  <h1>Page not found</h1>
+  <p class="lede">Nothing lives at this address. The page may have moved, or the link may be mistyped.</p>
+  <div class="prose">
+  <p>Try one of these:</p>
+  <ul>
+    <li><a href="/">The home page</a>, with the trade map</li>
+    <li><a href="/congress/">Trades disclosed by members of Congress</a></li>
+    <li><a href="/insiders/">Trades reported by corporate insiders</a></li>
+    <li><a href="/disclosures/">The newest filings</a></li>
+    <li><a href="/guides/">Guides</a> and the <a href="/faq/">FAQ</a></li>
+  </ul>
+  <p>You can also search for a member, an insider, a ticker or a company with the search box at the top of every page. If a link on this site brought you here, please <a href="/contact/">tell us</a>.</p>
+  </div>
+</BaseLayout>

@@ -242,7 +242,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
   <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
   <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />
 
-  <AdSlot label="Advertisement" />
+  <AdSlot label="Advertisement" show={!noindex} />
 
   <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
