@@ -1958,3 +1958,44 @@ Working notes for the next lead:
 - `facts.ts` `tradingBan` is due for re-check by 2026-11-20.
 - Next in the queue: market-wide Form 4 from the SEC bulk Insider Transactions Data Sets (free
   Workers plan only — limit which insiders get a page), then the homepage notable-trades feed.
+
+### AdSense readiness and Modern Web Guidance pass (2026-11-15) — Peter's brief
+
+There is NO AdSense account yet. Publisher ID pub-7904173988271272 belongs to the goldprice.org
+network: never put it on this site. Peter creates the account under peter@pfouge.com.
+
+- **One switch:** `web/src/lib/ads.ts` `ADSENSE_CLIENT` (empty today, so no ad code renders
+  anywhere). Filled with `ca-pub-` + 16 digits, production builds render the
+  `google-adsense-account` meta tag and the AdSense script in the head (BaseLayout) and the
+  in-page `AdSlot` units. Add `web/public/ads.txt` in the same commit as the ID, not before.
+  `PUBLIC_AD_CLIENT` is no longer read.
+- **No tag on pages without content:** BaseLayout `ads={false}` (privacy, terms, contact, 404,
+  watchlist pages); any `noindex` page; `AdSlot show={false}` on profiles with no records;
+  embeds use EmbedLayout, which has none. Checked by building with a dummy ID: 66 pages with the
+  tag, 19 without.
+- **Consent:** `Analytics.astro` queues Consent Mode v2 defaults before any Google tag; the
+  region default now carries `wait_for_update: 500`. Before the first ad is served, turn on
+  Google's consent message for the EEA, UK and Switzerland in AdSense (Privacy & messaging):
+  the privacy page (dated 2026-11-15) says those visitors are asked first.
+- **No CSP exists** in `_headers` or `middleware.ts`, so nothing blocks Google's ad hosts.
+- **New pages:** `/contact/` (footer link replaces the mailto), `404.astro`.
+- **Writing:** three articles under the byline `spot-the-money`, counted by SQL on production
+  on 2026-11-15 (figures and method are in each article). `/writing/` and author pages now
+  carry an answer block (verify-live requires one on every sitemap page).
+- **Thin pages:** `/companies/` and `/disclosures/` gained "What this page shows" and "Where the
+  data comes from" sections. The methodology coverage table is wrapped in `.tablewrap` (the
+  page was 525px wide on a 390px phone).
+- **Modern Web Guidance:** `<meta name="color-scheme">` kept in step with the theme switch
+  (BaseLayout inline script and `ui.ts`); a forced-colors block and a reduced-motion rule for
+  the toast at the end of `global.css`; `fetchpriority="high"` on the article hero image.
+  Held: declarative dialog controls (`command`, `closedby`), `vh` to `dvh`, global
+  `scroll-padding-top`, SRI on the d3 script in `web/public/congress-heatmap.html`, view
+  transitions, speculation rules.
+- **Cloudflare:** custom rule "Challenge SG and CN (bot traffic)",
+  `(ip.src.country in {"SG" "CN"} and not cf.client.bot)`, Managed Challenge, Active.
+- **Visual check (session workspace, not in the repo):** two captures of the unchanged build
+  were pixel-identical (347 of 347); the changed build differs only on the pages changed on
+  purpose and in the build timestamp on the methodology page. Chromium only.
+- `qa.yml` on branch `feat/home-feed` builds the branch it is started from (manual runs only);
+  that is how the new homepage (notable-trades feed, partial coverage) is shown on QA. It is
+  NOT merged: Peter reviews it on https://qa.spotthemoney.com first.

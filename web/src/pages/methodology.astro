@@ -92,13 +92,13 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   </ul>
   {house.length > 0 && (
     <div class="table-wrap">
-      <table class="data">
+      <div class="tablewrap"><table class="data">
         <caption>House periodic transaction reports by month filed</caption>
         <thead><tr><th>Month filed</th><th class="num">On file</th><th class="num">Shown</th><th class="num">Held for review</th><th class="num">Of those, paper filings</th></tr></thead>
         <tbody>
           {house.map((f) => <tr><td>{monthLabel(f.month)}</td><td class="num">{num(f.filings)}</td><td class="num">{num(f.published)}</td><td class="num">{num(f.filings - f.published)}</td><td class="num">{num(f.paper)}</td></tr>)}
         </tbody>
-      </table>
+      </table></div>
     </div>
   )}
 
