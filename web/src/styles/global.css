@@ -219,6 +219,15 @@ table.data tbody tr:hover > * { background: var(--chip); }
 table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 table.data .strong { font-weight: 600; }
 table.data td.wrap, table.data td.flags { white-space: normal; }
+/* Sortable headers (scripts/tablesort.ts): a plain button in the quiet header style; the arrow is a shape, not a colour. */
+table.data th button.sort { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+table.data th button.sort:hover { color: var(--ink); }
+table.data th button.sort:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+table.data th button.sort .arr { font-size: 10px; opacity: 0.55; min-width: 1em; text-align: center; }
+table.data th[aria-sort="ascending"] button.sort, table.data th[aria-sort="descending"] button.sort { color: var(--ink); font-weight: 600; }
+table.data th[aria-sort="ascending"] .arr, table.data th[aria-sort="descending"] .arr { opacity: 1; }
+html:not(.js) table.data th button.sort { pointer-events: none; cursor: default; }
+html:not(.js) table.data th button.sort .arr { display: none; }
 table.data caption { text-align: left; color: var(--ink-soft); font-size: 13px; padding: 0 0 6px 4px; }
 @media (max-width: 760px) {
   table.data th:first-child, table.data td:first-child { position: sticky; left: 0; z-index: 1; background: var(--bg); max-width: 46vw; overflow: hidden; text-overflow: ellipsis; box-shadow: 1px 0 0 var(--line); }

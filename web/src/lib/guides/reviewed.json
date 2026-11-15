@@ -76,9 +76,9 @@
     }
   },
   "how-to-read-a-congressional-trade-report": {
-    "reviewed": "2026-10-10",
+    "reviewed": "2026-11-15",
     "covers": {
-      "web/src/components/TxnTable.astro": "1854b63be4ae16ae",
+      "web/src/components/TxnTable.astro": "25b9b55b3f4c5db7",
       "ingest/py/senate_import.py": "b2717cb2bd239da8",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
       "web/src/pages/congress/[slug].astro": "5ed585a6b83326aa"
@@ -132,17 +132,17 @@
     }
   },
   "rule-10b5-1-trading-plans": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/components/TxnTable.astro": "1854b63be4ae16ae"
+      "web/src/components/TxnTable.astro": "25b9b55b3f4c5db7"
     }
   },
   "ten-percent-owners-and-joint-filings": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "1854b63be4ae16ae"
+      "web/src/components/TxnTable.astro": "25b9b55b3f4c5db7"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {

@@ -9,6 +9,7 @@ import { formatDate } from "../lib/format";
 import Empty from "./Empty.astro";
 import { tradeSentence } from "../lib/sharetext";
 import { flagHref } from "../lib/links";
+import { dayKey, numKey } from "../lib/tablesort";
 
 interface Props {
   model: Flagship;
@@ -38,24 +39,27 @@ const flags = (t: Txn) => {
   if (!t.isPublished) f.push("under review");
   return f;
 };
+// Column sorting (scripts/tablesort.ts): sortable headers carry a button, and each body cell in a
+// sortable column carries its machine-sortable value in `data-v` (lib/tablesort.ts).
+const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
 ---
 {rows.length === 0 ? (
   <Empty reason={emptyReason} />
 ) : (
   <div class="tablewrap">
-    <table class="data txns">
+    <table class="data txns" data-sortable>
       {caption && <caption>{caption}</caption>}
       <thead>
         <tr>
-          {showPerson && <th>Filer</th>}
-          {showSecurity && <th>Security</th>}
+          {showPerson && <th aria-sort="none" data-type="text"><button type="button" class="sort" title="Sort by filer" aria-label="Sort by filer">Filer<span class="arr" aria-hidden="true"></span></button></th>}
+          {showSecurity && <th aria-sort="none" data-type="text"><button type="button" class="sort" title="Sort by security" aria-label="Sort by security">Security<span class="arr" aria-hidden="true"></span></button></th>}
           <th>Side</th>
-          <th>Trade date</th>
-          <th>Disclosed</th>
-          <th class="num">Lag</th>
-          <th class="num">Shares</th>
-          <th class="num">Price</th>
-          <th class="num">Value</th>
+          <th aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by trade date" aria-label="Sort by trade date">Trade date<span class="arr" aria-hidden="true"></span></button></th>
+          <th aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by disclosed date" aria-label="Sort by disclosed date">Disclosed<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by lag" aria-label="Sort by lag">Lag<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by shares" aria-label="Sort by shares">Shares<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by price" aria-label="Sort by price">Price<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by value" aria-label="Sort by value">Value<span class="arr" aria-hidden="true"></span></button></th>
           <th>Flags</th>
           <th>Source</th>
           <th class="rs"><span class="sr-only">Share</span></th>
@@ -74,15 +78,15 @@ const flags = (t: Txn) => {
           const line = t.isPublished ? tradeSentence({ name: p?.name ?? null, side: t.side, amount: amountLabel(t), what: s?.ticker ?? assetLabel(t.assetType), txnDate: t.txnDate, disclosedAt: t.disclosedAt, lagDays: t.lagDays }) : null;
           return (
             <tr class={!t.isPublished ? "review" : undefined} id={first ? `t${t.id}` : undefined}>
-              {showPerson && <td>{p ? (pp ? <a href={pp}>{p.name}</a> : p.name) : "—"}</td>}
-              {showSecurity && <td class="mono">{s ? <a href={securityPath(s)}>{s.ticker}</a> : <span class="soft">{assetLabel(t.assetType)}</span>}</td>}
+              {showPerson && <td data-v={p?.name ?? ""}>{p ? (pp ? <a href={pp}>{p.name}</a> : p.name) : "—"}</td>}
+              {showSecurity && <td class="mono" data-v={s?.ticker ?? ""}>{s ? <a href={securityPath(s)}>{s.ticker}</a> : <span class="soft">{assetLabel(t.assetType)}</span>}</td>}
               <td class={`side ${t.side}`}>{sideLabel(t)}{t.code && t.source === "sec_form4" ? <span class="code"> {t.code}</span> : null}</td>
-              <td class="mono">{short(t.txnDate)}</td>
-              <td class="mono">{short(t.disclosedAt)}</td>
-              <td class="num">{t.lagDays == null ? "—" : `${t.lagDays}d`}</td>
-              <td class="num">{t.shares != null ? num(t.shares) : "—"}</td>
-              <td class="num">{t.price != null && t.price > 0 ? money(t.price, { compact: false }) : "—"}</td>
-              <td class="num strong">{amountLabel(t)}</td>
+              <td class="mono" data-v={dayKey(t.txnDate)}>{short(t.txnDate)}</td>
+              <td class="mono" data-v={dayKey(t.disclosedAt)}>{short(t.disclosedAt)}</td>
+              <td class="num" data-v={numKey(t.lagDays)}>{t.lagDays == null ? "—" : `${t.lagDays}d`}</td>
+              <td class="num" data-v={numKey(t.shares)}>{t.shares != null ? num(t.shares) : "—"}</td>
+              <td class="num" data-v={numKey(t.price != null && t.price > 0 ? t.price : null)}>{t.price != null && t.price > 0 ? money(t.price, { compact: false }) : "—"}</td>
+              <td class="num strong" data-v={valueKey(t)}>{amountLabel(t)}</td>
               <td class="flags">{flags(t).map((f) => { const to = flagHref(f, t.source); const cls = `flag ${f.replace(/\W+/g, "-")}`; return to ? <a class={cls} href={to} title="What this flag means">{f}</a> : <span class={cls}>{f}</span>; })}</td>
               <td>{href ? <a href={href} rel="noopener nofollow" target="_blank">{sourceLabel(t)} ↗</a> : sourceLabel(t)}</td>
               <td class="rs">{line && <button type="button" class="row-share" data-share="trade" data-share-text={line} data-share-path={home !== here ? home : undefined} data-share-id={`t${t.id}`} data-share-date={(t.disclosedAt ?? "").slice(0, 10) || undefined} aria-label="Share or cite this trade"></button>}</td>
