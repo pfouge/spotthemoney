@@ -15,6 +15,7 @@
 import postgres from "postgres";
 import { normalizeOrgName, tradeValue, unitPrice, median } from "@stm/shared";
 import { jointDuplicates, type JointRow } from "./joint";
+import { heldAfter, holdingsChange, type HoldingsChange } from "./holdings";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -105,6 +106,10 @@ export interface Txn {
   value: number | null;
   /** Set when another filer's earlier Form 4 already reports this same transaction (lib/joint.ts): the id of that row. */
   jointOf?: number | null;
+  /** Form 4 only: shares the insider owns after this transaction, as filed (non-derivative rows; lib/holdings.ts). */
+  ownedAfter?: number | null;
+  /** Form 4 only: change in the reported holding caused by this row, in percent; "new" for a first position (lib/holdings.ts). */
+  holdingsChange?: HoldingsChange;
 }
 export interface LobbyingRow {
   id: number; registrant: string | null; client: string | null; issueArea: string | null; amount: number | null;
@@ -303,6 +308,12 @@ async function load(): Promise<Flagship> {
         amountLow: t.amount_low, amountHigh: t.amount_high, shares: t.shares, price: t.price, lagDays: t.disclosure_lag_days,
         is10b51: t.is_10b5_1, ownerType: t.owner_type, assetType: t.asset_type, source: f.source, sourceUrl: f.sourceUrl,
         filedAt: f.filedAt, isPublished: f.isPublished, value };
+      // Holdings columns: direction comes from the stored side (buy = acquired, sell = disposed),
+      // read before the option / joint relabelling above and below.
+      if (f.source === "sec_form4") {
+        txn.ownedAfter = heldAfter({ source: f.source, isDerivative: t.is_derivative, ownedAfter: t.owned_after });
+        txn.holdingsChange = holdingsChange({ source: f.source, side: t.side, isDerivative: t.is_derivative, shares: t.shares, ownedAfter: t.owned_after });
+      }
       f.txnCount++;
       built.push(txn); ownedAfter.set(txn.id, t.owned_after);
     }

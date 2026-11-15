@@ -17,6 +17,7 @@ import type { Flagship, Person, Security, Txn, LobbyingRow, ContractRow } from "
 import { getFlagship, flagshipSql, personPath, roleLabel, isLate } from "./flagship";
 import { SITE_URL, edgarFilingUrl } from "./seo";
 import { toCsv, type Column } from "./csv";
+import { changeCsv } from "./holdings";
 
 export const MAX_ROWS = 50_000;
 export type Group = "congress" | "insiders" | "washington" | "rates";
@@ -71,6 +72,8 @@ export function tradeColumns(m: Flagship): Column<Txn>[] {
     { key: "value", about: "shares × price for Form 4, in dollars. Empty for congressional reports, which give a range only.", get: (t) => (!isPtr(t) && t.shares != null && t.price != null && t.price > 0 ? round2(t.value) : null) },
     { key: "plan_10b5_1", about: "true when the Form 4 says the trade was made under a Rule 10b5-1 plan.", get: (t) => (t.source === "sec_form4" ? !!t.is10b51 : null) },
     { key: "also_in_another_filing", about: "true when another filer's earlier Form 4 already reports this same transaction; count it once.", get: (t) => t.jointOf != null },
+    { key: "shares_owned_after", about: "Form 4 only: shares the insider owns after this transaction, as reported on the form. Empty for derivative rows, congressional reports and filings that give none.", get: (t) => (t.source === "sec_form4" ? t.ownedAfter ?? null : null) },
+    { key: "holdings_change_pct", about: "Form 4 only: change in the insider's reported holding from this transaction, in percent of the holding before it (−100 = holding sold down to zero). Empty for a first position (shares_owned_after is then equal to shares), when the direction of the row is not a plain buy or sale, and when the filing is inconsistent.", get: (t) => (t.source === "sec_form4" ? changeCsv(t.holdingsChange ?? null) : null) },
     { key: "under_review", about: "true when the report has passed automatic checks but not yet a human sample check.", get: (t) => !t.isPublished },
     { key: "filing_id", about: "The report's id at the source (House or Senate document id, SEC accession number).", get: (t) => m.filings.get(t.filingId)?.externalId },
     { key: "filing_url", about: "Link to the original report. It is the authority for the row.", get: (t) => (t.source === "sec_form4" ? edgarFilingUrl(t.sourceUrl) : t.sourceUrl) },

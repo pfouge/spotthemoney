@@ -52,7 +52,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
 <li><strong>A company's page</strong> adds federal contracts and lobbying filings under the company's exact name, the members of Congress who traded its stock, and related companies.</li>
 </ul>
-<p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more. Every trade table can be sorted: click a column title such as Trade date, Value or Lag to sort by it, click again to reverse, and click a third time to return to the original newest-first order. A <strong>Follow</strong> button beside the name on all three adds the page to your free watchlist; see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}.</p>` },
+<p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more. Every trade table can be sorted: click a column title such as Trade date, Value or Lag to sort by it, click again to reverse, and click a third time to return to the original newest-first order. Insider tables also carry <strong>Held after</strong>, the shares the insider reports owning once the row is done, and <strong>Change</strong>, how much of the earlier holding the row added or removed ("new" for a first purchase, −100% for a sale that leaves nothing); rows with no holding on file show a dash. A <strong>Follow</strong> button beside the name on all three adds the page to your free watchlist; see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}.</p>` },
     ],
     faqs: [
       { q: "What is a Form 4 filing?", a: "Form 4 is the SEC filing that a company's officers, directors and owners of more than 10% of its stock must make within two business days of trading that stock. It shows the date, shares, price and holdings afterwards.", on: ["insiders", "stocks"] },
@@ -135,7 +135,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
   (c) => {
     const r = c.facts.rule10b51;
     return {
-      slug: "rule-10b5-1-trading-plans", group: "insiders", updated: U,
+      slug: "rule-10b5-1-trading-plans", group: "insiders", updated: "2026-11-15",
       title: "Rule 10b5-1 trading plans",
       seoTitle: ["Rule 10b5-1 Plans: Pre-Scheduled Insider Sales Explained", "Rule 10b5-1 Trading Plans Explained"],
       description: ["A Rule 10b5-1 plan lets a company insider schedule stock trades in advance. How the plans work, the 90-day waiting period, and why they are filtered out by default.", "A Rule 10b5-1 plan lets an insider schedule trades in advance. How the plans work and why they matter when reading Form 4."],
@@ -160,6 +160,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 </ul>` },
         { id: "spot", h: "How do I tell a plan trade from a discretionary one?", html: `
 <p>By the checkbox. On this site a row from a filing with the box ticked carries a "10b5-1 plan" flag. The trade map has a filter with two settings, "No 10b5-1 plans" (the default) and "With plans".</p>
+<p>In an insider's trade table the "Held after" and "Change" columns show how much of the reported holding a row removed. They sit beside the plan flag, but the filing does not link the two: a large change under a plan is a fact about the holding, not a reason.</p>
 <p>The box applies to the whole filing, not to each row, and it has only existed since 2023, so older filings mention plans in footnotes or not at all. Treat the flag as reliable when present and its absence in an old filing as unknown.</p>` },
         { id: "why-filter", h: "Why are plan trades left out by default?", html: `
 <p>Because of when the decision was made. A plan sale executed this week was decided at least ${r.insiderCoolingDays} days ago, often a year or more. It tells you how the insider chose to cash out over time, not how they feel about the company now. Leaving plan trades out of the default view keeps the map closer to recent decisions.</p>
@@ -283,7 +284,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: U,
+    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: "2026-11-15",
     title: "10% owners and joint filings",
     seoTitle: ["10% Owners and Joint Form 4 Filings: One Trade, Many Forms", "10% Owners and Joint Form 4 Filings"],
     description: ["Funds that own over 10% of a company file Form 4 like executives, and related funds often each report the same trade. How to read them without double counting.", "Funds owning over 10% of a company file Form 4 too, and related funds often report the same trade. How to avoid double counting."],
@@ -303,6 +304,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <p>Read one at a time they are all correct. Added together they multiply the trade. One real sale on this site once appeared under seven owners and summed to seven times its size.</p>` },
       { id: "rule", h: "How does this site avoid counting a trade twice?", html: `
 <p>It treats Form 4 rows as one trade when the stock, the date, the code, the share count and the price all match across different filings, the holdings reported after the trade match too, and the trade is worth ${c.jointMinUsd} or more. The earliest filing keeps the trade. The others stay visible on each filer's own page, carry the flag "also in another filing", and are left out of totals and off the map.</p>
+<p>The holding used for that match is the one the trade table shows in its "Held after" column.</p>
 <p>The threshold is there because small identical trades do happen for real: two directors each buying 1,000 shares at the same price on the same day are two purchases.</p>
 <p>The underlying filings are not changed; this is a rule for adding up, written out in the <a href="/methodology/#values">methodology</a>.</p>` },
       { id: "filter", h: "How can I look at executives only?", html: `
