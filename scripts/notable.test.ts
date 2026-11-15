@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   CLUSTER_DAYS, CLUSTER_MIN_INSIDERS, CONGRESS_MIN_LOW, LARGE_SALE_MIN, STAKE_MIN_PCT, STAKE_MIN_VALUE,
-  buildFeed, eligible, findClusters, reasonsOf, selectFeed, sinceOf, topLists, DEFAULT_STATE, type NRow,
+  buildFeed, eligible, findClusters, findClusterSells, reasonsOf, selectFeed, resolveView, sinceOf, topLists, countLine, emptyLine, presetFromHash, PRESET_HASH, PRESETS,
+  CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT, DEFAULT_STATE, type NRow,
 } from "../web/src/lib/notable";
 
+const ALL = { ...DEFAULT_STATE, preset: "all" as const };
 let n = 0;
 function row(o: Partial<NRow> = {}): NRow {
   n++;
@@ -19,6 +21,7 @@ const cong = (o: Partial<NRow> = {}) => row({ source: "house_ptr", code: null, s
 
 test("constants match the published rules", () => {
   assert.deepEqual([CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW], [3, 30, 20, 100_000, 1_000_000, 15_001]);
+  assert.deepEqual([CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT], [3, 250_000, 10]);
 });
 
 test("reasons: insider buy, stake change, large sale, congress", () => {
@@ -97,7 +100,7 @@ test("All folds cluster members into the cluster; Insider buys lists them", () =
   const extra = row({ personId: 77, name: "Lone Buyer", companyKey: "c5", ticker: "LONE", txnDate: "2026-11-12", disclosedAt: "2026-11-13" });
   const rows = [buyer(1, "2026-11-10", "2026-11-12"), buyer(2, "2026-11-10", "2026-11-12"), buyer(3, "2026-11-10", "2026-11-12"), extra];
   const d = feed(rows);
-  const all = selectFeed(d, DEFAULT_STATE);
+  const all = selectFeed(d, ALL);
   assert.equal(all.length, 2);
   assert.equal(all[0]!.k, "c", "cluster pinned first");
   assert.equal(all[1]!.k, "r");
@@ -114,7 +117,7 @@ test("default sort: clusters first, then newest filed, ties by larger value", ()
     buyer(21, "2026-10-01", "2026-10-02", "c8"), buyer(22, "2026-10-02", "2026-10-03", "c8"), buyer(23, "2026-10-03", "2026-11-01", "c8"),
   ];
   const d = feed(rows);
-  const out = selectFeed(d, { ...DEFAULT_STATE, win: 30 });
+  const out = selectFeed(d, { ...ALL, win: 30 });
   assert.equal(out[0]!.k, "c");
   assert.deepEqual(out.slice(1).map((e) => (e.k === "r" ? e.n : "?")), ["C", "B", "D", "A"]);
   const large = selectFeed(d, { ...DEFAULT_STATE, win: 30, sort: "large", preset: "buys" });
@@ -127,7 +130,7 @@ test("search matches ticker, company and person, case-insensitively; presets fil
   const rows = [row({ name: "Jane Smith", ticker: "JJJ", company: "Jolly Corp", companyKey: "c1" }), row({ name: "Bob", ticker: "KKK", company: "Kappa", companyKey: "c2" }),
     row({ code: "S", side: "sell", value: 3_000_000, name: "Seller", ticker: "SSS", companyKey: "c3" })];
   const d = feed(rows);
-  const q = (s: string) => selectFeed(d, { ...DEFAULT_STATE, q: s }).length;
+  const q = (s: string) => selectFeed(d, { ...ALL, q: s }).length;
   assert.equal(q("jane"), 1); assert.equal(q("KAPPA"), 1); assert.equal(q("kk"), 1); assert.equal(q("zzzz"), 0);
   assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "sales" }).length, 1);
   assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "buys" }).length, 2);
@@ -151,5 +154,125 @@ test("top lists count the same rows as the feed", () => {
   assert.equal(t.activeMembers[0]!.label, "Rep A");
   assert.equal(t.congressStocks[0]!.label, "NVDA"); assert.equal(t.congressStocks[0]!.value, "2 members");
   assert.equal(t.figures.buyRows, 3); assert.equal(t.figures.saleRows, 1); assert.equal(t.figures.members, 2);
-  assert.equal(t.figures.notable, selectFeed(d, DEFAULT_STATE).length);
+  assert.equal(t.figures.notable, selectFeed(d, ALL).length);
+});
+
+// ── cluster sells ─────────────────────────────────────────────────────────────────────────
+/** A seller who passes on their own: $300,000 and a 25% cut. */
+const seller = (i: number, txn = "2026-11-05", filed = "2026-11-10", o: Partial<NRow> = {}, co = "c1") =>
+  row({ personId: 2000 + i, name: `Seller ${i}`, code: "S", side: "sell", value: 300_000, shares: 6000, price: 50, change: -25, txnDate: txn, disclosedAt: filed, companyKey: co, ...o });
+
+test("cluster sell: three qualifying sellers make one item", () => {
+  const rows = [seller(1), seller(2, "2026-11-01", "2026-11-03"), seller(3, "2026-11-08", "2026-11-12")];
+  const c = findClusterSells(rows);
+  assert.equal(c.length, 1);
+  assert.equal(c[0]!.b, 0); assert.equal(c[0]!.n, 3); assert.equal(c[0]!.v, 900_000);
+  assert.equal(c[0]!.f, "2026-11-01"); assert.equal(c[0]!.l, "2026-11-08"); assert.equal(c[0]!.d, "2026-11-12");
+  assert.equal(findClusters(rows).length, 0, "sales never make a cluster buy");
+});
+
+test("cluster sell: a plan sale does not count", () => {
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { is10b51: true })]).length, 0);
+});
+
+test("cluster sell: a holding cut under 10% does not qualify the seller", () => {
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { change: -9.9 })]).length, 0);
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { change: -10 })]).length, 1, "exactly 10% counts");
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { change: null })]).length, 0, "no holding figure, no cut");
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { change: 40 })]).length, 0, "a rise is not a cut");
+});
+
+test("cluster sell: total under $250,000 does not qualify; several rows add up, the largest cut counts", () => {
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { value: 249_999 })]).length, 0);
+  const split = [seller(3, "2026-11-04", "2026-11-09", { value: 150_000, change: -4 }), seller(3, "2026-11-06", "2026-11-10", { value: 150_000, change: -12 })];
+  const c = findClusterSells([seller(1), seller(2), ...split]);
+  assert.equal(c.length, 1, "two rows by one person: $300,000 total, largest single-row cut 12%");
+  assert.equal(c[0]!.n, 3);
+  const small = [seller(3, "2026-11-04", "2026-11-09", { value: 150_000, change: -6 }), seller(3, "2026-11-06", "2026-11-10", { value: 150_000, change: -6 })];
+  assert.equal(findClusterSells([seller(1), seller(2), ...small]).length, 0, "cuts are not added across rows");
+});
+
+test("cluster sell: two qualifying sellers are not enough, and a third who fails does not help", () => {
+  assert.equal(findClusterSells([seller(1), seller(2)]).length, 0);
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { value: 10_000 })]).length, 0);
+  assert.equal(findClusterSells([seller(1), seller(1, "2026-11-06", "2026-11-11"), seller(2)]).length, 0, "one person twice is one");
+});
+
+test("cluster sell: derivative, joint, future-dated and cross-company rows are out; 31 days apart is not a cluster", () => {
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { isDerivative: true })]).length, 0);
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", { jointOf: 4 })]).length, 0);
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-12", "2026-11-10")]).length, 0);
+  assert.equal(findClusterSells([seller(1), seller(2), seller(3, "2026-11-05", "2026-11-10", {}, "c2")]).length, 0);
+  assert.equal(findClusterSells([seller(1, "2026-10-01", "2026-10-02"), seller(2, "2026-10-15", "2026-10-16"), seller(3, "2026-11-01", "2026-11-02")]).length, 0);
+});
+
+test("a company with both a cluster buy and a cluster sell shows both; All folds the members of each", () => {
+  const rows = [
+    buyer(1, "2026-11-08", "2026-11-12"), buyer(2, "2026-11-08", "2026-11-12"), buyer(3, "2026-11-08", "2026-11-12"),
+    seller(1, "2026-11-05", "2026-11-13"), seller(2, "2026-11-06", "2026-11-13"), seller(3, "2026-11-07", "2026-11-13"),
+  ];
+  const d = feed(rows);
+  assert.equal(d.clusters.length, 2);
+  const cl = selectFeed(d, DEFAULT_STATE);
+  assert.deepEqual(cl.map((e) => (e.k === "c" ? e.b : -1)), [0, 1], "Clusters preset: newest disclosure first (sell filed 11-13), buys before sells only on a tie");
+  assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "cbuy" }).length, 1);
+  assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "csell" }).length, 1);
+  assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "csell" })[0]!.k, "c");
+  // sale rows are $300,000 with a 25% cut: stake-change, not large-sale; folded into the cluster under All
+  const all = selectFeed(d, ALL);
+  assert.equal(all.filter((e) => e.k === "c").length, 2);
+  assert.equal(all.filter((e) => e.k === "r").length, 0, "every member row is folded into its cluster");
+  assert.equal(selectFeed(d, { ...ALL, preset: "stake" }).length, 3, "the stake-change preset still lists the sale rows");
+});
+
+test("ordering in Clusters: newest disclosure first; ties buys before sells, then larger value", () => {
+  const rows = [
+    buyer(1, "2026-11-08", "2026-11-13"), buyer(2, "2026-11-08", "2026-11-13"), buyer(3, "2026-11-08", "2026-11-13"),
+    seller(1, "2026-11-05", "2026-11-13", {}, "c2"), seller(2, "2026-11-06", "2026-11-13", {}, "c2"), seller(3, "2026-11-07", "2026-11-13", {}, "c2"),
+    seller(4, "2026-11-05", "2026-11-14", {}, "c3"), seller(5, "2026-11-06", "2026-11-13", {}, "c3"), seller(6, "2026-11-07", "2026-11-13", {}, "c3"),
+    seller(7, "2026-11-05", "2026-11-13", { value: 900_000 }, "c4"), seller(8, "2026-11-06", "2026-11-13", { value: 900_000 }, "c4"), seller(9, "2026-11-07", "2026-11-13", { value: 900_000 }, "c4"),
+  ];
+  const d = feed(rows);
+  const c = selectFeed(d, DEFAULT_STATE) as ReturnType<typeof findClusters>;
+  assert.deepEqual(c.map((x) => x.d), ["2026-11-14", "2026-11-13", "2026-11-13", "2026-11-13"]);
+  assert.deepEqual(c.slice(1).map((x) => [x.b, x.v]), [[1, 150_000], [0, 2_700_000], [0, 900_000]], "buy first on the tie, then larger sell");
+});
+
+test("default state is Clusters, 7 days, newest; presets and hash values", () => {
+  assert.deepEqual(DEFAULT_STATE, { win: 7, preset: "cluster", q: "", sort: "new" });
+  assert.deepEqual(PRESETS.map((p) => p.label), ["Clusters", "Cluster buys", "Cluster sells", "Insider buys", "Stake changes", "Large sales", "Congress", "All"]);
+  assert.deepEqual(Object.values(PRESET_HASH), ["clusters", "cbuy", "csell", "buys", "stake", "sales", "congress", "all"]);
+  for (const p of PRESETS) assert.equal(presetFromHash(PRESET_HASH[p.id]), p.id);
+  assert.equal(presetFromHash("cluster"), "cluster", "alias");
+  assert.equal(presetFromHash(null), null); assert.equal(presetFromHash("nope"), null);
+});
+
+test("Clusters falls back from 7 to 30 days, then offers All", () => {
+  const rows = [buyer(1, "2026-10-20", "2026-10-22"), buyer(2, "2026-10-21", "2026-10-23"), buyer(3, "2026-10-22", "2026-10-24"),
+    row({ personId: 9, txnDate: "2026-11-14", disclosedAt: "2026-11-15", code: "S", side: "sell", value: 2_000_000, companyKey: "c9", ticker: "ZZZ" })];
+  const d = feed(rows);
+  assert.equal(selectFeed(d, DEFAULT_STATE).length, 0, "no cluster filed in the last 7 days");
+  const v = resolveView(d, DEFAULT_STATE);
+  assert.equal(v.fellBack, true); assert.equal(v.win, 30); assert.equal(v.entries.length, 1); assert.equal(v.offerAll, false);
+  const line = countLine(v.entries.length, v.entries.length, { ...DEFAULT_STATE, win: v.win }, d.newest, v.fellBack);
+  assert.match(line, /^No clusters filed in the last 7 days\. Showing 30 days\./);
+  assert.match(line, /1 cluster filed from/);
+  // the fallback follows the preset, not the search: a search that matches nothing still searches 30 days, and does not offer All
+  const q = resolveView(d, { ...DEFAULT_STATE, q: "zzzz" });
+  assert.equal(q.fellBack, true); assert.equal(q.entries.length, 0); assert.equal(q.offerAll, false);
+  // other windows and presets never fall back
+  assert.equal(resolveView(d, { ...DEFAULT_STATE, win: 1 }).fellBack, false);
+  assert.equal(resolveView(d, { ...DEFAULT_STATE, preset: "cbuy" }).fellBack, false);
+  // nothing in 30 days either
+  const none = feed([row({ txnDate: "2026-11-14", disclosedAt: "2026-11-15", code: "S", side: "sell", value: 2_000_000, companyKey: "c9", ticker: "ZZZ" })]);
+  const v2 = resolveView(none, DEFAULT_STATE);
+  assert.equal(v2.entries.length, 0); assert.equal(v2.fellBack, false); assert.equal(v2.offerAll, true);
+  assert.equal(emptyLine(DEFAULT_STATE, true), "No clusters were filed in the last 30 days.");
+  assert.equal(resolveView(none, ALL).offerAll, false);
+  assert.ok(selectFeed(none, ALL).length > 0, "All has the large sale");
+});
+
+test("wording has no em-dashes and never says signal, bullish or bearish", () => {
+  const texts = [countLine(0, 0, DEFAULT_STATE, "2026-11-15", true), emptyLine(DEFAULT_STATE, true), emptyLine(ALL), ...PRESETS.map((p) => p.label)];
+  for (const t of texts) { assert.ok(!/—/.test(t), t); assert.ok(!/signal|bullish|bearish/i.test(t), t); }
 });

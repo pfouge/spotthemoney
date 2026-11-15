@@ -770,7 +770,7 @@ tr.is-new > td { background: color-mix(in srgb, var(--chip) 70%, transparent); }
 .nf-coverage { max-width: none; margin: 0.4rem 0 0.9rem; }
 .feed { margin: 1.25rem 0 1.5rem; }
 .nf-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 8px 0 4px; }
-html:not(.js) .nf-controls, html:not(.js) .nf-more-row { display: none; }
+html:not(.js) .nf-controls, html:not(.js) .nf-more-row, html:not(.js) .nf-all { display: none; }
 .nf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .nf-chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; white-space: nowrap; }
 .nf-chip:hover { background: var(--chip-hover); }
@@ -796,6 +796,12 @@ html:not(.js) .nf-controls, html:not(.js) .nf-more-row { display: none; }
 .nf-empty { padding: 1rem 0; color: var(--ink-soft); }
 .nf-more-row { margin: 0.9rem 0 0; }
 .nf-foot { margin-top: 0.75rem; max-width: 80ch; }
+.nf-sellnote { margin-top: 0.5rem; max-width: 80ch; }
+.nf-all { margin-left: 6px; }
+.nf-more[hidden], .nf-all[hidden] { display: none; }
+.nf-howto { border-left: 3px solid var(--line); padding: 2px 0 2px 14px; margin: 0 0 0.9rem; max-width: 80ch; }
+.nf-howto h3 { font-size: 0.95rem; margin: 0 0 0.25rem; }
+.nf-howto p { margin: 0; font-size: 14px; color: var(--ink-soft); }
 .nf-top { margin: 1.75rem 0 1.5rem; }
 .nf-top-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 0.75rem; }
 .nf-top-card { padding: 1rem 1.1rem; }

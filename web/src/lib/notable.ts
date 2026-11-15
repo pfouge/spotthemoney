@@ -9,6 +9,10 @@
 //   insider-buy   Form 4 code P outside a Rule 10b5-1 plan. Every one counts.
 //   cluster       3+ different insiders of one company with insider-buy rows whose trade dates fall
 //                 within 30 days of each other, at least one disclosed inside the chosen window.
+//   cluster-sell  The same shape for sales, held to a much stricter test because insiders sell
+//                 routinely: each of the 3+ sellers must, over their code-S rows in the 30-day span
+//                 (outside any 10b5-1 plan), total $250,000+ AND cut their own reported holding by
+//                 10%+ in at least one row. One cluster-sell item per company, beside any cluster buy.
 //   stake-change  Form 4 code P or S outside a plan that moves the reported holding by 20%+ and is
 //                 worth $100,000+ (lib/holdings.ts; a first position counts as a rise).
 //   large-sale    Form 4 code S outside a plan worth $1,000,000+.
@@ -22,6 +26,9 @@ export const STAKE_MIN_PCT = 20;
 export const STAKE_MIN_VALUE = 100_000;
 export const LARGE_SALE_MIN = 1_000_000;
 export const CONGRESS_MIN_LOW = 15_001;
+export const CLUSTER_SELL_MIN_INSIDERS = 3;
+export const CLUSTER_SELL_MIN_VALUE = 250_000;
+export const CLUSTER_SELL_MIN_PCT = 10;
 
 export const WINDOWS = [1, 7, 30] as const;
 export type Win = (typeof WINDOWS)[number];
@@ -29,8 +36,8 @@ export const FEED_PAGE = 60;
 export const TOP_N = 5;
 
 export type Reason = "insider-buy" | "stake-change" | "large-sale" | "congress";
-export const REASON_LABEL: Record<Reason | "cluster", string> = {
-  "insider-buy": "Insider buy", "stake-change": "Stake change", "large-sale": "Large sale", congress: "Congress", cluster: "Cluster buy",
+export const REASON_LABEL: Record<Reason | "cluster" | "cluster-sell", string> = {
+  "insider-buy": "Insider buy", "stake-change": "Stake change", "large-sale": "Large sale", congress: "Congress", cluster: "Cluster buy", "cluster-sell": "Cluster sell",
 };
 
 /** One published transaction as the rules see it. Display strings are prepared by the build. */
@@ -77,7 +84,7 @@ export function reasonsOf(r: NRow): Reason[] {
 
 // ── clusters ──────────────────────────────────────────────────────────────────────────────
 export interface FeedCluster {
-  k: "c"; /** latest disclosure date among members */ d: string; /** first / last trade date */ f: string; l: string;
+  k: "c"; /** 1 = cluster buy, 0 = cluster sell */ b: 0 | 1; /** latest disclosure date among members */ d: string; /** first / last trade date */ f: string; l: string;
   tk: string; tp: string | null; co: string; n: number; who: { n: string; p: string | null }[];
   v: number; vl: string; ids: number[]; u: string | null;
 }
@@ -88,25 +95,23 @@ export const addDays = (iso: string, n: number) => new Date((dayNum(iso) + n) * 
 /** First day of a window counted back from the newest disclosure date: "Today" is one day, "7 days" is seven days including today. */
 export const sinceOf = (newest: string, w: number) => addDays(newest, -(w - 1));
 
-/**
- * One cluster per company at most. Among every group of insider-buy rows in one company whose trade
- * dates fit in a 30-day span and that has 3+ different insiders, the one disclosed most recently
- * wins (ties: more insiders). The group takes every insider-buy row of the company in that span.
- */
-export function findClusters(rows: NRow[], fmt: (n: number) => string = (n) => `$${Math.round(n).toLocaleString("en-US")}`): FeedCluster[] {
-  const byCo = new Map<string, NRow[]>();
-  for (const r of rows) if (reasonsOf(r).includes("insider-buy")) { const a = byCo.get(r.companyKey); if (a) a.push(r); else byCo.set(r.companyKey, [r]); }
+/** A candidate group of rows that qualify: the cluster's member rows, or null when the span does not make one. */
+type Qualify = (span: NRow[]) => NRow[] | null;
+
+/** One cluster per company at most: the span disclosed most recently wins (ties: more insiders). */
+function clustersBy(byCo: Map<string, NRow[]>, qualify: Qualify, b: 0 | 1, fmt: (n: number) => string): FeedCluster[] {
   const out: FeedCluster[] = [];
   for (const group of byCo.values()) {
-    group.sort((a, b) => a.txnDate!.localeCompare(b.txnDate!) || a.id - b.id);
+    group.sort((a, c) => a.txnDate!.localeCompare(c.txnDate!) || a.id - c.id);
     let best: NRow[] | null = null; let bestKey = ""; let bestN = 0;
     for (const start of group) {
       const lo = dayNum(start.txnDate!);
       const span = group.filter((r) => { const d = dayNum(r.txnDate!); return d >= lo && d - lo <= CLUSTER_DAYS; });
-      const people = new Set(span.map((r) => r.personId ?? `n:${r.name}`));
-      if (people.size < CLUSTER_MIN_INSIDERS) continue;
-      const latest = span.reduce((m, r) => (r.disclosedAt! > m ? r.disclosedAt! : m), "");
-      if (!best || latest > bestKey || (latest === bestKey && people.size > bestN)) { best = span; bestKey = latest; bestN = people.size; }
+      const members = qualify(span);
+      if (!members) continue;
+      const people = new Set(members.map((r) => r.personId ?? `n:${r.name}`));
+      const latest = members.reduce((m, r) => (r.disclosedAt! > m ? r.disclosedAt! : m), "");
+      if (!best || latest > bestKey || (latest === bestKey && people.size > bestN)) { best = members; bestKey = latest; bestN = people.size; }
     }
     if (!best) continue;
     const people = new Map<string, { n: string; p: string | null }>();
@@ -114,7 +119,7 @@ export function findClusters(rows: NRow[], fmt: (n: number) => string = (n) => `
     const total = best.reduce((s, r) => s + (r.value ?? 0), 0);
     const first = best[0]!;
     out.push({
-      k: "c", d: bestKey, f: best.reduce((m, r) => (r.txnDate! < m ? r.txnDate! : m), first.txnDate!), l: best.reduce((m, r) => (r.txnDate! > m ? r.txnDate! : m), first.txnDate!),
+      k: "c", b, d: bestKey, f: best.reduce((m, r) => (r.txnDate! < m ? r.txnDate! : m), first.txnDate!), l: best.reduce((m, r) => (r.txnDate! > m ? r.txnDate! : m), first.txnDate!),
       tk: first.ticker!, tp: first.stockPath, co: first.company, n: people.size, who: [...people.values()],
       v: total, vl: fmt(total), ids: best.map((r) => r.id), u: null,
     });
@@ -122,11 +127,59 @@ export function findClusters(rows: NRow[], fmt: (n: number) => string = (n) => `
   return out;
 }
 
+const defaultFmt = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+const personKey = (r: NRow) => r.personId ?? `n:${r.name}`;
+function byCompany(rows: NRow[], keep: (r: NRow) => boolean): Map<string, NRow[]> {
+  const byCo = new Map<string, NRow[]>();
+  for (const r of rows) if (keep(r)) { const a = byCo.get(r.companyKey); if (a) a.push(r); else byCo.set(r.companyKey, [r]); }
+  return byCo;
+}
+
+/**
+ * Cluster buys. Among every group of insider-buy rows in one company whose trade dates fit in a
+ * 30-day span and that has 3+ different insiders, the one disclosed most recently wins. The group
+ * takes every insider-buy row of the company in that span.
+ */
+export function findClusters(rows: NRow[], fmt: (n: number) => string = defaultFmt): FeedCluster[] {
+  const byCo = byCompany(rows, (r) => reasonsOf(r).includes("insider-buy"));
+  return clustersBy(byCo, (span) => (new Set(span.map(personKey)).size >= CLUSTER_MIN_INSIDERS ? span : null), 1, fmt);
+}
+
+/** The drop in the seller's own reported holding, in percent, or null when the row has no holding figure or is not a cut. */
+export const holdingCut = (r: NRow): number | null => (typeof r.change === "number" && r.change < 0 ? -r.change : null);
+
+/** Sale rows a cluster sell may use: Form 4 code S, outside a plan, passing the shared exclusions. */
+export const isOpenSale = (r: NRow) => eligible(r) && isForm4(r) && r.code === "S" && r.side === "sell" && !r.is10b51;
+
+/**
+ * Cluster sells, strict on purpose. A person counts only when, over their open-market sales (code S,
+ * no 10b5-1 plan) inside the 30-day span, the dollars total CLUSTER_SELL_MIN_VALUE or more AND at
+ * least one of their rows cuts their reported holding by CLUSTER_SELL_MIN_PCT or more (the largest
+ * single-row drop; a row with no holding figure cannot show a cut). 3+ such people make a cluster.
+ */
+export function findClusterSells(rows: NRow[], fmt: (n: number) => string = defaultFmt): FeedCluster[] {
+  const byCo = byCompany(rows, isOpenSale);
+  return clustersBy(byCo, (span) => {
+    const per = new Map<string | number, NRow[]>();
+    for (const r of span) { const k = personKey(r); const a = per.get(k); if (a) a.push(r); else per.set(k, [r]); }
+    const members: NRow[] = []; let people = 0;
+    for (const rs of per.values()) {
+      const total = rs.reduce((s, r) => s + (r.value ?? 0), 0);
+      const cut = rs.reduce((m, r) => Math.max(m, holdingCut(r) ?? 0), 0);
+      if (total >= CLUSTER_SELL_MIN_VALUE && cut >= CLUSTER_SELL_MIN_PCT) { members.push(...rs); people++; }
+    }
+    return people >= CLUSTER_SELL_MIN_INSIDERS ? members : null;
+  }, 0, fmt);
+}
+
+/** Cluster buys and cluster sells together. */
+export const findAllClusters = (rows: NRow[], fmt: (n: number) => string = defaultFmt): FeedCluster[] => [...findClusters(rows, fmt), ...findClusterSells(rows, fmt)];
+
 // ── the feed data (what /data/notable.json holds) ──────────────────────────────────────────
 export interface FeedItem {
   k: "r"; id: number; d: string; t: string; n: string; np: string | null; r: string; tk: string; tp: string | null; co: string;
   /** 1 = bought, 0 = sold */ b: 0 | 1; v: number; vl: string; vs: string; ch: string; cs: number | null; tg: Reason[]; u: string | null; ul: string;
-  /** index into clusters, or -1 */ cl: number;
+  /** index into clusters (buy or sell), or -1 */ cl: number;
 }
 export interface NotableData {
   built: string; newest: string; companies: number; senateThrough: string | null;
@@ -147,7 +200,7 @@ export function buildFeed(rows: NRow[], builtDay: string, extra: { companies: nu
   const newest = newestDisclosure(rows, builtDay) ?? builtDay;
   const since30 = sinceOf(newest, 30);
   const live = rows.filter((r) => eligible(r) && r.disclosedAt! <= newest);
-  const clusters = findClusters(live, extra.fmt).filter((c) => c.d >= since30);
+  const clusters = findAllClusters(live, extra.fmt).filter((c) => c.d >= since30);
   const clusterOf = new Map<number, number>();
   clusters.forEach((c, i) => c.ids.forEach((id) => clusterOf.set(id, i)));
   const items: FeedItem[] = [];
@@ -158,7 +211,7 @@ export function buildFeed(rows: NRow[], builtDay: string, extra: { companies: nu
     items.push({
       k: "r", id: r.id, d: r.disclosedAt!, t: r.txnDate!, n: r.name, np: r.path, r: r.role, tk: r.ticker!, tp: r.stockPath, co: r.company,
       b: r.side === "buy" ? 1 : 0, v: r.value ?? 0, vl: r.valueLabel, vs: r.subLabel, ch: r.changeLabel, cs: changeKey(r.change), tg, u: r.srcUrl, ul: r.srcLabel,
-      cl: tg.includes("insider-buy") ? clusterOf.get(r.id) ?? -1 : -1,
+      cl: clusterOf.get(r.id) ?? -1,
     });
   }
   items.sort((a, b) => b.d.localeCompare(a.d) || b.v - a.v || b.id - a.id);
@@ -166,28 +219,35 @@ export function buildFeed(rows: NRow[], builtDay: string, extra: { companies: nu
 }
 
 // ── choosing what to show (build and browser) ──────────────────────────────────────────────
-export type Preset = "all" | "cluster" | "buys" | "stake" | "sales" | "congress";
+export type Preset = "cluster" | "cbuy" | "csell" | "buys" | "stake" | "sales" | "congress" | "all";
 export type SortKey = "new" | "large" | "stake";
 export const PRESETS: { id: Preset; label: string }[] = [
-  { id: "all", label: "All" }, { id: "cluster", label: "Cluster buys" }, { id: "buys", label: "Insider buys" },
-  { id: "stake", label: "Stake changes" }, { id: "sales", label: "Large sales" }, { id: "congress", label: "Congress" },
+  { id: "cluster", label: "Clusters" }, { id: "cbuy", label: "Cluster buys" }, { id: "csell", label: "Cluster sells" }, { id: "buys", label: "Insider buys" },
+  { id: "stake", label: "Stake changes" }, { id: "sales", label: "Large sales" }, { id: "congress", label: "Congress" }, { id: "all", label: "All" },
 ];
+/** Hash values for `np`. "clusters" is the default and is omitted from links; "cluster" is accepted as an alias. */
+export const PRESET_HASH: Record<Preset, string> = { cluster: "clusters", cbuy: "cbuy", csell: "csell", buys: "buys", stake: "stake", sales: "sales", congress: "congress", all: "all" };
+export function presetFromHash(v: string | null): Preset | null {
+  if (!v) return null;
+  if (v === "cluster") return "cluster";
+  return (Object.entries(PRESET_HASH).find(([, h]) => h === v)?.[0] as Preset | undefined) ?? null;
+}
 export const SORTS: { id: SortKey; label: string }[] = [{ id: "new", label: "Newest filed" }, { id: "large", label: "Largest" }, { id: "stake", label: "Biggest stake change" }];
 export const WIN_LABEL: Record<Win, string> = { 1: "Today", 7: "7 days", 30: "30 days" };
 export interface FeedState { win: Win; preset: Preset; q: string; sort: SortKey }
-export const DEFAULT_STATE: FeedState = { win: 7, preset: "all", q: "", sort: "new" };
+export const DEFAULT_STATE: FeedState = { win: 7, preset: "cluster", q: "", sort: "new" };
 export type Entry = FeedItem | FeedCluster;
 
 const PRESET_REASON: Partial<Record<Preset, Reason>> = { buys: "insider-buy", stake: "stake-change", sales: "large-sale", congress: "congress" };
+const CLUSTER_PRESETS: Preset[] = ["cluster", "cbuy", "csell"];
 
 export function selectFeed(data: Pick<NotableData, "newest" | "items" | "clusters">, s: FeedState): Entry[] {
   const since = sinceOf(data.newest, s.win);
   const q = s.q.trim().toLowerCase();
-  const clustersIn = data.clusters.filter((c) => c.d >= since);
-  const showClusters = s.preset === "all" || s.preset === "cluster";
+  const showClusters = s.preset === "all" || CLUSTER_PRESETS.includes(s.preset);
   const out: Entry[] = [];
-  if (showClusters) for (const c of clustersIn) out.push(c);
-  if (s.preset !== "cluster") {
+  if (showClusters) for (const c of data.clusters) if (c.d >= since && (s.preset !== "cbuy" || c.b === 1) && (s.preset !== "csell" || c.b === 0)) out.push(c);
+  if (!CLUSTER_PRESETS.includes(s.preset)) {
     const need = PRESET_REASON[s.preset];
     for (const it of data.items) {
       if (it.d < since) continue;
@@ -199,17 +259,40 @@ export function selectFeed(data: Pick<NotableData, "newest" | "items" | "cluster
   const val = (e: Entry) => e.v;
   const chg = (e: Entry) => (e.k === "c" ? null : e.cs);
   const idOf = (e: Entry) => (e.k === "c" ? e.ids[0]! : e.id);
+  const buyFirst = (a: Entry, b: Entry) => (a.k === "c" && b.k === "c" ? b.b - a.b : 0); // ties: buys before sells
   hit.sort((a, b) => {
     if (s.sort === "new") {
       if (showClusters && (a.k === "c") !== (b.k === "c")) return a.k === "c" ? -1 : 1; // clusters pinned on top
-      return b.d.localeCompare(a.d) || val(b) - val(a) || idOf(b) - idOf(a);
+      return b.d.localeCompare(a.d) || buyFirst(a, b) || val(b) - val(a) || idOf(b) - idOf(a);
     }
-    if (s.sort === "large") return val(b) - val(a) || b.d.localeCompare(a.d) || idOf(b) - idOf(a);
+    if (s.sort === "large") return val(b) - val(a) || b.d.localeCompare(a.d) || buyFirst(a, b) || idOf(b) - idOf(a);
     const ca = chg(a), cb = chg(b);
     if ((ca == null) !== (cb == null)) return ca == null ? 1 : -1;
-    return (cb ?? 0) - (ca ?? 0) || val(b) - val(a) || b.d.localeCompare(a.d) || idOf(b) - idOf(a);
+    return (cb ?? 0) - (ca ?? 0) || val(b) - val(a) || b.d.localeCompare(a.d) || buyFirst(a, b) || idOf(b) - idOf(a);
   });
   return hit;
+}
+
+export interface FeedView {
+  entries: Entry[];
+  /** The window actually shown (30 when the 7-day Clusters view was empty). */
+  win: Win;
+  fellBack: boolean;
+  /** A cluster preset with nothing to show and no search typed: offer the All preset. */
+  offerAll: boolean;
+}
+
+/** selectFeed plus the Clusters fallback: an empty 7-day Clusters view shows 30 days instead. */
+export function resolveView(data: Pick<NotableData, "newest" | "items" | "clusters">, s: FeedState): FeedView {
+  let entries = selectFeed(data, s);
+  let win = s.win; let fellBack = false;
+  if (s.preset === "cluster" && s.win === 7 && selectFeed(data, { ...s, q: "" }).length === 0) {
+    const wide = selectFeed(data, { ...s, win: 30 });
+    if (selectFeed(data, { ...s, win: 30, q: "" }).length > 0) { entries = wide; win = 30; fellBack = true; }
+    else win = 30; // nothing in 30 days either: the empty sentence speaks of 30 days
+  }
+  const offerAll = CLUSTER_PRESETS.includes(s.preset) && entries.length === 0 && !s.q.trim();
+  return { entries, win, fellBack, offerAll };
 }
 
 // ── top lists and figures (7 days) ─────────────────────────────────────────────────────────
@@ -248,7 +331,7 @@ export function topLists(rows: NRow[], data: Pick<NotableData, "newest" | "items
     .sort((a, b) => b.n - a.n || b.xs.length - a.xs.length || a.tk.localeCompare(b.tk)).slice(0, TOP_N)
     .map((g) => ({ label: g.tk, href: g.xs[0]!.stockPath, sub: g.xs[0]!.company, value: plural(g.n, "member") }));
 
-  const notable = selectFeed(data, { ...DEFAULT_STATE, win: days as Win }).length;
+  const notable = selectFeed(data, { ...DEFAULT_STATE, preset: "all", win: days as Win }).length;
   return { since, newest: data.newest, insidersBuying, largestBuys: byValue(buys), largestSales: byValue(sales), activeMembers, congressStocks,
     figures: { notable, buyRows: buys.length, saleRows: sales.length, members: distinct(cong) } };
 }
@@ -258,13 +341,22 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 export function shortDate(iso: string): string { return `${MON[Number(iso.slice(5, 7)) - 1]} ${Number(iso.slice(8, 10))}`; }
 export function longDate(iso: string): string { return `${shortDate(iso)}, ${iso.slice(0, 4)}`; }
 
-export function countLine(total: number, shown: number, s: FeedState, newest: string): string {
+const NOUN: Partial<Record<Preset, [string, string]>> = { cluster: ["cluster", "clusters"], cbuy: ["cluster buy", "cluster buys"], csell: ["cluster sell", "cluster sells"] };
+
+/** `fellBack`: the 7-day Clusters view was empty and `s.win` already holds the 30-day window being shown. */
+export function countLine(total: number, shown: number, s: FeedState, newest: string, fellBack = false): string {
   const when = s.win === 1 ? `on ${longDate(newest)}` : `from ${shortDate(sinceOf(newest, s.win))} to ${longDate(newest)}`;
-  const what = `${total.toLocaleString("en-US")} notable ${total === 1 ? "item" : "items"} filed ${when}`;
-  return total > shown ? `${what}. Showing the first ${shown.toLocaleString("en-US")}.` : `${what}.`;
+  const [one, many] = NOUN[s.preset] ?? ["notable item", "notable items"];
+  const what = `${total.toLocaleString("en-US")} ${total === 1 ? one : many} filed ${when}`;
+  const lead = fellBack ? "No clusters filed in the last 7 days. Showing 30 days. " : "";
+  return `${lead}${total > shown ? `${what}. Showing the first ${shown.toLocaleString("en-US")}.` : `${what}.`}`;
 }
 
-export function emptyLine(s: FeedState): string {
+export function emptyLine(s: FeedState, offerAll = false): string {
+  if (offerAll) {
+    const [, many] = NOUN[s.preset]!;
+    return s.win === 1 ? `No ${many} were filed on the newest filing day.` : `No ${many} were filed in the last 30 days.`;
+  }
   const tips: string[] = [];
   if (s.win !== 30) tips.push("a longer window");
   if (s.preset !== "all") tips.push("the All preset");

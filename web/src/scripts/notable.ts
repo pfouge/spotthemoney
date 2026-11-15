@@ -2,7 +2,7 @@
 // selection live in lib/notable.ts (shared with the build, which writes the default view into the
 // HTML). All text goes in as text nodes (scripts/dom.ts): names and labels come from filings.
 import { h, type Kids } from "./dom";
-import { DEFAULT_STATE, FEED_PAGE, PRESETS, REASON_LABEL, SORTS, WINDOWS, countLine, emptyLine, selectFeed, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
+import { DEFAULT_STATE, FEED_PAGE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
 
 const KEYS = ["nw", "np", "nq", "ns"] as const;
 
@@ -32,10 +32,10 @@ function clusterEl(e: FeedCluster): HTMLElement {
     cell("nf-date", h("time", { datetime: e.d }, shortDate(e.d)), sub(`Traded ${shortDate(e.f)}${e.f !== e.l ? ` to ${shortDate(e.l)}` : ""}`)),
     cell("nf-who", h("b", {}, `${e.n} insiders`), h("span", { class: "nf-sub" }, ...names)),
     cell("nf-stock", link(e.tp, "nf-tk", e.tk), sub(e.co)),
-    cell("nf-act buy", h("b", {}, "▲ Bought")),
-    cell("nf-val", h("b", {}, e.vl), sub(`${e.ids.length} purchases`)),
+    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, e.b ? "▲ Bought" : "▼ Sold")),
+    cell("nf-val", h("b", {}, e.vl), sub(`${e.ids.length} ${e.b ? "purchases" : "sales"}`)),
     cell("nf-chg"),
-    cell("nf-tags", h("span", { class: "nf-tag" }, REASON_LABEL.cluster)),
+    cell("nf-tags", h("span", { class: "nf-tag" }, e.b ? REASON_LABEL.cluster : REASON_LABEL["cluster-sell"])),
     cell("nf-src"),
   );
 }
@@ -43,10 +43,10 @@ function clusterEl(e: FeedCluster): HTMLElement {
 export function readState(hash: string): FeedState {
   const p = new URLSearchParams(hash.replace(/^#/, ""));
   const w = Number(p.get("nw"));
-  const np = p.get("np") as Preset | null, ns = p.get("ns") as SortKey | null;
+  const np = presetFromHash(p.get("np")), ns = p.get("ns") as SortKey | null;
   return {
     win: (WINDOWS as readonly number[]).includes(w) ? (w as Win) : DEFAULT_STATE.win,
-    preset: np && PRESETS.some((x) => x.id === np) ? np : DEFAULT_STATE.preset,
+    preset: np ?? DEFAULT_STATE.preset,
     q: (p.get("nq") ?? "").slice(0, 60),
     sort: ns && SORTS.some((x) => x.id === ns) ? ns : DEFAULT_STATE.sort,
   };
@@ -57,7 +57,7 @@ export function writeState(s: FeedState): void {
   const p = new URLSearchParams(location.hash.replace(/^#/, ""));
   for (const k of KEYS) p.delete(k);
   if (s.win !== DEFAULT_STATE.win) p.set("nw", String(s.win));
-  if (s.preset !== DEFAULT_STATE.preset) p.set("np", s.preset);
+  if (s.preset !== DEFAULT_STATE.preset) p.set("np", PRESET_HASH[s.preset]);
   if (s.q.trim()) p.set("nq", s.q.trim());
   if (s.sort !== DEFAULT_STATE.sort) p.set("ns", s.sort);
   const str = p.toString();
@@ -65,6 +65,7 @@ export function writeState(s: FeedState): void {
 }
 
 function init(root: HTMLElement): void {
+  const allBtn = () => { const b = h("button", { type: "button", class: "btn nf-all", "data-nf-all": true }, "Show all notable trades"); b.addEventListener("click", () => set({ preset: "all" })); return b; };
   const src = root.dataset.src!;
   const list = () => root.querySelector<HTMLUListElement>("[data-nf-list]");
   const count = root.querySelector<HTMLElement>("[data-nf-count]")!;
@@ -76,8 +77,9 @@ function init(root: HTMLElement): void {
   let state = readState(location.hash);
   let visible = FEED_PAGE;
 
+  let shownWin: Win = state.win;
   const paintControls = () => {
-    root.querySelectorAll<HTMLButtonElement>("[data-nw]").forEach((b) => { const on = Number(b.dataset.nw) === state.win; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    root.querySelectorAll<HTMLButtonElement>("[data-nw]").forEach((b) => { const on = Number(b.dataset.nw) === shownWin; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
     root.querySelectorAll<HTMLButtonElement>("[data-np]").forEach((b) => { const on = b.dataset.np === state.preset; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
     if (document.activeElement !== input) input.value = state.q;
     sortSel.value = state.sort;
@@ -86,15 +88,17 @@ function init(root: HTMLElement): void {
   const render = () => {
     paintControls();
     if (!data) return;
-    const all = selectFeed(data, state);
+    const view = resolveView(data, state);
+    const all = view.entries;
+    shownWin = view.win; paintControls();
     const shown = all.slice(0, visible);
     let ul = list();
     if (!ul) { ul = h("ul", { class: "nf-list", "data-nf-list": true }); count.after(ul); }
     ul.replaceChildren(...shown.map((e: Entry) => (e.k === "c" ? clusterEl(e) : itemEl(e))));
     ul.hidden = all.length === 0;
-    count.textContent = all.length ? countLine(all.length, shown.length, state, data.newest) : "";
+    count.textContent = all.length ? countLine(all.length, shown.length, { ...state, win: view.win }, data.newest, view.fellBack) : "";
     emptyEl.hidden = all.length > 0;
-    emptyEl.textContent = all.length ? "" : emptyLine(state);
+    emptyEl.replaceChildren(...(all.length ? [] : [emptyLine(state, view.offerAll), ...(view.offerAll ? [" ", allBtn()] : [])]));
     more.hidden = all.length <= shown.length;
   };
 

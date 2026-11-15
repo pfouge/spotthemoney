@@ -9,7 +9,7 @@ import JsonLd from "../components/JsonLd.astro";
 import { getLatestIBondRate, getYieldCurve } from "../lib/db";
 import { getFlagship, withinDays, num, plural, senateShown } from "../lib/flagship";
 import { homeFeed } from "../lib/notable-build";
-import { DEFAULT_STATE, selectFeed, longDate } from "../lib/notable";
+import { DEFAULT_STATE, CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, selectFeed, longDate } from "../lib/notable";
 import NotableFeed from "../components/NotableFeed.astro";
 import NotableTop from "../components/NotableTop.astro";
 import { formatPercent } from "../lib/format";
@@ -22,11 +22,13 @@ const pub = model.txns.filter((t) => t.isPublished);
 const { data: feed, top } = homeFeed(model);
 const lastDisclosed = pub.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 const week = { ...DEFAULT_STATE, win: 7 as const };
-const nOf = (preset: "all" | "cluster" | "buys" | "sales" | "congress") => selectFeed(feed, { ...week, preset }).length;
-const nClusters = nOf("cluster");
+const nOf = (preset: "all" | "cbuy" | "csell") => selectFeed(feed, { ...week, preset }).length;
+const nCbuy = nOf("cbuy");
+const nCsell = nOf("csell");
 const nNotable = nOf("all");
+const clusterWords = `${plural(nCbuy, "cluster buy")} and ${plural(nCsell, "cluster sell")}`;
 const answer = nNotable > 0
-  ? `In the 7 days to ${longDate(feed.newest)}, insiders and members of Congress filed ${plural(nNotable, "notable trade")}: ${plural(nClusters, "cluster buy")}, ${plural(nOf("buys"), "insider purchase")}, ${plural(nOf("sales"), "large sale")} and ${plural(nOf("congress"), "congressional trade")}. Each one is listed with the filing it came from.`
+  ? `In the 7 days to ${longDate(feed.newest)}, ${clusterWords} ${nCbuy + nCsell === 1 ? "was" : "were"} filed: ${CLUSTER_MIN_INSIDERS} or more insiders of one company trading the same way within ${CLUSTER_DAYS} days. The feed also lists ${plural(nNotable - nCbuy - nCsell, "other notable trade")} (insider buys, stake changes, large sales and congressional trades), each linked to its filing.`
   : "No trades matching the notable rules were filed in the latest 7 days of data, or the filings are still being read.";
 const coverage = `Partial coverage: insider filings here cover about ${num(feed.companies)} companies (large companies and every stock a member of Congress has traded), not the whole market. Congress: House reports daily, ${feed.senateThrough ? `Senate reports through ${longDate(feed.senateThrough)}` : "Senate reports are not included yet"}.`;
 
@@ -61,6 +63,19 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
 
   <h2 id="heatmap" class="nf-maph">Trade map</h2>
   <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters.</p>
+  <aside class="nf-howto" aria-labelledby="howMapH">
+    <h3 id="howMapH">How to read the map</h3>
+    <p>
+      Each dot is one stock: further right is more bought, further left more sold, and the color runs
+      from red (mostly sales) through yellow to green (mostly purchases). The switch under the chart
+      shows the same trades as a heatmap. Congress reports dollar ranges, so a congressional trade
+      counts at the top of its bracket; insider trades are shares × the reported price.
+      Open-market insider trades (codes P and S)
+      are shown by default with Rule 10b5-1 plan sales excluded; switch them on to compare.
+      Disclosures lag the trade (Congress has 45 days, insiders two business days) and every row
+      links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>
+    </p>
+  </aside>
   <div class="hm-switch">
     <div class="seg" id="hmSwitch" role="tablist" aria-label="Choose whose trades to show">
       <button type="button" class="on" data-pane="all" role="tab" aria-selected="true">All insiders</button>
@@ -81,20 +96,6 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
     <div class="cell"><div class="k">Washington</div><div class="v">{washingtonLive ? `${num(model.counts.lobbying ?? 0)} + ${num(model.counts.contracts ?? 0)}` : "ingesting"}</div><div class="delta"><a href="/washington/">Lobbying filings + contract actions &rarr;</a></div></div>
     <div class="cell"><div class="k">Newest</div><div class="v">{num(pub.filter((t) => withinDays(t.disclosedAt, 7)).length)}</div><div class="delta"><a href="/disclosures/">Disclosures in the last 7 days &rarr;</a></div></div>
   </div>
-
-  <section class="manifesto">
-    <p class="eyebrow">How to read it</p>
-    <p>
-      Each dot is one stock: further right is more bought, further left more sold, and the color runs
-      from red (mostly sales) through yellow to green (mostly purchases). The switch under the chart
-      shows the same trades as a heatmap. Congress reports dollar ranges, so a congressional trade
-      counts at the top of its bracket; insider trades are shares × the reported price.
-      Open-market insider trades (codes P and S)
-      are shown by default with Rule 10b5-1 plan sales excluded; switch them on to compare.
-      Disclosures lag the trade (Congress has 45 days, insiders two business days) and every row
-      links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>
-    </p>
-  </section>
 
   <AdSlot label="Advertisement" />
   <JsonLd data={[website, catalog]} />

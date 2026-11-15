@@ -87,8 +87,8 @@
   "how-to-use-the-trade-map": {
     "reviewed": "2026-11-15",
     "covers": {
-      "web/src/lib/notable.ts": "c6af6df42d6bf5de",
-      "web/src/components/NotableFeed.astro": "384a3576e4d2772d",
+      "web/src/lib/notable.ts": "13b8f48c424856f6",
+      "web/src/components/NotableFeed.astro": "c36876fc3ccfffba",
       "web/src/components/Heatmap.astro": "02dc9bcb5c349d6c",
       "web/src/scripts/heatmap.ts": "6951fe4f66db5b37",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",

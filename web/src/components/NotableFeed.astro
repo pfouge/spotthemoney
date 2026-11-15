@@ -3,10 +3,13 @@
 // All, newest filed) is written into the HTML here, so the page works without JavaScript and
 // search engines see it; scripts/notable.ts takes over from /data/notable.json for everything else.
 // The markup of one item must match what the script builds (same classes, same order).
-import { selectFeed, DEFAULT_STATE, PRESETS, SORTS, WINDOWS, WIN_LABEL, FEED_PAGE, REASON_LABEL, countLine, emptyLine, shortDate, longDate, type NotableData, type Entry } from "../lib/notable";
+import { resolveView, DEFAULT_STATE, PRESETS, SORTS, WINDOWS, WIN_LABEL, FEED_PAGE, REASON_LABEL, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_PCT, CLUSTER_SELL_MIN_VALUE, countLine, emptyLine, shortDate, longDate, type NotableData, type Entry } from "../lib/notable";
+import { money } from "../lib/flagship";
 interface Props { data: NotableData }
 const { data } = Astro.props;
-const all = selectFeed(data, DEFAULT_STATE);
+const view = resolveView(data, DEFAULT_STATE);
+const all = view.entries;
+const shownWin = view.win;
 const shown = all.slice(0, FEED_PAGE);
 const empty = data.items.length === 0 && data.clusters.length === 0;
 ---
@@ -14,7 +17,7 @@ const empty = data.items.length === 0 && data.clusters.length === 0;
   <h2 id="notableH">Notable trades</h2>
   <div class="nf-controls" data-nf-controls>
     <div class="seg" role="group" aria-label="Filing window">
-      {WINDOWS.map((w) => <button type="button" data-nw={w} class:list={[{ on: w === DEFAULT_STATE.win }]} aria-pressed={w === DEFAULT_STATE.win ? "true" : "false"}>{WIN_LABEL[w]}</button>)}
+      {WINDOWS.map((w) => <button type="button" data-nw={w} class:list={[{ on: w === shownWin }]} aria-pressed={w === shownWin ? "true" : "false"}>{WIN_LABEL[w]}</button>)}
     </div>
     <div class="nf-chips" role="group" aria-label="Kind of trade">
       {PRESETS.map((p) => <button type="button" data-np={p.id} class:list={["nf-chip", { on: p.id === DEFAULT_STATE.preset }]} aria-pressed={p.id === DEFAULT_STATE.preset ? "true" : "false"}>{p.label}</button>)}
@@ -26,8 +29,8 @@ const empty = data.items.length === 0 && data.clusters.length === 0;
       </label>
     </div>
   </div>
-  <p class="nf-count" data-nf-count role="status" aria-live="polite">{empty ? "" : all.length ? countLine(all.length, shown.length, DEFAULT_STATE, data.newest) : ""}</p>
-  <noscript><p class="note">The filters need JavaScript. This list shows the last 7 days.</p></noscript>
+  <p class="nf-count" data-nf-count role="status" aria-live="polite">{empty ? "" : all.length ? countLine(all.length, shown.length, { ...DEFAULT_STATE, win: shownWin }, data.newest, view.fellBack) : ""}</p>
+  <noscript><p class="note">The filters need JavaScript. This list shows the last {shownWin} days.</p></noscript>
   {all.length > 0 && (
     <ul class="nf-list" data-nf-list>
       {shown.map((e: Entry) => e.k === "c" ? (
@@ -35,10 +38,10 @@ const empty = data.items.length === 0 && data.clusters.length === 0;
           <div class="nf-c nf-date"><time datetime={e.d}>{shortDate(e.d)}</time><span class="nf-sub">Traded {shortDate(e.f)}{e.f !== e.l ? ` to ${shortDate(e.l)}` : ""}</span></div>
           <div class="nf-c nf-who"><b>{e.n} insiders</b><span class="nf-sub">{e.who.map((w, i) => <Fragment>{i > 0 ? ", " : ""}{w.p ? <a href={w.p}>{w.n}</a> : w.n}</Fragment>)}</span></div>
           <div class="nf-c nf-stock">{e.tp ? <a class="nf-tk" href={e.tp}>{e.tk}</a> : <span class="nf-tk">{e.tk}</span>}<span class="nf-sub">{e.co}</span></div>
-          <div class="nf-c nf-act buy"><b>▲ Bought</b></div>
-          <div class="nf-c nf-val"><b>{e.vl}</b><span class="nf-sub">{e.ids.length} purchases</span></div>
+          <div class={`nf-c nf-act ${e.b ? "buy" : "sell"}`}><b>{e.b ? "▲ Bought" : "▼ Sold"}</b></div>
+          <div class="nf-c nf-val"><b>{e.vl}</b><span class="nf-sub">{e.ids.length} {e.b ? "purchases" : "sales"}</span></div>
           <div class="nf-c nf-chg"></div>
-          <div class="nf-c nf-tags"><span class="nf-tag">{REASON_LABEL.cluster}</span></div>
+          <div class="nf-c nf-tags"><span class="nf-tag">{e.b ? REASON_LABEL.cluster : REASON_LABEL["cluster-sell"]}</span></div>
           <div class="nf-c nf-src"></div>
         </li>
       ) : (
@@ -55,7 +58,8 @@ const empty = data.items.length === 0 && data.clusters.length === 0;
       ))}
     </ul>
   )}
-  <p class="nf-empty" data-nf-empty hidden={all.length > 0}>{all.length > 0 ? "" : empty ? "No notable trades have been filed yet; the feed fills as new filings are read." : emptyLine(DEFAULT_STATE)}</p>
+  <p class="nf-empty" data-nf-empty hidden={all.length > 0}>{all.length > 0 ? "" : empty ? "No notable trades have been filed yet; the feed fills as new filings are read." : emptyLine(DEFAULT_STATE, view.offerAll)}{all.length === 0 && !empty && view.offerAll ? <Fragment>{" "}<button type="button" class="btn nf-all" data-nf-all>Show all notable trades</button></Fragment> : null}</p>
   <p class="nf-more-row"><button type="button" class="btn nf-more" data-nf-more hidden={all.length <= shown.length}>Show more</button></p>
   <p class="soft small nf-foot">Filing dates, newest first. A trade is listed when it matches a rule on the <a href="/methodology/#notable">methodology page</a>; it says what was filed, not why. Newest filing in the data: {longDate(data.newest)}.</p>
+<p class="soft small nf-sellnote">Why sales are held to a stricter test: insiders are paid largely in stock and sell routinely, so a cluster sell counts only sales outside pre-arranged 10b5-1 plans that cut the seller's own holding by at least {CLUSTER_SELL_MIN_PCT} percent and total at least {money(CLUSTER_SELL_MIN_VALUE, { compact: false })} each, from {CLUSTER_SELL_MIN_INSIDERS} or more insiders of one company. <a href="/methodology/#notable">The full rules</a>.</p>
 </section>

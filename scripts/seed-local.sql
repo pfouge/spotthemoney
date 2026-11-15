@@ -104,6 +104,9 @@ insert into seed_f4 values
   -- Home feed (notable.ts): a large sale outside any plan, and a sale that cuts a holding by 75%.
   ('0000789019-26-000203', '0001100002', 'MSFT', current_date - 3,  current_date - 5,  'S', 20000,  508.30, false, false, 1000000),
   ('0001321655-26-000305', '0001100005', 'PLTR', current_date - 2,  current_date - 3,  'S', 30000,  40.00,  false, false, 10000),
+  -- Home feed cluster sell (notable.ts): three PLTR insiders sell outside any plan, each $250,000+ and cutting their own holding 10%+ (Ortiz above, Karp and Chen here).
+  ('0001321655-26-000306', '0001100003', 'PLTR', current_date - 1,  current_date - 2,  'S', 700000, 41.00,  false, false, 5700000),
+  ('0001321655-26-000307', '0001100006', 'PLTR', current_date - 1,  current_date - 2,  'S', 8000,   40.00,  false, false, 2000),
   ('0000936468-26-000401', '0001100004', 'LMT',  current_date - 1,  current_date - 3,  'P', 3000,   462.15, false, false, 120000),
   ('0000936468-26-000402', '0001100004', 'LMT',  current_date - 90, current_date - 92, 'M', 10000,  0,      true,  null, 117000),
   -- Filed before the site's Form 4 record starts (shared/src/floor.ts): stored, never shown.
