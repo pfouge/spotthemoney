@@ -1,7 +1,7 @@
 ---
 // /donations/ — FEC Schedule A, aggregated. Individual donor names are withheld at launch
 // (roadmap C.4: pending counsel's review of what the regulator publishes); the page shows
-// employer / state aggregates and per-committee sums only. Draft — needs review.
+// employer / state aggregates and per-committee sums only. Draft: needs review.
 // HONESTY RULE (2026-10-04): the ingest keeps at most the 1,000 most recent itemized receipts
 // per committee per pull, so for large committees these sums are a recent sample, not the
 // committee's receipts. The copy must never present them as totals; the FEC link on each row
@@ -26,11 +26,11 @@ const answer = committees.length === 0
 const description = "Campaign contributions to the committees of every member of Congress and the largest PACs, aggregated by committee, employer and state from FEC filings.";
 const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC Schedule A)", path: "/donations/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["FEC", "campaign finance", "donations", "PAC"], sources: [SOURCES.fec], parentCatalogPath: "/washington/" });
 ---
-<BaseLayout title="Campaign Donations — FEC Receipts by Committee" description={description} section="Washington · Donations">
+<BaseLayout title="Campaign Donations: FEC Receipts by Committee" description={description} section="Washington · Donations">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Donations", path: "/donations/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Donations</p>
   <h1>Campaign donations</h1>
-  <p class="lede">Itemized receipts as reported to the FEC, aggregated. Draft presentation — donor names withheld pending review.</p>
+  <p class="lede">Itemized receipts as reported to the FEC, aggregated. Draft presentation, donor names withheld pending review.</p>
   <Answer text={answer} updated={committees[0]?.latest ?? model.builtAt} sourceNote="Source: FEC Schedule A (OpenFEC)" />
   {(() => { const byState = new Map(model.donationsByState.filter((r) => isMapState(r.key)).map((r) => [r.key, r.total] as [string, number])); const top = [...byState.entries()].sort((a, b) => b[1] - a[1])[0]; return (
     <div class="viz-grid">
@@ -69,6 +69,6 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
 
   <h2>How to read this</h2>
   <p>Only itemized contributions (those the committee must report individually, generally over $200 in a cycle) appear in Schedule A; small unitemized giving is not in the data. Employer and state are as the donor stated on the contribution. Names of individual donors are not shown on this site. See <a href="/methodology/">methodology</a>.</p>
-  <p class="disclaimer"><strong>Draft — needs review.</strong> Public FEC records shown as filed; no inference is made about any donor or committee.</p>
+  <p class="disclaimer"><strong>Draft: needs review.</strong> Public FEC records shown as filed; no inference is made about any donor or committee.</p>
   <JsonLd data={ld} />
 </BaseLayout>

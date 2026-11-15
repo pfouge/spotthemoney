@@ -1,8 +1,8 @@
 {
   "campaign-donations-fec-data": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-11-15",
     "covers": {
-      "web/src/pages/donations/index.astro": "7d2efa618c35ed5b",
+      "web/src/pages/donations/index.astro": "c801f2ab895990d2",
       "ingest/src/sources/fec_committees.ts": "cc44ff73d4057cf9"
     }
   },
@@ -23,7 +23,7 @@
     "reviewed": "2026-11-15",
     "covers": {
       "ingest/src/sources/usaspending.ts": "daaccb07f23055b9",
-      "web/src/pages/contracts/index.astro": "d2e2702698b6d58e"
+      "web/src/pages/contracts/index.astro": "bf1d644f43d9dde4"
     }
   },
   "form-4-transaction-codes": {
@@ -53,22 +53,22 @@
     "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
-      "web/src/scripts/share.ts": "56931901139ea42c",
+      "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "4cc9d3c134940d24",
       "web/src/lib/downloads.ts": "a10fd7aeeb07dcd2",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "670a16ece37ab883",
+      "web/src/pages/downloads/index.astro": "8c010edafbd64d3a",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
-    "reviewed": "2026-10-11",
+    "reviewed": "2026-11-15",
     "covers": {
       "db/migrations/0017_accounts_watchlists.sql": "4a5e6b6c524d3c41",
       "web/src/lib/account.ts": "019a09ace56b7b1b",
       "web/src/scripts/account.ts": "4604217b975ebb66",
-      "web/src/scripts/watchlist.ts": "b57573987762d8eb",
+      "web/src/scripts/watchlist.ts": "ade939b1a779195f",
       "web/src/components/Follow.astro": "08c98b2cdae7c3b9",
       "web/src/lib/watchcards.ts": "b6298374e7234d2d",
       "web/src/lib/watchcards-build.ts": "646d3aeb7f64b6d2",
@@ -81,11 +81,11 @@
       "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "8f02cd9ec5c177a9"
+      "web/src/pages/congress/[slug].astro": "c4c2eb82161e667a"
     }
   },
   "how-to-use-the-trade-map": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
       "web/src/components/Heatmap.astro": "02dc9bcb5c349d6c",
       "web/src/scripts/heatmap.ts": "1b68aded6a940fde",
@@ -96,16 +96,16 @@
       "web/src/components/VizHome.astro": "4fa08e8cd73ef0cb",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
-      "web/src/scripts/share.ts": "56931901139ea42c"
+      "web/src/scripts/share.ts": "d701447fb386a23e"
     }
   },
   "insider-buying-vs-insider-selling": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
       "web/src/components/VizFlow.astro": "c60219a0038ce83c",
-      "web/src/pages/insiders/index.astro": "b1068888676c2279"
+      "web/src/pages/insiders/index.astro": "c3887dc73b3f4133"
     }
   },
   "insider-options-and-derivatives": {
@@ -128,7 +128,7 @@
     "reviewed": "2026-11-15",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
-      "web/src/pages/lobbying/index.astro": "398fbcb5c1787aab"
+      "web/src/pages/lobbying/index.astro": "7b763446a31e6e22"
     }
   },
   "rule-10b5-1-trading-plans": {
@@ -146,15 +146,15 @@
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
-      "web/src/pages/rates/tips.astro": "fef1b796e0596b4f"
+      "web/src/pages/rates/tips.astro": "ab7a634cff855a87"
     }
   },
   "treasury-yield-curve-explained": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
-      "web/src/pages/rates/treasury-yields.astro": "902e9b53aa828b6d"
+      "web/src/pages/rates/treasury-yields.astro": "0443c4b826db85b1"
     }
   },
   "what-disclosure-data-cannot-tell-you": {
@@ -173,9 +173,9 @@
       "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
       "web/src/lib/entity.ts": "4770bf63df3f89d9",
       "web/src/lib/links.ts": "5e32b90da3079fca",
-      "web/src/pages/stocks/[ticker].astro": "ad98f75d39233c61",
-      "web/src/pages/insiders/[slug].astro": "639105062b6ddef4",
-      "web/src/pages/companies/[slug].astro": "f8e2d37804fd84ef"
+      "web/src/pages/stocks/[ticker].astro": "034561c3c979830f",
+      "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
+      "web/src/pages/companies/[slug].astro": "7d139b3661b2cb62"
     }
   }
 }

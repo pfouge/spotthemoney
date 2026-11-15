@@ -74,7 +74,7 @@ const description = hasData
   <AdSlot label="Advertisement" />
 
   <h2>How to read TIPS yields</h2>
-  <p>A TIPS real yield is what the bond pays <em>on top of</em> inflation: the principal is adjusted with CPI-U and the coupon is paid on the adjusted principal. The <strong>breakeven inflation rate</strong> is the nominal Treasury yield of the same maturity minus the real yield — roughly the average inflation at which a TIPS and a regular Treasury would return the same. Treasury publishes these par real yields each business day for the 5-, 7-, 10-, 20- and 30-year points.</p>
+  <p>A TIPS real yield is what the bond pays <em>on top of</em> inflation: the principal is adjusted with CPI-U and the coupon is paid on the adjusted principal. The <strong>breakeven inflation rate</strong> is the nominal Treasury yield of the same maturity minus the real yield, which is roughly the average inflation at which a TIPS and a regular Treasury would return the same. Treasury publishes these par real yields each business day for the 5-, 7-, 10-, 20- and 30-year points.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Official U.S. Treasury data, shown as published.</p>
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "tips-real-yields.csv")?.path], name: "TIPS real yield curve (daily)", path: "/rates/tips/", description, dateModified: real?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["TIPS", "real yield", "breakeven inflation", "Treasury"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>

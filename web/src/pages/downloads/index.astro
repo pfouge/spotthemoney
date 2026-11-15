@@ -67,8 +67,8 @@ const ld = {
     <h2 id="one-member-or-ticker">One member or one ticker</h2>
     <p>Every <a href="/congress/">member of Congress</a> with trades on record and every <a href="/stocks/">ticker</a> with trades has its own file. Use the "Download CSV" link above the trade table on that page, or build the address yourself:</p>
     <ul>
-      <li><code>{SITE_URL}/downloads/congress/<em>member-page-name</em>.csv</code>{exampleMember && <> — for example <a href={exampleMember.path} download={exampleMember.name}>{exampleMember.name}</a> ({num(exampleMember.rows)} rows)</>}</li>
-      <li><code>{SITE_URL}/downloads/stocks/<em>ticker</em>.csv</code>{exampleStock && <> — for example <a href={exampleStock.path} download={exampleStock.name}>{exampleStock.name}</a> ({num(exampleStock.rows)} rows)</>}</li>
+      <li><code>{SITE_URL}/downloads/congress/<em>member-page-name</em>.csv</code>{exampleMember && <>, for example <a href={exampleMember.path} download={exampleMember.name}>{exampleMember.name}</a> ({num(exampleMember.rows)} rows)</>}</li>
+      <li><code>{SITE_URL}/downloads/stocks/<em>ticker</em>.csv</code>{exampleStock && <>, for example <a href={exampleStock.path} download={exampleStock.name}>{exampleStock.name}</a> ({num(exampleStock.rows)} rows)</>}</li>
     </ul>
     <p>The member page name is the last part of the member's page address. Corporate insiders do not have a file each; an insider's transactions are in the file of the ticker they report for, and in the quarterly insider files. A member's file holds every trade on record, including those beyond the newest 200 the page shows.</p>
   </section>

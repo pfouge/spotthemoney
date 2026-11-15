@@ -98,7 +98,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
   ["#trades", "Trades"], ["#filings", "Filings"], ["#questions", "Questions"], ["#sources", "Sources"],
 ];
 ---
-<BaseLayout title={[`${p.name} Stock Trades — STOCK Act Disclosures`, `${p.name} Stock Trades`]} description={description} noindex={noindex} section="Congress">
+<BaseLayout title={[`${p.name} Stock Trades: STOCK Act Disclosures`, `${p.name} Stock Trades`]} description={description} noindex={noindex} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: p.name, path }]} />
   <p class="eyebrow">Congress <span class="x">/</span> {role.chamber === "senate" ? "Senate" : "House"}</p>
   <div class="title-row"><h1>{p.name}</h1><Follow kind="member" entity={p.slug!} label={p.name} /></div>

@@ -39,7 +39,7 @@ const answer = feed.length === 0
 const description = "The newest public disclosures in one feed: insider Form 4 trades, Congress STOCK Act trades, lobbying filings and federal contracts, updated daily.";
 const ld = datasetLd({ name: "Newest disclosures feed", path: "/disclosures/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["disclosures", "Form 4", "STOCK Act", "lobbying", "contracts"], sources: [SOURCES.edgar, SOURCES.house, SOURCES.lda, SOURCES.usaspending], parentCatalogPath: "/" });
 ---
-<BaseLayout title="Newest Disclosures — Insiders, Congress, Lobbying" description={description} section="Newest">
+<BaseLayout title="Newest Disclosures: Insiders, Congress, Lobbying" description={description} section="Newest">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Newest disclosures", path: "/disclosures/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Newest</p>
   <h1>Newest disclosures</h1>

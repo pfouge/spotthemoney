@@ -53,9 +53,9 @@ const answer = hasData
   : "The U.S. Treasury publishes par yields for every maturity from 1 month to 30 years each business day; figures appear here once the rates job has run.";
 const description = hasData
   ? `Treasury yield curve on ${formatDate(curve!.latestDate)}: 3-month ${pct(t3m?.latest)}, 2-year ${pct(t2?.latest)}, 10-year ${pct(t10?.latest)}, 30-year ${pct(t30?.latest)}. Every maturity, updated daily.`
-  : "The U.S. Treasury yield curve — every maturity, updated daily from official Treasury par yields.";
+  : "The U.S. Treasury yield curve for every maturity, updated daily from official Treasury par yields.";
 ---
-<BaseLayout title="Treasury Yield Curve Today — Every Maturity" description={description} section="Rates · Yield curve">
+<BaseLayout title="Treasury Yield Curve Today: Every Maturity" description={description} section="Rates · Yield curve">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Rates", path: "/rates/" }, { name: "Treasury yields", path: "/rates/treasury-yields/" }]} />
   <p class="eyebrow">Rates Hub <span class="x">/</span> Treasury yields</p>
   <h1>Treasury Yield Curve</h1>
@@ -153,7 +153,7 @@ const description = hasData
   <h2>How to read the yield curve</h2>
   <p>
     The yield curve plots what the U.S. government pays to borrow for different lengths of time, from one
-    month to thirty years. Normally it slopes upward — lenders want more to lock money up longer. When
+    month to thirty years. Normally it slopes upward because lenders want more to lock money up longer. When
     short-term yields rise above long-term ones the curve <strong>inverts</strong>, which has preceded most
     U.S. recessions, though with long and variable lags. The <strong>10Y − 2Y</strong> and
     <strong>10Y − 3M</strong> spreads above are the two most-watched summaries of that shape.

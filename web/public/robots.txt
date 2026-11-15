@@ -1,4 +1,4 @@
-# spotthemoney.com — public data, meant to be read by people, search engines and AI crawlers.
+# spotthemoney.com: public data, meant to be read by people, search engines and AI crawlers.
 # Sitemap index below; site description for AI systems at /llms.txt.
 
 User-agent: *

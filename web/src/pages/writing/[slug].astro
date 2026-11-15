@@ -41,7 +41,7 @@ const ld = [
   <link slot="head" rel="alternate" type="application/rss+xml" title="Spot the Money: Writing" href="/writing/rss.xml" />
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Writing", path: "/writing/" }, { name: a.title, path }]} />
   <p class="eyebrow">Writing</p>
-  {a.preview && <p class="draft-banner" role="note"><strong>Draft — not public.</strong> This page exists only in a local preview build and is marked noindex.</p>}
+  {a.preview && <p class="draft-banner" role="note"><strong>Draft: not public.</strong> This page exists only in a local preview build and is marked noindex.</p>}
   <article class="article">
     <h1>{a.title}</h1>
     <p class="lede">{a.deck}</p>

@@ -33,7 +33,7 @@ const description = `Senate lobbying disclosure filings for ${year}: the biggest
 const lobFile = (await getDownloads()).files.find((f) => f.kind === "lobbying");
 const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filings (Senate LDA)", path: "/lobbying/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["lobbying", "LDA", "Senate", "registrants", "clients"], sources: [SOURCES.lda], parentCatalogPath: "/washington/" });
 ---
-<BaseLayout title={`Lobbying ${year} — Top Clients, Firms & New Filings`} description={description} section="Washington · Lobbying">
+<BaseLayout title={`Lobbying ${year}: Top Clients, Firms & New Filings`} description={description} section="Washington · Lobbying">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Lobbying", path: "/lobbying/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Lobbying</p>
   <h1>Federal lobbying</h1>

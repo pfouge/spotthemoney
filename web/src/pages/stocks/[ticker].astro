@@ -79,7 +79,7 @@ const description = fitDescription([
 const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.path], name: `${s.ticker} insider and congressional transactions`, path, description, dateModified: lastUpdated.slice(0, 10),
   keywords: [s.ticker, name, "insider trading", "Form 4", "congressional stock trades", "STOCK Act"], sources: [SOURCES.edgar, SOURCES.house], parentCatalogPath: "/stocks/" });
 ---
-<BaseLayout title={[`${s.ticker} Insider Trades & Congress Trades — ${name}`, `${s.ticker} Insider & Congress Trades — ${name}`, `${s.ticker} Insider Trades & Congress Trades`]} description={description} noindex={txns.length === 0} section="Stocks">
+<BaseLayout title={[`${s.ticker} Insider Trades & Congress Trades: ${name}`, `${s.ticker} Insider & Congress Trades: ${name}`, `${s.ticker} Insider Trades & Congress Trades`]} description={description} noindex={txns.length === 0} section="Stocks">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }, { name: s.ticker, path }]} />
   <p class="eyebrow">Stock <span class="x">/</span> {s.type}</p>
   <div class="title-row"><h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1><Follow kind="stock" entity={s.ticker} label={s.ticker} /></div>

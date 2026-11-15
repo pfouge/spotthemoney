@@ -46,13 +46,13 @@ const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", 
   { name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "Treasury par yield curve", path: "/rates/treasury-yields/" }, { name: "TIPS real yield curve", path: "/rates/tips/" },
   { name: "Campaign contributions to tracked committees", path: "/donations/" }, { name: "Federal lobbying filings", path: "/lobbying/" }, { name: "Largest federal contract awards", path: "/contracts/" }, { name: "Newest disclosures feed", path: "/disclosures/" },
 ] });
-const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling — disclosed trades on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
+const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling: disclosed trades on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
 ---
 <BaseLayout title="Congress & Insider Stock Trades Heatmap | Spot the Money" section="Heatmap">
   <section class="hero hero-map">
     <p class="eyebrow">Congress <span class="x">&times;</span> Corporate insiders</p>
     <h1>Who's buying. Who's selling. As disclosed.</h1>
-    <p class="lede">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map — the STOCK Act trades and Form 4s we have read so far, sized by dollars, colored by direction, filterable, and linked to the filing. {hasSenate ? "" : "Senate trades are not included yet; "}<a href="/methodology/#coverage">{hasSenate ? "See what is covered" : "see what is covered"}</a>.</p>
+    <p class="lede">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map: the STOCK Act trades and Form 4s we have read so far, sized by dollars, colored by direction, filterable, and linked to the filing. {hasSenate ? "" : "Senate trades are not included yet; "}<a href="/methodology/#coverage">{hasSenate ? "See what is covered" : "see what is covered"}</a>.</p>
   </section>
 
   <div class="hm-switch">
@@ -90,7 +90,7 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
       counts at the top of its bracket; insider trades are shares × the reported price.
       Open-market insider trades (codes P and S)
       are shown by default with Rule 10b5-1 plan sales excluded; switch them on to compare.
-      Disclosures lag the trade — Congress has 45 days, insiders two business days — and every row
+      Disclosures lag the trade (Congress has 45 days, insiders two business days) and every row
       links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>
     </p>
   </section>

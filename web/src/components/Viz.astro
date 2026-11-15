@@ -29,7 +29,7 @@ const visible = show ?? svg !== "";
 const anchor = id ?? chartId(title);
 const site = (import.meta.env.PUBLIC_SITE_URL ?? "https://spotthemoney.com").replace(/\/$/, "");
 const snippet = embed
-  ? `<iframe src="${site}${embed}" width="640" height="360" loading="lazy" style="border:0;max-width:100%" title="${(embedTitle ?? title).replace(/"/g, "&quot;")} — Spot the Money"></iframe>\n<p>Source: <a href="${site}${embed.replace(/^\/embed/, "")}">Spot the Money</a></p>`
+  ? `<iframe src="${site}${embed}" width="640" height="360" loading="lazy" style="border:0;max-width:100%" title="${(embedTitle ?? title).replace(/"/g, "&quot;")} | Spot the Money"></iframe>\n<p>Source: <a href="${site}${embed.replace(/^\/embed/, "")}">Spot the Money</a></p>`
   : "";
 ---
 {visible && (
