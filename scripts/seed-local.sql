@@ -101,6 +101,9 @@ insert into seed_f4 values
   ('0001321655-26-000302', '0001100005', 'PLTR', current_date - 6,  current_date - 8,  'P', 12000,  40.10,  false, false, 12000),
   ('0001321655-26-000303', '0001100006', 'PLTR', current_date - 12, current_date - 13, 'P', 8000,   39.75,  false, false, null),
   ('0001321655-26-000304', '0001100003', 'PLTR', current_date - 45, current_date - 55, 'S', 200000, 44.00,  false, true, 6350000),
+  -- Home feed (notable.ts): a large sale outside any plan, and a sale that cuts a holding by 75%.
+  ('0000789019-26-000203', '0001100002', 'MSFT', current_date - 3,  current_date - 5,  'S', 20000,  508.30, false, false, 1000000),
+  ('0001321655-26-000305', '0001100005', 'PLTR', current_date - 2,  current_date - 3,  'S', 30000,  40.00,  false, false, 10000),
   ('0000936468-26-000401', '0001100004', 'LMT',  current_date - 1,  current_date - 3,  'P', 3000,   462.15, false, false, 120000),
   ('0000936468-26-000402', '0001100004', 'LMT',  current_date - 90, current_date - 92, 'M', 10000,  0,      true,  null, 117000),
   -- Filed before the site's Form 4 record starts (shared/src/floor.ts): stored, never shown.

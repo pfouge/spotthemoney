@@ -12,7 +12,7 @@ const U = "2026-10-08";
 export const siteGuides: ((c: GuideCtx) => Guide)[] = [
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-use-the-trade-map", group: "site", updated: "2026-10-09",
+    slug: "how-to-use-the-trade-map", group: "site", updated: "2026-11-15",
     title: "How to use the trade map",
     seoTitle: ["How to Use the Trade Map: Scatter Chart, Heatmap and Filters", "How to Use the Spot the Money Trade Map"],
     description: ["The trade map shows one dot per stock: buying to the right, selling to the left, green for mostly purchases. What each filter does, and the heatmap view.", "One dot per stock, placed and coloured by buying and selling. What each trade map filter does."],
@@ -26,6 +26,9 @@ export const siteGuides: ((c: GuideCtx) => Guide)[] = [
       "Click a dot or a tile to open that stock's page. Filters are kept in the page address.",
     ],
     sections: [
+      { id: "feed", h: "What is the notable trades feed on the home page?", html: `
+<p>Above the map, the home page lists the filings most worth a look: ${c.notable.clusterInsiders} or more insiders buying one company within ${c.notable.clusterDays} days, open-market insider buys, stake changes of ${c.notable.stakePct} percent or more worth at least ${c.notable.stakeValue}, insider sales of ${c.notable.largeSale} or more, and congressional trades whose range starts at ${c.notable.congressLow} or more. Trades under a 10b5-1 plan are left out of the insider rules.</p>
+<p>Choose Today, 7 days or 30 days by disclosure date, pick a preset, search by ticker, company or person, and sort by newest filed, largest or biggest stake change. By default clusters sit at the top. Your choices are kept in the page address alongside the map's own. The rules are written out in the <a href="/methodology/#notable">methodology</a>, and every item links to its source filing.</p>` },
       { id: "tiles", h: "What does the chart show?", html: `
 <p>Each dot is one stock, labelled with its ticker where there is room. Two groups are on the chart at once. Across the chart is the page's own group: company insiders on the home page and the Insiders page, members of Congress on the Congress page. Up and down is the other group's buying minus its selling, so a dot above the middle line is a stock the other group bought more of than it sold.</p>
 <p>The chart opens on the last 90 days in the <strong>Net</strong> view: all four quarters are drawn, with bought minus sold across. "Both buying" is the top right corner, "Both selling" the bottom left, and the other two corners are where the groups went opposite ways. <strong>Buying</strong> draws only the right half, and a dot's distance from the left edge is the dollars bought. <strong>Selling</strong> draws the left half, with dollars sold growing to the left.</p>
@@ -78,8 +81,9 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
     ],
     related: ["congress-trade-amount-ranges", "form-4-transaction-codes", "rule-10b5-1-trading-plans", "what-disclosure-data-cannot-tell-you"],
     seeLive: [{ label: "Trade map", href: "/" }, { label: "Methodology", href: "/methodology/" }],
-    covers: ["web/src/components/Heatmap.astro", "web/src/scripts/heatmap.ts", "web/src/scripts/scatter.ts", "web/src/lib/trade-cross.ts", "web/src/components/MiniCharts.astro", "web/src/components/MiniHeatmap.astro", "web/src/components/VizHome.astro", "web/src/lib/heatmap.ts", "web/src/lib/capband.ts", "web/src/scripts/share.ts"],
+    covers: ["web/src/lib/notable.ts", "web/src/components/NotableFeed.astro", "web/src/components/Heatmap.astro", "web/src/scripts/heatmap.ts", "web/src/scripts/scatter.ts", "web/src/lib/trade-cross.ts", "web/src/components/MiniCharts.astro", "web/src/components/MiniHeatmap.astro", "web/src/components/VizHome.astro", "web/src/lib/heatmap.ts", "web/src/lib/capband.ts", "web/src/scripts/share.ts"],
     ui: [
+      { text: "Cluster buys", on: "/" }, { text: "Biggest stake change", on: "/" },
       { text: "All insiders", on: "/" }, { text: "Corporate insiders", on: "/" },
       { text: ">7D<", on: "/" }, { text: ">30D<", on: "/" }, { text: ">90D<", on: "/" }, { text: ">1Y<", on: "/" },
       { text: ">Net<", on: "/" }, { text: ">Buying<", on: "/" }, { text: ">Selling<", on: "/" },

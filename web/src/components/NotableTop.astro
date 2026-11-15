@@ -1,0 +1,38 @@
+---
+// Compact top lists under the feed: the last 7 days by filing date, top 5 each (lib/notable.ts topLists).
+import { longDate, shortDate, type TopLists, type TopEntry } from "../lib/notable";
+interface Props { top: TopLists }
+const { top } = Astro.props;
+const lists: { id: string; title: string; rows: TopEntry[]; none: string }[] = [
+  { id: "buying", title: "Most insiders buying", rows: top.insidersBuying, none: "No insider purchases outside a 10b5-1 plan." },
+  { id: "buys", title: "Largest insider buys", rows: top.largestBuys, none: "No insider purchases." },
+  { id: "sales", title: "Largest insider sales", rows: top.largestSales, none: "No insider sales outside a 10b5-1 plan." },
+  { id: "members", title: "Most active members of Congress", rows: top.activeMembers, none: "No notable congressional trades." },
+  { id: "stocks", title: "Stocks most traded by Congress", rows: top.congressStocks, none: "No notable congressional trades." },
+];
+const f = top.figures;
+---
+<section class="nf-top" id="top-lists" aria-labelledby="topH">
+  <h2 id="topH">This week's top lists</h2>
+  <p class="soft small">Filed {shortDate(top.since)} to {longDate(top.newest)}. Top five in each list, from the same trades as the feed above.</p>
+  <div class="datastrip strip-compact nf-figs">
+    <div class="cell"><div class="k">Notable items this week</div><div class="v" data-top-fig="notable">{f.notable.toLocaleString("en-US")}</div></div>
+    <div class="cell"><div class="k">Insider buy rows</div><div class="v" data-top-fig="buys">{f.buyRows.toLocaleString("en-US")}</div></div>
+    <div class="cell"><div class="k">Insider sale rows</div><div class="v" data-top-fig="sales">{f.saleRows.toLocaleString("en-US")}</div></div>
+    <div class="cell"><div class="k">Members who reported</div><div class="v" data-top-fig="members">{f.members.toLocaleString("en-US")}</div></div>
+  </div>
+  <div class="nf-top-grid">
+    {lists.map((l) => (
+      <div class="card nf-top-card" data-top={l.id}>
+        <h3>{l.title}</h3>
+        {l.rows.length ? (
+          <ol>
+            {l.rows.map((r) => (
+              <li><span class="nf-top-n">{r.href ? <a href={r.href}>{r.label}</a> : r.label}<span class="nf-sub">{r.sub}</span></span><span class="nf-top-v">{r.value}</span></li>
+            ))}
+          </ol>
+        ) : <p class="soft small">{l.none}</p>}
+      </div>
+    ))}
+  </div>
+</section>

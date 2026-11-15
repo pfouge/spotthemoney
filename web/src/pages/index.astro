@@ -7,7 +7,11 @@ import Heatmap from "../components/Heatmap.astro";
 import AdSlot from "../components/AdSlot.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { getLatestIBondRate, getYieldCurve } from "../lib/db";
-import { getFlagship, withinDays, num, money, plural, senateShown } from "../lib/flagship";
+import { getFlagship, withinDays, num, plural, senateShown } from "../lib/flagship";
+import { homeFeed } from "../lib/notable-build";
+import { DEFAULT_STATE, selectFeed, longDate } from "../lib/notable";
+import NotableFeed from "../components/NotableFeed.astro";
+import NotableTop from "../components/NotableTop.astro";
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
 import VizHome from "../components/VizHome.astro";
@@ -15,24 +19,16 @@ import VizHome from "../components/VizHome.astro";
 const model = await getFlagship();
 const hasSenate = senateShown(model);
 const pub = model.txns.filter((t) => t.isPublished);
-const c30 = pub.filter((t) => t.source !== "sec_form4" && withinDays(t.txnDate ?? t.disclosedAt, 30));
-const i30 = pub.filter((t) => t.source === "sec_form4" && withinDays(t.txnDate ?? t.disclosedAt, 30));
-const cMembers = new Set(c30.map((t) => t.personId)).size;
-const cDollars = c30.reduce((s, t) => s + (t.value ?? 0), 0);
-const iBuys = i30.filter((t) => t.code === "P" && !t.is10b51);
-const iSells = i30.filter((t) => t.code === "S" && !t.is10b51);
-const iTickers = new Set(i30.map((t) => t.securityId)).size;
-const congressLive = c30.length > 0 || (model.counts.congressTxns ?? 0) > 0;
-const insidersLive = i30.length > 0 || (model.counts.insiderTxns ?? 0) > 0;
+const { data: feed, top } = homeFeed(model);
 const lastDisclosed = pub.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
-const answer = [
-  congressLive
-    ? `In the last 30 days ${plural(cMembers, "member")} of Congress disclosed ${plural(c30.length, "trade")} worth up to ${money(cDollars, { compact: true })}.`
-    : "Congressional trade disclosures are being ingested; the map fills as filings are reviewed.",
-  insidersLive
-    ? `Corporate insiders at ${plural(iTickers, "tracked ticker")} made ${plural(iBuys.length, "open-market purchase")} against ${plural(iSells.length, "sale")} outside 10b5-1 plans.`
-    : "Insider filings are being ingested.",
-].join(" ");
+const week = { ...DEFAULT_STATE, win: 7 as const };
+const nOf = (preset: "all" | "cluster" | "buys" | "sales" | "congress") => selectFeed(feed, { ...week, preset }).length;
+const nClusters = nOf("cluster");
+const nNotable = nOf("all");
+const answer = nNotable > 0
+  ? `In the 7 days to ${longDate(feed.newest)}, insiders and members of Congress filed ${plural(nNotable, "notable trade")}: ${plural(nClusters, "cluster buy")}, ${plural(nOf("buys"), "insider purchase")}, ${plural(nOf("sales"), "large sale")} and ${plural(nOf("congress"), "congressional trade")}. Each one is listed with the filing it came from.`
+  : "No trades matching the notable rules were filed in the latest 7 days of data, or the filings are still being read.";
+const coverage = `Partial coverage: insider filings here cover about ${num(feed.companies)} companies (large companies and every stock a member of Congress has traded), not the whole market. Congress: House reports daily, ${feed.senateThrough ? `Senate reports through ${longDate(feed.senateThrough)}` : "Senate reports are not included yet"}.`;
 
 const ibond = await getLatestIBondRate();
 const ibondRate = ibond?.compositeRate != null ? formatPercent(ibond.compositeRate) : "—";
@@ -48,13 +44,23 @@ const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", 
 ] });
 const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling: disclosed trades on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
 ---
-<BaseLayout title="Congress & Insider Stock Trades Heatmap | Spot the Money" section="Heatmap">
+<BaseLayout title="Notable Insider & Congress Stock Trades | Spot the Money" description="Notable stock trades by corporate insiders and members of Congress as filed: cluster buys, large sales, big stake changes. Free, with links to each filing." section="Heatmap">
   <section class="hero hero-map">
-    <p class="eyebrow">Congress <span class="x">&times;</span> Corporate insiders</p>
-    <h1>Who's buying. Who's selling. As disclosed.</h1>
-    <p class="lede">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map: the STOCK Act trades and Form 4s we have read so far, sized by dollars, colored by direction, filterable, and linked to the filing. {hasSenate ? "" : "Senate trades are not included yet; "}<a href="/methodology/#coverage">{hasSenate ? "See what is covered" : "see what is covered"}</a>.</p>
+    <h1>Notable trades by insiders and Congress</h1>
+    <p class="lede">New filings from corporate insiders and members of Congress that match a plain rule, newest first, each linked to the filing. <a href="/methodology/#notable">How a trade becomes notable</a>.</p>
+  </section>
+  <p class="note nf-coverage">{coverage} <a href="/methodology/#coverage">What is covered</a>.</p>
+
+  <section class="answer" data-answer>
+    <p class="answer-text">{answer}</p>
+    <p class="answer-meta"><span>Last updated {lastDisclosed ? new Date(lastDisclosed + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "no filings yet"}</span><span> · Sources: House Clerk PTRs; Senate eFD reports; SEC EDGAR Form 4</span></p>
   </section>
 
+  <NotableFeed data={feed} />
+  <NotableTop top={top} />
+
+  <h2 id="heatmap" class="nf-maph">Trade map</h2>
+  <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters.</p>
   <div class="hm-switch">
     <div class="seg" id="hmSwitch" role="tablist" aria-label="Choose whose trades to show">
       <button type="button" class="on" data-pane="all" role="tab" aria-selected="true">All insiders</button>
@@ -66,11 +72,6 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   <div class="hm-pane" data-pane="all"><Heatmap kind="all" primary={true} /></div>
   <div class="hm-pane" data-pane="congress" hidden><Heatmap kind="congress" id="hm-congress-home" /></div>
   <div class="hm-pane" data-pane="insiders" hidden><Heatmap kind="insiders" id="hm-insiders-home" /></div>
-
-  <section class="answer" data-answer>
-    <p class="answer-text">{answer}</p>
-    <p class="answer-meta"><span>Last updated {lastDisclosed ? new Date(lastDisclosed + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "—"}</span><span> · Sources: House Clerk PTRs; SEC EDGAR Form 4</span></p>
-  </section>
 
   <VizHome />
 
@@ -99,6 +100,7 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   <JsonLd data={[website, catalog]} />
 
   <script>
+    import "../scripts/notable";
     const sw = document.getElementById("hmSwitch");
     const more = document.getElementById("hmMore") as HTMLAnchorElement | null;
     const links: Record<string, [string, string]> = {
