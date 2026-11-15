@@ -437,7 +437,7 @@ export function slugifyCompany(name: string | null, cik: string): string {
 // ──────────────────────────────────────────────────────────────────────────
 
 /** Form 4 transaction code -> transactions.side, per contract §3.5. */
-function codeToSide(code: string | null): "buy" | "sell" | "exchange" | "option" | "other" {
+export function codeToSide(code: string | null): "buy" | "sell" | "exchange" | "option" | "other" {
   switch ((code ?? "").toUpperCase()) {
     case "P":
       return "buy";
@@ -456,7 +456,7 @@ function codeToSide(code: string | null): "buy" | "sell" | "exchange" | "option"
 }
 
 /** lowercase-hyphen slug of a full name, per contract §3.1. */
-function slugifyName(name: string): string {
+export function slugifyName(name: string): string {
   return name
     .trim()
     .toLowerCase()
@@ -477,7 +477,7 @@ export function guardFutureTxnDate(txnDate: string | null, filingDate: string | 
   return { date: txnDate, nulled: false };
 }
 
-function isoDateDiffDays(later: string | null, earlier: string | null): number | null {
+export function isoDateDiffDays(later: string | null, earlier: string | null): number | null {
   if (!later || !earlier) return null;
   const a = Date.parse(later);
   const b = Date.parse(earlier);
@@ -700,7 +700,8 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
             on conflict (cik) do update
               set name = excluded.name,
                   primary_ticker = excluded.primary_ticker,
-                  slug = coalesce(companies.slug, excluded.slug)
+                  slug = coalesce(companies.slug, excluded.slug),
+                  tracked = true
             returning id
           `;
           const companyId = company!.id as number;
@@ -780,14 +781,15 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
           const [filing] = await sql`
             insert into filings (
               source, external_id, filer_person_id, filer_company_id,
-              filed_at, source_url, confidence, review, is_published, payload
+              filed_at, source_url, confidence, review, is_published, payload, scope
             )
             values (
               'sec_form4', ${clean.accession}, ${personId}, ${companyId},
-              ${clean.filingDate}, ${clean.xmlUrl}, 1.0, 'auto_approved', false, ${sql.json(payload)}
+              ${clean.filingDate}, ${clean.xmlUrl}, 1.0, 'auto_approved', false, ${sql.json(payload)}, 'tracked'
             )
             on conflict (source, external_id) do update
-              set filed_at = excluded.filed_at,
+              set scope = 'tracked',
+                  filed_at = excluded.filed_at,
                   source_url = excluded.source_url,
                   payload = excluded.payload
             returning id
@@ -867,6 +869,14 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
     } catch (err) {
       ctx.warn(`company size refresh failed: ${err instanceof Error ? err.message : String(err)}`);
     }
+  }
+
+  // Market-wide filings (sec_form4_bulk) whose issuer now has an active security join the
+  // tracked set. Never fails this run.
+  try {
+    ctx.extra["market_filings_promoted"] = Number((await sql`select promote_market_scope() as n`)[0]?.n ?? 0);
+  } catch (err) {
+    ctx.warn(`promote_market_scope failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   ctx.extra["tickers_in_universe"] = universe.length;

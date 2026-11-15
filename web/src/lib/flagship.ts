@@ -171,19 +171,19 @@ async function load(): Promise<Flagship> {
   try {
     const [peopleRows, roleRows, companyRows, securityRows, filingRows, txnRows, lobbyingRows, contractRows, committeeRows, donorEmployerRows, donorStateRows] = await Promise.all([
       sql<{ id: number; full_name: string; slug: string | null; bioguide_id: string | null; cik: string | null }[]>`
-        select id, full_name, slug::text as slug, bioguide_id, cik from people`,
+        select id, full_name, slug::text as slug, bioguide_id, cik from site_people`,
       sql<{ person_id: number; role_kind: string; chamber: string | null; state: string | null; district: string | null; party: string | null; company_id: number | null; officer_title: string | null; is_director: boolean | null; valid_from: string | null; valid_to: string | null }[]>`
         select person_id, role_kind, chamber::text as chamber, state, district, party, company_id, officer_title, is_director,
                valid_from::text as valid_from, valid_to::text as valid_to
-          from person_roles order by id`,
+          from site_person_roles order by id`,
       sql<{ id: number; name: string; cik: string | null; slug: string | null; primary_ticker: string | null; sector: string | null }[]>`
-        select id, name, cik, slug::text as slug, primary_ticker::text as primary_ticker, sector from companies`,
+        select id, name, cik, slug::text as slug, primary_ticker::text as primary_ticker, sector from site_companies`,
       sql<{ id: number; ticker: string; type: string; name: string | null; company_id: number | null }[]>`
-        select id, ticker::text as ticker, type::text as type, name, company_id from securities where is_active`,
+        select id, ticker::text as ticker, type::text as type, name, company_id from site_securities`,
       sql<{ id: number; source: string; external_id: string | null; filer_person_id: number | null; filer_company_id: number | null; filed_at: string | null; source_url: string | null; confidence: number; review: string; is_published: boolean }[]>`
         select id, source::text as source, external_id, filer_person_id, filer_company_id, filed_at::text as filed_at, source_url,
                confidence::float8 as confidence, review::text as review, is_published
-          from filings
+          from site_filings
          where review in ('auto_approved','approved') and confidence >= 0.9
            and source in ('sec_form4','house_ptr','senate_ptr')
            -- Form 4 filings filed before the site's record starts are left out (shared/src/floor.ts).
@@ -203,7 +203,7 @@ async function load(): Promise<Flagship> {
                      and (f.payload->'transactions'->t.ord->>'shares')::float8 = t.shares::float8
                      and (f.payload->'transactions'->t.ord->>'sharesOwnedAfter') ~ '^[0-9]+(\\.[0-9]+)?$'
                     then (f.payload->'transactions'->t.ord->>'sharesOwnedAfter')::float8 end as owned_after
-          from t join filings f on f.id = t.filing_id
+          from t join site_filings f on f.id = t.filing_id
          where t.review in ('auto_approved','approved') and t.confidence >= 0.9
            and f.review in ('auto_approved','approved') and f.confidence >= 0.9
            and not (f.source = 'sec_form4' and f.filed_at < ${FORM4_FLOOR}::date)
@@ -377,7 +377,7 @@ async function load(): Promise<Flagship> {
                     from jsonb_array_elements(case when jsonb_typeof(f.payload->'transactions') = 'array' then f.payload->'transactions' else '[]'::jsonb end) with ordinality as x(e, n)
                    where coalesce((e->>'isDerivative')::boolean, false) = false and (e->>'sharesOwnedAfter') ~ '^[0-9.]+$'
                    order by n desc limit 1) as held
-            from filings f
+            from site_filings f
            where f.source = 'sec_form4' and f.review in ('auto_approved','approved') and f.confidence >= 0.9`,
         sql<{ code: string; name: string | null }[]>`
           select issue_area as code, max(issues->0->>'display') as name

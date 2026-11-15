@@ -1,0 +1,110 @@
+# Market-wide Form 4 load — stage 1 (2026-11-15). Loads every Form 4 filed since 2025-10-01 from the
+# SEC "Insider Transactions Data Sets" into the database WITHOUT changing the website: market-scope
+# rows are invisible to every build-time query (db/migrations/0019_form4_market_scope.sql), so this
+# workflow never calls deploy.
+#
+# Start it once from the Actions tab (Run workflow). The source stops itself on a time budget and
+# prints "(partial)" when there is more to load; the last job then starts the next run with
+# `remaining` counted down, so a source that never finishes cannot loop forever.
+#
+# The SEC asks automated clients to identify themselves. Set the secret or variable
+# SEC_EDGAR_USER_AGENT (same name the ingest code reads) to a descriptive value with a contact;
+# without it a generic one that names this site's contact page is sent.
+
+name: form4-bulk
+
+on:
+  workflow_dispatch:
+    inputs:
+      quarters:
+        description: "Quarters to load (space-separated, YYYYqN)"
+        required: false
+        default: "2025q4 2026q1 2026q2 2026q3"
+      remaining:
+        description: "How many more times this may restart itself"
+        required: false
+        default: "6"
+
+concurrency:
+  group: form4-bulk
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    outputs:
+      more: ${{ steps.run.outputs.more }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      QUARTERS: ${{ github.event.inputs.quarters }}
+      SEC_UA: ${{ secrets.SEC_EDGAR_USER_AGENT || vars.SEC_EDGAR_USER_AGENT || 'spotthemoney.com ingest (+https://spotthemoney.com/contact/)' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: node db/migrate.mjs
+
+      - name: Download the quarterly files
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/secbulk"
+          mkdir -p "$root"
+          base1="https://www.sec.gov/files/structureddata/data/insider-transactions-data-sets"
+          base2="https://www.sec.gov/files/datastandardsinnovation/data/insider-transactions-data-sets"
+          for q in $QUARTERS; do
+            if ! echo "$q" | grep -Eq '^[0-9]{4}q[1-4]$'; then echo "bad quarter name: $q" >&2; exit 1; fi
+            zip="$root/${q}_form345.zip"
+            got=0
+            for base in "$base1" "$base2"; do
+              sleep 1   # at most one request per second
+              code=$(curl -sS -L -A "$SEC_UA" -o "$zip" -w '%{http_code}' "$base/${q}_form345.zip" || true)
+              if [ "$code" = "200" ] && [ "$(head -c 2 "$zip")" = "PK" ]; then got=1; echo "downloaded $q from $base ($(stat -c %s "$zip") bytes)"; break; fi
+              echo "$q not available from $base (HTTP $code)"
+              rm -f "$zip"
+            done
+            if [ "$got" != "1" ]; then echo "::error::neither SEC directory returned a ZIP for $q"; exit 1; fi
+            mkdir -p "$root/$q"
+            unzip -q -o -j "$zip" -d "$root/$q"
+            rm -f "$zip"
+            ls "$root/$q" | head -20
+          done
+
+      - name: Load Form 4 filings
+        id: run
+        env:
+          SEC_BULK_DIR: ${{ runner.temp }}/secbulk
+          SEC_BULK_MAX_MINUTES: "40"
+        run: |
+          set -o pipefail
+          npm run ingest -- sec_form4_bulk 2>&1 | tee run.log
+          if grep -q "sec_form4_bulk: .*(partial)" run.log; then echo "more=true" >> "$GITHUB_OUTPUT"; fi
+
+  # Start the next run while the source reports more to load. A failed load is NOT retried here:
+  # a red run stops the chain so the cause gets looked at.
+  again:
+    needs: [load]
+    if: needs.load.result == 'success' && needs.load.outputs.more == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REMAINING: ${{ github.event.inputs.remaining }}
+      QUARTERS: ${{ github.event.inputs.quarters }}
+    steps:
+      - name: Restart
+        run: |
+          left=$(( ${REMAINING:-0} - 1 ))
+          if [ "$left" -lt 0 ]; then echo "restart limit reached; the load is still partial" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          echo "starting the next run (restarts left: $left)" >> "$GITHUB_STEP_SUMMARY"
+          gh workflow run form4-bulk.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}" -f quarters="$QUARTERS" -f remaining="$left"

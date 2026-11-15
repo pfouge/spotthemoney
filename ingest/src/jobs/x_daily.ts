@@ -136,9 +136,9 @@ export async function selectNotables(sql: ReturnType<typeof getDb>, sinceIso: st
                   when t.shares is not null and t.price is not null then
                     case when (t.shares * t.price) <= 1e12 then (t.shares * t.price)::float8 end
                   else t.amount_high::float8 end as value,
-             (select min(f2.filed_at)::text from filings f2 where f2.filer_person_id = p.id) as first_filing_at
+             (select min(f2.filed_at)::text from site_filings f2 where f2.filer_person_id = p.id) as first_filing_at
         from transactions t
-        join filings f on f.id = t.filing_id
+        join site_filings f on f.id = t.filing_id
         left join people p on p.id = t.person_id
         left join securities s on s.id = t.security_id
         left join companies c on c.id = s.company_id
@@ -185,7 +185,7 @@ export async function selectNotables(sql: ReturnType<typeof getDb>, sinceIso: st
   const clusters = await sql<{ ticker: string; buyers: number; total: number; latest_filing_id: number }[]>`
     with buys as (
       select s.ticker::text as ticker, t.person_id, t.filing_id, f.filed_at, (t.shares * t.price)::float8 as value
-        from transactions t join filings f on f.id = t.filing_id join securities s on s.id = t.security_id
+        from transactions t join site_filings f on f.id = t.filing_id join securities s on s.id = t.security_id
        where f.is_published and f.source = 'sec_form4' and t.txn_code = 'P' and not coalesce(t.is_derivative, false) and t.review in ('auto_approved','approved')
          and f.filed_at >= now() - interval '30 days'
     )

@@ -25,6 +25,8 @@ export interface Coverage {
   payloadMb: Record<string, number>;
   /** Rows with no ticker, by source and asset type — bonds and funds are expected, "stock" is a miss. */
   noTicker: { source: string; assetType: string; rows: number }[];
+  /** Market-wide Form 4 filings loaded but kept off the site (stage 1). Counts only. */
+  marketScope: { filings: number; transactions: number };
   errors: string[];
 }
 
@@ -38,7 +40,7 @@ const numericStats = (stats: unknown): Record<string, number> => {
 };
 
 async function load(): Promise<Coverage> {
-  const c: Coverage = { builtAt: new Date().toISOString(), connected: false, filings: [], txns: [], runs: [], tables: {}, totals: {}, quality: {}, tableSizes: [], payloadMb: {}, noTicker: [], errors: [] };
+  const c: Coverage = { builtAt: new Date().toISOString(), connected: false, filings: [], txns: [], runs: [], tables: {}, totals: {}, quality: {}, tableSizes: [], payloadMb: {}, noTicker: [], marketScope: { filings: 0, transactions: 0 }, errors: [] };
   const sql = flagshipSql();
   if (!sql) return c;
   c.connected = true;
@@ -54,7 +56,7 @@ async function load(): Promise<Coverage> {
              count(*) filter (where f.source::text = 'house_ptr' and left(f.external_id, 1) in ('8', '9'))::int as paper,
              count(*) filter (where exists (select 1 from transactions t where t.filing_id = f.id))::int as "withRows",
              count(*) filter (where exists (select 1 from transactions t where t.filing_id = f.id and t.security_id is not null))::int as "withTickerRows"
-        from filings f group by 1, 2 order by 1, 2`).map((r) => ({ ...r }));
+        from site_filings f group by 1, 2 order by 1, 2`).map((r) => ({ ...r }));
   });
   await step("txns", async () => {
     c.txns = (await sql<TxnMonth[]>`
@@ -66,7 +68,7 @@ async function load(): Promise<Coverage> {
              count(*) filter (where t.side::text = 'sell')::int as sell,
              count(*) filter (where t.side::text not in ('buy', 'sell'))::int as other,
              count(*) filter (where t.is_derivative)::int as derivative
-        from transactions t join filings f on f.id = t.filing_id group by 1, 2 order by 1, 2`).map((r) => ({ ...r }));
+        from transactions t join site_filings f on f.id = t.filing_id group by 1, 2 order by 1, 2`).map((r) => ({ ...r }));
   });
   await step("runs", async () => {
     const rows = await sql<{ source: string; started_at: string; finished_at: string | null; status: string; rows_seen: number | null; rows_changed: number | null; stats: unknown }[]>`
@@ -83,13 +85,13 @@ async function load(): Promise<Coverage> {
   await byMonth("donations", sql<{ month: string; rows: number }[]>`select coalesce(to_char(donated_at, 'YYYY-MM'), 'none') as month, count(*)::int as rows from donations group by 1 order by 1`);
   await step("totals", async () => {
     const [t] = await sql<Record<string, number>[]>`
-      select (select count(*) from people)::int as people,
+      select (select count(*) from site_people)::int as people,
              (select count(distinct person_id) from person_roles where role_kind::text = 'congress')::int as "congressPeople",
              (select count(distinct person_id) from person_roles where role_kind::text = 'congress' and chamber::text = 'senate')::int as "senators",
-             (select count(distinct f.filer_person_id) from filings f where f.source::text = 'house_ptr')::int as "houseFilers",
-             (select count(distinct f.filer_person_id) from filings f where f.source::text = 'house_ptr' and f.is_published)::int as "houseFilersPublished",
-             (select count(distinct f.filer_person_id) from filings f where f.source::text = 'senate_ptr')::int as "senateFilers",
-             (select count(*) from securities)::int as securities,
+             (select count(distinct f.filer_person_id) from site_filings f where f.source::text = 'house_ptr')::int as "houseFilers",
+             (select count(distinct f.filer_person_id) from site_filings f where f.source::text = 'house_ptr' and f.is_published)::int as "houseFilersPublished",
+             (select count(distinct f.filer_person_id) from site_filings f where f.source::text = 'senate_ptr')::int as "senateFilers",
+             (select count(*) from securities s where not exists (select 1 from companies c where c.id = s.company_id and not c.tracked))::int as securities,
              (select count(*) from committees)::int as committees,
              (select count(*) from committees where donations_history_floor is not null)::int as "committeesWithHistory",
              (select count(*) from review_queue where status::text = 'pending')::int as "reviewQueuePending",
@@ -104,7 +106,7 @@ async function load(): Promise<Coverage> {
              count(*) filter (where f.source::text = 'sec_form4' and t.shares is not null and t.price is not null and t.shares * t.price > 1e12)::int as "form4ValueOverTrillion",
              count(*) filter (where t.security_id is null)::int as "noTicker",
              count(*) filter (where t.person_id is null)::int as "noPerson"
-        from transactions t join filings f on f.id = t.filing_id`;
+        from transactions t join site_filings f on f.id = t.filing_id`;
     c.quality = { ...q };
   });
   await step("tableSizes", async () => {
@@ -114,13 +116,19 @@ async function load(): Promise<Coverage> {
        where n.nspname = 'public' and c.relkind = 'r' order by pg_total_relation_size(c.oid) desc limit 16`).map((r) => ({ ...r }));
   });
   await step("payloadMb", async () => {
-    const rows = await sql<{ source: string; mb: number }[]>`select source::text as source, round(sum(pg_column_size(payload)) / 1048576.0, 1)::float8 as mb from filings group by 1`;
+    const rows = await sql<{ source: string; mb: number }[]>`select source::text as source, round(sum(pg_column_size(payload)) / 1048576.0, 1)::float8 as mb from site_filings group by 1`;
     for (const r of rows) c.payloadMb[r.source] = r.mb;
   });
   await step("noTicker", async () => {
     c.noTicker = (await sql<{ source: string; assetType: string; rows: number }[]>`
       select f.source::text as source, coalesce(t.asset_type, 'unknown') as "assetType", count(*)::int as rows
-        from transactions t join filings f on f.id = t.filing_id where t.security_id is null group by 1, 2 order by 1, 3 desc`).map((r) => ({ ...r }));
+        from transactions t join site_filings f on f.id = t.filing_id where t.security_id is null group by 1, 2 order by 1, 3 desc`).map((r) => ({ ...r }));
+  });
+  await step("marketScope", async () => {
+    const [m] = await sql<{ filings: number; transactions: number }[]>`
+      select (select count(*) from filings where source::text = 'sec_form4' and scope = 'market')::int as filings,
+             (select count(*) from transactions t join filings f on f.id = t.filing_id where f.source::text = 'sec_form4' and f.scope = 'market')::int as transactions`;
+    c.marketScope = { filings: m.filings, transactions: m.transactions };
   });
   return c;
 }
