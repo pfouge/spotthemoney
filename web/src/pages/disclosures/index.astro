@@ -51,6 +51,13 @@ const ld = datasetLd({ name: "Newest disclosures feed", path: "/disclosures/", d
       {feed.map((i) => <tr class={i.review ? "review" : undefined}><td class="mono">{formatDate(i.at)}</td><td><span class={`kind ${i.kind.toLowerCase()}`}>{i.kind}</span></td><td>{i.whoHref ? <a href={i.whoHref}>{i.who}</a> : i.who}</td><td>{i.whatHref ? <a href={i.whatHref}>{i.what}</a> : i.what}</td><td class="num">{i.amount}</td><td>{i.href ? <a href={i.href} rel="noopener nofollow" target="_blank">record ↗</a> : "—"}</td></tr>)}
     </tbody></table></div>
   )}
+  <div class="prose">
+  <h2 id="about-this-page">What this page shows</h2>
+  <p>This is a single list of the newest public records the site has read, whatever their kind: trades reported by corporate insiders, trades reported by members of Congress, lobbying reports and federal contract awards. The date is the day the record was disclosed or posted, which is later than the event it describes. A member of Congress has up to 45 days to report a trade, and an insider two business days.</p>
+  <p>"Who" is the person or organisation that filed or received the record, "What" is the stock, client or agency involved, and "Source" opens the original document on the government website it came from. Insider amounts are shares multiplied by the reported price. Congressional amounts are the dollar range the member reported.</p>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>Insider trades come from SEC EDGAR, congressional trades from the House Clerk and the Senate's financial disclosure system, lobbying reports from the Senate's Lobbying Disclosure Act database, and contract awards from USAspending.gov. The site reads these once a day, except Senate trade reports, which are added in batches. To look at one kind of record on its own, use the <a href="/insiders/">Insiders</a>, <a href="/congress/">Congress</a>, <a href="/lobbying/">Lobbying</a> or <a href="/contracts/">Contracts</a> pages. The <a href="/methodology/">Methodology</a> explains how each source is read.</p>
+  </div>
   <AdSlot label="Advertisement" />
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; disclosures lag the underlying event and may be amended.</p>
   <JsonLd data={ld} />

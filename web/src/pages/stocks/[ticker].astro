@@ -164,7 +164,7 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <h2 id="insider-transactions">Insider transactions</h2>
   <TxnTable model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
 
-  <AdSlot label="Advertisement" />
+  <AdSlot label="Advertisement" show={txns.length > 0} />
 
   <h2 id="congress-trades">Congressional trades</h2>
   <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />

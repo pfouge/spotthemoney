@@ -23,6 +23,13 @@ const description = "Companies with SEC insiders on file: insider transactions, 
       {rows.map((r) => <tr><td><a href={companyPath(r.c)!}>{r.c.name}</a></td><td class="mono">{r.c.primaryTicker ?? "—"}</td><td class="num">{num(r.c.insiders.length)}</td><td class="num">{num(r.y.length)}</td><td class="num">{r.contracts ? money(r.contracts) : "—"}</td><td class="num">{r.lobbying ? money(r.lobbying) : "—"}</td></tr>)}
     </tbody></table></div>
   )}
+  <div class="prose">
+  <h2 id="about-this-page">What this page shows</h2>
+  <p>Each row is a company whose officers, directors or large shareholders have filed a Form 4 that this site has read. A Form 4 is the report an insider files with the Securities and Exchange Commission, usually within two business days, when they buy, sell or are granted shares of their own company. The <a href="/guides/what-is-form-4/">guide to Form 4</a> explains the form.</p>
+  <p>The columns count the insiders on file, their transactions disclosed in the last 12 months, federal contract awards that started in the last 180 days, and lobbying spending reported so far this year. Contracts and lobbying are matched to a company by its exact name, so a subsidiary that files under a different name is not included.</p>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>Insider transactions come from the SEC's EDGAR system, contract awards from USAspending.gov, and lobbying reports from the Senate's Lobbying Disclosure Act database. The site reads each source once a day and shows the figures as filed. It follows a set list of companies, not the whole market: the largest companies plus every stock a member of Congress has traded. The <a href="/methodology/">Methodology</a> has the rules behind every total.</p>
+  </div>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={dataCatalogLd({ path: "/companies/", name: "Company profiles", description, datasets: rows.slice(0, 500).map((r) => ({ name: r.c.name, path: companyPath(r.c)! })) })} />
 </BaseLayout>

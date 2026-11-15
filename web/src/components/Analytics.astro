@@ -12,6 +12,9 @@
 //      sends Global Privacy Control, which is treated as a refusal.
 //    - ad_storage, ad_user_data, ad_personalization: denied everywhere. Change only when ads
 //      are switched on, through the consent message, and update /privacy/ first.
+//    - These defaults are queued before any Google tag loads (this component comes before the
+//      AdSense tag in BaseLayout's head). wait_for_update gives a consent message 500 ms to
+//      answer for visitors in the consent regions before tags fire.
 //    - Google signals and ad personalisation off in the config; cookies last 13 months.
 //    - Property settings (GA admin, not code): data retention 14 months, Google signals off.
 //    The stream's enhanced measurement must keep outbound clicks, file downloads and
@@ -32,7 +35,7 @@ const CONSENT_REGIONS = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "
     window.gtag = function () { window.dataLayer.push(arguments); };
     var deny = { ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied", analytics_storage: "denied" };
     var gpc = false; try { gpc = navigator.globalPrivacyControl === true; } catch (e) {}
-    gtag("consent", "default", Object.assign({}, deny, { region: regions }));
+    gtag("consent", "default", Object.assign({}, deny, { region: regions, wait_for_update: 500 }));
     gtag("consent", "default", Object.assign({}, deny, { analytics_storage: gpc ? "denied" : "granted" }));
     gtag("js", new Date());
     gtag("config", gaId, { allow_google_signals: false, allow_ad_personalization_signals: false, cookie_expires: 34128000 }); // 395 days ≈ 13 months, as /privacy/ states

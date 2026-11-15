@@ -49,6 +49,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/methodology/", lastmod: built, changefreq: "monthly", priority: 0.5 },
     { loc: "/corrections/", lastmod: built, changefreq: "monthly", priority: 0.3 },
     { loc: "/about/", lastmod: built, changefreq: "monthly", priority: 0.3 },
+    { loc: "/contact/", lastmod: built, changefreq: "yearly", priority: 0.2 },
     { loc: "/terms/", lastmod: built, changefreq: "yearly", priority: 0.2 },
     { loc: "/privacy/", lastmod: built, changefreq: "yearly", priority: 0.2 },
     { loc: "/guides/", lastmod: guides.map((g) => g.updated).sort().at(-1) ?? built, changefreq: "weekly", priority: 0.7 },

@@ -7,6 +7,7 @@ import JsonLd from "../../components/JsonLd.astro";
 import { getArticles, getAuthorMap, articlePath } from "../../lib/articles";
 import { formatDate } from "../../lib/format";
 import { SITE_URL } from "../../lib/seo";
+import Answer from "../../components/Answer.astro";
 
 const articles = await getArticles();
 const authors = await getAuthorMap();
@@ -24,6 +25,7 @@ const ld = [
   <p class="eyebrow">Writing</p>
   <h1>Writing</h1>
   <p class="lede">Articles from contributors on what public records show about money, markets and Washington.</p>
+  {hasPublic && <Answer text={`The Writing section of Spot the Money holds ${articles.filter((a) => !a.preview).length} articles on what public filings show about stock trades in Congress, trades by corporate insiders, and money in Washington. Each article says how its figures were counted and links to the records behind them.`} updated={updated} sourceNote="Writing" />}
   {articles.length === 0 ? (
     <p class="writing-empty">No articles are published yet.</p>
   ) : (

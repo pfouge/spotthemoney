@@ -7,6 +7,8 @@ function initTheme(): void {
     const root = document.documentElement, next = root.classList.contains("dark") ? "light" : "dark";
     root.classList.remove("dark", "light"); root.classList.add(next);
     document.getElementById("themeColor")?.setAttribute("content", next === "dark" ? "#0A0B0C" : "#F2F1EC");
+    // Keep the browser's own surfaces (form controls, scrollbars, the canvas before CSS loads) on the chosen scheme.
+    document.getElementById("colorScheme")?.setAttribute("content", next);
     try { localStorage.setItem("theme", next); } catch { /* private mode */ }
     window.dispatchEvent(new CustomEvent("themechange", { detail: next }));
   });

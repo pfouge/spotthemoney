@@ -53,7 +53,7 @@ const ld = [
     </p>
     {a.summary && <Answer text={a.summary} updated={a.modified} sourceNote={`Article · ${author.name}`} />}
     {a.original && <p class="article-original">Originally published at <a href={a.original} rel="noopener">{host}</a></p>}
-    {a.image && <figure class="article-hero"><img src={a.image} alt="" width="1200" height="630" loading="eager" decoding="async" /></figure>}
+    {a.image && <figure class="article-hero"><img src={a.image} alt="" width="1200" height="630" loading="eager" fetchpriority="high" decoding="async" /></figure>}
 
     <div class="prose article-body">
       <Content />

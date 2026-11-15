@@ -13,7 +13,7 @@ const TERMS_UPDATED = "2026-10-10";
 const description = "The terms for using Spot the Money: what the site is, what it is not (investment advice), how its data may be reused, and the limits of our responsibility.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/terms/#page`, name: "Terms of use", url: `${SITE_URL}/terms/`, description, dateModified: TERMS_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
-<BaseLayout title="Terms of use | Spot the Money" description={description} section="Terms" modified={TERMS_UPDATED}>
+<BaseLayout title="Terms of use | Spot the Money" description={description} section="Terms" modified={TERMS_UPDATED} ads={false}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Terms", path: "/terms/" }]} />
   <p class="eyebrow">About <span class="x">/</span> Terms</p>
   <h1>Terms of use</h1>

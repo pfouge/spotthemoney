@@ -62,7 +62,7 @@ ${writing}## Optional
 - [Methodology](${SITE_URL}/methodology/): sources, cadence, publishing bar, lag and late rules, flag definitions, matching rules.
 - [Corrections](${SITE_URL}/corrections/): how to report an error; five-working-day response.
 - Structured data: JSON-LD (Person, Organization, Dataset, DataCatalog, BreadcrumbList) on every page listed above.
-- [About](${SITE_URL}/about/), [Terms](${SITE_URL}/terms/), [Privacy](${SITE_URL}/privacy/).
+- [About](${SITE_URL}/about/), [Contact](${SITE_URL}/contact/), [Terms](${SITE_URL}/terms/), [Privacy](${SITE_URL}/privacy/).
 - Contact: ${CONTACT_EMAIL}. Built ${m.builtAt}.
 `;
   return new Response(body, { headers: { "content-type": "text/plain; charset=utf-8" } });

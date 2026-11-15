@@ -1,0 +1,48 @@
+---
+// /contact/: how to reach the people who run the site, and what to send for each kind of
+// request. A page of its own (the footer used to carry only a mailto link) so that every page
+// links to a real contact page. No form: the site collects nothing, so contact is by email.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
+import Answer from "../components/Answer.astro";
+
+// Date this page's text last changed. Update it when the wording does.
+const PAGE_UPDATED = "2026-11-15";
+
+const description = "How to contact Spot the Money: one email address for corrections, questions about the data, press, reuse and privacy requests, and what to include.";
+const ld = { "@context": "https://schema.org", "@type": "ContactPage", "@id": `${SITE_URL}/contact/#page`, name: "Contact Spot the Money", url: `${SITE_URL}/contact/`, description, dateModified: PAGE_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
+---
+<BaseLayout title="Contact | Spot the Money" description={description} section="Contact" modified={PAGE_UPDATED} ads={false}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Contact", path: "/contact/" }]} />
+  <p class="eyebrow">Contact</p>
+  <h1>Contact</h1>
+  <p class="lede">One address reaches the people who run this site. There is no form to fill in and nothing to sign up for.</p>
+
+  <Answer text={`To contact Spot the Money, email ${CONTACT_EMAIL}. Reports of an error are answered within five working days, and privacy requests within 30 days.`} updated={PAGE_UPDATED} sourceNote="Contact" />
+
+  <div class="prose">
+  <h2 id="email">Email</h2>
+  <p><a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
+  <p>Mail is read by a person. Please write in English and include the address of the page you are writing about.</p>
+
+  <h2 id="what-to-send">What to send</h2>
+  <ul>
+    <li><strong>A figure looks wrong.</strong> Send the page address, the figure, and the filing or record that shows the right value if you have it. The <a href="/corrections/">Corrections</a> page explains what happens next and how soon.</li>
+    <li><strong>You are named in a record.</strong> Every row here is a public filing made to a U.S. government body. If the filing has been amended, send the amended filing and we will reflect it. See <a href="/privacy/#records">People named in public records</a>.</li>
+    <li><strong>A privacy request.</strong> Say what you would like to see, correct or have deleted. The <a href="/privacy/">Privacy policy</a> lists what the site holds, which for most visitors is nothing.</li>
+    <li><strong>Questions about the data.</strong> The <a href="/methodology/">Methodology</a> and the <a href="/faq/">FAQ</a> answer most of them. If yours is not there, ask.</li>
+    <li><strong>Press and research.</strong> You may quote and cite the site without asking; <a href="/guides/how-to-cite-and-reuse/">How to cite and reuse</a> has the formats and the limits. Write if you need a figure checked before you publish it.</li>
+    <li><strong>Reuse and downloads.</strong> The <a href="/downloads/">CSV files</a> are free under the <a href="/terms/#reuse">Terms</a>. Write if you need something they do not cover.</li>
+    <li><strong>Accessibility.</strong> If a page does not work with your keyboard or screen reader, say which page and which tool, and we will fix what we can and send you the information another way.</li>
+  </ul>
+
+  <h2 id="who">Who you are writing to</h2>
+  <p>spotthemoney.com is operated by a Wyoming limited liability company. It is independent: not a government website, and not affiliated with any agency, member of Congress, party, campaign, company or broker. More on <a href="/about/">the About page</a>.</p>
+
+  <h2 id="not">What we cannot help with</h2>
+  <p>We do not give investment, legal or tax advice, we cannot place or recommend trades, and we cannot change what a filer reported to the government. For a filing that is itself wrong, the remedy is an amended filing with the body that received it.</p>
+  </div>
+  <JsonLd data={ld} />
+</BaseLayout>
