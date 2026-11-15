@@ -39,6 +39,16 @@
 // PACING: SEC publishes a 10 requests/second fair-access limit; this module uses a 250 ms
 // gap (4/s) via the http client's minGapMs exception.
 //
+// DAILY PASS GUARDS (2026-11-15, after SEC answered HTTP 503 for hours on a Sunday and the job
+// was killed twice at 55 minutes, leaving two "running" rows and no stats):
+//   - floor: listing entries filed before FORM4_FLOOR are ignored (a thinly traded ticker's
+//     newest 40 reach back decades; one 2002 filing was fetched and quarantined every day);
+//   - outage stop: SEC_FORM4_MAX_CONSECUTIVE_FAILURES (default 5) failed tickers or filings in
+//     a row end the run as "failed" with its stats, in minutes instead of at the job timeout;
+//   - budget: SEC_FORM4_MAX_MINUTES (default 40) ends a slow run cleanly as "partial"; the
+//     universe is walked from a start point that moves each day (rotateByDay), so a run cut
+//     short does not skip the same tickers every time.
+//
 // RE-INGEST RULE (contract §3.2): re-processing a filing deletes and reinserts its
 // transactions rather than diffing — transactions have no natural key by design.
 //
@@ -51,10 +61,12 @@ import { createRunContext } from "../lib/run.js";
 import { getDb, closeDb } from "../lib/db.js";
 import { archiveBytes } from "../lib/archive.js";
 import { ingestSecCompanySize } from "./sec_company_size.js";
+import { FORM4_FLOOR } from "@stm/shared";
 import type { IngestRunResult } from "@stm/shared";
 
 const SOURCE = "sec_form4";
-const SEC_BASE = "https://www.sec.gov";
+// SEC_EDGAR_BASE is for tests against a local fake only (like FEC_API_BASE); never set it in a workflow.
+const SEC_BASE = (process.env.SEC_EDGAR_BASE ?? "https://www.sec.gov").replace(/\/$/, "");
 
 const DEFAULT_USER_AGENT = "spotthemoney.com ingest (Peter Fougerousse <pfouge@gmail.com>)";
 
@@ -139,16 +151,19 @@ export function parseAtomEntries(xml: string): FilingListEntry[] {
  * API level (also returns "4/A", "424B2", "425") — only filing-type EXACTLY "4" is kept.
  * With `since` (YYYY-MM-DD) the walk continues until a page reaches an older filing or runs
  * short; without it, the newest `limit` are returned from one page. `truncated` is true
- * when the page cap stopped a history walk before it reached `since`.
+ * when the page cap stopped a history walk before it reached `since`. `floor` (daily pass):
+ * entries filed before that date are ignored, so the newest-40 page of a thinly traded ticker
+ * cannot hand back a filing from years before the site's record starts.
  */
 export async function collectForm4Entries(
   fetchPage: (start: number, count: number) => Promise<string>,
-  opts: { limit: number; since?: string | null },
+  opts: { limit: number; since?: string | null; floor?: string | null },
 ): Promise<{ entries: FilingListEntry[]; truncated: boolean }> {
   const out: FilingListEntry[] = [];
   if (!opts.since) {
     for (const e of parseAtomEntries(await fetchPage(0, 40))) {
       if (e.filingType !== "4") continue; // drop 4/A, 425, etc.
+      if (opts.floor && e.filingDate < opts.floor) continue;
       out.push(e);
       if (out.length >= opts.limit) break;
     }
@@ -170,7 +185,7 @@ export async function collectForm4Entries(
 
 async function listForm4Filings(
   cik: string,
-  opts: { limit: number; since?: string | null },
+  opts: { limit: number; since?: string | null; floor?: string | null },
 ): Promise<{ entries: FilingListEntry[]; truncated: boolean }> {
   return collectForm4Entries(
     (start, count) =>
@@ -475,7 +490,30 @@ function isoDateDiffDays(later: string | null, earlier: string | null): number |
 // ──────────────────────────────────────────────────────────────────────────
 
 /** The site's history starts here (Peter, 2026-10-05). */
-export const HISTORY_FLOOR = "2025-10-01";
+export const HISTORY_FLOOR = FORM4_FLOOR;
+
+/**
+ * The same list, started from a point that moves by one stride each UTC day. A daily run that
+ * is cut short (budget or outage) then leaves a different tail unread each day instead of
+ * never reaching the same tickers.
+ */
+export function rotateByDay<T>(items: T[], now: Date = new Date()): T[] {
+  if (items.length < 2) return items.slice();
+  const day = Math.floor(now.getTime() / 86_400_000);
+  const start = (day * 211) % items.length;
+  return [...items.slice(start), ...items.slice(0, start)];
+}
+
+/** Counts failures in a row; `tripped` once `limit` is reached. Any success resets it. */
+export function outageCounter(limit: number): { fail(): void; ok(): void; readonly tripped: boolean; readonly count: number } {
+  let n = 0;
+  return {
+    fail() { n++; },
+    ok() { n = 0; },
+    get tripped() { return limit > 0 && n >= limit; },
+    get count() { return n; },
+  };
+}
 
 export interface Form4RunOptions {
   /** History pass: walk each ticker's listing back to this date (YYYY-MM-DD). */
@@ -497,7 +535,13 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
   // A history pass touches thousands of filings, so its circuit breaker sits higher.
   const ctx = createRunContext(SOURCE, history ? 300 : 50);
   const startedAt = Date.now();
-  const overBudget = () => opts.budgetMs != null && Date.now() - startedAt > opts.budgetMs;
+  // The daily pass has a budget too (see DAILY PASS GUARDS in the header); 0 switches it off.
+  const dailyBudgetMin = Number(process.env.SEC_FORM4_MAX_MINUTES ?? 40);
+  const budgetMs = opts.budgetMs ?? (Number.isFinite(dailyBudgetMin) && dailyBudgetMin > 0 ? dailyBudgetMin * 60_000 : null);
+  const overBudget = () => budgetMs != null && Date.now() - startedAt > budgetMs;
+  const outageLimit = Number(process.env.SEC_FORM4_MAX_CONSECUTIVE_FAILURES ?? 5);
+  const outage = outageCounter(Number.isFinite(outageLimit) ? outageLimit : 5);
+  let lastFailure = "";
 
   const maxFilingsPerTicker = history
     ? Number(process.env.SEC_FORM4_HISTORY_MAX_PER_TICKER ?? 2000)
@@ -515,7 +559,9 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
     .split(",")
     .map((t) => t.trim().toUpperCase())
     .filter((t) => t.length > 0);
-  const universe = Array.from(new Set([...dbTickers, ...envTickers]));
+  const allTickers = Array.from(new Set([...dbTickers, ...envTickers])).sort();
+  // History walks in a fixed order (it resumes by skipping what is stored); daily rotates.
+  const universe = history ? allTickers : rotateByDay(allTickers);
 
   if (universe.length === 0) {
     ctx.warn(
@@ -546,6 +592,8 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
 
   for (const ticker of universe) {
     if (overBudget()) { stoppedOnBudget = true; break; }
+    if (outage.tripped) break;
+    let failuresThisTicker = 0;
     try {
       const cik = resolveCik(tickerCikMap, ticker);
       if (!cik) {
@@ -558,7 +606,7 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
         continue;
       }
 
-      const listing = await listForm4Filings(cik, { limit: maxFilingsPerTicker, since: opts.since ?? null });
+      const listing = await listForm4Filings(cik, { limit: maxFilingsPerTicker, since: opts.since ?? null, floor: history ? null : FORM4_FLOOR });
       // Oldest first on a history pass, so a budget stop mid-ticker leaves no gap behind it.
       const entries = history ? [...listing.entries].reverse() : listing.entries;
       if (history && listing.truncated) tickersTruncated++;
@@ -581,6 +629,7 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
           continue;
         }
         if (overBudget()) { stoppedOnBudget = true; break; }
+        if (outage.tripped) break;
         if (!ctx.markSeen(entry.accession)) continue;
         ctx.rowsSeen++;
 
@@ -782,28 +831,36 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
             transactionsWritten++;
             ctx.rowsChanged++;
           }
+          outage.ok();
         } catch (err) {
           filingsQuarantined++;
+          failuresThisTicker++;
+          outage.fail();
+          lastFailure = err instanceof Error ? err.message : String(err);
           ctx.quarantine(
             entry.accession,
-            `per-filing failure: ${err instanceof Error ? err.message : String(err)}`,
+            `per-filing failure: ${lastFailure}`,
           );
         }
       }
 
-      if (stoppedOnBudget) break;
+      if (stoppedOnBudget || outage.tripped) break;
       tickersProcessed++;
+      if (failuresThisTicker === 0) outage.ok();
     } catch (err) {
       // One ticker's hard failure quarantines that ticker and continues (does not
-      // kill the run).
-      ctx.quarantine(ticker, `ticker-level failure: ${err instanceof Error ? err.message : String(err)}`);
+      // kill the run) — until several fail in a row, which is the SEC not answering.
+      outage.fail();
+      lastFailure = err instanceof Error ? err.message : String(err);
+      ctx.quarantine(ticker, `ticker-level failure: ${lastFailure}`);
     }
   }
+  const stoppedOnOutage = outage.tripped;
 
   // Company size (shares outstanding / public float) rides along with the daily pass: same
   // agency, a dozen requests, and it needs the companies this pass has just written. It has
   // its own source code (`sec_company_size`) for running by hand. Never fails this run.
-  if (!history) {
+  if (!history && !stoppedOnOutage && !stoppedOnBudget) {
     try {
       const size = await ingestSecCompanySize();
       ctx.extra["company_size_rows"] = size.rowsSeen;
@@ -826,22 +883,35 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
   ctx.extra["max_filings_per_ticker"] = maxFilingsPerTicker;
   if (history) {
     ctx.extra["history_since"] = opts.since;
-    ctx.extra["history_complete"] = !stoppedOnBudget && tickersTruncated === 0;
+    ctx.extra["history_complete"] = !stoppedOnBudget && !stoppedOnOutage && tickersTruncated === 0;
     ctx.extra["stopped_on_budget"] = stoppedOnBudget;
     ctx.extra["tickers_remaining"] = universe.length - tickersProcessed - tickersUnresolved;
     ctx.extra["tickers_truncated"] = tickersTruncated;
     ctx.extra["minutes"] = Math.round((Date.now() - startedAt) / 6000) / 10;
   }
 
-  // History pass: "partial" means exactly "stopped on the budget — run me again" (the backfill
-  // workflow chains on it). Unresolved tickers are a daily-pass concern and would never clear.
-  const status: IngestRunResult["status"] = history && stoppedOnBudget ? "partial" : "success";
+  if (!history) {
+    ctx.extra["stopped_on_budget"] = stoppedOnBudget;
+    ctx.extra["tickers_remaining"] = universe.length - tickersProcessed - tickersUnresolved;
+    ctx.extra["minutes"] = Math.round((Date.now() - startedAt) / 6000) / 10;
+  }
+  ctx.extra["stopped_on_outage"] = stoppedOnOutage;
+
+  // "partial" means "stopped on the budget". For the history pass that is "run me again" (the
+  // backfill workflow chains on it); for the daily pass the next day's run picks up the rest
+  // from a different start point. Unresolved tickers never make a run partial.
+  // An outage stop is a failure: the runner exits 1, the retry job tries once more, and the
+  // freshness check warns while a good run is under 48 hours old.
+  const status: IngestRunResult["status"] = stoppedOnOutage ? "failed" : stoppedOnBudget ? "partial" : "success";
 
   return {
     source: SOURCE,
     rowsSeen: ctx.rowsSeen,
     rowsChanged: ctx.rowsChanged,
     status,
+    ...(stoppedOnOutage
+      ? { error: `SEC EDGAR is not answering: ${outage.count} requests in a row failed after retries (last: ${lastFailure.slice(0, 160)}); stopped after ${tickersProcessed} of ${universe.length} tickers` }
+      : {}),
     stats: ctx.stats(),
   };
 }

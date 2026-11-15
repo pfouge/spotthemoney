@@ -11,7 +11,10 @@ export interface Fact { asOf: string; recheckBy: string; source: string; note?: 
 export const FACTS = {
   /** Has Congress restricted members' stock trading? The most time-sensitive statement on the site. */
   tradingBan: {
-    asOf: "2026-10-08", recheckBy: "2026-11-20",
+    // Re-checked 2026-11-15: congress.gov and GovTrack could not be read by the checker; press
+    // reports dated 2026-11-13 say the bill is stalled, no later Senate vote, nothing enacted, and
+    // that the question returns in the Congress that convenes in January 2027.
+    asOf: "2026-11-15", recheckBy: "2027-01-20",
     source: "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1192/vote_119_2_00253.htm",
     enacted: false,
     billName: "Stop Insider Trading Act (H.R. 7008)",

@@ -302,6 +302,8 @@ export async function ingestCitationCount(): Promise<IngestRunResult> {
       stats: {
         ...ctx.stats(),
         dry_run: true,
+        // See search_console_weekly.ts: a skip must not read as a working job.
+        skipped: "no answer-engine API key is set: nothing was asked or written",
         plan,
         estimated_requests_if_all_active: questions.length * candidateEngines.length,
       },

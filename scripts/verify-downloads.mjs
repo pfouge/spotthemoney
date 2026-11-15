@@ -18,6 +18,9 @@ const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:\/\//.test(a)) ?? "http://127.0.0.1:4321").replace(/\/$/, "");
 const sampleN = Number(args[args.indexOf("--sample") + 1]) || 20;
 const MAX_BYTES = 20 * 1024 * 1024;
+// The floor is read from the source so this check cannot drift from the site.
+import { readFileSync } from "node:fs";
+const FORM4_FLOOR = /FORM4_FLOOR = "(\d{4}-\d{2}-\d{2})"/.exec(readFileSync(new URL("../shared/src/floor.ts", import.meta.url), "utf8"))?.[1] ?? "2025-10-01";
 const failures = []; let checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) failures.push(msg); return !!cond; };
 // Decoded by hand: Response.text() silently drops the byte-order mark this script checks for.
@@ -71,6 +74,8 @@ function checkTrades(path, t) {
   ok(!(b = bad((r) => (r.trade_date && !DATE.test(r.trade_date)) || !DATE.test(r.disclosed_date))), `${path}: bad date on trade ${b?.trade_id}`);
   ok(!(b = bad((r) => r.trade_date && r.trade_date > r.disclosed_date)), `${path}: trade ${b?.trade_id} is dated after its report`);
   ok(!(b = bad((r) => !/^\d+$/.test(r.trade_id))), `${path}: bad trade_id "${b?.trade_id}"`);
+  // Form 4 filings filed before the site's record starts are stored but never shown (shared/src/floor.ts).
+  ok(!(b = bad((r) => r.source === "SEC Form 4" && r.disclosed_date < FORM4_FLOOR)), `${path}: Form 4 trade ${b?.trade_id} was disclosed ${b?.disclosed_date}, before the ${FORM4_FLOOR} floor`);
   ok(new Set(t.rows.map((r) => r.trade_id)).size === t.rows.length, `${path}: a trade_id appears twice`);
   ok(!(b = bad((r) => r.source !== "SEC Form 4" && (r.value !== "" || r.shares !== "" || r.price !== ""))), `${path}: congressional trade ${b?.trade_id} carries a value, shares or price`);
   ok(!(b = bad((r) => r.source === "SEC Form 4" && (r.amount_low !== "" || r.amount_high !== "" || r.chamber !== "" || r.party !== ""))), `${path}: Form 4 trade ${b?.trade_id} carries a range, chamber or party`);

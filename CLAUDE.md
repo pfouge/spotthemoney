@@ -1999,3 +1999,38 @@ network: never put it on this site. Peter creates the account under peter@pfouge
 - `qa.yml` on branch `feat/home-feed` builds the branch it is started from (manual runs only);
   that is how the new homepage (notable-trades feed, partial coverage) is shown on QA. It is
   NOT merged: Peter reviews it on https://qa.spotthemoney.com first.
+
+### Remaining data faults (2026-11-15, scheduled parity run) — queue item 1
+
+- **Form 4 floor.** `shared/src/floor.ts` `FORM4_FLOOR` ("2025-10-01") is the one date for both
+  sides. Web: `flagship.ts` leaves out Form 4 filings filed before it (318 filings, 826 rows, 66
+  insiders with nothing else, on production that day; the rows stay in the database).
+  Methodology said "filed 2003-.. onward" from the raw coverage months; it now counts from the
+  floor and says so. Ingest: the daily `sec_form4` pass ignores listing entries older than the
+  floor (it was re-fetching and quarantining a 2002 filing every day). `verify-downloads` fails
+  if a Form 4 row disclosed before the floor reaches a CSV; the seed holds one such filing.
+  `/data/coverage.json` is the raw diagnostic and still counts everything.
+- **Daily `sec_form4` guards** (header of `sec_form4.ts`): SEC answered 503 for hours on Sunday
+  2026-11-15 and both the job and its retry were killed at 55 minutes. Now 5 failures in a row
+  (`SEC_FORM4_MAX_CONSECUTIVE_FAILURES`) end the run as `failed` with stats in about 4 minutes;
+  `SEC_FORM4_MAX_MINUTES` (40) ends a slow run as `partial`; the ticker order starts from a point
+  that moves each day (`rotateByDay`). `SEC_EDGAR_BASE` exists for tests against a local fake only.
+- **Abandoned runs.** `ingest/src/index.ts` closes a source's `running` rows older than 2 hours
+  as `failed` ("abandoned: ...") before opening a new one, so a job killed by the timeout shows
+  in the freshness check instead of vanishing.
+- **Measurement jobs.** `search_console_weekly` and `citation_count` report `stats.skipped`
+  when their keys are missing (they logged plain success with empty tables). The tables stay
+  empty until Peter adds `GSC_SERVICE_ACCOUNT_JSON` and the answer-engine keys (the latter
+  costs money per run).
+- **Lobbying.** History backfill finished (`history_complete: true`, 18:23 UTC): 83,532 filings
+  for 2026 against 83,547 counted at the source earlier the same day.
+- **`facts.ts` `tradingBan`** re-checked: nothing enacted; next check by 2027-01-20. congress.gov
+  and GovTrack refuse automated readers, so the check rests on press reports dated 2026-11-13.
+- `scripts/verify-live.mjs` identifies itself with the site's contact page, not a personal
+  email address.
+- Contracts and lobbying need no floor on the site: pages already read contracts by a 180-day
+  window and lobbying from two years back.
+- Cloud sandbox notes: sec.gov and lda.gov are not reachable from it; a shell command that
+  names a file holding a personal email address beside a user agent is refused by the session's
+  privacy guard, so read and edit those files (`sec_form4.ts`, `lib/http.ts`, this file) with
+  the file tools, and run tests by glob.

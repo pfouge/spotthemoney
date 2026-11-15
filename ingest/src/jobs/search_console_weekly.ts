@@ -230,7 +230,9 @@ export async function ingestSearchConsoleWeekly(): Promise<IngestRunResult> {
       rowsSeen: 0,
       rowsChanged: 0,
       status: "success",
-      stats: { ...ctx.stats(), dry_run: true, plan: { week_start: week.weekStart, week_end: week.weekEnd, site_url: siteUrl } },
+      // `skipped` makes the freshness report and /data/coverage.json say NOT CONFIGURED; a bare
+      // "success" with nothing written read as a working job with an empty table.
+      stats: { ...ctx.stats(), dry_run: true, skipped: "GSC_SERVICE_ACCOUNT_JSON is not set: nothing was read or written", plan: { week_start: week.weekStart, week_end: week.weekEnd, site_url: siteUrl } },
     };
   }
 

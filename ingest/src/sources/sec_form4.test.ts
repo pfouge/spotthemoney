@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/sec_form4.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities, collectForm4Entries, guardFutureTxnDate } from "./sec_form4.js";
+import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities, collectForm4Entries, guardFutureTxnDate, rotateByDay, outageCounter } from "./sec_form4.js";
 
 const XML = `<?xml version="1.0"?>
 <ownershipDocument>
@@ -134,6 +134,44 @@ test("daily listing: one page of 40, newest N exact Form 4s only", async () => {
   assert.ok(r.entries.every((e) => e.filingType === "4"));
   assert.equal(r.entries[0]!.filingDate, "2026-10-01");
   assert.equal(r.truncated, false);
+});
+
+test("daily listing: entries filed before the floor are ignored", async () => {
+  const f = fakeEdgar(300); // 2026-10-01, 09-28, 09-25, 09-22 (4/A at index 4) ...
+  const r = await collectForm4Entries(f.fetchPage, { limit: 10, floor: "2026-09-25" });
+  assert.deepEqual(f.calls, [[0, 40]]);
+  assert.deepEqual(r.entries.map((e) => e.filingDate), ["2026-10-01", "2026-09-28", "2026-09-25"]);
+  const none = await collectForm4Entries(f.fetchPage, { limit: 10, floor: "2027-01-01" });
+  assert.equal(none.entries.length, 0);
+});
+
+test("rotateByDay: same items, a start point that moves each day, stable within a day", () => {
+  const items = Array.from({ length: 1000 }, (_, i) => `T${i}`);
+  const d1 = new Date("2026-11-15T03:00:00Z"), d1b = new Date("2026-11-15T22:00:00Z"), d2 = new Date("2026-11-16T03:00:00Z");
+  const a = rotateByDay(items, d1), b = rotateByDay(items, d2);
+  assert.deepEqual(a, rotateByDay(items, d1b));
+  assert.notEqual(a[0], b[0]);
+  assert.deepEqual([...a].sort(), [...items].sort());
+  assert.equal(a.length, 1000);
+  assert.deepEqual(rotateByDay(["X"], d1), ["X"]);
+  assert.deepEqual(rotateByDay([], d1), []);
+  // Over a month the start points spread across the list rather than clustering.
+  const starts = new Set(Array.from({ length: 30 }, (_, i) => rotateByDay(items, new Date(d1.getTime() + i * 86_400_000))[0]));
+  assert.equal(starts.size, 30);
+});
+
+test("outageCounter: trips on failures in a row, any success resets it", () => {
+  const o = outageCounter(3);
+  o.fail(); o.fail();
+  assert.equal(o.tripped, false);
+  o.ok(); o.fail(); o.fail();
+  assert.equal(o.tripped, false);
+  o.fail();
+  assert.equal(o.tripped, true);
+  assert.equal(o.count, 3);
+  const off = outageCounter(0);
+  off.fail(); off.fail(); off.fail();
+  assert.equal(off.tripped, false);
 });
 
 test("history listing: pages back to the since date and stops there", async () => {
