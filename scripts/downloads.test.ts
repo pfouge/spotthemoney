@@ -37,7 +37,7 @@ test("trade columns: a congressional row gives a range and no value; a Form 4 ro
     filings: new Map([[7, { externalId: "20031234" }], [8, { externalId: "0001-26-000001" }]]) } as unknown as Flagship;
   const base = { securityId: 9, isDerivative: false, disclosedAt: "2026-03-01", is10b51: false, assetType: "stock", filedAt: "2026-03-01", isPublished: true };
   const ptr = { ...base, id: 1, filingId: 7, personId: 1, side: "buy", code: "p", txnDate: "2026-01-01", amountLow: 1001, amountHigh: 15000, shares: null, price: null, lagDays: 59, ownerType: "spouse", source: "house_ptr", sourceUrl: "https://disclosures-clerk.house.gov/x.pdf", value: 15000 } as unknown as Txn;
-  const f4 = { ...base, id: 2, filingId: 8, personId: 2, side: "sell", code: "S", txnDate: "2026-02-27", amountLow: null, amountHigh: null, shares: 100, price: 12.345, lagDays: 2, ownerType: null, source: "sec_form4", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1/000126000001/form4.xml", value: 1234.5, jointOf: 99, isPublished: false } as unknown as Txn;
+  const f4 = { ...base, id: 2, filingId: 8, personId: 2, side: "sell", code: "S", txnDate: "2026-02-27", amountLow: null, amountHigh: null, shares: 100, price: 12.345, lagDays: 2, ownerType: null, source: "sec_form4", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1/000126000001/form4.xml", value: 1234.5, jointOf: 99, isPublished: false, ownedAfter: 900, holdingsChange: -10 } as unknown as Txn;
   const cols = tradeColumns(m);
   const [head, a, b] = parseCsv(toCsv(cols, [ptr, f4]));
   const get = (r: string[], k: string) => r[head!.indexOf(k)];
@@ -49,6 +49,7 @@ test("trade columns: a congressional row gives a range and no value; a Form 4 ro
   assert.deepEqual([get(b!, "source"), get(b!, "filer"), get(b!, "chamber"), get(b!, "owner")], ["SEC Form 4", "'=EVIL CORP OFFICER", "", ""]);
   assert.deepEqual([get(b!, "amount_low"), get(b!, "amount_high"), get(b!, "shares"), get(b!, "price"), get(b!, "value")], ["", "", "100", "12.35", "1234.5"]);
   assert.deepEqual([get(b!, "also_in_another_filing"), get(b!, "under_review"), get(b!, "late"), get(b!, "filing_id")], ["true", "true", "false", "0001-26-000001"]);
+  assert.deepEqual([get(a!, "shares_owned_after"), get(a!, "holdings_change_pct"), get(b!, "shares_owned_after"), get(b!, "holdings_change_pct")], ["", "", "900", "-10"]);
   assert.equal(get(b!, "filing_url"), "https://www.sec.gov/Archives/edgar/data/1/000126000001/");
   assert.ok(!head!.some((k) => /donor|email|address|ssn|phone/i.test(k)));
 });

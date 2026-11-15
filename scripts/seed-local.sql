@@ -93,20 +93,21 @@ insert into person_roles (person_id, role_kind, chamber, state, district, party,
 create temp table seed_f4 (accession text, person_cik text, ticker text, filed date, txn date, code text, shares numeric, price numeric, published boolean, aff boolean, after_shares numeric);
 insert into seed_f4 values
   ('0001045810-26-000101', '0001100000', 'NVDA', current_date - 2,  current_date - 4,  'S', 120000, 176.42, false, true, 75100000),
-  ('0001045810-26-000102', '0001100001', 'NVDA', current_date - 9,  current_date - 11, 'S', 30000,  171.10, false, true, 640000),
+  ('0001045810-26-000102', '0001100001', 'NVDA', current_date - 9,  current_date - 11, 'S', 30000,  171.10, false, true, 0),
   ('0001045810-26-000103', '0001100000', 'NVDA', current_date - 30, current_date - 32, 'S', 120000, 168.00, false, true, 75220000),
   ('0000789019-26-000201', '0001100002', 'MSFT', current_date - 5,  current_date - 7,  'S', 25000,  508.30, true,  true, 800000),
   ('0000789019-26-000202', '0001100002', 'MSFT', current_date - 60, current_date - 62, 'A', 40000,  0,      true,  null, 825000),
   ('0001321655-26-000301', '0001100003', 'PLTR', current_date - 3,  current_date - 4,  'P', 50000,  41.20,  false, false, 6400000),
-  ('0001321655-26-000302', '0001100005', 'PLTR', current_date - 6,  current_date - 8,  'P', 12000,  40.10,  false, false, 55000),
-  ('0001321655-26-000303', '0001100006', 'PLTR', current_date - 12, current_date - 13, 'P', 8000,   39.75,  false, false, 20000),
+  ('0001321655-26-000302', '0001100005', 'PLTR', current_date - 6,  current_date - 8,  'P', 12000,  40.10,  false, false, 12000),
+  ('0001321655-26-000303', '0001100006', 'PLTR', current_date - 12, current_date - 13, 'P', 8000,   39.75,  false, false, null),
   ('0001321655-26-000304', '0001100003', 'PLTR', current_date - 45, current_date - 55, 'S', 200000, 44.00,  false, true, 6350000),
   ('0000936468-26-000401', '0001100004', 'LMT',  current_date - 1,  current_date - 3,  'P', 3000,   462.15, false, false, 120000),
   ('0000936468-26-000402', '0001100004', 'LMT',  current_date - 90, current_date - 92, 'M', 10000,  0,      true,  null, 117000);
 insert into filings (source, external_id, filer_person_id, filer_company_id, filed_at, source_url, confidence, review, is_published, payload)
 select 'sec_form4', f.accession, p.id, c.id, f.filed::timestamptz,
        'https://www.sec.gov/Archives/edgar/data/' || ltrim(c.cik, '0') || '/' || replace(f.accession, '-', '') || '/wk-form4_' || replace(f.accession, '-', '') || '.xml',
-       1.0, 'auto_approved', f.published, jsonb_build_object('accession', f.accession, 'seed', true)
+       1.0, 'auto_approved', f.published, jsonb_build_object('accession', f.accession, 'seed', true,
+       'transactions', jsonb_build_array(jsonb_build_object('shares', f.shares, 'sharesOwnedAfter', f.after_shares)))
   from seed_f4 f join people p on p.cik = f.person_cik join companies c on c.primary_ticker = f.ticker;
 insert into transactions (filing_id, person_id, security_id, side, txn_code, is_derivative, txn_date, disclosed_at, shares, price, disclosure_lag_days, confidence, review, is_10b5_1, owner_type, asset_type)
 select fi.id, fi.filer_person_id, s.id,

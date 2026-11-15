@@ -50,13 +50,13 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-10-10",
+    "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "56931901139ea42c",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "2b180221869230af",
-      "web/src/lib/downloads.ts": "0e86fbe2a0ff27fe",
+      "web/src/lib/downloads.ts": "a10fd7aeeb07dcd2",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "670a16ece37ab883",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"
@@ -78,8 +78,8 @@
   "how-to-read-a-congressional-trade-report": {
     "reviewed": "2026-11-15",
     "covers": {
-      "web/src/components/TxnTable.astro": "25b9b55b3f4c5db7",
-      "ingest/py/senate_import.py": "b2717cb2bd239da8",
+      "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3",
+      "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
       "web/src/pages/congress/[slug].astro": "5ed585a6b83326aa"
     }
@@ -135,14 +135,14 @@
     "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/components/TxnTable.astro": "25b9b55b3f4c5db7"
+      "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3"
     }
   },
   "ten-percent-owners-and-joint-filings": {
     "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "25b9b55b3f4c5db7"
+      "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -167,7 +167,7 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-10-10",
+    "reviewed": "2026-11-15",
     "covers": {
       "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11",
       "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",

@@ -10,6 +10,7 @@ import Empty from "./Empty.astro";
 import { tradeSentence } from "../lib/sharetext";
 import { flagHref } from "../lib/links";
 import { dayKey, numKey } from "../lib/tablesort";
+import { changeLabel, changeSortKey } from "../lib/holdings";
 
 interface Props {
   model: Flagship;
@@ -41,6 +42,10 @@ const flags = (t: Txn) => {
 };
 // Column sorting (scripts/tablesort.ts): sortable headers carry a button, and each body cell in a
 // sortable column carries its machine-sortable value in `data-v` (lib/tablesort.ts).
+// "Held after" / "Change" (lib/holdings.ts): shown only when some row in this table has the data
+// (insider rows); congressional tables never do.
+const showHoldings = rows.some((t) => t.ownedAfter != null);
+const changeClass = (c: Txn["holdingsChange"]) => (c === "new" || (typeof c === "number" && c > 0) ? "pos" : typeof c === "number" && c < 0 ? "neg" : "");
 const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
 ---
 {rows.length === 0 ? (
@@ -59,6 +64,8 @@ const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by lag" aria-label="Sort by lag">Lag<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by shares" aria-label="Sort by shares">Shares<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by price" aria-label="Sort by price">Price<span class="arr" aria-hidden="true"></span></button></th>
+          {showHoldings && <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Shares held after this transaction, as reported" aria-label="Sort by held after">Held after<span class="arr" aria-hidden="true"></span></button></th>}
+          {showHoldings && <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Change in the insider's reported holdings from this transaction" aria-label="Sort by change in holdings">Change<span class="arr" aria-hidden="true"></span></button></th>}
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" title="Sort by value" aria-label="Sort by value">Value<span class="arr" aria-hidden="true"></span></button></th>
           <th>Flags</th>
           <th>Source</th>
@@ -86,6 +93,8 @@ const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
               <td class="num" data-v={numKey(t.lagDays)}>{t.lagDays == null ? "—" : `${t.lagDays}d`}</td>
               <td class="num" data-v={numKey(t.shares)}>{t.shares != null ? num(t.shares) : "—"}</td>
               <td class="num" data-v={numKey(t.price != null && t.price > 0 ? t.price : null)}>{t.price != null && t.price > 0 ? money(t.price, { compact: false }) : "—"}</td>
+              {showHoldings && <td class="num" data-v={numKey(t.ownedAfter)}>{t.ownedAfter != null ? num(t.ownedAfter) : "—"}</td>}
+              {showHoldings && <td class={`num ${changeClass(t.holdingsChange)}`} data-v={numKey(changeSortKey(t.holdingsChange ?? null))}>{changeLabel(t.holdingsChange ?? null)}</td>}
               <td class="num strong" data-v={valueKey(t)}>{amountLabel(t)}</td>
               <td class="flags">{flags(t).map((f) => { const to = flagHref(f, t.source); const cls = `flag ${f.replace(/\W+/g, "-")}`; return to ? <a class={cls} href={to} title="What this flag means">{f}</a> : <span class={cls}>{f}</span>; })}</td>
               <td>{href ? <a href={href} rel="noopener nofollow" target="_blank">{sourceLabel(t)} ↗</a> : sourceLabel(t)}</td>

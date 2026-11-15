@@ -156,7 +156,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
     const sample = { title: "Late congressional trade disclosures", url: "https://spotthemoney.com/guides/late-congressional-trade-disclosures/", updated: U, accessed: U };
     const examples = CITE_STYLES.map((st) => [st.label, citation(st.key, sample).html]);
     return {
-      slug: "how-to-cite-and-reuse", group: "site", updated: "2026-10-09",
+      slug: "how-to-cite-and-reuse", group: "site", updated: "2026-11-15",
       title: "How to cite and reuse Spot the Money",
       seoTitle: ["How to Cite and Reuse Spot the Money Data", "How to Cite Spot the Money"],
       description: ["How to credit Spot the Money in an article, paper or post, how to cite the original government filing, and the legal limits on reusing congressional and FEC records.", "How to credit Spot the Money, cite the original filing, and stay within the legal limits on reusing the records."],
@@ -202,7 +202,7 @@ ${table(["Style", "Example"], examples)}
 <ul>
 <li><strong>One member or one ticker.</strong> Use the "Download CSV" link above the trade table on a member's page or a stock's page. A member's file holds every trade on record, including those beyond the newest 200 the page lists.</li>
 <li><strong>Everything at once.</strong> The downloads page has one file with every congressional trade, insider transactions cut into one file per quarter, lobbying filings per quarter, federal contract awards, the roster of members with their committee seats, and Treasury and I bond rates.</li>
-<li><strong>What the columns mean.</strong> The downloads page explains every column. Congressional rows carry a low and a high amount, never an exact value; Form 4 rows carry shares, price and value.</li>
+<li><strong>What the columns mean.</strong> The downloads page explains every column. Congressional rows carry a low and a high amount, never an exact value; Form 4 rows carry shares, price and value, and the shares the insider owns afterwards (<code>shares_owned_after</code>) with the change in that holding in percent (<code>holdings_change_pct</code>).</li>
 </ul>
 <p>The files are rebuilt whenever the site is, usually once a day, and their addresses do not change, so a script can fetch the same address each day. Please fetch a file at most once a day and do not crawl the pages instead.</p>
 <p>There is no file of campaign donations: this site holds a recent sample of receipts and never lists individual donors. The limits on reuse described above apply to downloaded files exactly as they do to the pages; the files with congressional trades fall under 5 U.S.C. § 13107(c). For anything the files do not cover, write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>` },
