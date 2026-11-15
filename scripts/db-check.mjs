@@ -37,18 +37,20 @@ try {
 
   // Flagship tables (2026-09-27): what the pages will render from.
   const [c] = await sql`
-    select (select count(*) from people) as people,
-           (select count(*) from people p where exists (select 1 from person_roles r where r.person_id = p.id and r.role_kind = 'congress')) as members,
-           (select count(*) from companies) as companies, (select count(*) from securities where is_active) as securities,
-           (select count(*) from filings) as filings, (select count(*) filter (where is_published) from filings) as published,
+    select (select count(*) from site_people) as people,
+           (select count(*) from site_people p where exists (select 1 from person_roles r where r.person_id = p.id and r.role_kind = 'congress')) as members,
+           (select count(*) from site_companies) as companies, (select count(*) from site_securities) as securities,
+           (select count(*) from site_filings) as filings, (select count(*) filter (where is_published) from site_filings) as published,
            (select count(*) from transactions) as txns, (select count(*) from lobbying) as lobbying,
            (select count(*) from contracts) as contracts, (select count(*) from committees) as committees,
            (select count(*) from donations) as donations, (select count(*) from raw_documents) as raw_docs,
            (select count(*) filter (where storage_bucket is not null) from raw_documents) as raw_stored,
            (select count(*) from social_posts) as social_posts`.catch(() => [null]);
   if (c) console.log("\nflagship:", JSON.stringify(c));
-  const bySource = await sql`select source::text as source, count(*)::int as filings, count(*) filter (where is_published)::int as published, max(filed_at)::date::text as latest from filings group by 1 order by 1`.catch(() => []);
+  const bySource = await sql`select source::text as source, count(*)::int as filings, count(*) filter (where is_published)::int as published, max(filed_at)::date::text as latest from site_filings group by 1 order by 1`.catch(() => []);
   for (const r of bySource) console.log(`  ${r.source.padEnd(12)} ${String(r.filings).padStart(6)} filings, ${String(r.published).padStart(6)} published, latest ${r.latest}`);
+  const [mk] = await sql`select count(*)::int as n from filings where source = 'sec_form4' and scope = 'market'`.catch(() => [null]);
+  if (mk) console.log(`  market-scope Form 4 filings (kept off the site): ${mk.n}`);
 } finally {
   await sql.end();
 }

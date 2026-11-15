@@ -27,9 +27,9 @@
     }
   },
   "form-4-transaction-codes": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-11-15",
     "covers": {
-      "ingest/src/sources/sec_form4.ts#codeToSide": "a70d9d73ad943dd3",
+      "ingest/src/sources/sec_form4.ts#codeToSide": "fafd70cd6d81dfe4",
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/flagship.ts#sideLabel": "a6bf1853f54b5be4"
     }
@@ -39,7 +39,7 @@
     "covers": {
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "ingest/py/congress_ptr_job.py": "5557b731f74d3c8b",
-      "web/src/lib/coverage.ts": "848dc9f0b01c472b"
+      "web/src/lib/coverage.ts": "2ec70049de78f292"
     }
   },
   "how-i-bond-rates-work": {
@@ -164,7 +164,7 @@
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "shared/src/tradevalue.ts": "fa250c11636cb867",
-      "web/src/lib/coverage.ts": "848dc9f0b01c472b",
+      "web/src/lib/coverage.ts": "2ec70049de78f292",
       "web/src/pages/terms.astro": "4cc9d3c134940d24"
     }
   },

@@ -17,6 +17,7 @@ import { ingestUsaspending } from "./sources/usaspending.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
 import { ingestFecScheduleAHistory } from "./sources/fec_schedule_a_history.js";
 import { ingestSecForm4, ingestSecForm4History } from "./sources/sec_form4.js";
+import { ingestSecForm4Bulk } from "./sources/sec_form4_bulk.js";
 import { ingestSecCompanySize } from "./sources/sec_company_size.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
@@ -48,6 +49,7 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   sec_company_size: { label: "SEC company size (shares outstanding, public float)", cadence: "daily", daily: true, run: ingestSecCompanySize },
   fec_schedule_a_history: { label: "FEC Schedule A history pass (back to 2025-10-01, capped per committee)", cadence: "on_demand", daily: false, run: ingestFecScheduleAHistory },
   sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: () => ingestSecForm4() },
+  sec_form4_bulk: { label: "SEC Insider Transactions Data Sets, market-wide Form 4 (kept off the site)", cadence: "on_demand", daily: false, run: ingestSecForm4Bulk },
   sec_form4_history: { label: "SEC EDGAR Form 4 history pass (back to 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSecForm4History },
   twelvedata_eod: { label: "Twelve Data EOD Prices", cadence: "daily", daily: true, run: ingestTwelvedataEod },
   x_daily: { label: "Daily X thread of notable filings", cadence: "daily", daily: false, run: runXDaily },

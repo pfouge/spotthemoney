@@ -43,7 +43,7 @@ const CHECKS = [
   { code: "congress_ptr", label: "House PTRs (Congress trades)", runDays: 2, dataDays: 14,
     newest: `select max(filed_at)::date from filings where source = 'house_ptr'` },
   { code: "sec_form4", label: "SEC Form 4 (insider trades)", runDays: 2, dataDays: 6,
-    newest: `select max(filed_at)::date from filings where source = 'sec_form4'` },
+    newest: `select max(filed_at)::date from filings where source = 'sec_form4' and scope = 'tracked'` },
   { code: "senate_lda", label: "Senate lobbying filings", runDays: 2, dataDays: 7,
     newest: `select max(posted_at)::date from lobbying` },
   // Both feeds carry future-dated records (planned contract actions, filer typos); without the
@@ -102,15 +102,15 @@ try {
 
   // Classification checks: things that ingest fine and still never reach a filter.
   const [pub] = await sql`
-    select count(*)::int as n from filings f join publish_gates g on g.source = f.source
+    select count(*)::int as n from site_filings f join publish_gates g on g.source = f.source
      where not f.is_published and f.review in ('auto_approved','approved') and f.confidence >= 0.9`;
-  const [held] = await sql`select count(*)::int as n from filings where not is_published and (review = 'pending' or confidence < 0.9)`;
+  const [held] = await sql`select count(*)::int as n from site_filings where not is_published and (review = 'pending' or confidence < 0.9)`;
   const [noParty] = await sql`
-    select count(distinct p.id)::int as n from people p
+    select count(distinct p.id)::int as n from site_people p
       join person_roles r on r.person_id = p.id and r.role_kind = 'congress'
      where r.party is null and exists (select 1 from transactions t where t.person_id = p.id)`;
   const [noTicker] = await sql`
-    select count(*)::int as n from transactions t join filings f on f.id = t.filing_id
+    select count(*)::int as n from transactions t join site_filings f on f.id = t.filing_id
      where f.source in ('house_ptr','senate_ptr') and t.security_id is null`;
   const extra = [
     { check: "Publishable filings still unpublished", n: pub.n, fail: pub.n > 0, note: "should be 0 after every run (publish_approved_filings)" },
