@@ -74,7 +74,7 @@ ${table(["Type", "What it is"], [
   (c) => {
     const l = c.facts.ldaThresholds;
     return {
-      slug: "lobbying-disclosure-reports", group: "washington", updated: U,
+      slug: "lobbying-disclosure-reports", group: "washington", updated: "2026-11-15",
       title: "Lobbying disclosure reports",
       seoTitle: ["Lobbying Disclosure Reports Explained (LD-2 Filings)", "Lobbying Disclosure Reports Explained"],
       description: ["Lobbyists must report who pays them, how much, and which issues they work on, every quarter. How to read a lobbying report and what it leaves out.", "Lobbyists report clients, amounts and issues every quarter. How to read a lobbying report and what it leaves out."],
@@ -106,7 +106,8 @@ ${table(["Type", "What it is"], [
 <p>Amended reports are another trap, since an amendment repeats the whole filing. This site keeps one row per registrant, client and period, the most recently posted, so a corrected report replaces the original and is not added to it.</p>` },
         { id: "here", h: "What does this site show?", html: `
 <p>Filings posted since October 2025, read from the official ${ext("https://lda.gov/system/public/", "lobbying disclosure site")}: the largest clients and lobbying firms by reported amount, the newest filings, and lobbying by issue. There are ${c.counts.lobbying} filings on the <a href="/lobbying/">lobbying page</a> today, each linked to its record. Company pages show lobbying filed under the same name as the company.</p>
-<p>Names are matched exactly as written, so a subsidiary that lobbies under its own name is not folded into its parent.</p>` },
+<p>Names are matched exactly as written, so a subsidiary that lobbies under its own name is not folded into its parent.</p>
+<p>New filings are added once a day, newest first. If a daily run has to stop before it reaches filings it already has, it notes the gap, and the next run closes it, so a filing can occasionally appear a day late but should not stay missing.</p>` },
       ],
       faqs: [
         { q: "What is an LD-2 lobbying report?", a: "An LD-2 is the quarterly report a lobbying firm or an organisation with in-house lobbyists files under the Lobbying Disclosure Act. It names the client, the amount, the issues and the institutions contacted.", on: ["washington"] },
@@ -132,7 +133,7 @@ ${table(["Type", "What it is"], [
   (c) => {
     const k = c.facts.contractLag;
     return {
-      slug: "federal-contracts-usaspending", group: "washington", updated: U,
+      slug: "federal-contracts-usaspending", group: "washington", updated: "2026-11-15",
       title: "Federal contracts: how to read USAspending data",
       seoTitle: ["Federal Contracts Explained: How to Read USAspending", "How to Read USAspending Contract Data"],
       description: ["USAspending.gov publishes every federal contract award. What award value, obligation and outlay mean, why Defense data runs 90 days behind, and what is shown here.", "What USAspending contract records show: award value, obligations, outlays, and why Defense data runs behind."],
@@ -163,7 +164,8 @@ ${table(["Term", "Meaning"], [
 <p>Records are also revised. An award's value changes as options are exercised or work is cancelled, so the same contract can show different figures on different days.</p>` },
         { id: "here", h: "What does this site show?", html: `
 <p>Two sets of awards that started in the last 180 days: the largest awards from each month, and awards to companies whose shares this site tracks. That is ${c.counts.contracts} awards on the <a href="/contracts/">contracts page</a> today. It is not every federal contract; there are millions of those a year.</p>
-<p>Companies are matched to awards by exact name. A contract won by a subsidiary under a different name will not appear on its parent's page, and a company page with no contracts does not mean the company has none.</p>` },
+<p>Companies are matched to awards by exact name. A contract won by a subsidiary under a different name will not appear on its parent's page, and a company page with no contracts does not mean the company has none.</p>
+<p>The newest two months of awards are refreshed every day, and the whole window is re-read about once a week to pick up changes to older awards, so a recently revised figure can take up to a week to show. An award whose start date is later than today is left out.</p>` },
         { id: "reading", h: "Does a contract mean a company has political influence?", html: `
 <p>The record cannot tell you. Contracts are awarded by agency contracting officers under detailed procurement rules, and large contractors lobby and donate as a matter of routine. Seeing a company's contracts, lobbying and its executives' trades on one page shows that these things coexist. It does not show that one caused another, and this site does not suggest it.</p>` },
       ],
