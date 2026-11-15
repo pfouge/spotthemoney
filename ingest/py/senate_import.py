@@ -331,7 +331,7 @@ def _process_one(conn, Json, job, senate_client, f: dict[str, Any], ctx, *, dry_
             d["ticker"] = clean_ticker(d.get("ticker"))
             security_id = job.resolve_security(conn, d.get("ticker"), d.get("asset"), job_asset_type(d.get("asset_type")))
             d["asset_type"] = job_asset_type(d.get("asset_type"))
-            row = job.map_transaction_record(d, filing_id, person_id, security_id, conf, filed_at=filed)
+            row = job.map_transaction_record(d, filing_id, person_id, security_id, conf, filed_at=filed, ctx=ctx)
             if report_key(f.get("title"))[1] > 0:
                 # An amendment is dated when the correction was filed, not when the trade was first
                 # disclosed — a lag measured to it would mark the senator late by months or years.

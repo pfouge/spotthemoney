@@ -254,9 +254,19 @@ def lag_days(disclosed: Optional[str], txn: Optional[str]) -> Optional[int]:
         return None
 
 
+def guard_future_txn_date(txn: Optional[str], disclosed: Optional[str]) -> bool:
+    """True when a trade date is later than the date it was disclosed — impossible, so a typo
+    in the filing (found 2026-11-15: a House row dated 2026-12-26 on a February filing)."""
+    try:
+        return bool(txn and disclosed and dt.date.fromisoformat(txn) > dt.date.fromisoformat(disclosed))
+    except ValueError:
+        return False
+
+
 def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Optional[int],
                            security_id: Optional[int], conf: dict[str, Any],
-                           filed_at: Optional[str] = None) -> dict[str, Any]:
+                           filed_at: Optional[str] = None,
+                           ctx: Optional["RunContext"] = None) -> dict[str, Any]:
     """One IIF TransactionRecord (dict) → one `transactions` row (contract §4.1).
 
     `disclosed_at` is the date the trade became public = the PTR's filing date (`filed_at`,
@@ -267,6 +277,12 @@ def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Op
     """
     side, code = map_txn_side(record.get("transaction_type"))
     disclosed = filed_at or record.get("disclosure_date")
+    txn_date = record.get("transaction_date")
+    if guard_future_txn_date(txn_date, disclosed):
+        # Keep the row, but do not store an impossible date (and no lag measured from it).
+        txn_date = None
+        if ctx is not None:
+            ctx.bump("future_dates_nulled")
     return {
         "filing_id": filing_id,
         "person_id": person_id,
@@ -274,11 +290,11 @@ def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Op
         "side": side,
         "txn_code": code,
         "is_derivative": (record.get("asset_type") == "option") or None,
-        "txn_date": record.get("transaction_date"),
+        "txn_date": txn_date,
         "disclosed_at": disclosed,
         "amount_low": record.get("amount_min"),
         "amount_high": record.get("amount_max"),
-        "disclosure_lag_days": lag_days(disclosed, record.get("transaction_date")),
+        "disclosure_lag_days": lag_days(disclosed, txn_date),
         "confidence": conf["confidence"],
         "review": conf["review"],
         "owner_type": record.get("owner") or "self",
@@ -517,7 +533,7 @@ def process_house_filing(conn, Json, house, f, ctx: RunContext, *, dry_run: bool
             d = r.to_dict()
             security_id = resolve_security(conn, d.get("ticker"), d.get("asset"), d.get("asset_type"))
             rows.append(map_transaction_record(d, filing_id, person_id, security_id, conf,
-                                               filed_at=f.filing_date))
+                                               filed_at=f.filing_date, ctx=ctx))
     written = reingest_transactions(conn, filing_id, rows)
     ctx.rows_changed += written + 1
     if conf["defer_transactions_to_ocr"]:
