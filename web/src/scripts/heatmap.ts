@@ -159,6 +159,9 @@ export function initHeatmap(root: HTMLElement): void {
     if (state.cap !== "all") h.set("cap", state.cap);
     if (state.side !== "tickers") h.set("side", state.side);
     if (state.chart !== DEFAULTS.chart || [...h.keys()].length) { h.set("chart", state.chart); h.set("w", String(state.window)); h.set("view", state.view); } // a saved view always says all three
+    // Keys that are not the map's own (the home feed's nw / np / nq / ns) stay as they are.
+    const mine = new Set(["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap", "w", "chart"]);
+    for (const [k, v] of new URLSearchParams(location.hash.slice(1))) if (!mine.has(k)) h.set(k, v);
     const s = h.toString(); history.replaceState(null, "", s ? "#" + s : location.pathname + location.search);
   };
 

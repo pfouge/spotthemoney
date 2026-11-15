@@ -66,10 +66,12 @@ jobs:
       ASTRO_TELEMETRY_DISABLED: "1"
       WRANGLER_SEND_METRICS: "false"
     steps:
-      # Always main, whatever started this run: the pending articles are laid over it below.
+      # main, with the pending articles laid over it below. One exception: Actions > qa > Run
+      # workflow started from another branch builds THAT branch, so the repo owner can look at an
+      # unmerged code change on the QA site. Only people with write access can start a run.
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref_name || 'main' }}
 
       # Open pull requests against main from this repository (drafts included), oldest first; the
       # article, author and image files of each are copied over main. Writes pending.json.
