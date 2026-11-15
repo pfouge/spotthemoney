@@ -2,7 +2,7 @@
   "campaign-donations-fec-data": {
     "reviewed": "2026-11-15",
     "covers": {
-      "web/src/pages/donations/index.astro": "c801f2ab895990d2",
+      "web/src/pages/donations/index.astro": "ffa79d5bc4a5dd87",
       "ingest/src/sources/fec_committees.ts": "cc44ff73d4057cf9"
     }
   },
@@ -23,7 +23,7 @@
     "reviewed": "2026-11-15",
     "covers": {
       "ingest/src/sources/usaspending.ts": "daaccb07f23055b9",
-      "web/src/pages/contracts/index.astro": "bf1d644f43d9dde4"
+      "web/src/pages/contracts/index.astro": "b53d29e8d7b68d34"
     }
   },
   "form-4-transaction-codes": {
@@ -128,7 +128,7 @@
     "reviewed": "2026-11-15",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
-      "web/src/pages/lobbying/index.astro": "7b763446a31e6e22"
+      "web/src/pages/lobbying/index.astro": "1617622db3d661cb"
     }
   },
   "rule-10b5-1-trading-plans": {
@@ -148,7 +148,7 @@
   "tips-real-yields-and-breakeven-inflation": {
     "reviewed": "2026-11-15",
     "covers": {
-      "web/src/pages/rates/tips.astro": "ab7a634cff855a87"
+      "web/src/pages/rates/tips.astro": "9cc8ad6cb088cd02"
     }
   },
   "treasury-yield-curve-explained": {
