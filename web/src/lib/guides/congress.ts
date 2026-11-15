@@ -238,7 +238,7 @@ ${table(["Range on the form", "Top of range used in totals here"], [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "house-and-senate-disclosure-differences", group: "congress", updated: U,
+    slug: "house-and-senate-disclosure-differences", group: "congress", updated: "2026-11-15",
     title: "House and Senate disclosures: how they differ",
     seoTitle: ["House vs Senate Stock Trade Disclosures: The Differences", "House vs Senate Stock Disclosures"],
     description: ["House and Senate members follow the same trade-reporting law but file in different systems. How the two differ, and how each reaches this site.", "House and Senate members follow the same law but file trades in different systems. How the two differ."],
@@ -266,6 +266,8 @@ ${table(["", "House", "Senate"], [
 <p>${c.hasSenate ? "Senate reports are on the site now." : "No Senate report has been loaded yet."} The <a href="/methodology/#coverage">coverage section</a> shows how many reports from each chamber are on file and through what date. If you need the very latest Senate filing, check the Senate's own search.</p>` },
       { id: "paper", h: "What about paper filings?", html: `
 <p>Both chambers still accept some reports on paper. These are published as scanned images with no readable text. This site stores them but shows no trades from them until a person has typed them in${c.heldPaper ? `; ${c.heldPaper} are waiting now` : ""}. A member who files on paper will therefore look less active here than their filings show.</p>` },
+      { id: "impossible-dates", h: "What if a filing has a trade date that cannot be right?", html: `
+<p>Now and then a report carries a trade date later than the day it was filed, which cannot be right. In either chamber, this site keeps the trade but leaves its trade date blank, and does not work out a reporting delay from it. The disclosure date, which is the filing date, is still shown.</p>` },
       { id: "former", h: "What happens when a member leaves office?", html: `
 <p>Their reports stay on this site, attached to their own page, with the dates of their term. A seat that changes hands does not change who filed what: reports filed by a former member are never moved to their successor.</p>` },
     ],

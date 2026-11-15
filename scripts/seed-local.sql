@@ -158,4 +158,11 @@ insert into donations (committee_id, donor_name, donor_employer, donor_state, am
 select c.id, 'WITHHELD', e, st, a, current_date - d, 'seed-' || row_number() over ()
   from committees c, (values ('Self-employed','TX',2500,3),('Retired','CA',1000,10),('Microsoft','WA',3300,15),('Lockheed Martin','MD',2900,22),('Not employed','OH',250,40)) as t(e, st, a, d);
 
+-- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
+-- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
+-- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the
+-- trade map and Share buttons had no published rows to draw. Filings that production would hold
+-- stay held: the scanned PTR (confidence 0.3, needs_ocr).
+select publish_approved_filings();
+
 commit;

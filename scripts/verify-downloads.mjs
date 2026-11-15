@@ -122,7 +122,7 @@ for (const mrow of withTrades.filter((_, i) => i % step === 0).slice(0, sampleN)
   checkTrades(filePath, t);
   if (!t) continue;
   const ids = new Set(t.rows.map((r) => r.trade_id));
-  const onPage = [...page.text.matchAll(/<tr id="t(\d+)"/g)].map((m) => m[1]);
+  const onPage = [...page.text.matchAll(/<tr\b[^>]*\bid="t(\d+)"/g)].map((m) => m[1]);
   ok(onPage.length > 0 && onPage.every((id) => ids.has(id)), `${filePath}: a trade shown on ${pagePath} is missing from the file`);
   ok(t.rows.every((r) => r.page_url === mrow.page_url), `${filePath}: holds a row for another filer`);
   ok(int(mrow.trades_on_record) === total, `congress-members.csv says ${mrow.trades_on_record} trades for ${mrow.member}, the page says ${total}`);
@@ -137,14 +137,14 @@ let stockFiles = 0;
 for (const tk of tickers.filter((_, i) => i % tstep === 0).slice(0, sampleN)) {
   const page = await get(`/stocks/${tk}/`);
   const filePath = `/downloads/stocks/${tk}.csv`;
-  if (!page.text.includes(`href="${filePath}"`)) { ok(!/<tr id="t\d+"/.test(page.text), `/stocks/${tk}/ shows trades but has no download link`); continue; }
+  if (!page.text.includes(`href="${filePath}"`)) { ok(!/<tr\b[^>]*\bid="t\d+"/.test(page.text), `/stocks/${tk}/ shows trades but has no download link`); continue; }
   stockFiles++;
   const t = await csv(filePath);
   checkTrades(filePath, t);
   if (!t) continue;
   ok(t.rows.length > 0 && t.rows.every((r) => r.ticker.toLowerCase() === tk), `${filePath}: holds a row for another ticker`);
   const ids = new Set(t.rows.map((r) => r.trade_id));
-  ok([...page.text.matchAll(/<tr id="t(\d+)"/g)].every((m) => ids.has(m[1])), `${filePath}: a trade shown on /stocks/${tk}/ is missing from the file`);
+  ok([...page.text.matchAll(/<tr\b[^>]*\bid="t(\d+)"/g)].every((m) => ids.has(m[1])), `${filePath}: a trade shown on /stocks/${tk}/ is missing from the file`);
 }
 ok(stockFiles > 0 || tickers.length === 0, "no sampled ticker page offers a download");
 

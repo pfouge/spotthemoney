@@ -1923,3 +1923,38 @@ Live 2026-11-01 as 1de5782 (deploy 41363903954 green; /writing/ empty state, noi
 QA copy for article pull requests (2026-11-01): `.github/workflows/qa.yml` ("qa") runs on every pull request to `main` that touches `web/src/content/**` (same-repo branches only; `workflow_dispatch` with `pr_number` re-runs one). It builds the merge of the PR like `deploy.yml` (no migrations) with `PUBLIC_SHOW_DRAFTS=1`, rewrites the generated `wrangler.json` to Worker `spotthemoney-qa` on the custom domain `qa.spotthemoney.com`, adds `X-Robots-Tag: noindex, nofollow` to `_headers` and a disallow-all `robots.txt`, deploys, and keeps one comment (`<!-- stm-qa -->`) on the PR with a QA link per changed article. Concurrency group `qa`, so the last PR built is what QA shows. Production Worker, routes and `deploy.yml` are untouched. Documented for contributors in `PUBLISHING-ARTICLES.md` ("QA").
 
 Pending articles in one QA, one-click publish (2026-11-01): `qa.yml` now builds main plus EVERY open article pull request (same-repo branches, drafts included), not just the latest. `scripts/pending-articles.sh qa|publish` lists the open PRs against main and copies ONLY files under `web/src/content/articles/`, `web/src/content/authors/` and `web/public/writing/` from each PR head over main (never code, workflows or packages; symlinks skipped; oldest PR first, newer wins on the same file). qa.yml triggers: PR opened/synchronize/reopened/ready_for_review/closed, push to main and `workflow_dispatch`, all on the content paths; concurrency group `qa` cancels older runs, so the newest run is the whole picture. `https://qa.spotthemoney.com/writing/` lists every article not live yet, and each included PR keeps its `<!-- stm-qa -->` comment (article links, main + PR head commit, "QA copy only, not indexed.", how to publish). A failed build comments on the PR that triggered the run. New `.github/workflows/publish.yml` ("publish", `workflow_dispatch` only, input `dry_run`): job `merge` qualifies only PRs whose every changed file is an article, author or image file (others are listed as skipped, never merged), builds the combined tree, runs `npm run check:articles` and a full build (any failure: nothing is merged), then marks drafts ready and squash-merges oldest first with `--delete-branch`, and writes a job summary (merged, skipped with reasons, merged articles still `draft: true` or future-dated); job `deploy` calls `deploy.yml` with the three secrets passed explicitly (merges by the workflow token do not trigger the push workflows); job `qa` runs `gh workflow run qa.yml` for the same reason. Contributor view in `PUBLISHING-ARTICLES.md` ("QA", "Publishing").
+
+## SESSION STATE 2026-11-15 — parity project starts shipping
+
+Peter's brief: bring the site to feature parity with every comparable tracker, then past it; Claude
+makes the decisions and ships on its own (merges, deploys, tested migrations); the homepage redesign
+is decided with Peter by Q&A. **The plan, decisions, queue and change notes live in the claude.ai
+Project "spotthemoney.com"**: `claude/parity-state.md` (resume from here), `claude/parity-changelog.md`,
+`claude/parity-phase3-gaps.md` (41-row gap list and build order), phase 1 and 2 docs. Spreadsheets are
+in Peter's folder under `Claude outputs/parity/`.
+
+Shipped today (details in the changelog):
+- PR #4 `3206bb6` — `senate_lda` daily pass pages until it reaches stored filings or `LDA_MAX_MINUTES`
+  (15); an unfinished run is `partial` with `gap_possible` and the next run closes the gap. Cause:
+  the 1,500-a-run cap dropped ~14,000 filings around the 20 October deadline (69,404 held vs 83,547
+  at the source); history pass re-run to backfill. Trade dates later than the filing date are stored
+  as NULL at ingest (`stats.future_dates_nulled`).
+- PR #5 `37a7131` — sortable trade tables (`lib/tablesort.ts`, `scripts/tablesort.ts`, `TxnTable.astro`).
+- PR #6 `1d824a7` — "Held after" and "Change" columns on insider rows (`lib/holdings.ts`), CSV columns
+  `shares_owned_after`, `holdings_change_pct`, methodology `#holdings`.
+- This PR — guides brought back in step; `verify-downloads` now matches under-review rows
+  (`<tr class="review" id="t…">`); `scripts/seed-local.sql` ends with `select publish_approved_filings();`
+  so the seeded site has published rows like production. With that, every verifier is green on the
+  local seed build.
+
+Working notes for the next lead:
+- From a cloud sandbox: `gh run list` and `gh api` (REST) work; GraphQL-backed `gh` commands do not.
+  Dispatch with `gh api -X POST repos/pfouge/spotthemoney/actions/workflows/<file>/dispatches`.
+- The PR `build` check finishes in ~25 s and is not a data build; the gate is the local build, unit
+  tests and verifiers, then `deploy.yml`.
+- Local environment: Postgres 16 on a spare port, all migrations, `scripts/seed-local.sql` (needs an
+  `auth.jwt()` stub for 0017), build, serve `web/dist/client`, run the verifiers with system Chrome
+  through a no-sandbox wrapper when Playwright cannot download its own browser.
+- `facts.ts` `tradingBan` is due for re-check by 2026-11-20.
+- Next in the queue: market-wide Form 4 from the SEC bulk Insider Transactions Data Sets (free
+  Workers plan only — limit which insiders get a page), then the homepage notable-trades feed.

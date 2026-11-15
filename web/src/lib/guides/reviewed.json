@@ -20,9 +20,9 @@
     }
   },
   "federal-contracts-usaspending": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
-      "ingest/src/sources/usaspending.ts": "7e00ec5f0f888855",
+      "ingest/src/sources/usaspending.ts": "daaccb07f23055b9",
       "web/src/pages/contracts/index.astro": "d2e2702698b6d58e"
     }
   },
@@ -35,10 +35,10 @@
     }
   },
   "house-and-senate-disclosure-differences": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-11-15",
     "covers": {
-      "ingest/py/senate_import.py": "b2717cb2bd239da8",
-      "ingest/py/congress_ptr_job.py": "24230c183929a304",
+      "ingest/py/senate_import.py": "07fb64601f9adcc9",
+      "ingest/py/congress_ptr_job.py": "5557b731f74d3c8b",
       "web/src/lib/coverage.ts": "848dc9f0b01c472b"
     }
   },
@@ -125,9 +125,9 @@
     }
   },
   "lobbying-disclosure-reports": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-15",
     "covers": {
-      "ingest/src/sources/senate_lda.ts": "04e83544d9137a8b",
+      "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
       "web/src/pages/lobbying/index.astro": "398fbcb5c1787aab"
     }
   },
