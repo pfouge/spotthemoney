@@ -102,7 +102,10 @@ insert into seed_f4 values
   ('0001321655-26-000303', '0001100006', 'PLTR', current_date - 12, current_date - 13, 'P', 8000,   39.75,  false, false, null),
   ('0001321655-26-000304', '0001100003', 'PLTR', current_date - 45, current_date - 55, 'S', 200000, 44.00,  false, true, 6350000),
   ('0000936468-26-000401', '0001100004', 'LMT',  current_date - 1,  current_date - 3,  'P', 3000,   462.15, false, false, 120000),
-  ('0000936468-26-000402', '0001100004', 'LMT',  current_date - 90, current_date - 92, 'M', 10000,  0,      true,  null, 117000);
+  ('0000936468-26-000402', '0001100004', 'LMT',  current_date - 90, current_date - 92, 'M', 10000,  0,      true,  null, 117000),
+  -- Filed before the site's Form 4 record starts (shared/src/floor.ts): stored, never shown.
+  -- verify-downloads fails if this row reaches a download.
+  ('0001045810-19-000900', '0001100000', 'NVDA', date '2019-03-14', date '2019-03-12', 'P', 777, 33.33, true, false, 1234567);
 insert into filings (source, external_id, filer_person_id, filer_company_id, filed_at, source_url, confidence, review, is_published, payload)
 select 'sec_form4', f.accession, p.id, c.id, f.filed::timestamptz,
        'https://www.sec.gov/Archives/edgar/data/' || ltrim(c.cik, '0') || '/' || replace(f.accession, '-', '') || '/wk-form4_' || replace(f.accession, '-', '') || '.xml',

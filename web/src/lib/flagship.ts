@@ -13,7 +13,7 @@
 // pages render their empty-state reason lines instead of blank tables.
 
 import postgres from "postgres";
-import { normalizeOrgName, tradeValue, unitPrice, median } from "@stm/shared";
+import { normalizeOrgName, tradeValue, unitPrice, median, FORM4_FLOOR } from "@stm/shared";
 import { jointDuplicates, type JointRow } from "./joint";
 import { heldAfter, holdingsChange, type HoldingsChange } from "./holdings";
 import { existsSync } from "node:fs";
@@ -185,7 +185,9 @@ async function load(): Promise<Flagship> {
                confidence::float8 as confidence, review::text as review, is_published
           from filings
          where review in ('auto_approved','approved') and confidence >= 0.9
-           and source in ('sec_form4','house_ptr','senate_ptr')`,
+           and source in ('sec_form4','house_ptr','senate_ptr')
+           -- Form 4 filings filed before the site's record starts are left out (shared/src/floor.ts).
+           and not (source = 'sec_form4' and filed_at < ${FORM4_FLOOR}::date)`,
       sql<{ id: number; filing_id: number; person_id: number | null; security_id: number | null; side: string; txn_code: string | null; is_derivative: boolean | null; txn_date: string | null; disclosed_at: string | null; amount_low: number | null; amount_high: number | null; shares: number | null; price: number | null; disclosure_lag_days: number | null; is_10b5_1: boolean | null; owner_type: string | null; asset_type: string | null; owned_after: number | null }[]>`
         -- owned_after: "shares owned following the transaction" from the stored Form 4 payload. Rows are
         -- written in payload order, so the n-th row of a filing is the n-th payload entry; the share
@@ -204,6 +206,7 @@ async function load(): Promise<Flagship> {
           from t join filings f on f.id = t.filing_id
          where t.review in ('auto_approved','approved') and t.confidence >= 0.9
            and f.review in ('auto_approved','approved') and f.confidence >= 0.9
+           and not (f.source = 'sec_form4' and f.filed_at < ${FORM4_FLOOR}::date)
          order by coalesce(t.disclosed_at, f.filed_at::date) desc, t.id desc`,
       sql<{ id: number; registrant: string | null; client: string | null; issue_area: string | null; amount: number | null; period_year: number | null; period_quarter: number | null; filing_type: string | null; source_ref: string | null; created_at: string }[]>`
         -- One row per registrant + client + period: an amended report replaces the report it

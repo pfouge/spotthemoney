@@ -11,6 +11,7 @@ import { resetOutlook } from "../ibond";
 import { getCoverage } from "../coverage";
 import { formatDate, formatPercent } from "../format";
 import { FACTS } from "./facts";
+import { FORM4_FLOOR } from "@stm/shared";
 
 export interface GuideCtx {
   facts: typeof FACTS;
@@ -18,6 +19,8 @@ export interface GuideCtx {
   congressDeadlineDays: number;
   /** Days of trades counted in the watchlist cards (lib/watchcards.ts). */
   watchWindowDays: number;
+  /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
+  form4Floor: string;
   /** Calendar days after which the site flags a Form 4 as late. */
   form4LateAfterDays: number;
   capBands: { label: string; range: string }[];
@@ -49,6 +52,7 @@ async function build(): Promise<GuideCtx> {
     facts: FACTS,
     congressDeadlineDays: CONGRESS_DEADLINE_DAYS,
     watchWindowDays: WATCH_WINDOW_DAYS,
+    form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
     capBands: CAP_BANDS.map((b) => ({ label: b.label, range: b.range })),
     jointMinUsd: usd(JOINT_MIN_VALUE),

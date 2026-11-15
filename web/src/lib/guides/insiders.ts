@@ -44,7 +44,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>No. The phrase covers two different things. Illegal insider trading is buying or selling while using important information that the public does not have, in breach of a duty of trust (${ext("https://www.investor.gov/introduction-investing/investing-basics/glossary/insider-trading", "the SEC's definition")}). Legal insider trading is an executive or director buying or selling their own company's stock in the open and reporting it. Form 4 is the report.</p>
 <p>A Form 4 therefore tells you that a trade happened, not that anything was wrong with it.</p>` },
       { id: "here", h: "Which insider filings are on this site?", html: `
-<p>Form 4 filings for a tracked set of companies: about 70 large or heavily traded U.S. stocks, plus every stock that appears in a congressional trade report. That is ${c.counts.tickers} tickers and ${c.counts.insiderTxns} transactions today, not the whole market. Each row links to the filing on EDGAR.</p>
+<p>Form 4 filings for a tracked set of companies: about 70 large or heavily traded U.S. stocks, plus every stock that appears in a congressional trade report. That is ${c.counts.tickers} tickers and ${c.counts.insiderTxns} transactions today, not the whole market. The record starts with filings made on or after ${c.form4Floor}; older filings are not shown, so an insider's year-by-year table never includes a year this site holds only a few rows for. Each row links to the filing on EDGAR.</p>
 <p>The <a href="/insiders/">Insiders page</a> lists the newest filings and the <a href="/">trade map</a> shows where the dollars went.</p>
 <p>Three kinds of page hold the detail, and they link to one another:</p>
 <ul>

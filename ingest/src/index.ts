@@ -56,6 +56,9 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   search_console_weekly: { label: "Search Console weekly export", cadence: "weekly", daily: false, run: ingestSearchConsoleWeekly },
 };
 
+const ABANDONED_AFTER_HOURS = 2;
+const ABANDONED_ERROR = "abandoned: the job timed out or was cancelled before this run finished";
+
 async function runSource(code: string): Promise<void> {
   const entry = REGISTRY[code];
   if (!entry) {
@@ -73,6 +76,22 @@ async function runSource(code: string): Promise<void> {
     on conflict (code) do update set label = excluded.label
     returning id
   `;
+  // A job killed by the workflow timeout (or a cancelled run) never closes its row: it stays
+  // "running" for ever, and the freshness check, which ignores running rows, cannot see that
+  // the source failed (two sec_form4 runs on 2026-11-15, ten such rows in all). Close this
+  // source's leftovers before opening a new row. No job runs longer than its 55-minute limit.
+  try {
+    const closed = await sql`
+      update ingest_runs
+         set status = 'failed', finished_at = now(),
+             error = ${ABANDONED_ERROR}
+       where source_id = ${src!.id} and status = 'running'
+         and started_at < now() - make_interval(hours => ${ABANDONED_AFTER_HOURS})
+      returning id`;
+    if (closed.length > 0) console.warn(`⚠ ${code}: closed ${closed.length} earlier run(s) that never finished (job timed out or was cancelled)`);
+  } catch (err) {
+    console.warn(`⚠ ${code}: could not close unfinished runs: ${err instanceof Error ? err.message : String(err)}`);
+  }
   const [run] = await sql`
     insert into ingest_runs (source_id, status) values (${src!.id}, 'running')
     returning id

@@ -37,7 +37,7 @@ const challenged = [];
 
 async function get(path) {
   const url = path.startsWith("http") ? path : base + path;
-  const res = await fetch(url, { headers: { "user-agent": "spotthemoney verify-live (pfouge@gmail.com)" }, redirect: "follow" });
+  const res = await fetch(url, { headers: { "user-agent": "spotthemoney verify-live (+https://spotthemoney.com/contact/)" }, redirect: "follow" });
   const text = await res.text();
   const challenge = isCloudflareChallenge(res.status, res.headers, text);
   if (challenge) challenged.push(path);
@@ -154,7 +154,7 @@ for (const path of sampled) {
 for (const [t, n] of titles) if (n > 1) failures.push(`duplicate title on ${n} pages: ${t}`);
 // the share image itself
 {
-  const r = await fetch(base + "/og.png", { headers: { "user-agent": "spotthemoney verify-live (pfouge@gmail.com)" } });
+  const r = await fetch(base + "/og.png", { headers: { "user-agent": "spotthemoney verify-live (+https://spotthemoney.com/contact/)" } });
   const body = /image\/png/.test(r.headers.get("content-type") ?? "") ? "" : await r.text();
   if (isCloudflareChallenge(r.status, r.headers, body)) challenged.push("/og.png");
   else ok(r.status === 200 && /image\/png/.test(r.headers.get("content-type") ?? ""), `og.png status ${r.status}`);
