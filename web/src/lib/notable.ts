@@ -222,7 +222,7 @@ export function buildFeed(rows: NRow[], builtDay: string, extra: { companies: nu
 export type Preset = "cluster" | "cbuy" | "csell" | "buys" | "stake" | "sales" | "congress" | "all";
 export type SortKey = "new" | "large" | "stake";
 export const PRESETS: { id: Preset; label: string }[] = [
-  { id: "cluster", label: "Clusters" }, { id: "cbuy", label: "Cluster buys" }, { id: "csell", label: "Cluster sells" }, { id: "buys", label: "Insider buys" },
+  { id: "cbuy", label: "Cluster buys" }, { id: "csell", label: "Cluster sells" }, { id: "cluster", label: "All clusters" }, { id: "buys", label: "Insider buys" },
   { id: "stake", label: "Stake changes" }, { id: "sales", label: "Large sales" }, { id: "congress", label: "Congress" }, { id: "all", label: "All" },
 ];
 /** Hash values for `np`. "clusters" is the default and is omitted from links; "cluster" is accepted as an alias. */
@@ -235,7 +235,7 @@ export function presetFromHash(v: string | null): Preset | null {
 export const SORTS: { id: SortKey; label: string }[] = [{ id: "new", label: "Newest filed" }, { id: "large", label: "Largest" }, { id: "stake", label: "Biggest stake change" }];
 export const WIN_LABEL: Record<Win, string> = { 1: "Today", 7: "7 days", 30: "30 days" };
 export interface FeedState { win: Win; preset: Preset; q: string; sort: SortKey }
-export const DEFAULT_STATE: FeedState = { win: 7, preset: "cluster", q: "", sort: "new" };
+export const DEFAULT_STATE: FeedState = { win: 7, preset: "cbuy", q: "", sort: "new" };
 export type Entry = FeedItem | FeedCluster;
 
 const PRESET_REASON: Partial<Record<Preset, Reason>> = { buys: "insider-buy", stake: "stake-change", sales: "large-sale", congress: "congress" };
@@ -286,7 +286,7 @@ export interface FeedView {
 export function resolveView(data: Pick<NotableData, "newest" | "items" | "clusters">, s: FeedState): FeedView {
   let entries = selectFeed(data, s);
   let win = s.win; let fellBack = false;
-  if (s.preset === "cluster" && s.win === 7 && selectFeed(data, { ...s, q: "" }).length === 0) {
+  if (CLUSTER_PRESETS.includes(s.preset) && s.win === 7 && selectFeed(data, { ...s, q: "" }).length === 0) {
     const wide = selectFeed(data, { ...s, win: 30 });
     if (selectFeed(data, { ...s, win: 30, q: "" }).length > 0) { entries = wide; win = 30; fellBack = true; }
     else win = 30; // nothing in 30 days either: the empty sentence speaks of 30 days
@@ -348,7 +348,7 @@ export function countLine(total: number, shown: number, s: FeedState, newest: st
   const when = s.win === 1 ? `on ${longDate(newest)}` : `from ${shortDate(sinceOf(newest, s.win))} to ${longDate(newest)}`;
   const [one, many] = NOUN[s.preset] ?? ["notable item", "notable items"];
   const what = `${total.toLocaleString("en-US")} ${total === 1 ? one : many} filed ${when}`;
-  const lead = fellBack ? "No clusters filed in the last 7 days. Showing 30 days. " : "";
+  const lead = fellBack ? `No ${many} filed in the last 7 days. Showing 30 days. ` : "";
   return `${lead}${total > shown ? `${what}. Showing the first ${shown.toLocaleString("en-US")}.` : `${what}.`}`;
 }
 

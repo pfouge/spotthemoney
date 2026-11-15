@@ -7,6 +7,7 @@ import {
 } from "../web/src/lib/notable";
 
 const ALL = { ...DEFAULT_STATE, preset: "all" as const };
+const CL = { ...DEFAULT_STATE, preset: "cluster" as const };
 let n = 0;
 function row(o: Partial<NRow> = {}): NRow {
   n++;
@@ -213,11 +214,11 @@ test("a company with both a cluster buy and a cluster sell shows both; All folds
   ];
   const d = feed(rows);
   assert.equal(d.clusters.length, 2);
-  const cl = selectFeed(d, DEFAULT_STATE);
+  const cl = selectFeed(d, CL);
   assert.deepEqual(cl.map((e) => (e.k === "c" ? e.b : -1)), [0, 1], "Clusters preset: newest disclosure first (sell filed 11-13), buys before sells only on a tie");
-  assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "cbuy" }).length, 1);
-  assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "csell" }).length, 1);
-  assert.equal(selectFeed(d, { ...DEFAULT_STATE, preset: "csell" })[0]!.k, "c");
+  assert.equal(selectFeed(d, { ...CL, preset: "cbuy" }).length, 1);
+  assert.equal(selectFeed(d, { ...CL, preset: "csell" }).length, 1);
+  assert.equal(selectFeed(d, { ...CL, preset: "csell" })[0]!.k, "c");
   // sale rows are $300,000 with a 25% cut: stake-change, not large-sale; folded into the cluster under All
   const all = selectFeed(d, ALL);
   assert.equal(all.filter((e) => e.k === "c").length, 2);
@@ -233,14 +234,14 @@ test("ordering in Clusters: newest disclosure first; ties buys before sells, the
     seller(7, "2026-11-05", "2026-11-13", { value: 900_000 }, "c4"), seller(8, "2026-11-06", "2026-11-13", { value: 900_000 }, "c4"), seller(9, "2026-11-07", "2026-11-13", { value: 900_000 }, "c4"),
   ];
   const d = feed(rows);
-  const c = selectFeed(d, DEFAULT_STATE) as ReturnType<typeof findClusters>;
+  const c = selectFeed(d, CL) as ReturnType<typeof findClusters>;
   assert.deepEqual(c.map((x) => x.d), ["2026-11-14", "2026-11-13", "2026-11-13", "2026-11-13"]);
   assert.deepEqual(c.slice(1).map((x) => [x.b, x.v]), [[1, 150_000], [0, 2_700_000], [0, 900_000]], "buy first on the tie, then larger sell");
 });
 
 test("default state is Clusters, 7 days, newest; presets and hash values", () => {
-  assert.deepEqual(DEFAULT_STATE, { win: 7, preset: "cluster", q: "", sort: "new" });
-  assert.deepEqual(PRESETS.map((p) => p.label), ["Clusters", "Cluster buys", "Cluster sells", "Insider buys", "Stake changes", "Large sales", "Congress", "All"]);
+  assert.deepEqual(DEFAULT_STATE, { win: 7, preset: "cbuy", q: "", sort: "new" });
+  assert.deepEqual(PRESETS.map((p) => p.label), ["Cluster buys", "Cluster sells", "All clusters", "Insider buys", "Stake changes", "Large sales", "Congress", "All"]);
   assert.deepEqual(Object.values(PRESET_HASH), ["clusters", "cbuy", "csell", "buys", "stake", "sales", "congress", "all"]);
   for (const p of PRESETS) assert.equal(presetFromHash(PRESET_HASH[p.id]), p.id);
   assert.equal(presetFromHash("cluster"), "cluster", "alias");
@@ -251,28 +252,28 @@ test("Clusters falls back from 7 to 30 days, then offers All", () => {
   const rows = [buyer(1, "2026-10-20", "2026-10-22"), buyer(2, "2026-10-21", "2026-10-23"), buyer(3, "2026-10-22", "2026-10-24"),
     row({ personId: 9, txnDate: "2026-11-14", disclosedAt: "2026-11-15", code: "S", side: "sell", value: 2_000_000, companyKey: "c9", ticker: "ZZZ" })];
   const d = feed(rows);
-  assert.equal(selectFeed(d, DEFAULT_STATE).length, 0, "no cluster filed in the last 7 days");
-  const v = resolveView(d, DEFAULT_STATE);
+  assert.equal(selectFeed(d, CL).length, 0, "no cluster filed in the last 7 days");
+  const v = resolveView(d, CL);
   assert.equal(v.fellBack, true); assert.equal(v.win, 30); assert.equal(v.entries.length, 1); assert.equal(v.offerAll, false);
-  const line = countLine(v.entries.length, v.entries.length, { ...DEFAULT_STATE, win: v.win }, d.newest, v.fellBack);
+  const line = countLine(v.entries.length, v.entries.length, { ...CL, win: v.win }, d.newest, v.fellBack);
   assert.match(line, /^No clusters filed in the last 7 days\. Showing 30 days\./);
   assert.match(line, /1 cluster filed from/);
   // the fallback follows the preset, not the search: a search that matches nothing still searches 30 days, and does not offer All
-  const q = resolveView(d, { ...DEFAULT_STATE, q: "zzzz" });
+  const q = resolveView(d, { ...CL, q: "zzzz" });
   assert.equal(q.fellBack, true); assert.equal(q.entries.length, 0); assert.equal(q.offerAll, false);
   // other windows and presets never fall back
-  assert.equal(resolveView(d, { ...DEFAULT_STATE, win: 1 }).fellBack, false);
-  assert.equal(resolveView(d, { ...DEFAULT_STATE, preset: "cbuy" }).fellBack, false);
+  assert.equal(resolveView(d, { ...CL, win: 1 }).fellBack, false);
+  assert.equal(resolveView(d, { ...CL, preset: "cbuy" }).fellBack, true);
   // nothing in 30 days either
   const none = feed([row({ txnDate: "2026-11-14", disclosedAt: "2026-11-15", code: "S", side: "sell", value: 2_000_000, companyKey: "c9", ticker: "ZZZ" })]);
-  const v2 = resolveView(none, DEFAULT_STATE);
+  const v2 = resolveView(none, CL);
   assert.equal(v2.entries.length, 0); assert.equal(v2.fellBack, false); assert.equal(v2.offerAll, true);
-  assert.equal(emptyLine(DEFAULT_STATE, true), "No clusters were filed in the last 30 days.");
+  assert.equal(emptyLine(CL, true), "No clusters were filed in the last 30 days.");
   assert.equal(resolveView(none, ALL).offerAll, false);
   assert.ok(selectFeed(none, ALL).length > 0, "All has the large sale");
 });
 
 test("wording has no em-dashes and never says signal, bullish or bearish", () => {
-  const texts = [countLine(0, 0, DEFAULT_STATE, "2026-11-15", true), emptyLine(DEFAULT_STATE, true), emptyLine(ALL), ...PRESETS.map((p) => p.label)];
+  const texts = [countLine(0, 0, CL, "2026-11-15", true), emptyLine(CL, true), emptyLine(ALL), ...PRESETS.map((p) => p.label)];
   for (const t of texts) { assert.ok(!/—/.test(t), t); assert.ok(!/signal|bullish|bearish/i.test(t), t); }
 });

@@ -11,7 +11,6 @@ import { getFlagship, withinDays, num, plural, senateShown } from "../lib/flagsh
 import { homeFeed } from "../lib/notable-build";
 import { DEFAULT_STATE, CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, selectFeed, longDate } from "../lib/notable";
 import NotableFeed from "../components/NotableFeed.astro";
-import NotableTop from "../components/NotableTop.astro";
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
 import VizHome from "../components/VizHome.astro";
@@ -59,7 +58,6 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   </section>
 
   <NotableFeed data={feed} />
-  <NotableTop top={top} />
 
   <h2 id="heatmap" class="nf-maph">Trade map</h2>
   <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters.</p>
