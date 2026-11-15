@@ -72,7 +72,7 @@ export const congressGuides: ((c: GuideCtx) => Guide)[] = [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-10-10",
+    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-11-15",
     title: "How to read a congressional trade report",
     seoTitle: ["How to Read a Congressional Stock Trade Report (PTR)", "How to Read a Congressional Trade Report"],
     description: ["A periodic transaction report lists the asset, owner, type, trade date, filing date and a dollar range. What each column means, with the House and Senate codes.", "What each column of a congressional trade report means: owner, type, dates and the dollar range, with House and Senate codes."],
@@ -97,7 +97,7 @@ ${table(["Column", "What it tells you"], [
   ["Notification date", "House reports only: the day the member says they learned of the trade."],
   ["Amount", "A dollar range, not an exact figure."],
 ])}
-<p>On this site the same fields appear in each member's table as Security, Side, Trade date, Disclosed, Lag, Value and Flags, with a link to the source document in the last column.</p>` },
+<p>On this site the same fields appear in each member's table as Security, Side, Trade date, Disclosed, Lag, Value and Flags, with a link to the source document in the last column. Every trade table can be sorted: click a column title such as Trade date, Value or Lag to sort by it, click again to reverse, and click a third time to return to the original newest-first order.</p>` },
       { id: "member-page", h: "What does a member's page on this site show?", html: `
 <p>Each member with a report on record has a page that starts with the seat, party, the date the current term began and the member's committees, followed by one paragraph that sums up the record. The <strong>Follow</strong> button beside the name adds the member to your free watchlist, which then shows each new report as it is disclosed (see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}). Below that, in order:</p>
 <ul>
