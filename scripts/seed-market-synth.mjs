@@ -28,7 +28,7 @@ await sql.begin(async (tx) => {
   await tx`create temp table syn_t on commit drop as
            select f.f, f.pk, f.fd, i, r.r, (case when r.r < 0.07 then 'P' when r.r < 0.26 then 'S' when r.r < 0.52 then 'M' when r.r < 0.70 then 'A' when r.r < 0.88 then 'F' else 'G' end) code,
                   (r.r >= 0.26 and r.r < 0.52) deriv, floor(power(10, 1 + random() * 3.5))::numeric shares, ((f.pk - 1) % ${N_CO}) + 1 ck
-             from syn_f f cross join lateral generate_series(1, f.k) i cross join lateral (select random() r) r`;
+             from (select f.*, i, random() r from syn_f f cross join lateral generate_series(1, f.k) i) f, lateral (select f.r r) r`;
   await tx`create index on syn_t (f)`;
   await tx`analyze syn_t`;
   await tx`insert into filings (source, external_id, filer_person_id, filed_at, source_url, confidence, review, is_published, scope, payload)
