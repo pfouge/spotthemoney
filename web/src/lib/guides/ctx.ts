@@ -13,6 +13,7 @@ import { getCoverage } from "../coverage";
 import { formatDate, formatPercent } from "../format";
 import { FACTS } from "./facts";
 import { FORM4_FLOOR } from "@stm/shared";
+import { ISSUES_INLINE, ISSUE_FILING_ROWS, ISSUE_TOP_ROWS } from "../lobbyissues";
 import { CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT } from "../notable";
 
 export interface GuideCtx {
@@ -23,6 +24,8 @@ export interface GuideCtx {
   watchWindowDays: number;
   /** Rows in a committee page's trade table (lib/committees.ts). */
   committeeTradeRows: number;
+  /** Issue names shown in one lobbying table cell, and rows in an issue page's tables (lib/lobbyissues.ts). */
+  issuesInline: number; issueFilingRows: number; issueTopRows: number;
   /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
   form4Floor: string;
   /** Calendar days after which the site flags a Form 4 as late. */
@@ -59,6 +62,7 @@ async function build(): Promise<GuideCtx> {
     congressDeadlineDays: CONGRESS_DEADLINE_DAYS,
     watchWindowDays: WATCH_WINDOW_DAYS,
     committeeTradeRows: COMMITTEE_TRADE_ROWS,
+    issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
     capBands: CAP_BANDS.map((b) => ({ label: b.label, range: b.range })),

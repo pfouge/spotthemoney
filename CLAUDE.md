@@ -2219,3 +2219,48 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
 - AdSense correction to the 2026-11-15 section above: the account exists, under Peter's personal
   Google account (not the pfouge.com one), publisher ID pub-9671575911691889, site review
   requested 2026-11-15; in-page slots stay off (`AD_SLOTS_ON`) until Google approves.
+
+### Lobbying: every issue on a filing, and a page per issue (2026-11-16, scheduled parity run) — gap T0-11
+
+- **What.** Lobbying tables showed a filing's first issue code only. Now the "Issues" cell
+  (`web/src/components/IssueList.astro`; on `/lobbying/`, company pages and the issue pages)
+  lists every general issue area the filing names, the first six when there are more
+  (`ISSUES_INLINE`), each linked to that issue's page. New pages: `/lobbying-issues/` (one
+  sortable row per issue area: filings this year, filings that list no other issue, clients,
+  registrants, amount reported on those filings) and `/lobbying-issues/<slug>/` (79 on
+  production: facts, 25 largest clients and registrants, the 100 newest filings that list it,
+  any period on record). `/lobbying/` gained "Browse by issue" (the 12 issues on the most
+  filings). In the `pages` sitemap, the search index (kind "Lobbying issue") and `llms.txt`.
+  Lobbying CSVs gained `all_issue_codes` and `all_issues` (semicolon-separated).
+- **Rules** (`web/src/lib/lobbyissues.ts`, pure; tests `scripts/lobbyissues.test.ts`):
+  `buildIssues(model.lobbying, model.issueNames, year)` is the one source for the pages, the
+  sitemap and the search index. A filing counts under EVERY issue it lists. A filing reports
+  one amount for all its issues, so the amount beside an issue is the total on the filings
+  that list it: amounts overlap between issues, are never added together, and no page calls
+  one "spent on" an issue (the verifier fails that wording). The treemap on `/lobbying/` still
+  counts each filing once, under its first issue, so its tiles add up to the year's total.
+  The slug comes from the Senate's name for the code with brackets dropped (`issueSlug`).
+- **Data.** `lobbying.issues` is a JSON list of `{code, display}` (all rows; 79 codes).
+  `flagship.ts` reads the codes into `LobbyingRow.issues` and fills `model.issueNames` from
+  every entry, not only the first. `scripts/seed-local.sql` now uses that shape (it held bare
+  strings, so issue names never showed locally) and gained a one-issue filing and a
+  registration with no issue.
+- **Build log** prints `[web] lobbying issues: N issues, F filings on record, Y for <year>,
+  Z of them with no issue, S with several; filings/only issue/clients/registrants/amount:
+  TAX …, DEF …, HCR …, BUD …, WEL …, DOC …` for comparison with SQL.
+- **Verifier:** `node scripts/verify-lobbying.mjs <base-url> [--sample N]` (no browser):
+  recounts every issue's figures from the lobbying CSV files (written by `downloads.ts`, a
+  different code path) and compares them with the list row and the issue page's facts; table
+  caps; every row of an issue page lists the issue; the Issues cells on `/lobbying/`; wording.
+  Twelve verifiers now. `verify-a11y` includes the list and one issue page.
+- Guide `lobbying-disclosure-reports`: new section `#issues`, one FAQ, three new covered files,
+  three labels; `ctx.issuesInline`, `issueTopRows`, `issueFilingRows` are the live values.
+  `how-to-cite-and-reuse` names the two new CSV columns. Methodology `#lobbying-issues`.
+- **T0-09 (capital-gains flag) was NOT built: the data is not there.** `cap_gains_over_200`
+  is null on every stored congressional row (5,658 House, 1,860 Senate). The vendored House
+  parser reads the tick from the letters "gfedc"/"gfedcb" that 2021-era PDFs carried in their
+  text; the 2025 and 2026 PDFs have no such text, and the Senate report has no such column.
+  It needs a new way to read the House checkbox from the PDF itself (parser work, with the
+  PDFs, which the cloud sandbox cannot fetch).
+- Not done: no issue filter on company pages; no per-issue CSV; the specific-issue text of a
+  filing (the bills named) is not stored; no history chart per issue.

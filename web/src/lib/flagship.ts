@@ -115,6 +115,8 @@ export interface Txn {
 export interface LobbyingRow {
   id: number; registrant: string | null; client: string | null; issueArea: string | null; amount: number | null;
   year: number | null; quarter: number | null; filingType: string | null; sourceRef: string | null; createdAt: string;
+  /** Every general issue code on the filing, in the filing's order (issueArea is the first). See lib/lobbyissues.ts. */
+  issues?: string[];
 }
 export interface ContractRow {
   id: number; recipient: string | null; agency: string | null; amount: number | null; actionDate: string | null;
@@ -211,15 +213,18 @@ async function load(): Promise<Flagship> {
            and f.review in ('auto_approved','approved') and f.confidence >= 0.9
            and not (f.source = 'sec_form4' and f.filed_at < ${FORM4_FLOOR}::date)
          order by coalesce(t.disclosed_at, f.filed_at::date) desc, t.id desc`,
-      sql<{ id: number; registrant: string | null; client: string | null; issue_area: string | null; amount: number | null; period_year: number | null; period_quarter: number | null; filing_type: string | null; source_ref: string | null; created_at: string }[]>`
+      sql<{ id: number; registrant: string | null; client: string | null; issue_area: string | null; issue_codes: string | null; amount: number | null; period_year: number | null; period_quarter: number | null; filing_type: string | null; source_ref: string | null; created_at: string }[]>`
         -- One row per registrant + client + period: an amended report replaces the report it
         -- amends (latest posted wins) so amounts are not counted twice; registrations and other
         -- filings without an amount are kept apart from reports. created_at carries the date
         -- the Senate POSTED the filing, so "newest" lists are not reordered by a history load.
-        select id, registrant, client, issue_area, amount::float8 as amount, period_year, period_quarter, filing_type, source_ref, created_at
+        select id, registrant, client, issue_area, amount::float8 as amount, period_year, period_quarter, filing_type, source_ref, created_at,
+               -- every issue code on the filing, in order (an entry is {code, display}; a bare string in old test data)
+               (select string_agg(coalesce(x.e->>'code', x.e#>>'{}'), ',' order by x.o)
+                  from jsonb_array_elements(case when jsonb_typeof(l.issues) = 'array' then l.issues else '[]'::jsonb end) with ordinality as x(e, o)) as issue_codes
           from (
             select distinct on (registrant, client, period_year, period_quarter, (amount is null))
-                   id, registrant, client, issue_area, amount, period_year, period_quarter, filing_type, source_ref,
+                   id, registrant, client, issue_area, issues, amount, period_year, period_quarter, filing_type, source_ref,
                    coalesce(posted_at, created_at)::text as created_at
               from lobbying
              where period_year >= extract(year from current_date)::int - 2
@@ -357,7 +362,8 @@ async function load(): Promise<Flagship> {
     }
 
     model.lobbying = lobbyingRows.map((l) => ({ id: l.id, registrant: l.registrant, client: l.client, issueArea: l.issue_area, amount: l.amount,
-      year: l.period_year, quarter: l.period_quarter, filingType: l.filing_type, sourceRef: l.source_ref, createdAt: l.created_at }));
+      year: l.period_year, quarter: l.period_quarter, filingType: l.filing_type, sourceRef: l.source_ref, createdAt: l.created_at,
+      issues: l.issue_codes ? [...new Set(l.issue_codes.split(",").filter(Boolean))] : (l.issue_area ? [l.issue_area] : []) }));
     model.contracts = contractRows.map((c) => ({ id: c.id, recipient: c.recipient, agency: c.awarding_agency, amount: c.amount, actionDate: c.action_date,
       naics: c.naics, sourceRef: c.source_ref, createdAt: c.created_at }));
     model.committees = committeeRows.map((c) => ({ id: c.id, fecId: c.fec_id, name: c.name, party: c.party, type: c.committee_type, total: c.total, count: c.count, latest: c.latest }));
@@ -383,8 +389,9 @@ async function load(): Promise<Flagship> {
             from site_filings f
            where f.source = 'sec_form4' and f.review in ('auto_approved','approved') and f.confidence >= 0.9`,
         sql<{ code: string; name: string | null }[]>`
-          select issue_area as code, max(issues->0->>'display') as name
-            from lobbying where issue_area is not null group by 1`,
+          select e->>'code' as code, max(e->>'display') as name
+            from lobbying l, jsonb_array_elements(case when jsonb_typeof(l.issues) = 'array' then l.issues else '[]'::jsonb end) as e
+           where jsonb_typeof(e) = 'object' and e->>'code' is not null group by 1`,
       ]);
       for (const h of heldRows) { const f = model.filings.get(h.id); if (f) f.heldAfter = h.held; }
       for (const i of issueRows) if (i.name) model.issueNames.set(i.code, i.name);

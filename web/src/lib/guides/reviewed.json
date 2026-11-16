@@ -50,13 +50,13 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "4cc9d3c134940d24",
-      "web/src/lib/downloads.ts": "a10fd7aeeb07dcd2",
+      "web/src/lib/downloads.ts": "0a5838fd54ad118d",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "8c010edafbd64d3a",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"
@@ -132,10 +132,13 @@
     }
   },
   "lobbying-disclosure-reports": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
-      "web/src/pages/lobbying/index.astro": "1617622db3d661cb"
+      "web/src/pages/lobbying/index.astro": "663e97f26df53b0c",
+      "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
+      "web/src/pages/lobbying-issues/index.astro": "d9fe57464505956d",
+      "web/src/pages/lobbying-issues/[slug].astro": "fd56d24e8e633581"
     }
   },
   "rule-10b5-1-trading-plans": {
@@ -184,7 +187,7 @@
       "web/src/components/TxnTable.astro": "16fafd7273f9b780",
       "web/src/pages/stocks/[ticker].astro": "a36818d6c9aa4640",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
-      "web/src/pages/companies/[slug].astro": "7d139b3661b2cb62"
+      "web/src/pages/companies/[slug].astro": "02c997c89682b910"
     }
   }
 }

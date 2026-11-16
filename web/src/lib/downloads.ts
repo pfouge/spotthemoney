@@ -18,6 +18,7 @@ import { getFlagship, flagshipSql, personPath, roleLabel, isLate } from "./flags
 import { SITE_URL, edgarFilingUrl } from "./seo";
 import { toCsv, type Column } from "./csv";
 import { changeCsv } from "./holdings";
+import { rowIssues } from "./lobbyissues";
 
 export const MAX_ROWS = 50_000;
 export type Group = "congress" | "insiders" | "washington" | "rates";
@@ -204,6 +205,8 @@ async function build(): Promise<Downloads> {
     { key: "client", about: "Who the lobbying was for.", get: (l) => l.client },
     { key: "issue_code", about: "First general issue area code on the filing.", get: (l) => l.issueArea },
     { key: "issue", about: "That code in words.", get: (l) => (l.issueArea ? m.issueNames.get(l.issueArea) ?? null : null) },
+    { key: "all_issue_codes", about: "Every general issue area code on the filing, in the filing's order, separated by semicolons. The amount is for all of them together.", get: (l) => rowIssues(l).join(";") || null },
+    { key: "all_issues", about: "Those codes in words, separated by semicolons.", get: (l) => rowIssues(l).map((c) => m.issueNames.get(c) ?? c).join("; ") || null },
     { key: "amount", about: "Income or expense reported for the quarter, in dollars. Empty for registrations.", get: (l) => l.amount },
     { key: "posted_date", about: "Day the Senate posted the filing.", get: (l) => l.createdAt?.slice(0, 10) },
     { key: "filing_url", about: "Link to the filing at the Senate's lobbying disclosure site.", get: (l) => l.sourceRef },

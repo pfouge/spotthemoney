@@ -13,6 +13,8 @@ import { orgPath } from "../../lib/links";
 import Viz from "../../components/Viz.astro";
 import { treemapSvg } from "../../lib/viz";
 import { lobbyingIssues } from "../../lib/vizdata";
+import IssueList from "../../components/IssueList.astro";
+import { buildIssues, issueIndex, ISSUES_PATH } from "../../lib/lobbyissues";
 
 const model = await getFlagship();
 const year = new Date().getUTCFullYear();
@@ -26,6 +28,9 @@ const topClients = agg((l) => l.client).slice(0, 50);
 const topRegistrants = agg((l) => l.registrant).slice(0, 50);
 const byName = new Map([...model.companies.values()].map((c) => [normalizeOrgName(c.name), c]));
 const total = sum(ytd.map((l) => l.amount));
+const issueIdx = issueIndex(model.lobbying, model.issueNames);
+const issueList = buildIssues(model.lobbying, model.issueNames, year).filter((i) => i.filings > 0);
+const byFilings = [...issueList].sort((a, b) => b.filings - a.filings).slice(0, 12);
 const answer = model.lobbying.length === 0
   ? "No lobbying filings are on record yet; the Senate LDA job loads every filing posted since October 2025."
   : `${plural(ytd.length, "lobbying filing")} in ${year} report ${money(total)} in lobbying income across ${plural(topClients.length >= 50 ? agg((l) => l.client).length : topClients.length, "client")}. The biggest client so far is ${topClients[0]?.name ?? "—"} (${money(topClients[0]?.total ?? 0)}); the biggest registrant is ${topRegistrants[0]?.name ?? "—"} (${money(topRegistrants[0]?.total ?? 0)}).`;
@@ -45,6 +50,14 @@ const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filin
         svg={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 340, 1120)} svgNarrow={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 300)} svgPhone={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 320, 360)}
         summary={top ? `${issues.length} issue areas have reported lobbying spend in ${year}${issues.length > 14 ? "; the 14 largest are shown" : ""}. The largest is ${top.name} at ${top.label}. A filing that lists several issues is counted under its first.` : undefined} />
     </div>); })()}
+
+  {byFilings.length > 0 && (
+    <section aria-labelledby="issues" data-lobbying-issues>
+      <h2 id="issues">Browse by issue</h2>
+      <p class="section-note">The issue areas listed on the most filings in {year}. A filing is counted under every issue it lists. <a href={ISSUES_PATH}>All {issueList.length} issue areas</a> have a page with the clients and firms behind them.</p>
+      <nav class="feeds" aria-label="Issue areas">{byFilings.map((i) => <a href={i.path}>{i.name}&nbsp;<span class="soft">{num(i.filings)}</span></a>)}<a href={ISSUES_PATH}>All issues</a></nav>
+    </section>
+  )}
 
   <div class="two-col">
     <div>
@@ -70,8 +83,8 @@ const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filin
   <h2>Newest filings</h2>
   <DownloadCsv file={lobFile} note={lobFile ? lobFile.title.replace("Lobbying filings, ", "") + "; earlier quarters are on the downloads page" : undefined} />
   {model.lobbying.length === 0 ? <p class="empty-reason">No filings on record yet.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Period</th><th>Type</th><th>Registrant</th><th>Client</th><th>Primary issue</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
-      {[...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100).map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? "—"}</td><td>{orgPath(model, l.registrant) ? <a href={orgPath(model, l.registrant)!}>{l.registrant}</a> : (l.registrant ?? "—")}</td><td>{orgPath(model, l.client) ? <a href={orgPath(model, l.client)!}>{l.client}</a> : (l.client ?? "—")}</td><td>{l.issueArea ?? "—"}</td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>)}
+    <div class="tablewrap"><table class="data"><thead><tr><th>Period</th><th>Type</th><th>Registrant</th><th>Client</th><th>Issues</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
+      {[...model.lobbying].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100).map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? "—"}</td><td>{orgPath(model, l.registrant) ? <a href={orgPath(model, l.registrant)!}>{l.registrant}</a> : (l.registrant ?? "—")}</td><td>{orgPath(model, l.client) ? <a href={orgPath(model, l.client)!}>{l.client}</a> : (l.client ?? "—")}</td><td><IssueList row={l} index={issueIdx} /></td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>)}
     </tbody></table></div>
   )}
 
@@ -83,7 +96,7 @@ const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filin
   <p>The reports are filed under the Lobbying Disclosure Act with the Secretary of the Senate and published at lda.gov. This site reads new filings once a day and links each row to the Senate's own record.</p>
   </div>
   <h2>How to read this</h2>
-  <p>Coverage is every filing the Senate has posted since October 1, 2025. Amounts are the income (or, for in-house lobbyists, expenses) a registrant reports for the quarter, rounded as filed; where a report was later amended, only the latest version is counted; "primary issue" is the first issue code on the filing and the full list is on the Senate record. See <a href="/methodology/">methodology</a>.</p>
+  <p>Coverage is every filing the Senate has posted since October 1, 2025. Amounts are the income (or, for in-house lobbyists, expenses) a registrant reports for the quarter, rounded as filed; where a report was later amended, only the latest version is counted; "Issues" lists every general issue area the filing names (the first six when there are more), each linked to that issue's page; the chart above counts a filing under its first issue only, and the <a href={ISSUES_PATH}>issue pages</a> count it under every one. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />
 </BaseLayout>

@@ -1,0 +1,73 @@
+---
+// /lobbying-issues/ — every general issue area lobbying filings list, with how many filings,
+// clients and registrants list it this year. Figures come from lib/lobbyissues.ts (unit-tested).
+// A filing reports one amount for all its issues: amounts here overlap and are not added up.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, num, plural, money } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+import { buildIssues, issueLogLine, rowIssues, ISSUES_PATH } from "../../lib/lobbyissues";
+
+const model = await getFlagship();
+const year = new Date().getUTCFullYear();
+const issues = buildIssues(model.lobbying, model.issueNames, year);
+const ytd = model.lobbying.filter((l) => l.year === year);
+const several = ytd.filter((l) => rowIssues(l).length > 1).length;
+const none = ytd.filter((l) => rowIssues(l).length === 0).length;
+const listed = issues.filter((i) => i.filings > 0);
+const most = [...listed].sort((a, b) => b.filings - a.filings)[0];
+const lastUpdated = model.lobbying.map((l) => l.createdAt).sort().at(-1) ?? model.builtAt;
+
+// Build log: the figures to compare with a direct count on the database.
+console.log(`[web] ${issueLogLine(issues, model.lobbying, year)}`);
+
+const answer = issues.length === 0
+  ? "No lobbying filings are on record yet, so there are no issue areas to list. The Senate lobbying job loads every filing posted since October 2025."
+  : `Lobbying filings for ${year} list ${plural(listed.length, "general issue area")}. ${most ? `The issue listed on the most filings is ${most.name}, on ${plural(most.filings, "filing")} from ${plural(most.clients, "client")}. ` : ""}${num(several)} of the ${num(ytd.length)} filings for ${year} list more than one issue, and each of those is counted under every issue it lists.`;
+const description = `Federal lobbying filings for ${year} by issue area: how many filings, clients and lobbying firms list each of the Senate's general issue codes.`;
+const ld = datasetLd({ name: `Federal lobbying by issue area, ${year}`, path: ISSUES_PATH, description, dateModified: lastUpdated.slice(0, 10), keywords: ["lobbying", "LDA", "issue areas", "lobbying issues"], sources: [SOURCES.lda], parentCatalogPath: "/lobbying/" });
+const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
+  { label: "Issue", type: "text" }, { label: "Filings", type: "num", cls: "num" }, { label: "Only issue listed", type: "num", cls: "num" },
+  { label: "Clients", type: "num", cls: "num" }, { label: "Registrants", type: "num", cls: "num" }, { label: "Reported on those filings", type: "num", cls: "num" },
+];
+---
+<BaseLayout title={[`Lobbying by Issue ${year}: Filings, Clients and Firms`, `Lobbying by Issue ${year}`]} description={description} section="Washington · Lobbying" noindex={issues.length === 0}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Lobbying", path: "/lobbying/" }, { name: "Issues", path: ISSUES_PATH }]} />
+  <h1>Lobbying by issue</h1>
+  <p class="lede">Every issue area that lobbying filings list, and who lists it.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote="Source: Senate Office of Public Records (LDA)" />
+
+  {issues.length === 0 ? <p class="empty-reason">No lobbying filings on record yet.</p> : (
+    <section aria-labelledby="list" data-issues-list>
+      <h2 id="list">All issue areas, {year}</h2>
+      <p class="section-note">One row for each general issue area. A filing is counted under every issue it lists. Click a column title to sort.</p>
+      <div class="tablewrap"><table class="data" data-sortable>
+        <thead><tr>
+          {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+        </tr></thead>
+        <tbody>
+          {issues.map((i) => (
+            <tr data-code={i.code}>
+              <td data-v={i.name.toLowerCase()}><a href={i.path}>{i.name}</a></td>
+              <td class="num" data-v={i.filings}>{num(i.filings)}</td>
+              <td class="num" data-v={i.only}>{num(i.only)}</td>
+              <td class="num" data-v={i.clients}>{num(i.clients)}</td>
+              <td class="num" data-v={i.registrants}>{num(i.registrants)}</td>
+              <td class="num" data-v={Math.round(i.amount)}>{money(i.amount)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    </section>
+  )}
+
+  <h2 id="about">What this page shows</h2>
+  <p>A lobbying report names the general issue areas the lobbying covered, chosen from a fixed list of 79 codes kept by the Senate and the House, such as taxation, defense or health. Many reports name several. This page counts each report under every issue it names, so the rows add up to more than the number of reports. {issues.length > 0 && <>For {year}, {num(several)} of {num(ytd.length)} filings name more than one issue and {num(none)} name none (most of those are registrations, which do not report lobbying activity).</>}</p>
+  <p><strong>The amounts overlap.</strong> A report states one amount for the quarter, not an amount for each issue. "Reported on those filings" is the total on the reports that name the issue. A report that names taxation and trade adds its whole amount to both rows, so the amounts of two issues must not be added together, and no row says how much was spent on that issue alone. "Only issue listed" counts the reports that name that issue and no other.</p>
+  <p>The issue area is a broad label. It does not say which bill or rule was lobbied, what was asked for, or what came of it. Where a report was later amended, only the latest version is counted. See the <a href="/lobbying/">lobbying page</a> for the largest clients and firms, the <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a> and the <a href="/methodology/#lobbying-issues">methodology</a>.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
