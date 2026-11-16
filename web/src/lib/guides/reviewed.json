@@ -81,9 +81,12 @@
       "web/src/components/TxnTable.astro": "16fafd7273f9b780",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "c4c2eb82161e667a",
+      "web/src/pages/congress/[slug].astro": "a9de1b3198bde044",
       "web/src/lib/directory.ts": "0466a663969706ab",
-      "web/src/pages/congress-members.astro": "b5f156c6692d56c9"
+      "web/src/pages/congress-members.astro": "7371c36d1f365a40",
+      "web/src/lib/committees.ts": "c0071ad12b95f7f0",
+      "web/src/pages/congress-committees/index.astro": "f9f29c15f18323e1",
+      "web/src/pages/congress-committees/[slug].astro": "a07927923968a333"
     }
   },
   "how-to-use-the-trade-map": {

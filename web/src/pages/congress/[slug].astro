@@ -18,6 +18,7 @@ import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDays, CONGRESS_DEADLINE_DAYS, money, sum, securityPath, companyPath } from "../../lib/flagship";
 import { personLd, fitDescription, SITE_URL } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import { buildCommittees } from "../../lib/committees";
 import VizPerson from "../../components/VizPerson.astro";
 import { ordinal, memberProfile, peerStats, sameState, sameStocks, seatGroups, seatTitle, memberQa, stateName, seatName, partyName } from "../../lib/profile";
 
@@ -48,6 +49,8 @@ const prof = memberProfile(model, p);
 const peers = peerStats(model);
 const seats = model.seats.get(p.id) ?? [];
 const groups = seatGroups(seats);
+// Each full committee has a page here (lib/committees.ts): members and their disclosed trades.
+const committeePaths = new Map(buildCommittees(model, today, personPath).map((c) => [c.code, c.path]));
 const former = !!role.validTo && role.validTo < today;
 const chamberName = role.chamber === "senate" ? "Senate" : "House of Representatives";
 const state = stateName(role.state), seat = seatName(role.chamber, role.district), party = partyName(role.party);
@@ -221,12 +224,12 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
   {groups.length > 0 && (
     <section aria-labelledby="committees" data-profile-committees>
       <h2 id="committees">Committee assignments</h2>
-      <p class="section-note">Current assignments in the {chamberName}{groups.some((g) => g.seat.chamber === "joint") ? " and joint committees" : ""}. Listed for context only: nothing on this page connects a trade to committee business.</p>
+      <p class="section-note">Current assignments in the {chamberName}{groups.some((g) => g.seat.chamber === "joint") ? " and joint committees" : ""}. Listed for context only: nothing on this page connects a trade to committee business. A committee's name opens its page here, with its members and the trades they have disclosed.</p>
       <ul class="seats">
         {groups.map((g) => (
           <li>
             <div class="seat-head">
-              {g.seat.url ? <a href={g.seat.url} rel="noopener" target="_blank">{g.seat.name}</a> : <span>{g.seat.name}</span>}
+              {committeePaths.get(g.seat.code) ? <a href={committeePaths.get(g.seat.code)}>{g.seat.name}</a> : g.seat.url ? <a href={g.seat.url} rel="noopener" target="_blank">{g.seat.name}</a> : <span>{g.seat.name}</span>}
               <span class={`tag ${g.seat.title ? "lead" : ""}`}>{seatTitle(g.seat)}</span>
             </div>
             {g.seat.jurisdiction && <p class="seat-what">{g.seat.jurisdiction}</p>}

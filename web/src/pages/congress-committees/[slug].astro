@@ -1,0 +1,166 @@
+---
+// One committee: /congress-committees/<slug>/ — its current members and the trades they have
+// disclosed. Figures come from lib/committees.ts (unit-tested). The roster holds current seats
+// only, so the trades are every trade on record for today's members, whenever they were made.
+// A committee seat is context. Nothing here ties a trade to the committee's business.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import TxnTable from "../../components/TxnTable.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, personPath, securityPath, companyPath, num, plural } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+import { dayKey } from "../../lib/tablesort";
+import { stateName } from "../../lib/profile";
+import { PARTY_LABEL } from "../../lib/directory";
+import { buildCommittees, CHAMBER_LABEL, COMMITTEES_PATH, COMMITTEE_TRADE_ROWS, COMMITTEE_STOCK_ROWS } from "../../lib/committees";
+
+export async function getStaticPaths() {
+  const model = await getFlagship();
+  const today = new Date().toISOString().slice(0, 10);
+  return buildCommittees(model, today, personPath).map((c) => ({ params: { slug: c.slug }, props: { code: c.code } }));
+}
+
+const { code } = Astro.props as { code: string };
+const model = await getFlagship();
+const today = new Date().toISOString().slice(0, 10);
+const all = buildCommittees(model, today, personPath);
+const c = all.find((x) => x.code === code)!;
+const n = c.members.length;
+const lastUpdated = c.latest ?? model.builtAt;
+const stocks = c.stocks.slice(0, COMMITTEE_STOCK_ROWS);
+const parties = (["D", "R", "I"] as const).map((k) => ({ k, n: c.members.filter((x) => x.party === k).length })).filter((x) => x.n > 0);
+const others = all.filter((x) => x.chamber === c.chamber && x.code !== c.code);
+const hasSubs = c.members.some((x) => x.subs.length > 0);
+
+const answer = c.trades === 0
+  ? `The ${c.name} has ${plural(n, "member")} on record. None of them has a disclosed stock trade on record here.`
+  : `The ${c.name} has ${plural(n, "member")} on record, and ${num(c.withTrades)} of them ${c.withTrades === 1 ? "has" : "have"} disclosed at least one stock trade. Together they disclosed ${plural(c.trades12m, "trade")} in the last 12 months: ${plural(c.buys12m, "purchase")} and ${plural(c.sells12m, "sale")}${c.trades12m - c.buys12m - c.sells12m > 0 ? `, and ${plural(c.trades12m - c.buys12m - c.sells12m, "other transaction")}` : ""}.`;
+const description = `Members of the ${c.name} and the stock trades they have disclosed, with a link to every filing.`;
+const ld = datasetLd({ name: `${c.name}: members and their disclosed trades`, path: c.path, description, dateModified: lastUpdated.slice(0, 10), keywords: [c.name, "congress stock trades", "STOCK Act", "committee assignments"], sources: c.chamber === "senate" ? [SOURCES.senate] : c.chamber === "house" ? [SOURCES.house] : [SOURCES.house, SOURCES.senate], parentCatalogPath: COMMITTEES_PATH });
+const short = c.name.replace(/^(House|Senate) Committee on (the )?/, (_m, ch) => `${ch} `);
+const jump: [string, string][] = [["#members", "Members"], ...(stocks.length ? [["#most-traded", "Most-traded stocks"] as [string, string]] : []), ...(c.trades ? [["#trades", "Trades"] as [string, string]] : []), ["#about", "About this page"]];
+const sortTh = (label: string, type: "text" | "num", cls?: string) => ({ label, type, cls });
+const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat", "text"), sortTh("Role", "text"), sortTh("Trades", "num", "num"), sortTh("Trades, 12 months", "num", "num"), sortTh("Latest disclosure", "num")];
+---
+<BaseLayout title={[`${c.name}: Members' Stock Trades`, `${c.name}: Stock Trades`, `${short}: Members' Stock Trades`, `${short}: Stock Trades`, short]} description={[description, `Members of the ${short} committee and the stock trades they have disclosed.`, `${short}: committee members and their disclosed stock trades.`]} section="Congress">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: "Committees", path: COMMITTEES_PATH }, { name: c.name, path: c.path }]} />
+  <h1>{c.name}</h1>
+  <p class="lede">Current members and the stock trades they have disclosed.</p>
+
+  <dl class="facts" data-committee-facts>
+    <div><dt>Chamber</dt><dd>{CHAMBER_LABEL[c.chamber]}</dd></div>
+    <div><dt>Members on record</dt><dd data-fact="members">{num(n)}</dd></div>
+    {parties.length > 0 && <div><dt>By party</dt><dd>{parties.map((p) => `${num(p.n)} ${PARTY_LABEL[p.k]}${p.n === 1 ? "" : "s"}`).join(", ")}</dd></div>}
+    <div><dt>Members with trades</dt><dd data-fact="with-trades">{num(c.withTrades)}</dd></div>
+    <div><dt>Trades on record</dt><dd data-fact="trades">{num(c.trades)}</dd></div>
+    {c.subcommittees.length > 0 && <div><dt>Subcommittees</dt><dd>{num(c.subcommittees.length)}</dd></div>}
+    {c.url && <div><dt>Official site</dt><dd><a href={c.url} rel="noopener" target="_blank">Committee website ↗</a></dd></div>}
+  </dl>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote={c.chamber === "senate" ? "Sources: congress-legislators committee data; Senate eFD PTRs" : c.chamber === "house" ? "Sources: congress-legislators committee data; House Clerk PTRs" : "Sources: congress-legislators committee data; House Clerk and Senate eFD PTRs"} />
+
+  <nav class="jump" aria-label="On this page">
+    <span>On this page</span>
+    {jump.map(([href, label]) => <a href={href}>{label}</a>)}
+  </nav>
+
+  {c.jurisdiction && <p class="section-note">{c.jurisdiction} <span class="soft">(The description is the congress-legislators dataset's own wording.)</span></p>}
+
+  <section aria-labelledby="members" data-committee-members>
+    <h2 id="members">Members</h2>
+    <p class="section-note">Today's assignments, committee leaders first. "Trades" counts every transaction row in the member's reports on this site, whenever the trade was made. Click a column title to sort.</p>
+    <div class="tablewrap"><table class="data" data-sortable>
+      <thead><tr>
+        {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      </tr></thead>
+      <tbody>
+        {c.members.map((x) => (
+          <tr>
+            <td data-v={x.sortName}>{x.path ? <a href={x.path}>{x.name}</a> : x.name}</td>
+            <td data-v={PARTY_LABEL[x.party]}>{PARTY_LABEL[x.party]}</td>
+            <td data-v={x.seat} title={stateName(x.state) ?? undefined}>{x.seat}</td>
+            <td data-v={x.title ?? "~"}>{x.title ?? "Member"}</td>
+            <td class="num" data-v={x.trades}>{num(x.trades)}</td>
+            <td class="num" data-v={x.trades12m}>{num(x.trades12m)}</td>
+            <td class="mono" data-v={dayKey(x.latest)}>{x.latest ? formatDate(x.latest) : ""}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table></div>
+    {hasSubs && c.subcommittees.length > 0 && (
+      <details class="fold">
+        <summary>Subcommittees ({num(c.subcommittees.length)})</summary>
+        <p class="section-note">A member who sits on one of these is listed above. Each member's own page names the subcommittees.</p>
+        <ul class="cols">{c.subcommittees.map((s) => <li>{s}</li>)}</ul>
+      </details>
+    )}
+  </section>
+
+  {stocks.length > 0 && (
+    <section aria-labelledby="most-traded" data-committee-stocks>
+      <h2 id="most-traded">Most-traded stocks, last 12 months</h2>
+      <p class="section-note">Tickers that appear most often in the reports these members disclosed in the last 365 days. A count of report rows, not a holding and not a view on the stock.</p>
+      <div class="tablewrap"><table class="data" data-sortable>
+        <thead><tr>
+          <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by ticker">Ticker<span class="arr" aria-hidden="true"></span></button></th>
+          <th>Company</th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by members">Members<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by trades">Trades<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by purchases">Purchases<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by sales">Sales<span class="arr" aria-hidden="true"></span></button></th>
+          <th aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by latest disclosure">Latest disclosure<span class="arr" aria-hidden="true"></span></button></th>
+        </tr></thead>
+        <tbody>
+          {stocks.map((s) => {
+            const sec = model.securities.get(s.securityId)!;
+            const co = sec.companyId != null ? model.companies.get(sec.companyId) : undefined;
+            const cp = co ? companyPath(co) : null;
+            return (
+              <tr>
+                <td class="mono" data-v={s.ticker}><a href={securityPath(sec)}>{s.ticker}</a></td>
+                <td>{co ? (cp ? <a href={cp}>{co.name}</a> : co.name) : (sec.name ?? "")}</td>
+                <td class="num" data-v={s.members}>{num(s.members)}</td>
+                <td class="num" data-v={s.trades}>{num(s.trades)}</td>
+                <td class="num" data-v={s.buys}>{num(s.buys)}</td>
+                <td class="num" data-v={s.sells}>{num(s.sells)}</td>
+                <td class="mono" data-v={dayKey(s.latest)}>{s.latest ? formatDate(s.latest) : ""}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table></div>
+      {c.stocks.length > stocks.length && <p class="soft small">Showing the {stocks.length} most traded of {num(c.stocks.length)} tickers.</p>}
+    </section>
+  )}
+
+  {c.trades > 0 && (
+    <section aria-labelledby="trades" data-committee-trades>
+      <h2 id="trades">Trades disclosed by members</h2>
+      <p class="section-note">Newest disclosures first, each with a link to the original report. {c.trades > COMMITTEE_TRADE_ROWS ? `The table holds the ${COMMITTEE_TRADE_ROWS} most recent of ${num(c.trades)} rows; every row is on the member's own page.` : "Every row is also on the member's own page."} A trade may predate the member's seat on this committee.</p>
+      <TxnTable model={model} txns={c.txns} showPerson showSecurity limit={COMMITTEE_TRADE_ROWS} />
+    </section>
+  )}
+
+  <h2 id="about">About this page</h2>
+  <p>The member list is the committee's current membership from the public congress-legislators project, refreshed daily. A member who sits only on one of the committee's subcommittees is included. Members who have left Congress are not listed.</p>
+  <p>The trades are the periodic transaction reports those members filed, shown as filed: dollar ranges, the owner named on the report, and the days between the trade and its disclosure. This site holds no history of past assignments, so the list includes trades made before a member joined the committee and leaves out trades by members who have since left it.</p>
+  <p>A committee seat is shown for context only. This site does not compare any trade with the committee's work, and a seat on a committee is not evidence about any trade. See <a href={COMMITTEES_PATH}>all committees</a>, the <a href="/congress-members/">member directory</a>, the <a href="/methodology/#committees">methodology</a> and <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>.</p>
+
+  {others.length > 0 && (
+    <section aria-labelledby="others">
+      <h2 id="others">Other {CHAMBER_LABEL[c.chamber]} committees</h2>
+      <ul class="cols">{others.map((o) => <li><a href={o.path}>{o.name}</a></li>)}</ul>
+    </section>
+  )}
+  <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  .fold { margin: 0.6rem 0; }
+  .fold summary { cursor: pointer; font-weight: 500; }
+  ul.cols { columns: 2 320px; padding-left: 1.1rem; margin: 0.5rem 0; }
+  ul.cols li { break-inside: avoid; margin: 0 0 0.3rem; }
+</style>
