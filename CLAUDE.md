@@ -2190,3 +2190,32 @@ the fuller record.
 - Not done: no committee filter on the trade map (it belongs with the table screener, T0-12:
   the map's filter script and its verifier oracle would both need the seat list); no CSV per
   committee; no subcommittee pages; no history of assignments.
+
+### Market-wide Form 4, stage 2 (2026-11-16, interactive session) — PR #19
+
+Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-marketwide.md`.
+
+- **Source `sec_form4_index`** (`ingest/src/sources/sec_form4_index.ts`, daily): walks the EDGAR
+  daily index (`/Archives/edgar/daily-index/<year>/QTR<n>/index.json`, then each
+  `master.YYYYMMDD.idx`), keeps form type exactly `4`, skips stored accessions, fetches the
+  submission `.txt` (one request; the ownership XML is between `<XML>` and `</XML>`) and writes
+  through the shared `storeForm4Filing` in `sec_form4.ts`. New companies get `tracked=false`,
+  new securities `is_active=false`, scope `market` unless the company is tracked, so the site
+  build (which reads the `site_*` views of migration 0019) does not change for them.
+- Resume point `ingest_runs.stats.through`; the last 2 index days are re-read every run; budget
+  `SEC_INDEX_MAX_MINUTES` (40, "partial"); 5 submission failures in a row end the run as failed;
+  start `SEC_INDEX_SINCE` (default 2026-10-01, the day after the last bulk quarter).
+- Workflow `form4-index.yml` (manual, chains itself). In `ingest.yml` the source is its own
+  group `insiders-market`. `scripts/freshness-check.mjs` lists it. Test fake:
+  `scripts/fake-edgar-index.mjs` (through `SEC_EDGAR_BASE`, tests only).
+- **Catch-up on production (2026-11-16, two chained runs, about 50 minutes):** through index day
+  2026-11-13, 9,875 filings stored (9,614 market, 261 tracked). 2026-11-13: 661 stored against
+  663 accessions in that day's index.
+- **Open:** 31 filings quarantined, about 30 with "write failed: Invalid time value" (a date the
+  shared write path cannot parse; the ticker-by-ticker daily job uses the same path). Store such
+  a filing with the date NULL, add a test, re-run the catch-up once.
+- The ticker-by-ticker `sec_form4` daily source still runs; the index source now stores tracked
+  companies' filings too. Retire the old one with stage 3 (the site switch-over), not before.
+- AdSense correction to the 2026-11-15 section above: the account exists, under Peter's personal
+  Google account (not the pfouge.com one), publisher ID pub-9671575911691889, site review
+  requested 2026-11-15; in-page slots stay off (`AD_SLOTS_ON`) until Google approves.
