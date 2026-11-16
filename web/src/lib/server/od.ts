@@ -4,7 +4,7 @@
 // option rows, impossible dates, holdings, the joint-filing rule), so an on-demand page and a
 // static page cannot disagree about a figure. Tests: scripts/od.test.ts.
 import type { Flagship, Person, Company, Security, Filing, Txn, Role } from "../flagship-core";
-import { personPath, companyPath, securityPath, decodeEntities, roleLabel, isLate, num, money, plural } from "../flagship-core";
+import { personPath, emptyMarket, companyPath, securityPath, decodeEntities, roleLabel, isLate, num, money, plural } from "../flagship-core";
 import { buildTxn, jointMap, type RawTxn, type FilingFacts } from "../txnbuild";
 import { cleanFootnotes } from "../footnotes";
 import { insiderRows, codeRows, yearRows, insiderPeriods, isOpenBuy, isOpenSale, type InsiderRow, type CodeRow, type YearRow, type PeriodSummary } from "../entity";
@@ -77,7 +77,7 @@ const EMPTY_STATS = { rowCount: 0, filingCount: 0, firstFiledAt: null, lastFiled
 export function buildOd(doc: OdDoc, now: Date = new Date()): OdPage {
   const model: Flagship = { builtAt: now.toISOString(), connected: true, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(), txns: [],
     lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [], donationWindowDays: 0, counts: {}, latestByPath: new Map(),
-    issueNames: new Map(), companySize: new Map(), seats: new Map(), footnotes: new Map() };
+    issueNames: new Map(), companySize: new Map(), seats: new Map(), footnotes: new Map(), market: emptyMarket() };
 
   // companies the page can name: the entity's own, its siblings' securities', the roles'
   const addCompany = (c: { id: number; name: string; slug: string | null; cik: string | null; ticker: string | null }) => {
