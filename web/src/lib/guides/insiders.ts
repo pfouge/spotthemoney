@@ -52,7 +52,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
 <li><strong>A company's page</strong> adds federal contracts and lobbying filings under the company's exact name, the members of Congress who traded its stock, and related companies.</li>
 </ul>
-<p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more. Every trade table can be sorted: click a column title such as Trade date, Value or Lag to sort by it, click again to reverse, and click a third time to return to the original newest-first order. Insider tables also carry <strong>Held after</strong>, the shares the insider reports owning once the row is done, and <strong>Change</strong>, how much of the earlier holding the row added or removed ("new" for a first purchase, −100% for a sale that leaves nothing); rows with no holding on file show a dash. A <strong>Follow</strong> button beside the name on all three adds the page to your free watchlist; see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}.</p>` },
+<p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more. Every trade table can be sorted: click a column title such as Trade date, Value or Lag to sort by it, click again to reverse, and click a third time to return to the original newest-first order. Insider tables also carry <strong>Held after</strong>, the shares the insider reports owning once the row is done, and <strong>Change</strong>, how much of the earlier holding the row added or removed ("new" for a first purchase, −100% for a sale that leaves nothing); rows with no holding on file show a dash. Where a filing has footnotes, each of its rows carries a link such as "2 notes": the text opens under the table, word for word as filed, and the filing itself shows which row each note is about. A <strong>Follow</strong> button beside the name on all three adds the page to your free watchlist; see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}.</p>` },
     ],
     faqs: [
       { q: "What is a Form 4 filing?", a: "Form 4 is the SEC filing that a company's officers, directors and owners of more than 10% of its stock must make within two business days of trading that stock. It shows the date, shares, price and holdings afterwards.", on: ["insiders", "stocks"] },
@@ -69,14 +69,14 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
     ],
     related: ["form-4-transaction-codes", "rule-10b5-1-trading-plans", "insider-buying-vs-insider-selling", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Stocks with insider activity", href: "/stocks/" }],
-    covers: ["web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/links.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro"],
+    covers: ["web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro"],
     ui: [{ text: "Guides for this page", on: "/stocks/aapl/" }, { text: "Related stocks", on: "/stocks/aapl/" }],
     facts: ["foreignInsiders"],
   }),
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   () => ({
-    slug: "form-4-transaction-codes", group: "insiders", updated: U,
+    slug: "form-4-transaction-codes", group: "insiders", updated: "2026-11-16",
     title: "Form 4 transaction codes",
     seoTitle: ["Form 4 Transaction Codes: P, S, A, M, F, G and the Rest", "Form 4 Transaction Codes Explained"],
     description: ["Every Form 4 transaction code in plain words: P is a purchase, S a sale, A a grant, M an option exercise, F shares withheld for tax, G a gift, and more.", "Every Form 4 transaction code in plain words, and which ones are real market trades."],
@@ -112,7 +112,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <p>The trade map opens on "Open-market", which shows only P and S rows. Switching to "All codes" brings in the rest. The site-wide charts (buy / sell pressure, weekly flow, the activity calendar) count only P and S rows that were not made under a pre-arranged plan. Charts on a single insider's or stock's page count every row marked Buy or Sell, including codes F and D.</p>
 <p>In tables, each Form 4 row shows its side with the code beside it, for example "Sell F", so you can tell a market sale from a tax withholding at a glance. Rows from Table II (options and other derivatives) are labelled "Option / conversion" and are kept out of buy and sell totals; see ${`<a href="/guides/insider-options-and-derivatives/">options and derivatives</a>`}.</p>` },
       { id: "price-zero", h: "Why do some rows have no price?", html: `
-<p>Because nothing was paid. A grant (A) or a gift (G) has no purchase price, and some filings put a weighted average or a total in a footnote instead of the price box. Those rows show a dash for price and value here.</p>` },
+<p>Because nothing was paid. A grant (A) or a gift (G) has no purchase price, and some filings put a weighted average or a total in a footnote instead of the price box. Those rows show a dash for price and value here. Where a filing has footnotes, each of its rows carries a link such as "2 notes" that opens the text under the table, as filed.</p>` },
     ],
     faqs: [
       { q: "What does code P mean on Form 4?", a: "Code P means the insider purchased shares, on the open market or in a private deal. It is the code that marks a real insider buy.", on: ["insiders"] },
@@ -135,7 +135,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
   (c) => {
     const r = c.facts.rule10b51;
     return {
-      slug: "rule-10b5-1-trading-plans", group: "insiders", updated: "2026-11-15",
+      slug: "rule-10b5-1-trading-plans", group: "insiders", updated: "2026-11-16",
       title: "Rule 10b5-1 trading plans",
       seoTitle: ["Rule 10b5-1 Plans: Pre-Scheduled Insider Sales Explained", "Rule 10b5-1 Trading Plans Explained"],
       description: ["A Rule 10b5-1 plan lets a company insider schedule stock trades in advance. How the plans work, the 90-day waiting period, and why they are filtered out by default.", "A Rule 10b5-1 plan lets an insider schedule trades in advance. How the plans work and why they matter when reading Form 4."],
@@ -161,7 +161,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
         { id: "spot", h: "How do I tell a plan trade from a discretionary one?", html: `
 <p>By the checkbox. On this site a row from a filing with the box ticked carries a "10b5-1 plan" flag. The trade map has a filter with two settings, "No 10b5-1 plans" (the default) and "With plans".</p>
 <p>In an insider's trade table the "Held after" and "Change" columns show how much of the reported holding a row removed. They sit beside the plan flag, but the filing does not link the two: a large change under a plan is a fact about the holding, not a reason.</p>
-<p>The box applies to the whole filing, not to each row, and it has only existed since 2023, so older filings mention plans in footnotes or not at all. Treat the flag as reliable when present and its absence in an old filing as unknown.</p>` },
+<p>The box applies to the whole filing, not to each row, and it has only existed since 2023, so older filings mention plans in footnotes or not at all. Treat the flag as reliable when present and its absence in an old filing as unknown. Many filers also state the plan and the date it was adopted in a footnote: where a filing on this site has footnotes, the "notes" link on its rows opens them under the table, as filed.</p>` },
         { id: "why-filter", h: "Why are plan trades left out by default?", html: `
 <p>Because of when the decision was made. A plan sale executed this week was decided at least ${r.insiderCoolingDays} days ago, often a year or more. It tells you how the insider chose to cash out over time, not how they feel about the company now. Leaving plan trades out of the default view keeps the map closer to recent decisions.</p>
 <p>That is a choice about emphasis, and you can undo it with one click. Plan sales are still real money leaving insiders' hands, and a plan can itself be informative: a new plan to sell a large share of a holding is a decision too, made on the day the plan was adopted.</p>` },
@@ -284,7 +284,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: "2026-11-15",
+    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: "2026-11-16",
     title: "10% owners and joint filings",
     seoTitle: ["10% Owners and Joint Form 4 Filings: One Trade, Many Forms", "10% Owners and Joint Form 4 Filings"],
     description: ["Funds that own over 10% of a company file Form 4 like executives, and related funds often each report the same trade. How to read them without double counting.", "Funds owning over 10% of a company file Form 4 too, and related funds often report the same trade. How to avoid double counting."],
@@ -301,6 +301,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <p>Their trades look different from an executive's. They are larger, often by a factor of a hundred, and they are usually sales: a fund exists to return money to its own investors, so selling down a holding after a company goes public is its ordinary business.</p>` },
       { id: "joint", h: "Why does one trade appear on several filings?", html: `
 <p>Because the shares can have several legal owners at once. A private-equity stake may be held by a fund, controlled by a general partner, which is controlled by a management company, which is controlled by named individuals. Each of them "beneficially owns" the same shares in the law's eyes, and each may file a Form 4 for the same sale, sometimes on one joint form and sometimes on separate ones.</p>
+<p>The filings usually explain the chain of owners in their footnotes. Where a filing has them, the "notes" link on its rows opens the text under the trade table, word for word as filed.</p>
 <p>Read one at a time they are all correct. Added together they multiply the trade. One real sale on this site once appeared under seven owners and summed to seven times its size.</p>` },
       { id: "rule", h: "How does this site avoid counting a trade twice?", html: `
 <p>It treats Form 4 rows as one trade when the stock, the date, the code, the share count and the price all match across different filings, the holdings reported after the trade match too, and the trade is worth ${c.jointMinUsd} or more. The earliest filing keeps the trade. The others stay visible on each filer's own page, carry the flag "also in another filing", and are left out of totals and off the map.</p>

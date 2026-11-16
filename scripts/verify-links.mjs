@@ -11,6 +11,8 @@
 //   5. AUTO     an automatic glossary link that points at its own page, at a missing guide,
 //               or twice at the same guide from one page.
 //   6. FLAG     a "late" or "10b5-1 plan" flag in a trade table that is not a link to its guide.
+//   7. NOTES    a Form 4 "notes" link with no footnote block on its page, a block printed twice,
+//               an empty or over-long block, or an XML escape shown as text.
 //
 //   node scripts/verify-links.mjs http://127.0.0.1:4321            (every sitemap page)
 //   node scripts/verify-links.mjs https://spotthemoney.com --sample 40   (40 pages per sitemap)
@@ -99,7 +101,7 @@ if (full) {
 }
 
 // 4–6. Entity pages, automatic links, flags.
-let entities = 0, autos = 0, flagLinks = 0, periodTables = 0;
+let entities = 0, autos = 0, flagLinks = 0, periodTables = 0, noteLinks = 0, noteBlocks = 0;
 for (const path of pages) {
   const { html } = await get(path);
   if (!html) continue;
@@ -141,6 +143,25 @@ for (const path of pages) {
     ok(auto.every((a) => !handInBody.has(a)), `AUTO ${path}: an automatic link repeats a link the guide already makes by hand`);
     void byHand;
   }
+  // Form 4 footnotes: every "notes" link on a row lands on a footnote block on the same page,
+  // inside the folded list; a block is printed once, has text, and carries no leftover escapes.
+  const noteIds = [...main.matchAll(/<section class="fnote" id="(fn\d+)"/g)].map((m) => m[1]);
+  if (noteIds.length || /class="flag notes"/.test(main)) {
+    ok(new Set(noteIds).size === noteIds.length, `NOTES ${path}: a filing's footnotes are printed twice`);
+    const folded = [...main.matchAll(/<details class="fnotes" data-fnotes>[\s\S]*?<\/details>/g)].map((m) => m[0]).join("");
+    const have = new Set(noteIds);
+    for (const m of main.matchAll(/<a class="flag notes" href="#(fn\d+)"[^>]*>(\d+) notes?<\/a>/g)) {
+      noteLinks++;
+      if (!ok(have.has(m[1]) && folded.includes(`id="${m[1]}"`), `NOTES ${path}: the notes link #${m[1]} has no footnote block in the folded list`)) break;
+    }
+    for (const sec of folded.matchAll(/<section class="fnote" id="(fn\d+)"[\s\S]*?<\/section>/g)) {
+      noteBlocks++;
+      const items = [...sec[0].matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]);
+      if (!ok(items.length >= 1 && items.length <= 10 && items.every((t) => t.trim().length > 0), `NOTES ${path}: block #${sec[1]} has ${items.length} footnotes or an empty one`)) break;
+      if (!ok(!items.some((t) => /&amp;(amp|quot|apos|lt|gt|#\d+);/.test(t)), `NOTES ${path}: block #${sec[1]} shows an XML escape as text`)) break;
+    }
+    ok(!/PRE-FLOOR NOTE/.test(main), `NOTES ${path}: a footnote of a filing from before the site's Form 4 start date is shown`);
+  }
   for (const m of main.matchAll(/<(a|span) class="flag (late|10b5-1-plan)"([^>]*)>/g)) {
     flagLinks++;
     if (!ok(m[1] === "a" && /href="\/guides\//.test(m[3]), `FLAG ${path}: a "${m[2]}" flag is not linked to its guide`)) break;
@@ -148,4 +169,4 @@ for (const path of pages) {
 }
 
 if (failures.length) { console.error(`✗ ${failures.length} of ${checks} link checks failed:`); for (const f of [...new Set(failures)].slice(0, 50)) console.error("  " + f); process.exit(1); }
-console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${periodTables} period tables, ${autos} automatic guide links, ${flagLinks} flag links` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));
+console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${periodTables} period tables, ${autos} automatic guide links, ${flagLinks} flag links, ${noteLinks} footnote links to ${noteBlocks} footnote blocks` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));

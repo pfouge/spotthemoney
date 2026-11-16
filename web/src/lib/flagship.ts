@@ -12,6 +12,7 @@
 // Everything is null-safe: with no DATABASE_URL, or empty tables, the model is empty and the
 // pages render their empty-state reason lines instead of blank tables.
 
+import { cleanFootnotes } from "./footnotes";
 import postgres from "postgres";
 import { normalizeOrgName, tradeValue, unitPrice, median, FORM4_FLOOR } from "@stm/shared";
 import { jointDuplicates, type JointRow } from "./joint";
@@ -143,6 +144,8 @@ export interface Flagship {
   companySize: Map<string, { shares: number | null; sharesAsOf: string | null; float: number | null; floatAsOf: string | null }>;
   /** Person id → current committee and subcommittee seats. Empty until the roster job has run with migration 0015. */
   seats: Map<number, Seat[]>;
+  /** Form 4 filing id → the filing's footnotes as clean text (lib/footnotes.ts). Only filings that have any. */
+  footnotes: Map<number, string[]>;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */
@@ -163,7 +166,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), seats: new Map(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), seats: new Map(), footnotes: new Map(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -245,7 +248,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), seats: new Map() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), seats: new Map(), footnotes: new Map() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -387,6 +390,26 @@ async function load(): Promise<Flagship> {
       for (const i of issueRows) if (i.name) model.issueNames.set(i.code, i.name);
     } catch (err) {
       console.warn("[web] chart extras skipped:", (err as Error).message);
+    }
+
+    // Form 4 footnotes, shown under the trade tables. Optional in the same way: without them
+    // the tables simply have no footnote links.
+    try {
+      const noteRows = await sql<{ id: number; notes: unknown }[]>`
+        select f.id, f.payload->'footnotes' as notes
+          from site_filings f
+         where f.source = 'sec_form4' and f.review in ('auto_approved','approved') and f.confidence >= 0.9
+           and f.filed_at >= ${FORM4_FLOOR}::date
+           and jsonb_typeof(f.payload->'footnotes') = 'array' and jsonb_array_length(f.payload->'footnotes') > 0`;
+      for (const r of noteRows) {
+        if (!model.filings.has(r.id)) continue;
+        const notes = cleanFootnotes(r.notes);
+        if (notes.length) model.footnotes.set(r.id, notes);
+      }
+      let noteTotal = 0; for (const n of model.footnotes.values()) noteTotal += n.length;
+      console.log(`[web] Form 4 footnotes: ${model.footnotes.size} filings, ${noteTotal} notes`);
+    } catch (err) {
+      console.warn("[web] Form 4 footnotes skipped:", (err as Error).message);
     }
 
     // Company size for the Size filter. Optional in the same way: without it the filter

@@ -118,6 +118,22 @@ select 'sec_form4', f.accession, p.id, c.id, f.filed::timestamptz,
        1.0, 'auto_approved', f.published, jsonb_build_object('accession', f.accession, 'seed', true,
        'transactions', jsonb_build_array(jsonb_build_object('shares', f.shares, 'sharesOwnedAfter', f.after_shares)))
   from seed_f4 f join people p on p.cik = f.person_cik join companies c on c.primary_ticker = f.ticker;
+-- Form 4 footnotes (web/src/lib/footnotes.ts): stored per filing, as the data jobs write them.
+-- One filing with XML escapes and a repeated note, one with more notes than a table prints,
+-- and the pre-floor filing, whose note must never reach a page.
+update filings set payload = payload || jsonb_build_object('footnotes', jsonb_build_array(
+    'The price reported is a weighted average. The shares were sold in multiple transactions at prices from $40.10 to $41.95.',
+    'Held by the Karp &amp; Family Trust (the &quot;Trust&quot;), of which the reporting person is trustee.',
+    'Held by the Karp &amp; Family Trust (the &quot;Trust&quot;), of which the reporting person is trustee.'))
+ where source = 'sec_form4' and external_id = '0001321655-26-000306';
+update filings set payload = payload || jsonb_build_object('footnotes', jsonb_build_array(
+    'The purchase was made in the open market.'))
+ where source = 'sec_form4' and external_id = '0001321655-26-000301';
+update filings set payload = payload || jsonb_build_object('footnotes',
+    (select jsonb_agg('Seed footnote number ' || n || ' of twelve, about one lot of the sale.' order by n) from generate_series(1, 12) n))
+ where source = 'sec_form4' and external_id = '0000789019-26-000203';
+update filings set payload = payload || jsonb_build_object('footnotes', jsonb_build_array('PRE-FLOOR NOTE: must not be shown.'))
+ where source = 'sec_form4' and external_id = '0001045810-19-000900';
 insert into transactions (filing_id, person_id, security_id, side, txn_code, is_derivative, txn_date, disclosed_at, shares, price, disclosure_lag_days, confidence, review, is_10b5_1, owner_type, asset_type)
 select fi.id, fi.filer_person_id, s.id,
        case f.code when 'P' then 'buy' when 'S' then 'sell' when 'M' then 'option' else 'other' end::txn_side,

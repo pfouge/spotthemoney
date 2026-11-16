@@ -841,3 +841,15 @@ html:not(.js) .nf-controls, html:not(.js) .nf-more-row, html:not(.js) .nf-all { 
   .nf-item .nf-chg:empty, .nf-item .nf-src:empty, .nf-item .nf-tags:empty { display: none; }
   .nf-top-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ---- Form 4 footnotes under a trade table (components/TxnTable.astro) ---- */
+details.fnotes { border-bottom: 1px solid var(--line); margin-top: 0.4rem; max-width: 100ch; }
+details.fnotes summary { cursor: pointer; padding: 0.7rem 0; font-weight: 500; }
+details.fnotes summary span { color: var(--ink-soft); font-weight: 400; font-size: 13.5px; margin-left: 8px; }
+.fnote { padding: 0.5rem 0 0.7rem; border-top: 1px solid var(--line); scroll-margin-top: 84px; }
+.fnote:focus { outline: none; }
+.fnote:target, .fnote:focus-visible { background: color-mix(in srgb, var(--signal) 8%, transparent); }
+.fnote-h { margin: 0 0 0.3rem; font-size: 14.5px; font-weight: 600; }
+.fnote-h span { font-weight: 400; }
+.fnote ol { margin: 0; padding-left: 1.4rem; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.fnote li + li { margin-top: 0.3rem; }

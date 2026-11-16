@@ -27,7 +27,7 @@
     }
   },
   "form-4-transaction-codes": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "ingest/src/sources/sec_form4.ts#codeToSide": "fafd70cd6d81dfe4",
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
@@ -76,9 +76,9 @@
     }
   },
   "how-to-read-a-congressional-trade-report": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
-      "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3",
+      "web/src/components/TxnTable.astro": "16fafd7273f9b780",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
       "web/src/pages/congress/[slug].astro": "c4c2eb82161e667a"
@@ -134,17 +134,17 @@
     }
   },
   "rule-10b5-1-trading-plans": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3"
+      "web/src/components/TxnTable.astro": "16fafd7273f9b780"
     }
   },
   "ten-percent-owners-and-joint-filings": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "33a8e39fcdbdf6f3"
+      "web/src/components/TxnTable.astro": "16fafd7273f9b780"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -175,6 +175,8 @@
       "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
       "web/src/lib/entity.ts": "26a899e3daaa39c9",
       "web/src/lib/links.ts": "5e32b90da3079fca",
+      "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
+      "web/src/components/TxnTable.astro": "16fafd7273f9b780",
       "web/src/pages/stocks/[ticker].astro": "a36818d6c9aa4640",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
       "web/src/pages/companies/[slug].astro": "7d139b3661b2cb62"
