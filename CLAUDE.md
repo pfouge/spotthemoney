@@ -1961,8 +1961,9 @@ Working notes for the next lead:
 
 ### AdSense readiness and Modern Web Guidance pass (2026-11-15) — Peter's brief
 
-There is NO AdSense account yet. Publisher ID pub-7904173988271272 belongs to the goldprice.org
-network: never put it on this site. Peter creates the account under peter@pfouge.com.
+**Superseded the same day, see "PRs #11 to #13" below: the account now exists** (publisher ID
+pub-9671575911691889, owner Google account is Peter's Gmail one, not peter@pfouge.com). Publisher
+ID pub-7904173988271272 belongs to the goldprice.org network: never put it on this site.
 
 - **One switch:** `web/src/lib/ads.ts` `ADSENSE_CLIENT` (empty today, so no ad code renders
   anywhere). Filled with `ca-pub-` + 16 digits, production builds render the
@@ -2034,3 +2035,51 @@ network: never put it on this site. Peter creates the account under peter@pfouge
   names a file holding a personal email address beside a user agent is refused by the session's
   privacy guard, so read and edit those files (`sec_form4.ts`, `lib/http.ts`, this file) with
   the file tools, and run tests by glob.
+
+### PRs #11 to #13 (2026-11-15, interactive session) — recorded here on 2026-11-16
+
+Written from the project state doc (`claude/parity-state.md` in the claude.ai Project), which is
+the fuller record.
+
+- **#11 AdSense.** `ADSENSE_CLIENT = "ca-pub-9671575911691889"` in `web/src/lib/ads.ts`; head tag
+  and meta on content pages only; `web/public/ads.txt`; in-page slots are held by
+  `AD_SLOTS_ON = false` until Google approves the site (review requested 2026-11-15). Before ads
+  are served: Google's consent message for the EEA, UK and Switzerland.
+- **#12 Homepage.** Notable-trades feed above the trade map (`web/src/lib/notable.ts`,
+  `notable-build.ts`, `NotableFeed.astro`, `/data/notable.json`, methodology `#notable`). Default
+  preset Cluster buys, 7 days (cluster presets fall back to 30). Labelled partial coverage.
+- **#13 Market-wide Form 4, stage 1.** Migration 0019: `filings.scope` ('tracked' | 'market'),
+  `companies.tracked`, `promote_market_scope()`, and five views `site_filings`, `site_companies`,
+  `site_people`, `site_person_roles`, `site_securities`. **Every build-time query reads the
+  `site_*` views**, so market-scope rows are not on the site yet. Their column lists are frozen:
+  a column added to one of the five tables needs a `create or replace view` too. Source
+  `sec_form4_bulk` + workflow `form4-bulk.yml` (manual) load the SEC quarterly Insider
+  Transactions Data Sets; 2025 Q4 to 2026 Q3 are loaded (125,746 filings, 120,428 of them
+  scope market). The deploy read 37,883 files after the load: file headroom on the free
+  Workers plan is thin. Stages 2 (filings since 2026-10-01) and 3 (switch the site over) are open.
+  Next free migration number: 0020.
+
+### Stock pages: insider buying and selling over 3 and 12 months (2026-11-16, scheduled parity run) — gap T0-02
+
+- **What.** `/stocks/<ticker>/` has a table "Insider buying and selling in X: 3 and 12 months"
+  (anchor `#insider-summary`, `data-entity-periods`) above "Insiders trading X": purchases,
+  insiders who bought, shares and dollars bought; the same for sales; sales under a 10b5-1 plan;
+  net shares and net dollars. Shown whenever the page has Form 4 rows.
+- **Rule** (`insiderPeriods`, `isOpenSale`, `INSIDER_PERIODS` in `web/src/lib/entity.ts`; test in
+  `scripts/entity.test.ts`): Form 4 code P with side buy and code S with side sell only, so
+  awards, exercises, gifts, code F and D, derivative rows (side `option`) and repeat filings of
+  one trade (side `other`) stay out. A row is in a period by its **disclosure** date, 90 and 365
+  days back from the build, the trade map's rule. Dollars are the model's `value`; a row with no
+  usable price adds shares only (`unpriced`). Methodology `#insider-summary`; guide
+  `what-is-form-4` gained a sentence.
+- **Changed with it:** the page's figure strip and answer sentence counted every row with side
+  `sell` (codes S, F and D) under the label "open-market ... sales". Both now count code S only.
+- **Verifier:** `verify-links` checks, on every stock page it reads, that a page listing insiders
+  has the table, that net shares equal bought minus sold, and that no 3-month figure exceeds its
+  12-month figure.
+- **I-Bond job.** `ibonds` had reported `partial` every day since 2026-11-02: the Treasury matrix
+  passed 10,000 rows (the API's largest page) with the November period. It read newest first,
+  so the stored rates were right (5.51% from 2026-11-01), but the run was never clean. It now
+  reads every page (`MAX_PAGES` 10).
+- Not done: no 3 and 12 month table on company or insider pages; no market-wide figures (the
+  table covers filings on the site, which is stated on the methodology page).

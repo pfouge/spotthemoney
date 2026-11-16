@@ -3,7 +3,7 @@
 // members: every number is a count, a date or a sum of reported values; nothing is inferred
 // about why anyone traded.
 import type { Flagship, Person, Security, Company, Txn } from "./flagship";
-import { personPath, securityPath, companyPath, roleLabel } from "./flagship";
+import { personPath, securityPath, companyPath, roleLabel, daysAgo } from "./flagship";
 import { sizeByTicker, CAP_BANDS, type SizeEstimate } from "./capband";
 
 const isForm4 = (t: Txn) => t.source === "sec_form4";
@@ -39,6 +39,42 @@ export function yearRows(txns: Txn[]): YearRow[] {
   return [...m].sort((a, b) => b[0].localeCompare(a[0])).map(([year, ts]) => {
     const b = ts.filter((t) => (isForm4(t) ? isOpenBuy(t) : t.side === "buy")), s = ts.filter(isSale);
     return { year, rows: ts.length, buys: b.length, sells: s.length, other: ts.length - b.length - s.length, bought: val(b), sold: val(s) };
+  });
+}
+
+// ── open-market buying and selling over a period (stock pages) ─────────────────────────────
+/** Open-market sale (Form 4 code S). Shares withheld for tax (F) and sales back to the company (D) are not counted here. */
+export const isOpenSale = (t: Txn) => isForm4(t) && t.code === "S" && t.side === "sell";
+/** The periods on a stock's page: days counted back from the build date, by the date a filing was disclosed. */
+export const INSIDER_PERIODS: { days: number; label: string }[] = [{ days: 90, label: "Last 3 months" }, { days: 365, label: "Last 12 months" }];
+export interface PeriodSummary {
+  days: number; label: string;
+  /** Open-market purchases: rows, distinct insiders, shares, dollars at reported prices. */
+  buys: number; buyers: number; sharesBought: number; bought: number;
+  /** Open-market sales, the same four figures, and how many of the rows were made under a Rule 10b5-1 plan. */
+  sells: number; sellers: number; sharesSold: number; sold: number; planSells: number;
+  /** Bought minus sold. */
+  netShares: number; net: number;
+  /** Rows counted above that report no usable price, so they add shares but no dollars. */
+  unpriced: number;
+}
+/**
+ * Insider buying and selling in a set of rows over each period. Only open-market purchases
+ * (code P) and open-market sales (code S) count; derivative rows and a trade already reported
+ * in another filing carry a different side in the build model and so stay out. A row belongs
+ * to a period by its disclosure date, the same rule the trade map uses. Counts and sums only.
+ */
+export function insiderPeriods(txns: Txn[], since: (days: number) => string = daysAgo, periods = INSIDER_PERIODS): PeriodSummary[] {
+  const sumOf = (ts: Txn[], f: (t: Txn) => number | null | undefined) => ts.reduce((a, t) => a + (f(t) ?? 0), 0);
+  const people = (ts: Txn[]) => new Set(ts.map((t) => t.personId).filter((x) => x != null)).size;
+  return periods.map(({ days, label }) => {
+    const from = since(days);
+    const inP = txns.filter((t) => !!t.disclosedAt && t.disclosedAt.slice(0, 10) >= from);
+    const b = inP.filter(isOpenBuy), s = inP.filter(isOpenSale);
+    const sharesBought = sumOf(b, (t) => t.shares), sharesSold = sumOf(s, (t) => t.shares), bought = val(b), sold = val(s);
+    return { days, label, buys: b.length, buyers: people(b), sharesBought, bought, sells: s.length, sellers: people(s), sharesSold, sold,
+      planSells: s.filter((t) => t.is10b51 === true).length, netShares: sharesBought - sharesSold, net: bought - sold,
+      unpriced: [...b, ...s].filter((t) => t.value == null).length };
   });
 }
 

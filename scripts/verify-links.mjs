@@ -99,7 +99,7 @@ if (full) {
 }
 
 // 4–6. Entity pages, automatic links, flags.
-let entities = 0, autos = 0, flagLinks = 0;
+let entities = 0, autos = 0, flagLinks = 0, periodTables = 0;
 for (const path of pages) {
   const { html } = await get(path);
   if (!html) continue;
@@ -114,6 +114,21 @@ for (const path of pages) {
     const have = ids(html);
     for (const h of hrefs(jump)) ok(have.has(h.slice(1)), `ENTITY ${path}: jump link ${h} goes nowhere`);
     if (kind !== "congress") ok(/data-learn-more/.test(main), `ENTITY ${path}: no "Guides for this page" block`);
+    if (kind === "stocks") {
+      // 3 and 12 month summary: there whenever the page lists insiders, and its own sums agree.
+      const sec = /<section[^>]*data-entity-periods[\s\S]*?<\/section>/.exec(main)?.[0] ?? "";
+      if (/data-entity-insiders/.test(main)) ok(!!sec, `ENTITY ${path}: insiders listed but no 3 and 12 month summary`);
+      if (sec) {
+        periodTables++;
+        const cell = (k) => { const m = new RegExp(`data-k="${k}"[^>]*>([^<]*)<`).exec(sec); return m ? Number(m[1].replace(/[,+]/g, "").replace("\u2212", "-")) : NaN; };
+        for (const d of [90, 365]) {
+          const bought = cell(`shares-bought-${d}`), sold = cell(`shares-sold-${d}`), net = cell(`net-shares-${d}`);
+          ok(Number.isFinite(net) && net === bought - sold, `ENTITY ${path}: ${d}-day net shares ${net} is not bought ${bought} minus sold ${sold}`);
+          ok(cell(`buyers-${d}`) <= cell(`buys-${d}`) && cell(`sellers-${d}`) <= cell(`sells-${d}`) && cell(`plan-${d}`) <= cell(`sells-${d}`), `ENTITY ${path}: ${d}-day people or plan count exceeds its trade count`);
+        }
+        for (const k of ["buys", "sells", "shares-bought", "shares-sold", "buyers", "sellers", "plan"]) ok(cell(`${k}-90`) <= cell(`${k}-365`), `ENTITY ${path}: ${k} is larger over 3 months than over 12`);
+      }
+    }
   }
   if (path.startsWith("/guides/") && path !== "/guides/") {
     const auto = [...main.matchAll(/<a href="(\/guides\/[a-z0-9-]+\/)" data-auto>/g)].map((m) => m[1]);
@@ -133,4 +148,4 @@ for (const path of pages) {
 }
 
 if (failures.length) { console.error(`✗ ${failures.length} of ${checks} link checks failed:`); for (const f of [...new Set(failures)].slice(0, 50)) console.error("  " + f); process.exit(1); }
-console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${autos} automatic guide links, ${flagLinks} flag links` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));
+console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${periodTables} period tables, ${autos} automatic guide links, ${flagLinks} flag links` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));

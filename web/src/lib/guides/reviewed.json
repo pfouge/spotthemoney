@@ -169,13 +169,13 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11",
       "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
-      "web/src/lib/entity.ts": "4770bf63df3f89d9",
+      "web/src/lib/entity.ts": "26a899e3daaa39c9",
       "web/src/lib/links.ts": "5e32b90da3079fca",
-      "web/src/pages/stocks/[ticker].astro": "034561c3c979830f",
+      "web/src/pages/stocks/[ticker].astro": "a36818d6c9aa4640",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
       "web/src/pages/companies/[slug].astro": "7d139b3661b2cb62"
     }
