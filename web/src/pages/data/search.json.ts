@@ -4,6 +4,7 @@
 import type { APIRoute } from "astro";
 import { getFlagship, personPath, securityPath, companyPath } from "../../lib/flagship";
 import { buildCommittees, COMMITTEES_PATH } from "../../lib/committees";
+import { buildIssues, ISSUES_PATH } from "../../lib/lobbyissues";
 import { getGuides, guidePath, GROUPS } from "../../lib/guides";
 
 export const GET: APIRoute = async () => {
@@ -34,6 +35,9 @@ export const GET: APIRoute = async () => {
   const committees = buildCommittees(m, new Date().toISOString().slice(0, 10), personPath);
   if (committees.length) rows.push(["Page", "Committees of Congress", "Members of each committee and their disclosed trades", COMMITTEES_PATH, 0]);
   for (const c of committees) rows.push(["Committee", c.name, `${c.members.length} members, ${c.withTrades} with trades`, c.path, c.trades]);
+  const issues = buildIssues(m.lobbying, m.issueNames, new Date().getUTCFullYear());
+  if (issues.length) rows.push(["Page", "Lobbying by issue", "Filings, clients and firms for each issue area", ISSUES_PATH, 0]);
+  for (const i of issues) rows.push(["Lobbying issue", i.name, `${i.filings} filings this year`, i.path, 0]);
   // Guides are found by their title and by the questions they answer.
   for (const g of await getGuides()) rows.push(["Guide", g.title, GROUPS.find((x) => x.key === g.group)?.label ?? "Guide", guidePath(g.slug), 0]);
   return new Response(JSON.stringify(rows), { headers: { "content-type": "application/json; charset=utf-8" } });

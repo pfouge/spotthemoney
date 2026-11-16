@@ -19,6 +19,8 @@ import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, companyPath, personPath, securityPath, withinDays, num, plural, money, sum, roleLabel } from "../../lib/flagship";
 import { organizationLd, fitDescription, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
+import IssueList from "../../components/IssueList.astro";
+import { issueIndex } from "../../lib/lobbyissues";
 import VizStock from "../../components/VizStock.astro";
 
 export async function getStaticPaths() {
@@ -30,6 +32,7 @@ const { id } = Astro.props as { id: number };
 const model = await getFlagship();
 const c = model.companies.get(id)!;
 const path = companyPath(c)!;
+const issueIdx = issueIndex(model.lobbying, model.issueNames);
 const securities = c.securityIds.map((sid) => model.securities.get(sid)!).filter(Boolean);
 const txns = c.txns.filter((t) => t.source === "sec_form4"); // insider rows only; Congress trades live on the ticker page
 const congressTxns = c.txns.filter((t) => t.source !== "sec_form4");
@@ -146,10 +149,10 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   {c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing posted since October 2025 names "{c.name}" as the client. Filings under a subsidiary or trade-association name are not matched. Search <a href="/lobbying/">lobbying</a>.</p> : (
     <div class="tablewrap">
       <table class="data">
-        <thead><tr><th>Period</th><th>Registrant</th><th>Primary issue</th><th class="num">Amount</th><th>Source</th></tr></thead>
+        <thead><tr><th>Period</th><th>Registrant</th><th>Issues</th><th class="num">Amount</th><th>Source</th></tr></thead>
         <tbody>
           {c.lobbying.slice(0, 50).map((r) => (
-            <tr><td class="mono">{r.year ?? "—"}{r.quarter ? ` Q${r.quarter}` : ""}</td><td>{orgPath(model, r.registrant) ? <a href={orgPath(model, r.registrant)!}>{r.registrant}</a> : (r.registrant ?? "—")}</td><td>{r.issueArea ? model.issueNames.get(r.issueArea) ?? r.issueArea : "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td>{r.sourceRef ? <a href={r.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>
+            <tr><td class="mono">{r.year ?? "—"}{r.quarter ? ` Q${r.quarter}` : ""}</td><td>{orgPath(model, r.registrant) ? <a href={orgPath(model, r.registrant)!}>{r.registrant}</a> : (r.registrant ?? "—")}</td><td><IssueList row={r} index={issueIdx} /></td><td class="num">{money(r.amount, { compact: false })}</td><td>{r.sourceRef ? <a href={r.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>
           ))}
         </tbody>
       </table>

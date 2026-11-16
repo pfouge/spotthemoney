@@ -1,0 +1,12 @@
+---
+// The "Issues" cell of a lobbying table: every general issue area the filing lists, each linked
+// to its issue page (lib/lobbyissues.ts). Long lists are cut at `max`, with the rest counted.
+import type { LobbyingRow } from "../lib/flagship";
+import { issueCell, ISSUES_INLINE } from "../lib/lobbyissues";
+interface Props { row: LobbyingRow; index: Map<string, { name: string; path: string }>; max?: number; current?: string }
+const { row, index, max = ISSUES_INLINE, current } = Astro.props;
+const { shown, more } = issueCell(row, index, max);
+---
+{shown.length === 0 ? <span class="soft">none listed</span> : (
+  <span data-issues={shown.length + more}>{shown.map((i, n) => <>{n > 0 ? "; " : ""}{i.path && i.code !== current ? <a href={i.path}>{i.name}</a> : i.name}</>)}{more > 0 && <span class="soft">; and {more} more</span>}</span>
+)}

@@ -1,0 +1,108 @@
+---
+// One issue area: /lobbying-issues/<slug>/ — the clients and registrants whose filings list it
+// this year, and the newest filings that list it. Figures come from lib/lobbyissues.ts.
+// A filing reports one amount for all its issues: amounts here are totals on the filings that
+// list this issue, never an amount spent on this issue alone.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import IssueList from "../../components/IssueList.astro";
+import { getFlagship, num, plural, money } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+import { orgPath } from "../../lib/links";
+import { buildIssues, issueIndex, ISSUES_PATH, ISSUE_FILING_ROWS } from "../../lib/lobbyissues";
+
+export async function getStaticPaths() {
+  const model = await getFlagship();
+  return buildIssues(model.lobbying, model.issueNames, new Date().getUTCFullYear()).map((i) => ({ params: { slug: i.slug }, props: { code: i.code } }));
+}
+
+const { code } = Astro.props as { code: string };
+const model = await getFlagship();
+const year = new Date().getUTCFullYear();
+const all = buildIssues(model.lobbying, model.issueNames, year);
+const index = issueIndex(model.lobbying, model.issueNames);
+const i = all.find((x) => x.code === code)!;
+const lastUpdated = i.latest ?? model.builtAt;
+const others = [...all].filter((x) => x.code !== i.code).sort((a, b) => a.name.localeCompare(b.name));
+
+const answer = i.filings === 0
+  ? `No lobbying filing for ${year} on record here lists ${i.name} as an issue area. ${plural(i.allFilings, "filing")} from earlier periods ${i.allFilings === 1 ? "does" : "do"}.`
+  : `${plural(i.filings, "lobbying filing")} for ${year} ${i.filings === 1 ? "lists" : "list"} ${i.name} as an issue area, from ${plural(i.clients, "client")} and ${plural(i.registrants, "registrant")}. ${num(i.only)} of them ${i.only === 1 ? "lists" : "list"} no other issue. Those filings report ${money(i.amount)} in total, an amount that covers every issue they list, not this one alone.`;
+const description = `Lobbying filings that list ${i.name} as an issue area in ${year}: the clients and lobbying firms behind them and the newest filings, each linked to the Senate record.`;
+const ld = datasetLd({ name: `Lobbying filings that list ${i.name}, ${year}`, path: i.path, description, dateModified: lastUpdated.slice(0, 10), keywords: [i.name, "lobbying", "LDA", "issue area"], sources: [SOURCES.lda], parentCatalogPath: ISSUES_PATH });
+const jump: [string, string][] = [...(i.topClients.length ? [["#clients", "Clients"] as [string, string], ["#registrants", "Registrants"] as [string, string]] : []), ["#filings", "Newest filings"], ["#about", "About this page"]];
+const party = (id: string, title: string, note: string, rows: typeof i.topClients, total: number, label: string) => ({ id, title, note, rows, total, label });
+const tables = [
+  party("clients", `Clients, ${year}`, "Who the lobbying was for.", i.topClients, i.clients, "Client"),
+  party("registrants", `Registrants, ${year}`, "The lobbying firm, or the organisation itself when it uses its own staff.", i.topRegistrants, i.registrants, "Registrant"),
+];
+---
+<BaseLayout title={[`${i.name} Lobbying ${year}: Clients and Firms`, `${i.name} Lobbying ${year}`, `${i.name} Lobbying`, `Lobbying: ${i.code} ${year}`]} description={[description, `Lobbying filings that list ${i.name} in ${year}: clients, lobbying firms and the newest filings.`, `${i.name}: lobbying filings, clients and firms in ${year}.`, `Lobbying filings for issue code ${i.code} in ${year}.`]} section="Washington · Lobbying">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Lobbying", path: "/lobbying/" }, { name: "Issues", path: ISSUES_PATH }, { name: i.name, path: i.path }]} />
+  <h1>Lobbying on {i.name}</h1>
+  <p class="lede">Filings that list this issue area, and who filed them.</p>
+
+  <dl class="facts" data-issue-facts>
+    <div><dt>Issue code</dt><dd class="mono">{i.code}</dd></div>
+    <div><dt>Filings, {year}</dt><dd data-fact="filings">{num(i.filings)}</dd></div>
+    <div><dt>Only issue listed</dt><dd data-fact="only">{num(i.only)}</dd></div>
+    <div><dt>Clients</dt><dd data-fact="clients">{num(i.clients)}</dd></div>
+    <div><dt>Registrants</dt><dd data-fact="registrants">{num(i.registrants)}</dd></div>
+    <div><dt>Reported on those filings</dt><dd data-fact="amount">{money(i.amount)}</dd></div>
+  </dl>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote="Source: Senate Office of Public Records (LDA)" />
+
+  <nav class="jump" aria-label="On this page">
+    <span>On this page</span>
+    {jump.map(([href, label]) => <a href={href}>{label}</a>)}
+  </nav>
+
+  {i.filings > 0 && tables.map((t) => (
+    <section aria-labelledby={t.id} data-issue-table={t.id}>
+      <h2 id={t.id}>{t.title}</h2>
+      <p class="section-note">{t.note} "Reported" is the total on that name's filings that list {i.name}; those filings may list other issues too. {t.total > t.rows.length ? `The ${t.rows.length} largest of ${num(t.total)} are shown.` : ""} Click a column title to sort.</p>
+      <div class="tablewrap"><table class="data" data-sortable>
+        <thead><tr>
+          <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label={`Sort by ${t.label.toLowerCase()}`}>{t.label}<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by reported">Reported<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by filings">Filings<span class="arr" aria-hidden="true"></span></button></th>
+        </tr></thead>
+        <tbody>
+          {t.rows.map((r) => { const p = orgPath(model, r.name); return (
+            <tr><td data-v={r.name.toLowerCase()}>{p ? <a href={p}>{r.name}</a> : r.name}</td><td class="num" data-v={Math.round(r.amount)}>{money(r.amount)}</td><td class="num" data-v={r.filings}>{num(r.filings)}</td></tr>
+          ); })}
+        </tbody>
+      </table></div>
+    </section>
+  ))}
+
+  <section aria-labelledby="filings" data-issue-filings>
+    <h2 id="filings">Newest filings that list {i.name}</h2>
+    <p class="section-note">Newest posted first, any reporting period on record, each with a link to the Senate's record. {i.allFilings > ISSUE_FILING_ROWS ? `The table holds the ${ISSUE_FILING_ROWS} newest of ${num(i.allFilings)}; every filing is in the lobbying files on the downloads page.` : ""} The amount is the filing's whole amount.</p>
+    <div class="tablewrap"><table class="data"><thead><tr><th>Period</th><th>Type</th><th>Registrant</th><th>Client</th><th>Issues</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
+      {i.newest.map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? ""}</td><td>{orgPath(model, l.registrant) ? <a href={orgPath(model, l.registrant)!}>{l.registrant}</a> : (l.registrant ?? "")}</td><td>{orgPath(model, l.client) ? <a href={orgPath(model, l.client)!}>{l.client}</a> : (l.client ?? "")}</td><td><IssueList row={l} index={index} current={i.code} /></td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : ""}</td></tr>)}
+    </tbody></table></div>
+  </section>
+
+  <h2 id="about">About this page</h2>
+  <p>"{i.name}" is one of the 79 general issue areas a lobbying report can name (code {i.code}). The wording is the Senate's. This page lists the reports that name it, whether or not they name other issues as well.</p>
+  <p>A report states one amount for the quarter, not an amount for each issue. Every amount on this page is therefore the whole amount of reports that name this issue, and overlaps with the amounts on other issue pages. It is not what was spent on {i.name} alone. The report also does not say which bill or rule was lobbied, what was asked for, or what came of it; the specific description is on the Senate's record, linked from each row.</p>
+  <p>Where a report was later amended, only the latest version is counted. A company that lobbies for itself and also hires outside firms appears under several registrants. See <a href={ISSUES_PATH}>all issue areas</a>, the <a href="/lobbying/">lobbying page</a>, the <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a>, the <a href="/methodology/#lobbying-issues">methodology</a> and the <a href="/downloads/">downloads page</a>.</p>
+
+  {others.length > 0 && (
+    <section aria-labelledby="others">
+      <h2 id="others">Other issue areas</h2>
+      <ul class="cols">{others.map((o) => <li><a href={o.path}>{o.name}</a></li>)}</ul>
+    </section>
+  )}
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  ul.cols { columns: 3 240px; padding-left: 1.1rem; margin: 0.5rem 0; }
+  ul.cols li { break-inside: avoid; margin: 0 0 0.3rem; }
+</style>

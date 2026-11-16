@@ -74,7 +74,7 @@ ${table(["Type", "What it is"], [
   (c) => {
     const l = c.facts.ldaThresholds;
     return {
-      slug: "lobbying-disclosure-reports", group: "washington", updated: "2026-11-15",
+      slug: "lobbying-disclosure-reports", group: "washington", updated: "2026-11-16",
       title: "Lobbying disclosure reports",
       seoTitle: ["Lobbying Disclosure Reports Explained (LD-2 Filings)", "Lobbying Disclosure Reports Explained"],
       description: ["Lobbyists must report who pays them, how much, and which issues they work on, every quarter. How to read a lobbying report and what it leaves out.", "Lobbyists report clients, amounts and issues every quarter. How to read a lobbying report and what it leaves out."],
@@ -106,10 +106,14 @@ ${table(["Type", "What it is"], [
 <p>Amended reports are another trap, since an amendment repeats the whole filing. This site keeps one row per registrant, client and period, the most recently posted, so a corrected report replaces the original and is not added to it.</p>` },
         { id: "here", h: "What does this site show?", html: `
 <p>Filings posted since October 2025, read from the official ${ext("https://lda.gov/system/public/", "lobbying disclosure site")}: the largest clients and lobbying firms by reported amount, the newest filings, and lobbying by issue. There are ${c.counts.lobbying} filings on the <a href="/lobbying/">lobbying page</a> today, each linked to its record. Company pages show lobbying filed under the same name as the company.</p>
-<p>Names are matched exactly as written, so a subsidiary that lobbies under its own name is not folded into its parent.</p>
+<p>Names are matched exactly as written, so a subsidiary that lobbies under its own name is not folded into its parent.</p>` },
+        { id: "issues", h: "How does this site show the issues a filing lists?", html: `
+<p>A report can name several of the 79 general issue areas, and many do. Each row in a lobbying table here lists every issue area the filing names, the first ${c.issuesInline} when there are more, and each name opens that issue's page. The <a href="/lobbying-issues/">lobbying by issue</a> list has one row per issue area: the filings that name it this year, how many of them name no other issue, and the clients and registrants behind them. An issue's own page lists its ${c.issueTopRows} largest clients and registrants and the ${c.issueFilingRows} newest filings that name it.</p>
+<p>A report gives one amount for the quarter, not an amount for each issue. So the amount beside an issue is the total on the reports that name it, and a report that names three issues adds its whole amount to all three. The amounts of two issues overlap and cannot be added together, and none of them is what was spent on that issue alone. The chart on the lobbying page is different on purpose: it counts each report once, under its first issue, so that its tiles add up to the year's total.</p>
 <p>New filings are added once a day, newest first. If a daily run has to stop before it reaches filings it already has, it notes the gap, and the next run closes it, so a filing can occasionally appear a day late but should not stay missing.</p>` },
       ],
       faqs: [
+        { q: "How much was spent lobbying on one issue, such as taxation?", a: "The reports cannot say. A lobbying report gives one amount for the quarter and a list of issue areas, with no split between them. This site shows the total on the reports that name an issue, which also covers every other issue those reports name." },
         { q: "What is an LD-2 lobbying report?", a: "An LD-2 is the quarterly report a lobbying firm or an organisation with in-house lobbyists files under the Lobbying Disclosure Act. It names the client, the amount, the issues and the institutions contacted.", on: ["washington"] },
         { q: "Do lobbying reports say which lawmakers were lobbied?", a: "No. A report lists the House, the Senate or a federal agency as the body contacted. It does not name individual members of Congress or staff.", on: ["washington"] },
         { q: "How accurate are reported lobbying amounts?", a: "They are good-faith estimates rounded to the nearest $10,000, and they cover only activity the law defines as lobbying, so they understate total spending on influence." },
@@ -122,9 +126,9 @@ ${table(["Type", "What it is"], [
         { name: "2 U.S.C. § 1604, reports by registered lobbyists", url: "https://www.law.cornell.edu/uscode/text/2/1604" },
       ],
       related: ["campaign-donations-fec-data", "federal-contracts-usaspending", "what-disclosure-data-cannot-tell-you"],
-      seeLive: [{ label: "Lobbying filings", href: "/lobbying/" }, { label: "Washington overview", href: "/washington/" }],
-      covers: ["ingest/src/sources/senate_lda.ts", "web/src/pages/lobbying/index.astro"],
-      ui: [],
+      seeLive: [{ label: "Lobbying filings", href: "/lobbying/" }, { label: "Lobbying by issue", href: "/lobbying-issues/" }, { label: "Washington overview", href: "/washington/" }],
+      covers: ["ingest/src/sources/senate_lda.ts", "web/src/pages/lobbying/index.astro", "web/src/lib/lobbyissues.ts", "web/src/pages/lobbying-issues/index.astro", "web/src/pages/lobbying-issues/[slug].astro"],
+      ui: [{ text: "Browse by issue", on: "/lobbying/" }, { text: "Only issue listed", on: "/lobbying-issues/" }, { text: "Reported on those filings", on: "/lobbying-issues/" }],
       facts: ["ldaThresholds"],
     };
   },

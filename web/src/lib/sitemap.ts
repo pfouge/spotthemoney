@@ -8,6 +8,7 @@ import { getFlagship, personPath, companyPath, securityPath } from "./flagship";
 import { SITE_URL } from "./seo";
 import { getGuides, guidePath } from "./guides";
 import { buildCommittees, COMMITTEES_PATH } from "./committees";
+import { buildIssues, ISSUES_PATH } from "./lobbyissues";
 import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
 
 export interface SitemapUrl { loc: string; lastmod: string; changefreq?: string; priority?: number }
@@ -23,6 +24,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   const congressMembers = [...model.people.values()].some((p) => p.isCongress);
   // Committee pages exist only for committees with a member on record (lib/committees.ts).
   const committees = buildCommittees(model, built, personPath);
+  // Issue pages exist for every issue area a filing on record lists (lib/lobbyissues.ts).
+  const issues = buildIssues(model.lobbying, model.issueNames, new Date().getUTCFullYear());
   const guides = await getGuides();
   // Writing: published articles only (never drafts or future-dated ones), and /writing/ plus author
   // pages only when there is something published to list.
@@ -52,6 +55,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/donations/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/lobbying/", lastmod: built, changefreq: "daily", priority: 0.7 },
+    ...(issues.length ? [{ loc: ISSUES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...issues.map((i) => ({ loc: i.path, lastmod: day(i.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
     { loc: "/contracts/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/disclosures/", lastmod: day(latestTxn, built), changefreq: "hourly", priority: 0.8 },
     { loc: "/methodology/", lastmod: built, changefreq: "monthly", priority: 0.5 },

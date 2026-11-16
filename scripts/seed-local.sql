@@ -195,11 +195,14 @@ insert into review_queue (filing_id, reason, confidence, status) select id, 'nee
 
 -- ── lobbying / contracts / committees / donations ────────────────────────────────────────
 insert into lobbying (registrant, client, issue_area, amount, period_year, period_quarter, filing_uuid, filing_type, issues, source_ref) values
-  ('Akin Gump Strauss Hauer & Feld', 'Lockheed Martin Corp', 'DEF', 320000, 2026, 2, 'seed-l1', 'Q2', '["DEF","BUD"]', 'https://lda.senate.gov/filings/public/filing/seed-l1/'),
-  ('Palantir Technologies Inc.', 'Palantir Technologies Inc.', 'DEF', 1490000, 2026, 2, 'seed-l2', 'Q2', '["DEF","HOM","CPT"]', 'https://lda.senate.gov/filings/public/filing/seed-l2/'),
-  ('Microsoft Corp', 'Microsoft Corp', 'CPT', 2640000, 2026, 2, 'seed-l3', 'Q2', '["CPT","TAX","TRD"]', 'https://lda.senate.gov/filings/public/filing/seed-l3/'),
-  ('Brownstein Hyatt Farber Schreck', 'NVIDIA Corp', 'TRD', 150000, 2026, 2, 'seed-l4', 'Q2', '["TRD","CPT"]', 'https://lda.senate.gov/filings/public/filing/seed-l4/'),
-  ('Microsoft Corp', 'Microsoft Corp', 'CPT', 2510000, 2026, 1, 'seed-l5', 'Q1', '["CPT","TAX"]', 'https://lda.senate.gov/filings/public/filing/seed-l5/');
+  ('Akin Gump Strauss Hauer & Feld', 'Lockheed Martin Corp', 'DEF', 320000, 2026, 2, 'seed-l1', 'Q2', '[{"code":"DEF","display":"Defense"},{"code":"BUD","display":"Budget/Appropriations"}]', 'https://lda.senate.gov/filings/public/filing/seed-l1/'),
+  ('Palantir Technologies Inc.', 'Palantir Technologies Inc.', 'DEF', 1490000, 2026, 2, 'seed-l2', 'Q2', '[{"code":"DEF","display":"Defense"},{"code":"HOM","display":"Homeland Security"},{"code":"CPT","display":"Copyright/Patent/Trademark"}]', 'https://lda.senate.gov/filings/public/filing/seed-l2/'),
+  ('Microsoft Corp', 'Microsoft Corp', 'CPT', 2640000, 2026, 2, 'seed-l3', 'Q2', '[{"code":"CPT","display":"Copyright/Patent/Trademark"},{"code":"TAX","display":"Taxation/Internal Revenue Code"},{"code":"TRD","display":"Trade (domestic/foreign)"}]', 'https://lda.senate.gov/filings/public/filing/seed-l3/'),
+  ('Brownstein Hyatt Farber Schreck', 'NVIDIA Corp', 'TRD', 150000, 2026, 2, 'seed-l4', 'Q2', '[{"code":"TRD","display":"Trade (domestic/foreign)"},{"code":"CPT","display":"Copyright/Patent/Trademark"}]', 'https://lda.senate.gov/filings/public/filing/seed-l4/'),
+  ('Microsoft Corp', 'Microsoft Corp', 'CPT', 2510000, 2026, 1, 'seed-l5', 'Q1', '[{"code":"CPT","display":"Copyright/Patent/Trademark"},{"code":"TAX","display":"Taxation/Internal Revenue Code"}]', 'https://lda.senate.gov/filings/public/filing/seed-l5/'),
+  -- one issue only, and a registration with no amount and no issue (lib/lobbyissues.ts)
+  ('Invariant LLC', 'NVIDIA Corp', 'TAX', 90000, 2026, 2, 'seed-l6', 'Q2', '[{"code":"TAX","display":"Taxation/Internal Revenue Code"}]', 'https://lda.senate.gov/filings/public/filing/seed-l6/'),
+  ('Invariant LLC', 'Lockheed Martin Corp', null, null, 2026, 3, 'seed-l7', 'RR', '[]', 'https://lda.senate.gov/filings/public/filing/seed-l7/');
 insert into contracts (recipient, awarding_agency, amount, action_date, naics, source_ref) values
   ('LOCKHEED MARTIN CORP', 'Department of Defense', 1250000000, current_date - 12, '336411', 'CONT_AWD_SEED1'),
   ('LOCKHEED MARTIN CORP', 'Department of Defense', 84000000, current_date - 40, '336414', 'CONT_AWD_SEED2'),
