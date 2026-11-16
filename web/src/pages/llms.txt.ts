@@ -50,6 +50,10 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - One member: ${SITE_URL}/downloads/congress/<slug>.csv · One ticker: ${SITE_URL}/downloads/stocks/<ticker>.csv
 - Reuse limits (congressional reports: 5 U.S.C. § 13107(c)): ${SITE_URL}/terms/#reuse
 
+## RSS feeds (newest disclosed trades; one sentence per item with a link to the row and the original filing)
+- [All feeds](${SITE_URL}/feeds/): what each feed carries and what it leaves out.
+- Congress trades: ${SITE_URL}/feeds/congress-trades.xml · Insider open-market purchases: ${SITE_URL}/feeds/insider-purchases.xml · Insider open-market purchases and sales: ${SITE_URL}/feeds/insider-trades.xml
+
 ## Entity pages
 - Insider: ${SITE_URL}/insiders/<slug>/: Person; Form 4 transactions with shares, price, value, lag, 10b5-1 flag, EDGAR link.
 - Member of Congress: ${SITE_URL}/congress/<slug>/: Person; PTR trades with ranges, owner, days-to-report, late flag, filing link.

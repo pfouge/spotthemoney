@@ -1,0 +1,90 @@
+---
+// /feeds/ — the RSS feeds: what each one carries, how many items it holds now, and how to use one.
+// Items and rules come from lib/feeds.ts (unit-tested); the feeds are /feeds/<id>.xml.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, num, plural } from "../../lib/flagship";
+import { SITE_URL, SITE_NAME, fitDescription } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+import { FEEDS, FEEDS_PATH, feedDef, type FeedId } from "../../lib/feeds";
+const feedLimit = (id: FeedId) => feedDef(id).limit;
+import { getFeeds } from "../../lib/feeds-build";
+import { getArticles } from "../../lib/articles";
+
+const model = await getFlagship();
+const feeds = await getFeeds();
+const rows = FEEDS.map((f) => { const items = feeds.get(f.id) ?? []; return { f, items: items.length, trades: items.reduce((a, i) => a + i.rows, 0), newest: items[0]?.date ?? null, oldest: items.at(-1)?.date ?? null }; });
+const articles = await getArticles({ publicOnly: true });
+const total = rows.reduce((a, r) => a + r.items, 0);
+const updated = rows.map((r) => r.newest).filter((d): d is string => !!d).sort().at(-1) ?? model.builtAt;
+const congress = rows.find((r) => r.f.id === "congress-trades")!;
+const what: Record<string, string> = {
+  "congress-trades": "Each transaction a member of Congress reports in a House or Senate periodic transaction report: member, purchase or sale, the amount range as filed, the asset, the trade date and the day the report became public.",
+  "insider-purchases": "Open-market purchases by officers, directors and large shareholders (Form 4 code P). One item per filing: a purchase filled in several lots is added up.",
+  "insider-trades": "Open-market purchases (code P) and open-market sales (code S) from Form 4 filings. One item per filing and direction, with a note when the form says the trades were made under a Rule 10b5-1 plan.",
+};
+const description = fitDescription([
+  "RSS feeds of the newest stock trades disclosed by members of Congress and corporate insiders. Free, no sign-up, rebuilt daily from public filings.",
+  "RSS feeds of the newest congressional and insider stock trades. Free, no sign-up, rebuilt daily.",
+]);
+const answer = total === 0
+  ? "Spot the Money publishes RSS feeds of newly disclosed stock trades by members of Congress and corporate insiders. No published trades are on record yet, so the feeds are empty for now."
+  : `Spot the Money publishes ${FEEDS.length} RSS feeds of newly disclosed stock trades: one for members of Congress and two for corporate insiders. They are free, need no account, and are rebuilt with the site each day; the congressional feed holds the ${plural(congress.items, "newest transaction")}${congress.oldest && congress.newest ? `, disclosed from ${formatDate(congress.oldest)} to ${formatDate(congress.newest)}` : ""}.`;
+const ld = {
+  "@context": "https://schema.org", "@type": "CollectionPage", "@id": `${SITE_URL}${FEEDS_PATH}#page`, name: `${SITE_NAME} RSS feeds`, url: `${SITE_URL}${FEEDS_PATH}`, description,
+  hasPart: FEEDS.map((f) => ({ "@type": "DataFeed", name: f.title, url: `${SITE_URL}${f.path}`, description: f.description, encodingFormat: "application/rss+xml" })),
+};
+---
+<BaseLayout title={["RSS Feeds: Congress and Insider Stock Trades", "RSS Feeds of Disclosed Trades"]} description={description} section="Feeds">
+  {FEEDS.map((f) => <link slot="head" rel="alternate" type="application/rss+xml" title={f.title} href={f.path} />)}
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "RSS feeds", path: FEEDS_PATH }]} />
+  <h1>RSS feeds</h1>
+  <p class="lede">Newly disclosed trades, delivered to a feed reader.</p>
+
+  <Answer text={answer} updated={updated} sourceNote="Sources: House Clerk, Senate eFD, SEC EDGAR" />
+
+  <section aria-labelledby="list" data-feeds-list>
+    <h2 id="list">The feeds</h2>
+    <p class="section-note">Copy a feed's address into a feed reader. Each item is one sentence stating what the filing shows, with a link to the row on this site and the address of the original filing.</p>
+    <ul class="feed-list">
+      {rows.map((r) => (
+        <li data-feed={r.f.id}>
+          <h3><a href={r.f.path}>{r.f.title.replace(/^Spot the Money: /, "")}</a></h3>
+          <p class="feed-url"><code>{SITE_URL}{r.f.path}</code></p>
+          <p>{what[r.f.id]}</p>
+          <p class="small feed-now"><span data-items={r.items}>{plural(r.items, "item")} now</span>{r.trades > r.items && <span> ({num(r.trades)} transactions)</span>}{r.newest && <span data-newest={r.newest}> · newest disclosed {formatDate(r.newest)}</span>}{r.oldest && r.oldest !== r.newest && <span> · oldest {formatDate(r.oldest)}</span>}</p>
+        </li>
+      ))}
+      {articles.length > 0 && (
+        <li data-feed="writing">
+          <h3><a href="/writing/rss.xml">Writing</a></h3>
+          <p class="feed-url"><code>{SITE_URL}/writing/rss.xml</code></p>
+          <p>Articles published in the <a href="/writing/">Writing</a> section.</p>
+          <p class="small feed-now">{plural(Math.min(articles.length, 50), "item")} now · newest published {formatDate(articles.map((a) => a.published).sort().at(-1)!)}</p>
+        </li>
+      )}
+    </ul>
+  </section>
+
+  <h2 id="how">How to use a feed</h2>
+  <p>RSS is an open format that feed readers, many email programs and automation tools understand. Paste a feed's address into the reader's "add feed" or "subscribe" box and it checks the address for you and lists anything new. There is nothing to sign up for here, and the site does not know who reads a feed.</p>
+  <p>The feeds are files built with the rest of the site, once a day after the daily data run and again whenever the site is rebuilt. A filing appears in a feed when it appears on the site, usually within a day of becoming public. Items are dated by the day the filing became public, not the day of the trade.</p>
+
+  <h2 id="about">What is in the feeds, and what is not</h2>
+  <p>The congressional feed holds the {num(feedLimit("congress-trades"))} newest transactions from periodic transaction reports, one item for each row of a report. The insider feeds hold the newest Form 4 filings with an open-market purchase or sale: {num(feedLimit("insider-purchases"))} items in the purchases feed and {num(feedLimit("insider-trades"))} in the feed of purchases and sales. Grants and awards, option exercises, gifts, shares withheld for tax, derivative rows and a second filing of a trade already on record are not open-market trades and are left out. Rows still under review are never in a feed.</p>
+  <p>The insider feeds cover the companies this site tracks, the same set as the tables on the <a href="/insiders/">insiders page</a>. Scanned congressional reports that are waiting to be transcribed are not in the feed until their rows are published. There is no feed for a single member, insider or stock; to follow one, use the Follow button on its page (see <a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow members, insiders and stocks</a>).</p>
+  <p>An item states what the filing shows: who, purchase or sale, how much, in what, and when. It gives no reason for a trade and no view on it. The original filing is the authority for any single trade. Reuse of congressional disclosure data is limited by law; see the <a href="/terms/#reuse">terms</a>. The rules are also set out in the <a href="/methodology/#feeds">methodology</a>, and the same rows can be downloaded as <a href="/downloads/">CSV files</a>.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  .feed-list { list-style: none; margin: 0.8rem 0 0; padding: 0; display: grid; gap: 12px; max-width: 86ch; }
+  .feed-list li { border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; background: var(--surface, transparent); }
+  .feed-list h3 { margin: 0 0 4px; font-size: 1.05rem; }
+  .feed-list p { margin: 4px 0 0; }
+  .feed-url code { overflow-wrap: anywhere; user-select: all; }
+  .feed-now { color: var(--ink-soft); }
+</style>

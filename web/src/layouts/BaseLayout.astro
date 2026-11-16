@@ -7,6 +7,7 @@ import Wordmark from "../components/Wordmark.astro";
 
 import { fitTitle, fitDescription } from "../lib/seo";
 import { adClient } from "../lib/ads";
+import { FEEDS } from "../lib/feeds";
 
 // title / description: a string, or preferred wording first with shorter fallbacks after it
 // (see fitTitle / fitDescription). noindex: pages that exist for navigation but have no data
@@ -95,6 +96,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
       })();
     </script>
     <link rel="preload" href="/fonts/outfit-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    {FEEDS.map((f) => <link rel="alternate" type="application/rss+xml" title={f.title} href={f.path} />)}
     <slot name="head" />
     <Analytics />
     {adsense && <meta name="google-adsense-account" content={adsense} />}
@@ -204,6 +206,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
           <a href="/faq/">FAQ</a>
           <a href="/methodology/">Methodology</a>
           <a href="/downloads/">Downloads</a>
+          <a href="/feeds/">RSS feeds</a>
           <a href="/guides/how-to-cite-and-reuse/">How to cite</a>
           <a href="/corrections/">Corrections</a>
           <a href="/terms/">Terms</a>

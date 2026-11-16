@@ -63,7 +63,7 @@
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "db/migrations/0017_accounts_watchlists.sql": "4a5e6b6c524d3c41",
       "web/src/lib/account.ts": "019a09ace56b7b1b",
@@ -72,7 +72,9 @@
       "web/src/components/Follow.astro": "08c98b2cdae7c3b9",
       "web/src/lib/watchcards.ts": "b6298374e7234d2d",
       "web/src/lib/watchcards-build.ts": "646d3aeb7f64b6d2",
-      "web/src/scripts/watchcards.ts": "73e5abc9c1535b1c"
+      "web/src/scripts/watchcards.ts": "73e5abc9c1535b1c",
+      "web/src/lib/feeds.ts": "ee8aabc55d188199",
+      "web/src/pages/feeds/index.astro": "58283f00b36c93f3"
     }
   },
   "how-to-read-a-congressional-trade-report": {
@@ -107,12 +109,12 @@
     }
   },
   "insider-buying-vs-insider-selling": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
       "web/src/components/VizFlow.astro": "c60219a0038ce83c",
-      "web/src/pages/insiders/index.astro": "c3887dc73b3f4133"
+      "web/src/pages/insiders/index.astro": "4017150776f01c2a"
     }
   },
   "insider-options-and-derivatives": {

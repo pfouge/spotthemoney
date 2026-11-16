@@ -64,6 +64,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
 
   <h2 id="newest">Newest disclosures</h2>
   <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")} note="every congressional trade on record" />
+  <p class="section-note" data-feed-link>In a feed reader: <a href="/feeds/congress-trades.xml">RSS feed of the newest congressional trades</a> (<a href="/feeds/">about the feeds</a>).</p>
   <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet. The daily congress-ptr job fills this table." />
 
   <AdSlot label="Advertisement" />

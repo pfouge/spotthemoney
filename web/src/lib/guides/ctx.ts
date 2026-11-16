@@ -1,6 +1,7 @@
 // Live values the guides are written against: constants from the code, counts from the model,
 // the current I-Bond rate from the database. A guide that quotes one of these can never
 // disagree with the site, because both read the same thing.
+import { feedDef } from "../feeds";
 import { WATCH_WINDOW_DAYS } from "../watchcards";
 import { COMMITTEE_TRADE_ROWS } from "../committees";
 import { getFlagship, senateShown, CONGRESS_DEADLINE_DAYS, FORM4_DEADLINE_DAYS, num } from "../flagship";
@@ -22,6 +23,8 @@ export interface GuideCtx {
   congressDeadlineDays: number;
   /** Days of trades counted in the watchlist cards (lib/watchcards.ts). */
   watchWindowDays: number;
+  /** Item limits of the RSS feeds (lib/feeds.ts). */
+  feedCongressItems: number; feedPurchaseItems: number; feedInsiderItems: number;
   /** Rows in a committee page's trade table (lib/committees.ts). */
   committeeTradeRows: number;
   /** Issue names shown in one lobbying table cell, and rows in an issue page's tables (lib/lobbyissues.ts). */
@@ -61,6 +64,7 @@ async function build(): Promise<GuideCtx> {
     facts: FACTS,
     congressDeadlineDays: CONGRESS_DEADLINE_DAYS,
     watchWindowDays: WATCH_WINDOW_DAYS,
+    feedCongressItems: feedDef("congress-trades").limit, feedPurchaseItems: feedDef("insider-purchases").limit, feedInsiderItems: feedDef("insider-trades").limit,
     committeeTradeRows: COMMITTEE_TRADE_ROWS,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
