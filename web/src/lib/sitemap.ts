@@ -9,6 +9,7 @@ import { SITE_URL } from "./seo";
 import { getGuides, guidePath } from "./guides";
 import { buildCommittees, COMMITTEES_PATH } from "./committees";
 import { buildIssues, ISSUES_PATH } from "./lobbyissues";
+import { getMarketIndexable, SITEMAP_URL_LIMIT } from "./market";
 import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
 
 export interface SitemapUrl { loc: string; lastmod: string; changefreq?: string; priority?: number }
@@ -96,6 +97,20 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     stocks.push({ loc, lastmod: day(s.txns[0]?.filedAt, built), changefreq: "weekly", priority: 0.6 });
   }
 
+  // Market-scope entities (rendered by the Worker on request, stage 3a). Listed only when the page is
+  // indexable, at most 10,000 URLs a file, and a file is left out when empty.
+  const market = await getMarketIndexable();
+  const marketUrls = (entries: { key: string; lastmod: string }[], dir: string): SitemapUrl[] =>
+    entries.map((e) => ({ loc: `/${dir}/${e.key}/`, lastmod: e.lastmod, changefreq: "weekly", priority: 0.4 }));
+  const marketInsiders = marketUrls(market.insiders, "insiders");
+  const marketChildren: ChildSitemap[] = [
+    { name: "market-companies", urls: marketUrls(market.companies, "companies") },
+    { name: "market-stocks", urls: marketUrls(market.stocks, "stocks") },
+    ...Array.from({ length: Math.ceil(marketInsiders.length / SITEMAP_URL_LIMIT) }, (_, i) => ({
+      name: `market-insiders-${i + 1}`, urls: marketInsiders.slice(i * SITEMAP_URL_LIMIT, (i + 1) * SITEMAP_URL_LIMIT),
+    })),
+  ];
+
   const sorter = (a: SitemapUrl, b: SitemapUrl) => a.loc.localeCompare(b.loc);
   return [
     { name: "pages", urls: pages },
@@ -103,6 +118,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { name: "congress", urls: congress.sort(sorter) },
     { name: "companies", urls: companies.sort(sorter) },
     { name: "stocks", urls: stocks.sort(sorter) },
+    ...marketChildren,
   ].filter((c) => c.urls.length > 0);
 }
 

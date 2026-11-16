@@ -32,7 +32,8 @@ if (!existsSync(sitemapDir)) { console.log(`indexnow: ${sitemapDir} not found â€
 
 const cutoff = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
 const urls = new Set();
-for (const f of readdirSync(sitemapDir).filter((f) => f.endsWith(".xml"))) {
+// market-scope child sitemaps (on-demand pages, thousands of URLs) go last so the 10,000 cap never crowds out the core pages
+for (const f of readdirSync(sitemapDir).filter((f) => f.endsWith(".xml")).sort((a, b) => Number(a.startsWith("market-")) - Number(b.startsWith("market-")) || a.localeCompare(b))) {
   const xml = readFileSync(join(sitemapDir, f), "utf8");
   for (const m of xml.matchAll(/<url>\s*<loc>([^<]+)<\/loc>\s*<lastmod>(\d{4}-\d{2}-\d{2})<\/lastmod>/g)) {
     if (m[2] >= cutoff) urls.add(m[1].trim());

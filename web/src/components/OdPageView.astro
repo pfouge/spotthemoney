@@ -1,0 +1,227 @@
+---
+// One component for the three on-demand entity pages (stage 3a): /insiders/<slug>/, /stocks/<ticker>/
+// and /companies/<slug>/ for entities outside the tracked set. Rendered by the Worker from the
+// json of one od_* call (lib/server/od.ts); reuses the static pages' table components and layout,
+// leaves out everything that needs the build-time model (charts, Follow, TradingView, CSV links,
+// Congress tables, contracts and lobbying, ads).
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "./Crumbs.astro";
+import Answer from "./Answer.astro";
+import TxnTable from "./TxnTable.astro";
+import JsonLd from "./JsonLd.astro";
+import { buildOd, figures, answerText, TABLE_ROWS, WHO_ROWS, type OdDoc } from "../lib/server/od";
+import type { GuideLink } from "../lib/server/odsource";
+import { personPath, securityPath, roleLabel, num, money, plural } from "../lib/flagship-core";
+import { personLd, organizationLd, datasetLd, SOURCES, fitDescription, edgarFilingUrl } from "../lib/seo";
+import { formatDate } from "../lib/format";
+
+interface Props { doc: OdDoc; guides: Record<string, GuideLink> }
+const { doc, guides } = Astro.props;
+const page = buildOd(doc);
+const { kind, model, txns, stats } = page;
+const f = figures(page);
+const path = Astro.url.pathname;
+const signed = (n: number, fm: (x: number) => string) => (n === 0 ? fm(0) : `${n > 0 ? "+" : "−"}${fm(Math.abs(n))}`);
+const tone = (n: number) => (n > 0 ? "num pos" : n < 0 ? "num neg" : "num");
+
+const person = page.person, company = page.company, sec = page.security;
+const secs = [...new Map(page.siblings.map((s) => [s.ticker, s])).values()];
+const tickers = kind === "insider" ? [...new Map(txns.map((t) => t.securityId).filter((x): x is number => x != null).map((id) => model.securities.get(id)).filter((s) => !!s).map((s) => [s!.ticker, s!])).values()] : secs;
+const cpath = company?.slug ? `/companies/${company.slug}/` : null;
+const name = kind === "insider" ? person!.name : kind === "stock" ? (company?.name ?? sec?.name ?? sec?.ticker ?? "") : company!.name;
+const ticker = kind === "stock" ? sec!.ticker : company?.primaryTicker ?? null;
+const roleTitle = person ? roleLabel(person, model.companies) : "";
+const answer = answerText(page, kind === "stock" ? `${sec!.ticker} (${name})` : name, kind === "insider" ? roleTitle : "", f);
+const edgarId = kind === "stock" ? company?.cik ?? null : kind === "company" ? company?.cik ?? null : person?.cik ?? null;
+const edgarHref = edgarId
+  ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(edgarId)}&type=4&dateb=&owner=include&count=40`
+  : kind === "stock" ? `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(sec!.ticker)}&type=4&dateb=&owner=include&count=40` : SOURCES.edgar.url;
+
+const thisPath = kind === "insider" ? `/insiders/${person!.slug}/` : kind === "stock" ? `/stocks/${sec!.ticker.toLowerCase()}/` : `/companies/${company!.slug}/`;
+const section = kind === "insider" ? "Insiders" : kind === "stock" ? "Stocks" : "Companies";
+const titles = kind === "insider"
+  ? [...(company ? [`${name} Insider Trades at ${company.name}`] : []), ...(tickers[0] ? [`${name} Insider Trades (${tickers[0].ticker})`] : []), `${name} Insider Trades`]
+  : kind === "stock" ? [`${sec!.ticker} Insider Trades: ${name}`, `${sec!.ticker} Insider Trades`]
+  : [`${name} Insider Trades`, `${name} Insider Trades (Form 4)`];
+const desc = kind === "insider"
+  ? [`${name} (${roleTitle}): SEC Form 4 insider transactions on record, with dates, shares, prices and a link to each filing.`, `${name}: SEC Form 4 insider transactions on record, with dates, shares, prices and a link to each filing.`]
+  : [`${kind === "stock" ? `${sec!.ticker} (${name})` : name}: insider transactions from SEC Form 4 filings on record, with dates, shares, prices and a link to each filing.`, `${kind === "stock" ? sec!.ticker : name}: SEC Form 4 insider transactions, with dates, shares, prices and source links.`];
+const description = fitDescription(desc);
+const ld = kind === "insider"
+  ? personLd({ name, path: thisPath, jobTitle: person!.roles[0]?.officerTitle ?? (person!.roles[0]?.isDirector ? "Director" : "Corporate insider"), worksFor: company ? { name: company.name, path: cpath } : null, description,
+      sameAs: person!.cik ? [`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${person!.cik}&type=4`] : [] })
+  : kind === "company"
+    ? organizationLd({ name, path: thisPath, tickerSymbol: company!.primaryTicker, description, identifier: company!.cik ? { name: "SEC CIK", value: company!.cik } : null, sameAs: company!.cik ? [`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${company!.cik}`] : [] })
+    : datasetLd({ name: `${sec!.ticker} insider transactions`, path: thisPath, description, dateModified: page.lastUpdated, keywords: [sec!.ticker, name, "insider trading", "Form 4"], sources: [SOURCES.edgar], parentCatalogPath: "/stocks/" });
+
+const crumbs = [{ name: "Home", path: "/" }, { name: section, path: `/${section.toLowerCase()}/` }, { name: kind === "stock" ? sec!.ticker : name, path: thisPath }];
+const hasRows = txns.length > 0;
+const anyUnpriced = f.periods.some((p) => p.unpriced > 0);
+const guideSlugs = kind === "insider"
+  ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", ...(txns.some((t) => t.is10b51) ? ["rule-10b5-1-trading-plans"] : []), ...(txns.some((t) => t.isDerivative) ? ["insider-options-and-derivatives"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)
+  : ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", "what-disclosure-data-cannot-tell-you"];
+const guideItems = guideSlugs.map((s) => guides[s]).filter((g): g is GuideLink => !!g);
+const jump: [string, string][] = !hasRows ? [] : [
+  ...(f.periods.length ? [["#insider-summary", "3 and 12 months"] as [string, string]] : []),
+  ...(kind !== "insider" && f.who.length ? [["#insiders", "Insiders"] as [string, string]] : []),
+  ...(kind === "insider" ? [["#by-type", "By type"] as [string, string], ["#by-year", "By year"] as [string, string]] : []),
+  ["#insider-transactions", "Transactions"],
+  ...(kind === "insider" && page.colleagues.length ? [["#colleagues", "Other insiders"] as [string, string]] : []),
+  ["#sources", "Sources"],
+];
+const avgLag = (() => { const v = txns.map((t) => t.lagDays).filter((x): x is number => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; })();
+const insiderWord = kind === "stock" ? sec!.ticker : name;
+---
+<BaseLayout title={titles} description={description} noindex={page.noindex} section={section} tape={false} ads={false} modified={page.lastUpdated}>
+  <Crumbs crumbs={crumbs} />
+  <div class="title-row">
+    {kind === "stock" ? <h1><span class="mono">{sec!.ticker}</span> <span class="soft">{name}</span></h1> : <h1>{name}</h1>}
+  </div>
+  {kind === "insider" && <p class="lede">{roleTitle}</p>}
+
+  <dl class="facts" data-entity-facts>
+    {kind === "insider" && company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
+    {kind === "stock" && company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
+    {kind === "stock" && <div><dt>Security</dt><dd>{sec!.type === "etf" ? "ETF" : sec!.type === "adr" ? "ADR" : sec!.type.charAt(0).toUpperCase() + sec!.type.slice(1)}</dd></div>}
+    {kind !== "stock" && tickers.length > 0 && <div><dt>{tickers.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{tickers.slice(0, 4).map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}{tickers.length > 4 ? ` and ${tickers.length - 4} more` : ""}</dd></div>}
+    {kind !== "insider" && <div><dt>{kind === "company" ? "Insiders on file" : "Insiders on record"}</dt><dd>{f.who.length ? <a href="#insiders">{num(page.insiderCount || f.who.length)}</a> : "0"}</dd></div>}
+    {stats.firstFiledAt && <div><dt>First filing on record</dt><dd>{formatDate(stats.firstFiledAt)}</dd></div>}
+    {f.latestTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(f.latestTrade)}</dd></div>}
+    {edgarId && <div><dt>SEC filings</dt><dd><a href={edgarHref} rel="noopener" target="_blank">EDGAR ↗</a></dd></div>}
+  </dl>
+
+  <Answer text={answer} updated={page.lastUpdated} sourceNote="Source: SEC EDGAR Form 4 filings" />
+
+  {jump.length > 0 && (
+    <nav class="jump" aria-label="On this page">
+      <span>On this page</span>
+      {jump.map(([href, label]) => <a href={href}>{label}</a>)}
+    </nav>
+  )}
+
+  <section class="datastrip">
+    <div class="cell"><div class="k">Transactions</div><div class="v">{num(stats.rowCount)}</div></div>
+    <div class="cell"><div class="k">Open-market buys</div><div class="v pos">{num(txns.filter((t) => t.code === "P").length)}</div></div>
+    <div class="cell"><div class="k">Sales</div><div class="v neg">{num(txns.filter((t) => t.side === "sell").length)}</div></div>
+    <div class="cell"><div class="k">Avg. disclosure lag</div><div class="v">{avgLag == null ? "—" : `${avgLag.toFixed(1)}d`}</div></div>
+  </section>
+
+  {f.periods.length > 0 && (
+    <section aria-labelledby="insider-summary" data-entity-periods>
+      <h2 id="insider-summary">Insider buying and selling in {insiderWord}: 3 and 12 months</h2>
+      <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
+      <div class="tablewrap">
+        <table class="data periods">
+          <thead><tr><th>Open-market trades</th>{f.periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
+          <tbody>
+            <tr><th scope="row">Purchases</th>{f.periods.map((p) => <td class="num" data-k={`buys-${p.days}`}>{num(p.buys)}</td>)}</tr>
+            <tr><th scope="row">Insiders who bought</th>{f.periods.map((p) => <td class="num" data-k={`buyers-${p.days}`}>{num(p.buyers)}</td>)}</tr>
+            <tr><th scope="row">Shares bought</th>{f.periods.map((p) => <td class="num" data-k={`shares-bought-${p.days}`}>{num(p.sharesBought)}</td>)}</tr>
+            <tr><th scope="row">Dollars bought</th>{f.periods.map((p) => <td class="num" data-k={`bought-${p.days}`}>{p.buys ? money(p.bought) : "$0"}</td>)}</tr>
+            <tr><th scope="row">Sales</th>{f.periods.map((p) => <td class="num" data-k={`sells-${p.days}`}>{num(p.sells)}</td>)}</tr>
+            <tr><th scope="row">Insiders who sold</th>{f.periods.map((p) => <td class="num" data-k={`sellers-${p.days}`}>{num(p.sellers)}</td>)}</tr>
+            <tr><th scope="row">Shares sold</th>{f.periods.map((p) => <td class="num" data-k={`shares-sold-${p.days}`}>{num(p.sharesSold)}</td>)}</tr>
+            <tr><th scope="row">Dollars sold</th>{f.periods.map((p) => <td class="num" data-k={`sold-${p.days}`}>{p.sells ? money(p.sold) : "$0"}</td>)}</tr>
+            <tr><th scope="row">Sales under a <a href="/guides/rule-10b5-1-trading-plans/">10b5-1 plan</a></th>{f.periods.map((p) => <td class="num" data-k={`plan-${p.days}`}>{num(p.planSells)}</td>)}</tr>
+            <tr><th scope="row">Net shares</th>{f.periods.map((p) => <td class={tone(p.netShares)} data-k={`net-shares-${p.days}`}>{signed(p.netShares, num)}</td>)}</tr>
+            <tr><th scope="row">Net dollars</th>{f.periods.map((p) => <td class={tone(p.net)} data-k={`net-${p.days}`}>{signed(p.net, (x) => money(x))}</td>)}</tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )}
+
+  {kind !== "insider" && f.who.length > 0 && (
+    <section aria-labelledby="insiders" data-entity-insiders>
+      <h2 id="insiders">Insiders trading {insiderWord}</h2>
+      <p class="section-note">Everyone who filed a Form 4 for this {kind === "stock" ? "ticker" : "company"} in the rows shown, by number of rows. "Bought" and "sold" count open-market purchases (code P) and sales only; awards, option exercises and shares withheld for tax are in the row count but not in those two columns.{f.who.length > WHO_ROWS && ` Showing ${WHO_ROWS} of ${num(f.who.length)}.`}</p>
+      <div class="tablewrap">
+        <table class="data">
+          <thead><tr><th>Insider</th><th>Role</th><th class="num">Rows</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Value bought</th><th class="num">Value sold</th><th>Latest</th></tr></thead>
+          <tbody>
+            {f.who.slice(0, WHO_ROWS).map((r) => (
+              <tr><th scope="row">{r.path ? <a href={r.path}>{r.person.name}</a> : r.person.name}</th><td>{r.role}</td><td class="num">{num(r.rows)}</td><td class="num">{num(r.buys)}</td><td class="num">{num(r.sells)}</td><td class="num">{r.bought ? money(r.bought) : "—"}</td><td class="num">{r.sold ? money(r.sold) : "—"}</td><td class="mono">{r.last ? formatDate(r.last) : "—"}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )}
+
+  {hasRows && (kind === "insider" || f.codes.length > 1) && (
+    <section aria-labelledby="by-type">
+      <h2 id="by-type">What kind of transactions</h2>
+      <p class="section-note">Most Form 4 rows are pay arriving or tax being withheld, not a decision to buy or sell. Only code P is an open-market purchase and code S an open-market sale. What each code means: <a href="/guides/form-4-transaction-codes/">Form 4 transaction codes</a>.</p>
+      <div class={kind === "insider" ? "split" : undefined}>
+        <div class="tablewrap">
+          <table class="data" data-entity-codes>
+            <caption class="sr-only">Rows by Form 4 transaction code</caption>
+            <thead><tr><th>Code</th><th>Meaning</th><th class="num">Rows</th><th class="num">Shares</th><th class="num">Value</th></tr></thead>
+            <tbody>{f.codes.map((c) => <tr><th scope="row" class="mono">{c.code}</th><td>{c.label}</td><td class="num">{num(c.rows)}</td><td class="num">{num(c.shares)}</td><td class="num">{c.value ? money(c.value) : "—"}</td></tr>)}</tbody>
+          </table>
+        </div>
+        {kind === "insider" && (
+          <div class="tablewrap">
+            <table class="data" data-entity-years id="by-year">
+              <caption class="sr-only">Rows by year of the trade</caption>
+              <thead><tr><th>Year</th><th class="num">Rows</th><th class="num">Bought</th><th class="num">Sold</th></tr></thead>
+              <tbody>{f.years.map((y) => <tr><th scope="row" class="mono">{y.year}</th><td class="num">{num(y.rows)}</td><td class="num">{y.buys ? `${num(y.buys)} · ${money(y.bought)}` : "0"}</td><td class="num">{y.sells ? `${num(y.sells)} · ${money(y.sold)}` : "0"}</td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  <h2 id="insider-transactions">Transactions</h2>
+  {page.truncated && <p class="section-note">{num(stats.rowCount)} rows are on record; the figures and tables on this page cover the newest {num(txns.length)}.</p>}
+  <TxnTable model={model} txns={txns} limit={TABLE_ROWS} showPerson={kind !== "insider"} showSecurity={kind !== "stock"} emptyReason="No approved transactions yet. The filings may be amendments, holdings-only reports, or rows still under review." />
+
+  {kind === "insider" && page.colleagues.length > 0 && (
+    <section aria-labelledby="colleagues" data-related>
+      <h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2>
+      <ul class="mates two">
+        {page.colleagues.map((r) => <li><span><a href={r.path}>{r.name}</a> <span class="soft">{r.role}</span></span> <span>{plural(r.rows, "row")}</span></li>)}
+      </ul>
+      {cpath && <p class="section-note">Everyone on file: <a href={cpath}>{company!.name}</a>.</p>}
+    </section>
+  )}
+
+  {guideItems.length > 0 && (
+    <section class="learn-more" aria-labelledby="learn-more" data-learn-more>
+      <h2 id="learn-more">Guides for this page</h2>
+      <ul class="mates">
+        {guideItems.map((g) => <li><a href={`/guides/${g.slug}/`}>{g.title}</a> {g.fact && <span>{g.fact}</span>}</li>)}
+      </ul>
+    </section>
+  )}
+
+  <h2 id="sources">Sources and method</h2>
+  <div class="source-panel" data-sources>
+    <div class="tablewrap">
+      <table class="data">
+        <caption class="sr-only">Official source behind this page</caption>
+        <thead><tr><th>Source</th><th class="num">Filings</th><th class="num">Rows</th><th>First filed</th><th>Newest filed</th><th>Read the originals</th></tr></thead>
+        <tbody>
+          <tr>
+            <th scope="row">SEC EDGAR, Form 4</th>
+            <td class="num">{num(stats.filingCount)}</td>
+            <td class="num">{num(stats.rowCount)}</td>
+            <td>{stats.firstFiledAt ? formatDate(stats.firstFiledAt.slice(0, 10)) : "—"}</td>
+            <td>{stats.lastFiledAt ? (edgarFilingUrl(stats.newestUrl) ? <a href={edgarFilingUrl(stats.newestUrl)!} rel="noopener nofollow">{formatDate(stats.lastFiledAt.slice(0, 10))}</a> : formatDate(stats.lastFiledAt.slice(0, 10))) : "—"}</td>
+            <td><a href={edgarHref} rel="noopener nofollow">{edgarId || kind === "stock" ? "Form 4 list on EDGAR" : "EDGAR"}</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source-note">This page is built from SEC Form 4 filings when it is opened and may be up to a day old. Every row in the table links to its own filing. To quote a figure, use the Cite button at the top of the page; see <a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a>.</p>
+  </div>
+  <p>
+    Every row comes from the reporting owner's Form 4 as filed with the SEC (EDGAR ownership XML).
+    "Value" is shares times the reported price; code P is an open-market purchase, S a sale, M an option exercise, A a grant.
+    The lag is the filing date minus the trade date; Form 4 is due within two business days. Amendments (4/A) are not merged.
+    Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
+  </p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade and may be amended later. No recommendation is made or implied.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

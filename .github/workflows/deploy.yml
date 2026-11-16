@@ -28,6 +28,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "scripts/verify-live.mjs"
+      - "scripts/probe-od-live.mjs"
       - "scripts/probe-live.mjs"
       - "scripts/check-deployed-version.mjs"
       - "scripts/lib/**"
@@ -97,7 +98,7 @@ jobs:
           set -o pipefail
           (cd web/dist/client && python3 -m http.server 4321 --bind 127.0.0.1 >/dev/null 2>&1 &)
           sleep 2
-          node scripts/verify-live.mjs http://127.0.0.1:4321 --sample 5 --fail-on-challenge
+          node scripts/verify-live.mjs http://127.0.0.1:4321 --sample 5 --fail-on-challenge --static
 
       - name: Deploy to Cloudflare Workers
         working-directory: web
@@ -138,6 +139,12 @@ jobs:
           set -o pipefail
           sleep 120   # prerendered HTML carries s-maxage=120; wait one edge TTL so we test the new build
           node scripts/verify-live.mjs "$PUBLIC_SITE_URL" --sample 5
+
+      # The Worker renders companies, tickers and insiders outside the tracked set on request
+      # (stage 3a). One page of each kind, chosen from this build's market sitemaps, must come back
+      # 200 with an h1 on the live site. A Cloudflare challenge is inconclusive, never a failure.
+      - name: Verify on-demand pages (live)
+        run: node scripts/probe-od-live.mjs "$PUBLIC_SITE_URL" web/dist/client/sitemaps
 
       # Tell IndexNow engines which pages changed (lastmod within 2 days). Best-effort.
       - name: IndexNow ping

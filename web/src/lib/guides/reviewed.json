@@ -7,16 +7,16 @@
     }
   },
   "congress-stock-trading-rules": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-11-16",
     "covers": {
-      "web/src/lib/flagship.ts#CONGRESS_DEADLINE_DAYS": "6b21178f64487085"
+      "web/src/lib/flagship-core.ts#CONGRESS_DEADLINE_DAYS": "6b21178f64487085"
     }
   },
   "congress-trade-amount-ranges": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
-      "web/src/lib/flagship.ts#amountLabel": "7d01b7656a5f74e6"
+      "web/src/lib/flagship-core.ts#amountLabel": "7d01b7656a5f74e6"
     }
   },
   "federal-contracts-usaspending": {
@@ -31,7 +31,7 @@
     "covers": {
       "ingest/src/sources/sec_form4.ts#codeToSide": "fafd70cd6d81dfe4",
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/lib/flagship.ts#sideLabel": "a6bf1853f54b5be4"
+      "web/src/lib/flagship-core.ts#sideLabel": "a6bf1853f54b5be4"
     }
   },
   "house-and-senate-disclosure-differences": {
@@ -78,7 +78,7 @@
   "how-to-read-a-congressional-trade-report": {
     "reviewed": "2026-11-16",
     "covers": {
-      "web/src/components/TxnTable.astro": "16fafd7273f9b780",
+      "web/src/components/TxnTable.astro": "f85f79449b5b186b",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
       "web/src/pages/congress/[slug].astro": "a9de1b3198bde044",
@@ -116,19 +116,19 @@
     }
   },
   "insider-options-and-derivatives": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-11-16",
     "covers": {
       "shared/src/tradevalue.ts": "fa250c11636cb867",
       "web/src/lib/heatmap.ts#insiderRows": "5ea1f074f10967b6",
-      "web/src/lib/flagship.ts#sideLabel": "a6bf1853f54b5be4"
+      "web/src/lib/flagship-core.ts#sideLabel": "a6bf1853f54b5be4"
     }
   },
   "late-congressional-trade-disclosures": {
-    "reviewed": "2026-10-08",
+    "reviewed": "2026-11-16",
     "covers": {
-      "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
-      "web/src/lib/flagship.ts#CONGRESS_DEADLINE_DAYS": "6b21178f64487085",
-      "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11"
+      "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
+      "web/src/lib/flagship-core.ts#CONGRESS_DEADLINE_DAYS": "6b21178f64487085",
+      "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607"
     }
   },
   "lobbying-disclosure-reports": {
@@ -145,14 +145,14 @@
     "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/components/TxnTable.astro": "16fafd7273f9b780"
+      "web/src/components/TxnTable.astro": "f85f79449b5b186b"
     }
   },
   "ten-percent-owners-and-joint-filings": {
     "reviewed": "2026-11-16",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "16fafd7273f9b780"
+      "web/src/components/TxnTable.astro": "f85f79449b5b186b"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -179,12 +179,15 @@
   "what-is-form-4": {
     "reviewed": "2026-11-16",
     "covers": {
-      "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS": "b69d99188c0cbc11",
-      "web/src/lib/flagship.ts#isLate": "cab0d94228039fa5",
-      "web/src/lib/entity.ts": "26a899e3daaa39c9",
-      "web/src/lib/links.ts": "5e32b90da3079fca",
+      "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
+      "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
+      "web/src/lib/entity.ts": "d8009eb2fe0cc43d",
+      "web/src/lib/links.ts": "b2b155c2322b1ff1",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
-      "web/src/components/TxnTable.astro": "16fafd7273f9b780",
+      "web/src/components/TxnTable.astro": "f85f79449b5b186b",
+      "web/src/lib/server/od.ts": "6db09eead6a3f98c",
+      "web/src/components/OdPageView.astro": "a75d34eef3e63e18",
+      "web/src/lib/market.ts": "5efe96a0e16473e4",
       "web/src/pages/stocks/[ticker].astro": "a36818d6c9aa4640",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
       "web/src/pages/companies/[slug].astro": "02c997c89682b910"

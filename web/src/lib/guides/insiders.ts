@@ -52,6 +52,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
 <li><strong>A company's page</strong> adds federal contracts and lobbying filings under the company's exact name, the members of Congress who traded its stock, and related companies.</li>
 </ul>
+<p>The same three kinds of page also exist for stocks, companies and insiders outside the tracked set, when the market-wide Form 4 filings for them are on file. Those pages are put together from the filings when someone first opens them and are kept for up to a day, so they can lag the tracked pages. They show the newest rows only, leave out the charts, the Congress and lobbying tables and the follow button, and are listed in the sitemap only when the page has at least one open-market purchase or sale; a page without one carries a noindex tag.</p>
 <p>In every trade table a flag such as "late" or "10b5-1 plan" is a link to the guide that explains it, and each of these pages ends with the guides that cover what is on it. "Related" lists describe overlap in public filings and nothing more. Every trade table can be sorted: click a column title such as Trade date, Value or Lag to sort by it, click again to reverse, and click a third time to return to the original newest-first order. Insider tables also carry <strong>Held after</strong>, the shares the insider reports owning once the row is done, and <strong>Change</strong>, how much of the earlier holding the row added or removed ("new" for a first purchase, −100% for a sale that leaves nothing); rows with no holding on file show a dash. Where a filing has footnotes, each of its rows carries a link such as "2 notes": the text opens under the table, word for word as filed, and the filing itself shows which row each note is about. A <strong>Follow</strong> button beside the name on all three adds the page to your free watchlist; see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}.</p>` },
     ],
     faqs: [
@@ -69,7 +70,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
     ],
     related: ["form-4-transaction-codes", "rule-10b5-1-trading-plans", "insider-buying-vs-insider-selling", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Stocks with insider activity", href: "/stocks/" }],
-    covers: ["web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro"],
+    covers: ["web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/lib/server/od.ts", "web/src/components/OdPageView.astro", "web/src/lib/market.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro"],
     ui: [{ text: "Guides for this page", on: "/stocks/aapl/" }, { text: "Related stocks", on: "/stocks/aapl/" }],
     facts: ["foreignInsiders"],
   }),
@@ -126,7 +127,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["what-is-form-4", "insider-options-and-derivatives", "insider-buying-vs-insider-selling", "how-to-use-the-trade-map"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Flag and code definitions", href: "/methodology/#flags" }],
-    covers: ["ingest/src/sources/sec_form4.ts#codeToSide", "web/src/lib/vizdata.ts#isSignal", "web/src/lib/flagship.ts#sideLabel"],
+    covers: ["ingest/src/sources/sec_form4.ts#codeToSide", "web/src/lib/vizdata.ts#isSignal", "web/src/lib/flagship-core.ts#sideLabel"],
     ui: [{ text: "Open-market", on: "/insiders/" }, { text: "All codes", on: "/insiders/" }],
     facts: [],
   }),
@@ -277,7 +278,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["form-4-transaction-codes", "what-is-form-4", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "How values are computed", href: "/methodology/#values" }, { label: "Newest insider filings", href: "/insiders/" }],
-    covers: ["shared/src/tradevalue.ts", "web/src/lib/heatmap.ts#insiderRows", "web/src/lib/flagship.ts#sideLabel"],
+    covers: ["shared/src/tradevalue.ts", "web/src/lib/heatmap.ts#insiderRows", "web/src/lib/flagship-core.ts#sideLabel"],
     ui: [],
     facts: [],
   }),

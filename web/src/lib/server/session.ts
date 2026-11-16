@@ -14,6 +14,7 @@
 
 import { env } from "cloudflare:workers";
 import { WorkOS } from "@workos-inc/node";
+import { DbError, rpc } from "./supabase";
 import { COOKIE, SIGNED_IN, SESSION_MAX_AGE, clearCookie, readCookie, setCookie } from "../account";
 
 interface Env {
@@ -85,41 +86,7 @@ export async function getSession(request: Request): Promise<{ session: Session |
   return { session: null, setCookies: [] };
 }
 
-export class DbError extends Error {
-  constructor(message: string, readonly status: number) { super(message); }
-}
-
-/**
- * Call one of the 0017 database functions through Supabase's REST endpoint. With a token the
- * call runs as that visitor (role `authenticated`, row-level security on); without one, as
- * `anon`, which may only call public_watchlist().
- */
-export async function rpc<T = unknown>(fn: string, args: Record<string, unknown>, accessToken?: string): Promise<T> {
-  const res = await fetch(`${E.SUPABASE_URL!.replace(/\/$/, "")}/rest/v1/rpc/${fn}`, {
-    method: "POST",
-    headers: {
-      apikey: E.SUPABASE_ANON_KEY!,
-      // With Supabase's publishable key the apikey header alone means "anon"; a visitor's
-      // WorkOS token in Authorization makes the call run as that visitor.
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(args),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    let msg = "Something went wrong. Please try again.";
-    try {
-      const j = JSON.parse(text) as { code?: string; message?: string };
-      // Messages raised on purpose by the 0017 functions (P0001/P0002) are written for people.
-      if ((j.code === "P0001" || j.code === "P0002") && j.message) msg = j.message;
-      else if (j.code === "28000" || res.status === 401) msg = "Please sign in again.";
-    } catch { /* not JSON */ }
-    throw new DbError(msg, res.status === 401 ? 401 : res.status >= 500 ? 502 : 400);
-  }
-  return (text ? JSON.parse(text) : null) as T;
-}
+export { DbError, rpc };
 
 /** A JSON response that is never cached and carries any refreshed session cookies. */
 export function json(body: unknown, status = 200, cookies: string[] = []): Response {

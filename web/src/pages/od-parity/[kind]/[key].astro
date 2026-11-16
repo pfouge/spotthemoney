@@ -1,0 +1,20 @@
+---
+// TEST ONLY. Renders a TRACKED entity (one that also has a static page) through the on-demand
+// code path so a test can compare the two renderings. It answers only when the Worker has the
+// OD_PARITY switch set AND the request is addressed to a loopback host (parityAllowed); in
+// production neither holds, so every request here is the site's 404. The static build contains
+// no file for this path, and the page is never linked or in a sitemap.
+export const prerender = false;
+import OdPageView from "../../../components/OdPageView.astro";
+import { fetchOd, guideLinks, oneSegment, notFound, parityAllowed } from "../../../lib/server/odsource";
+
+const kind = Astro.params.kind;
+const key = oneSegment(Astro.params.key);
+if (!parityAllowed(Astro.url) || !key || (kind !== "insider" && kind !== "stock" && kind !== "company")) return notFound(Astro.url);
+const doc = await fetchOd(kind, kind === "stock" ? key.toUpperCase() : key, Astro.url).catch(() => undefined);
+if (!doc) return notFound(Astro.url);
+const guides = await guideLinks(Astro.url);
+Astro.response.headers.set("Cache-Control", "no-store");
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+---
+<OdPageView doc={doc} guides={guides} />
