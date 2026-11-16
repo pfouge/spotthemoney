@@ -14,7 +14,7 @@ import { formatDate, formatPercent } from "../format";
 import { FACTS } from "./facts";
 import { FORM4_FLOOR } from "@stm/shared";
 import { ISSUES_INLINE, ISSUE_FILING_ROWS, ISSUE_TOP_ROWS } from "../lobbyissues";
-import { CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT } from "../notable";
+import { FEED_CAPS, CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT } from "../notable";
 
 export interface GuideCtx {
   facts: typeof FACTS;
@@ -36,7 +36,7 @@ export interface GuideCtx {
   recentDays: number;
   hasSenate: boolean;
   /** Thresholds of the home page notable-trades feed (lib/notable.ts). */
-  notable: { clusterInsiders: number; clusterDays: number; stakePct: number; stakeValue: string; largeSale: string; congressLow: string; sellInsiders: number; sellValue: string; sellPct: number };
+  notable: { clusterInsiders: number; clusterDays: number; stakePct: number; stakeValue: string; largeSale: string; congressLow: string; sellInsiders: number; sellValue: string; sellPct: number; capBuys: string; capSales: string };
   counts: { congressTxns: string; insiderTxns: string; tickers: string; members: string; lobbying: string; contracts: string; committees: string };
   /** Scanned or paper congressional filings held back until read by hand. */
   heldPaper: string | null;
@@ -70,7 +70,7 @@ async function build(): Promise<GuideCtx> {
     mapYearDays: HEATMAP_WINDOW_DAYS,
     recentDays: RECENT_DAYS,
     hasSenate: senateShown(m),
-    notable: { clusterInsiders: CLUSTER_MIN_INSIDERS, clusterDays: CLUSTER_DAYS, stakePct: STAKE_MIN_PCT, stakeValue: usd(STAKE_MIN_VALUE), largeSale: usd(LARGE_SALE_MIN), congressLow: usd(CONGRESS_MIN_LOW), sellInsiders: CLUSTER_SELL_MIN_INSIDERS, sellValue: usd(CLUSTER_SELL_MIN_VALUE), sellPct: CLUSTER_SELL_MIN_PCT },
+    notable: { clusterInsiders: CLUSTER_MIN_INSIDERS, clusterDays: CLUSTER_DAYS, stakePct: STAKE_MIN_PCT, stakeValue: usd(STAKE_MIN_VALUE), largeSale: usd(LARGE_SALE_MIN), congressLow: usd(CONGRESS_MIN_LOW), sellInsiders: CLUSTER_SELL_MIN_INSIDERS, sellValue: usd(CLUSTER_SELL_MIN_VALUE), sellPct: CLUSTER_SELL_MIN_PCT, capBuys: `${FEED_CAPS.buys[1]}, ${FEED_CAPS.buys[7]} and ${FEED_CAPS.buys[30]}`, capSales: `${FEED_CAPS.sales[1]}, ${FEED_CAPS.sales[7]} and ${FEED_CAPS.sales[30]}` },
     counts: {
       congressTxns: num(m.counts.congressTxns ?? 0), insiderTxns: num(m.counts.insiderTxns ?? 0), tickers: num(m.counts.securities ?? 0),
       members: num(members), lobbying: num(m.counts.lobbying ?? 0), contracts: num(m.counts.contracts ?? 0), committees: num(m.counts.committees ?? 0),
