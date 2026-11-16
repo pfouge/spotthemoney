@@ -43,11 +43,19 @@ export async function ingestIBonds(): Promise<IngestRunResult> {
   const resp = await fiscalData<Row>(ENDPOINT, { sort: "-earning_period_start", pageSize: 10000 });
   const all = [...(resp.data ?? [])];
   const totalPages = resp.meta["total-pages"] ?? 1;
+  // A later page that fails must not cost the newest rates: keep what page 1 gave, store it, and
+  // report the run as partial with the reason.
   let pagesRead = 1;
+  let pageError: string | null = null;
   for (let page = 2; page <= Math.min(totalPages, MAX_PAGES); page++) {
-    const next = await fiscalData<Row>(ENDPOINT, { sort: "-earning_period_start", pageSize: 10000, pageNumber: page });
-    all.push(...(next.data ?? []));
-    pagesRead = page;
+    try {
+      const next = await fiscalData<Row>(ENDPOINT, { sort: "-earning_period_start", pageSize: 10000, pageNumber: page });
+      all.push(...(next.data ?? []));
+      pagesRead = page;
+    } catch (e) {
+      pageError = `page ${page} of ${totalPages} failed: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}`;
+      break;
+    }
   }
   if (all.length === 0) {
     return { source: "ibonds", rowsSeen: 0, rowsChanged: 0, status: "partial",
@@ -105,7 +113,7 @@ export async function ingestIBonds(): Promise<IngestRunResult> {
     rowsSeen: rows.length,
     rowsChanged: changed,
     status: totalPages > pagesRead ? "partial" : "success",
-    ...(totalPages > pagesRead ? { error: `dataset has ${totalPages} pages, read ${pagesRead}: raise MAX_PAGES` } : {}),
+    ...(totalPages > pagesRead ? { error: pageError ?? `dataset has ${totalPages} pages, read ${pagesRead}: raise MAX_PAGES` } : {}),
   };
 }
 
