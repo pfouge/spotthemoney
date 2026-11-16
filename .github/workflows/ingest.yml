@@ -85,6 +85,8 @@ jobs:
             sources: congress_roster ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
           - name: filings
             sources: sec_form4
+          - name: insiders-market
+            sources: sec_form4_index
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations
@@ -137,6 +139,8 @@ jobs:
             sources: congress_roster ibonds treasury_yield_curve treasury_real_yield_curve bls_cpi
           - name: filings
             sources: sec_form4
+          - name: insiders-market
+            sources: sec_form4_index
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations

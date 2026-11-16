@@ -1,0 +1,80 @@
+# Market-wide Form 4 load, stage 2 (2026-11-16). Loads every Form 4 filed since 2026-10-01 from the
+# EDGAR daily index (stage 1, form4-bulk.yml, loaded the quarterly data sets through 2026-09-30)
+# WITHOUT changing the website: market-scope rows are invisible to every build-time query
+# (db/migrations/0019_form4_market_scope.sql), so this workflow never calls deploy.
+#
+# Start it once from the Actions tab (Run workflow) for the catch-up of about 20,000 filings. The
+# source stops itself on a time budget and prints "(partial)" when there is more to load; the last
+# job then starts the next run with `remaining` counted down, so a source that never finishes
+# cannot loop forever. After the catch-up the same source runs every day inside ingest.yml
+# (group insiders-market) and this workflow is not needed again.
+#
+# The SEC asks automated clients to identify themselves; the ingest code sends its own descriptive
+# User-Agent (the same one sec_form4 uses) and paces SEC requests at 4 a second.
+
+name: form4-index
+
+on:
+  workflow_dispatch:
+    inputs:
+      remaining:
+        description: "How many more times this may restart itself"
+        required: false
+        default: "8"
+
+concurrency:
+  group: form4-index
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    outputs:
+      more: ${{ steps.run.outputs.more }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: node db/migrate.mjs
+
+      - name: Load Form 4 filings from the daily index
+        id: run
+        env:
+          SEC_INDEX_MAX_MINUTES: "40"
+        run: |
+          set -o pipefail
+          npm run ingest -- sec_form4_index 2>&1 | tee run.log
+          if grep -q "sec_form4_index: .*(partial)" run.log; then echo "more=true" >> "$GITHUB_OUTPUT"; fi
+
+  # Start the next run while the source reports more to load. A failed load is NOT retried here:
+  # a red run stops the chain so the cause gets looked at.
+  again:
+    needs: [load]
+    if: needs.load.result == 'success' && needs.load.outputs.more == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REMAINING: ${{ github.event.inputs.remaining }}
+    steps:
+      - name: Restart
+        run: |
+          left=$(( ${REMAINING:-0} - 1 ))
+          if [ "$left" -lt 0 ]; then echo "restart limit reached; the load is still partial" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          echo "starting the next run (restarts left: $left)" >> "$GITHUB_STEP_SUMMARY"
+          gh workflow run form4-index.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}" -f remaining="$left"
