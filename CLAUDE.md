@@ -2083,3 +2083,34 @@ the fuller record.
   reads every page (`MAX_PAGES` 10).
 - Not done: no 3 and 12 month table on company or insider pages; no market-wide figures (the
   table covers filings on the site, which is stated on the methodology page).
+
+### Form 4 footnotes under the trade tables (2026-11-16, scheduled parity run) — gap T0-08
+
+- **What.** A Form 4 row whose filing has footnotes carries a link in its Flags cell
+  (`a.flag.notes`, "2 notes", `href="#fn<filing id>"`). Under the table, a folded
+  `details.fnotes[data-fnotes]` prints each filing's footnotes once (`section.fnote#fn<id>`):
+  filer, filing date, link to the Form 4, the notes as an ordered list. Everywhere `TxnTable`
+  is used (stock, insider, company pages, `/insiders/`). No new files.
+- **Data.** `filings.payload.footnotes` is a list of strings per filing (written by the daily
+  `sec_form4` job since the start). `flagship.ts` loads it in its own try/catch into
+  `model.footnotes` (filing id to clean notes; the build log prints
+  `[web] Form 4 footnotes: N filings, M notes`). `web/src/lib/footnotes.ts` (pure; tests in
+  `scripts/footnotes.test.ts`): `cleanFootnotes` undoes XML escapes (stored text holds `&amp;`,
+  `&quot;`), collapses white space, drops empty and repeated notes; `tableFootnotes` gives one
+  block per filing in row order; `MAX_NOTES_PER_FILING` = 10, the rest are counted ("2 more
+  footnotes in the filing").
+- **Limits, stated on the page and in methodology `#footnotes`:** the payload does not record
+  which row or box a footnote is attached to, so the notes are the filing's, shown with every
+  row of it. Filings loaded by `sec_form4_bulk` have an empty list (the SEC sets' FOOTNOTES
+  table is not loaded). Both belong with the parser fixes (queue item 3): store the
+  `footnoteId` references per transaction, load the bulk FOOTNOTES table. Nothing on the site
+  is derived from footnote text (no flag, label or total). Footnotes are not in the CSV files.
+- **One block per page.** A filing printed by an earlier table on the same page is linked, not
+  printed again (`Astro.locals.noteBlocks`), so ids stay unique. `scripts/tablesort.ts` opens
+  the folded list when a notes link is clicked or the page is opened at `#fn<id>`.
+- **Verifier.** `verify-links` (NOTES): every notes link has its block inside the folded list,
+  no block twice, 1 to 10 non-empty notes per block, no XML escape shown as text, and the
+  seed's pre-floor filing's note never appears.
+- Guides: `what-is-form-4` (now covers `footnotes.ts` and `TxnTable.astro`),
+  `form-4-transaction-codes`, `rule-10b5-1-trading-plans`,
+  `ten-percent-owners-and-joint-filings` each gained a sentence.

@@ -11,6 +11,7 @@ import { tradeSentence } from "../lib/sharetext";
 import { flagHref } from "../lib/links";
 import { dayKey, numKey } from "../lib/tablesort";
 import { changeLabel, changeSortKey } from "../lib/holdings";
+import { tableFootnotes, notesLabel, notesAnchor } from "../lib/footnotes";
 
 interface Props {
   model: Flagship;
@@ -46,11 +47,24 @@ const flags = (t: Txn) => {
 // (insider rows); congressional tables never do.
 const showHoldings = rows.some((t) => t.ownedAfter != null);
 const changeClass = (c: Txn["holdingsChange"]) => (c === "new" || (typeof c === "number" && c > 0) ? "pos" : typeof c === "number" && c < 0 ? "neg" : "");
+// Form 4 footnotes (lib/footnotes.ts): a row whose filing has footnotes links to them, and they
+// are printed once per filing, folded, under the table. A filing already printed by an earlier
+// table on this page is linked, not printed again, so ids stay unique and the page stays light.
+const printed: Set<number> = ((Astro.locals as { noteBlocks?: Set<number> }).noteBlocks ??= new Set<number>());
+const noteCount = (t: Txn) => (t.source === "sec_form4" ? model.footnotes.get(t.filingId)?.length ?? 0 : 0);
+const noteBlocks = tableFootnotes(rows.filter((t) => t.source === "sec_form4").map((t) => t.filingId), (id) => model.footnotes.get(id)).filter((b) => !printed.has(b.filingId));
+for (const b of noteBlocks) printed.add(b.filingId);
+const noteHead = (filingId: number) => {
+  const f = model.filings.get(filingId);
+  const p = f?.personId != null ? model.people.get(f.personId) : undefined;
+  return { name: p?.name ?? "Form 4", filed: f?.filedAt ? short(f.filedAt.slice(0, 10)) : null, href: f ? edgarFilingUrl(f.sourceUrl) : null };
+};
 const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
 ---
 {rows.length === 0 ? (
   <Empty reason={emptyReason} />
 ) : (
+  <>
   <div class="tablewrap">
     <table class="data txns" data-sortable>
       {caption && <caption>{caption}</caption>}
@@ -96,7 +110,7 @@ const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
               {showHoldings && <td class="num" data-v={numKey(t.ownedAfter)}>{t.ownedAfter != null ? num(t.ownedAfter) : "—"}</td>}
               {showHoldings && <td class={`num ${changeClass(t.holdingsChange)}`} data-v={numKey(changeSortKey(t.holdingsChange ?? null))}>{changeLabel(t.holdingsChange ?? null)}</td>}
               <td class="num strong" data-v={valueKey(t)}>{amountLabel(t)}</td>
-              <td class="flags">{flags(t).map((f) => { const to = flagHref(f, t.source); const cls = `flag ${f.replace(/\W+/g, "-")}`; return to ? <a class={cls} href={to} title="What this flag means">{f}</a> : <span class={cls}>{f}</span>; })}</td>
+              <td class="flags">{flags(t).map((f) => { const to = flagHref(f, t.source); const cls = `flag ${f.replace(/\W+/g, "-")}`; return to ? <a class={cls} href={to} title="What this flag means">{f}</a> : <span class={cls}>{f}</span>; })}{noteCount(t) > 0 && <a class="flag notes" href={`#${notesAnchor(t.filingId)}`} data-notes title="Footnotes in this filing">{notesLabel(noteCount(t))}</a>}</td>
               <td>{href ? <a href={href} rel="noopener nofollow" target="_blank">{sourceLabel(t)} ↗</a> : sourceLabel(t)}</td>
               <td class="rs">{line && <button type="button" class="row-share" data-share="trade" data-share-text={line} data-share-path={home !== here ? home : undefined} data-share-id={`t${t.id}`} data-share-date={(t.disclosedAt ?? "").slice(0, 10) || undefined} aria-label="Share or cite this trade"></button>}</td>
             </tr>
@@ -106,4 +120,21 @@ const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
     </table>
     {txns.length > rows.length && <p class="soft small">Showing the {rows.length} most recent of {num(txns.length)}.</p>}
   </div>
+  {noteBlocks.length > 0 && (
+    <details class="fnotes" data-fnotes>
+      <summary>Footnotes from the filings <span>{num(noteBlocks.length)} {noteBlocks.length === 1 ? "filing" : "filings"} in this table</span></summary>
+      <p class="soft small">The text is as filed with the SEC. A footnote belongs to its filing, and often to one row or one box of it: the filing shows which.</p>
+      {noteBlocks.map((b) => {
+        const h = noteHead(b.filingId);
+        return (
+          <section class="fnote" id={notesAnchor(b.filingId)} tabindex="-1">
+            <p class="fnote-h">{h.name}{h.filed && <span class="soft">, filed {h.filed}</span>}{h.href && <> <a href={h.href} rel="noopener nofollow" target="_blank">Form 4 ↗</a></>}</p>
+            <ol>{b.notes.map((n) => <li>{n}</li>)}</ol>
+            {b.more > 0 && <p class="soft small">{num(b.more)} more {b.more === 1 ? "footnote" : "footnotes"} in the filing.</p>}
+          </section>
+        );
+      })}
+    </details>
+  )}
+  </>
 )}
