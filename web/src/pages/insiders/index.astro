@@ -90,6 +90,7 @@ const feeds = [
 
   <h2 id="newest">Newest disclosures</h2>
   <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "insider-trades-latest.csv")} note="every Form 4 row disclosed in the last 90 days; earlier quarters are on the downloads page" />
+  <p class="section-note" data-feed-link>In a feed reader: RSS feeds of the newest <a href="/feeds/insider-purchases.xml">open-market purchases</a> and of <a href="/feeds/insider-trades.xml">purchases and sales</a> (<a href="/feeds/">about the feeds</a>).</p>
   <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved Form 4 rows yet. The daily sec_form4 job fills this table (see the ingest status in the footer of the methodology page)." />
 
   <AdSlot label="Advertisement" />

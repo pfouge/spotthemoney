@@ -2264,3 +2264,42 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
   PDFs, which the cloud sandbox cannot fetch).
 - Not done: no issue filter on company pages; no per-issue CSV; the specific-issue text of a
   filing (the bills named) is not stored; no history chart per issue.
+
+### RSS feeds of the newest disclosed trades (2026-11-16, scheduled parity run) — gap T0-10
+
+- **What.** Three static RSS 2.0 files and a page about them: `/feeds/congress-trades.xml`
+  (the 200 newest published rows of House and Senate periodic transaction reports, one item per
+  row), `/feeds/insider-purchases.xml` (100 items) and `/feeds/insider-trades.xml` (200 items),
+  and `/feeds/` (what each carries, item counts, how to use one). Every page advertises the
+  three feeds in its head (`BaseLayout`), the footer links "RSS feeds", `/congress/` and
+  `/insiders/` link their feeds above "Newest disclosures". In the `pages` sitemap, the search
+  index and `llms.txt`. Four new files in the deploy. `/writing/rss.xml` is unchanged.
+- **Rules** (`web/src/lib/feeds.ts`, pure; tests `scripts/feeds.test.ts`; wired to the model in
+  `web/src/lib/feeds-build.ts`, which builds the items once per build): an insider item is one
+  Form 4 filing and direction, its open-market purchases (code P, side buy) or sales (code S,
+  side sell) added up, because a sale filled in lots is many rows (200 to 340 rows a day on the
+  tracked set, 60 to 130 filings). Awards, exercises, gifts, code F and D, derivative rows
+  (side `option`) and repeat filings (side `other`) are out, as are rows under review, rows
+  with no disclosure date and rows dated after the build day. Order: disclosure day, then
+  filing id, purchases first. An item's title is the share menu's sentence
+  (`tradeSentence`) for one row, `filingSentence` for several; the description adds the role
+  at that company (never a role held elsewhere), owner, late flag, a 10b5-1 note "as stated on
+  the form", and the original filing's address. The link is the filer's page at the row
+  (`#t<id>`). Guids: `stm-txn-<id>`, `stm-form4-<filing id>-buy|sell` (a `--reprocess` of a
+  congressional filing gives its rows new ids, so readers will see those items again).
+- **Scope.** Feeds read `model.txns` (the tracked set), like the tables on `/congress/` and
+  `/insiders/`; the page says so. Market-wide insider feeds belong with stage 3b of the
+  market-wide work. No per-member or per-ticker feeds (file headroom).
+- **Build log** prints one line per feed: `[web] feed insider-trades: N items (R rows), newest
+  D, oldest D, n items (r rows) on the newest day`, for comparison with SQL.
+- **Verifier:** `node scripts/verify-feeds.mjs <base-url> [--sample N]` (no browser; the
+  thirteenth): well-formed XML, unique ids, newest first, no future dates, every link opens a
+  page that holds the row, the description ends with the original filing, items per disclosure
+  day recounted from `congress-trades.csv` and `insider-trades-latest.csv`, the counts on
+  `/feeds/`, the head links, wording. `verify-a11y` includes `/feeds/`.
+- Guide `how-to-follow-members-insiders-and-stocks`: new section `#feeds`, one FAQ, one key
+  fact, two new covered files, one label; the item limits come from `ctx.feedCongressItems`,
+  `feedPurchaseItems`, `feedInsiderItems`. Methodology `#feeds`.
+- A plain table did not suit `/feeds/` (table cells do not wrap on this site): the feeds are a
+  list of cards with a scoped style in the page.
+- Not done: no feed of notable trades or clusters; no Atom or JSON Feed; no feed per page.

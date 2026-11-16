@@ -237,7 +237,7 @@ ${table(["Style", "Example"], examples)}
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-follow-members-insiders-and-stocks", group: "site", updated: "2026-10-10",
+    slug: "how-to-follow-members-insiders-and-stocks", group: "site", updated: "2026-11-16",
     title: "How to follow members, insiders and stocks",
     seoTitle: ["How to Follow Congress, Insider and Stock Trades: Watchlists", "How Spot the Money Watchlists Work"],
     description: ["Follow a member of Congress, a corporate insider, a stock or a company and see every newly disclosed trade on one watchlist page. How it works, what it costs (nothing) and what it keeps.", "Free watchlists for members of Congress, insiders, stocks and companies, and how new trades show up."],
@@ -248,6 +248,7 @@ ${table(["Style", "Example"], examples)}
       `A trade appears when it is disclosed: up to ${c.congressDeadlineDays} days after the trade for Congress, usually within days for insiders.`,
       "Lists are private until you share one; a shared list is visible to anyone with its link.",
       "You can delete your account and everything in it from the watchlist page.",
+      "Without an account, three RSS feeds carry the newest congressional and insider trades to a feed reader.",
     ],
     sections: [
       { id: "follow", h: "How do I follow someone?", html: `
@@ -265,12 +266,16 @@ ${table(["Style", "Example"], examples)}
       { id: "account", h: "What does an account keep, and how do I delete it?", html: `
 <p>Your email address, the pages you follow, your lists and when you last opened the watchlist page, so the site can mark what is new. Sign-in is handled by WorkOS; the site never sees a password. The details are in the <a href="/privacy/#accounts">privacy policy</a>. To leave, press <strong>Delete my account</strong> on the watchlist page: the account, its lists and the sign-in are removed straight away.</p>
 <p>Email alerts are not offered yet. When they are, they will be something you switch on yourself, with an unsubscribe link in every message.</p>` },
+      { id: "feeds", h: "Can I follow new trades without an account?", html: `
+<p>Yes, with RSS. The <a href="/feeds/">RSS feeds</a> page lists three feeds that any feed reader can subscribe to, with no sign-up: the ${c.feedCongressItems} newest transactions from congressional reports, the ${c.feedPurchaseItems} newest Form 4 filings with an open-market purchase, and the ${c.feedInsiderItems} newest with an open-market purchase or sale. Each item is one sentence stating what the filing shows, with a link to the row on this site and the address of the original filing.</p>
+<p>The feeds cover the site as a whole. There is no feed for one member, insider or stock: the Follow button and a watchlist do that. An insider item stands for one filing, so a sale filled in several lots is added up into one item, and awards, option exercises, gifts and shares withheld for tax are left out (see ${`<a href="/guides/form-4-transaction-codes/">transaction codes</a>`}). Rows still under review are never in a feed. The feeds are rebuilt with the site, about once a day, and the site does not know who reads them.</p>` },
     ],
     faqs: [
       { q: "Does a Spot the Money account cost anything?", a: "No. Accounts and watchlists are free, and the site never asks for a payment." },
       { q: "How quickly does a new trade show up on my watchlist?", a: `As soon as the site has loaded the filing, usually within a day of it becoming public. Members of Congress can report up to ${c.congressDeadlineDays} days after a trade, so the trade itself may be weeks old.` },
       { q: "Can other people see what I follow?", a: "Only if you share a list, and then only that list: its name, the pages on it and their recent trades. Your email address is never shown." },
       { q: "Where do the price charts on my watchlist come from?", a: "From TradingView: the same free widget as on each stock page, in a three-month view. Prices there are delayed, not real-time. Spot the Money stores no prices, and the trade figures beside each chart come from government filings, not from the chart." },
+      { q: "Can I follow new trades without an account?", a: `Yes. The RSS feeds page lists three feeds a feed reader can subscribe to: the ${c.feedCongressItems} newest congressional transactions, the newest insider open-market purchases, and insider open-market purchases and sales together. They cover the whole site, not one member or stock.` },
       { q: "Will I get email alerts?", a: "Not yet. New trades appear on your watchlist page and as a count on the bookmark icon. Email alerts, when added, will be opt-in." },
     ],
     sources: [
@@ -279,8 +284,8 @@ ${table(["Style", "Example"], examples)}
     ],
     related: ["how-to-use-the-trade-map", "late-congressional-trade-disclosures", "congress-trade-amount-ranges", "what-disclosure-data-cannot-tell-you"],
     seeLive: [{ label: "Your watchlist", href: "/watchlist/" }, { label: "Privacy policy: accounts", href: "/privacy/#accounts" }],
-    covers: ["db/migrations/0017_accounts_watchlists.sql", "web/src/lib/account.ts", "web/src/scripts/account.ts", "web/src/scripts/watchlist.ts", "web/src/components/Follow.astro", "web/src/lib/watchcards.ts", "web/src/lib/watchcards-build.ts", "web/src/scripts/watchcards.ts"],
-    ui: [{ text: "data-follow-text>Follow<", on: "/stocks/aapl/" }, { text: "Your watchlist", on: "/watchlist/" }, { text: "Sign in or create a free account", on: "/watchlist/" }],
+    covers: ["db/migrations/0017_accounts_watchlists.sql", "web/src/lib/account.ts", "web/src/scripts/account.ts", "web/src/scripts/watchlist.ts", "web/src/components/Follow.astro", "web/src/lib/watchcards.ts", "web/src/lib/watchcards-build.ts", "web/src/scripts/watchcards.ts", "web/src/lib/feeds.ts", "web/src/pages/feeds/index.astro"],
+    ui: [{ text: "data-follow-text>Follow<", on: "/stocks/aapl/" }, { text: "Your watchlist", on: "/watchlist/" }, { text: "Sign in or create a free account", on: "/watchlist/" }, { text: "The feeds", on: "/feeds/" }],
     facts: ["stockAct"],
   }),
 ];
