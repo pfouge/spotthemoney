@@ -2,7 +2,7 @@
 // automatic links (web/src/lib/links.ts). Run:  npx tsx --test scripts/entity.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { codeRows, yearRows, insiderRows, memberRows, relatedTickers, colleagues, relatedCompanies, codeLabel } from "../web/src/lib/entity";
+import { codeRows, yearRows, insiderRows, memberRows, relatedTickers, colleagues, relatedCompanies, codeLabel, insiderPeriods } from "../web/src/lib/entity";
 import { autolink, flagHref, orgPath, GLOSSARY } from "../web/src/lib/links";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -118,4 +118,30 @@ test("decodeEntities: officer titles with XML escapes, single or double", () => 
   assert.equal(decodeEntities("R&D Lead"), "R&D Lead");
   assert.equal(decodeEntities("Director"), "Director");
   assert.equal(decodeEntities(null), null);
+});
+
+test("insiderPeriods: open-market P and S only, by disclosure date, people counted once", () => {
+  const since = (days: number) => (days === 90 ? "2026-01-01" : "2025-04-06");
+  const row = (o: Partial<Txn> & { personId: number; code: string; side: string; d: string; shares: number; value: number | null }): Txn =>
+    ({ ...f4(o.personId, 1, o.code, o.side, o.d, o.shares, o.value ?? 0), value: o.value, ...o });
+  const txns: Txn[] = [
+    row({ personId: 1, code: "P", side: "buy", d: "2026-02-01", shares: 100, value: 1000 }),
+    row({ personId: 1, code: "P", side: "buy", d: "2026-02-02", shares: 50, value: null }),            // no usable price: shares only
+    row({ personId: 2, code: "S", side: "sell", d: "2026-01-01", shares: 400, value: 4400, is10b51: true }), // first day of the window is in
+    row({ personId: 3, code: "S", side: "sell", d: "2025-12-31", shares: 30, value: 300 }),            // 12 months only
+    row({ personId: 3, code: "P", side: "buy", d: "2025-04-05", shares: 999, value: 999 }),             // before both windows
+    row({ personId: 1, code: "A", side: "buy", d: "2026-02-03", shares: 5000, value: 0 }),              // award
+    row({ personId: 1, code: "F", side: "sell", d: "2026-02-03", shares: 70, value: 700 }),             // withheld for tax
+    row({ personId: 2, code: "P", side: "option", d: "2026-02-04", shares: 10, value: 10, isDerivative: true }), // derivative
+    row({ personId: 4, code: "S", side: "other", d: "2026-02-05", shares: 400, value: 4400, jointOf: 3 }),       // same trade, second filing
+    ptr(3, 1, "buy", "2026-02-06", 1001, 15000),                                                        // congressional row
+  ];
+  const [q, y] = insiderPeriods(txns, since);
+  assert.deepEqual([q!.label, q!.days, y!.label, y!.days], ["Last 3 months", 90, "Last 12 months", 365]);
+  assert.deepEqual([q!.buys, q!.buyers, q!.sharesBought, q!.bought], [2, 1, 150, 1000]);
+  assert.deepEqual([q!.sells, q!.sellers, q!.sharesSold, q!.sold, q!.planSells], [1, 1, 400, 4400, 1]);
+  assert.deepEqual([q!.netShares, q!.net, q!.unpriced], [-250, -3400, 1]);
+  assert.deepEqual([y!.buys, y!.sells, y!.sellers, y!.sharesSold, y!.sold, y!.planSells, y!.netShares, y!.net], [2, 2, 2, 430, 4700, 1, -280, -3700]);
+  const none = insiderPeriods([], since);
+  assert.deepEqual(none.map((p) => [p.buys, p.sells, p.netShares, p.net]), [[0, 0, 0, 0], [0, 0, 0, 0]]);
 });

@@ -1,7 +1,7 @@
 ---
 // Ticker page: /stocks/<ticker>/ — insider and congressional activity in one security.
 import LearnMore from "../../components/LearnMore.astro";
-import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf } from "../../lib/entity";
+import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, insiderPeriods, isOpenSale } from "../../lib/entity";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -47,7 +47,7 @@ const yCon = y.filter((t) => t.source !== "sec_form4");
 const insiders = new Set(yIns.map((t) => t.personId));
 const members = new Set(yCon.map((t) => t.personId));
 const buys = yIns.filter((t) => t.code === "P").length;
-const sells = yIns.filter((t) => t.side === "sell").length;
+const sells = yIns.filter(isOpenSale).length;
 const underReview = siblings.some((x) => x.underReview);
 const lastUpdated = txns[0]?.filedAt ?? model.builtAt;
 const name = company?.name ?? s.name ?? s.ticker;
@@ -59,7 +59,13 @@ const related = relatedTickers(model, s.ticker, txns);
 const size = sizeOf(model, s.ticker);
 const lastTrade = txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const WHO_ROWS = 15;
+// Open-market buying and selling over 3 and 12 months (lib/entity.ts insiderPeriods).
+const periods = insider.length ? insiderPeriods(insider) : [];
+const signed = (n: number, f: (x: number) => string) => (n === 0 ? f(0) : `${n > 0 ? "+" : "\u2212"}${f(Math.abs(n))}`);
+const tone = (n: number) => (n > 0 ? "num pos" : n < 0 ? "num neg" : "num");
+const anyUnpriced = periods.some((p) => p.unpriced > 0);
 const jump: [string, string][] = txns.length === 0 ? [] : [
+  ...(periods.length ? [["#insider-summary", "3 and 12 months"] as [string, string]] : []),
   ...(insiderList.length ? [["#insiders", "Insiders"] as [string, string]] : []),
   ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
   ...(insider.length ? [["#insider-transactions", "Insider transactions"] as [string, string]] : []),
@@ -70,7 +76,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
 
 const answer = txns.length === 0
   ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.`
-  : `${s.ticker} (${name}) has ${plural(yIns.length, "disclosed insider transaction")} from ${plural(insiders.size, "insider")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "sale")}, about ${money(sum(yIns.map((t) => t.value)))} at reported prices) and ${plural(yCon.length, "congressional trade")} from ${plural(members.size, "member")} of Congress. The most recent disclosure was filed ${formatDate(txns[0]!.filedAt)}.`;
+  : `${s.ticker} (${name}) has ${plural(yIns.length, "disclosed insider transaction")} from ${plural(insiders.size, "insider")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "open-market sale")}, about ${money(sum(yIns.map((t) => t.value)))} at reported prices) and ${plural(yCon.length, "congressional trade")} from ${plural(members.size, "member")} of Congress. The most recent disclosure was filed ${formatDate(txns[0]!.filedAt)}.`;
 
 const description = fitDescription([
   `${s.ticker} (${name}) insider trades and congressional stock trades: SEC Form 4 and STOCK Act disclosures on record, with dates, values and source links.`,
@@ -112,6 +118,31 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   {["equity", "etf", "adr"].includes(s.type) && <TradingView symbol={s.ticker} name={name} />}
 
   <VizStock security={s} company={company ?? null} />
+
+  {periods.length > 0 && (
+    <section aria-labelledby="insider-summary" data-entity-periods>
+      <h2 id="insider-summary">Insider buying and selling in {s.ticker}: 3 and 12 months</h2>
+      <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
+      <div class="tablewrap">
+        <table class="data periods">
+          <thead><tr><th>Open-market trades</th>{periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
+          <tbody>
+            <tr><th scope="row">Purchases</th>{periods.map((p) => <td class="num" data-k={`buys-${p.days}`}>{num(p.buys)}</td>)}</tr>
+            <tr><th scope="row">Insiders who bought</th>{periods.map((p) => <td class="num" data-k={`buyers-${p.days}`}>{num(p.buyers)}</td>)}</tr>
+            <tr><th scope="row">Shares bought</th>{periods.map((p) => <td class="num" data-k={`shares-bought-${p.days}`}>{num(p.sharesBought)}</td>)}</tr>
+            <tr><th scope="row">Dollars bought</th>{periods.map((p) => <td class="num" data-k={`bought-${p.days}`}>{p.buys ? money(p.bought) : "$0"}</td>)}</tr>
+            <tr><th scope="row">Sales</th>{periods.map((p) => <td class="num" data-k={`sells-${p.days}`}>{num(p.sells)}</td>)}</tr>
+            <tr><th scope="row">Insiders who sold</th>{periods.map((p) => <td class="num" data-k={`sellers-${p.days}`}>{num(p.sellers)}</td>)}</tr>
+            <tr><th scope="row">Shares sold</th>{periods.map((p) => <td class="num" data-k={`shares-sold-${p.days}`}>{num(p.sharesSold)}</td>)}</tr>
+            <tr><th scope="row">Dollars sold</th>{periods.map((p) => <td class="num" data-k={`sold-${p.days}`}>{p.sells ? money(p.sold) : "$0"}</td>)}</tr>
+            <tr><th scope="row">Sales under a <a href="/guides/rule-10b5-1-trading-plans/">10b5-1 plan</a></th>{periods.map((p) => <td class="num" data-k={`plan-${p.days}`}>{num(p.planSells)}</td>)}</tr>
+            <tr><th scope="row">Net shares</th>{periods.map((p) => <td class={tone(p.netShares)} data-k={`net-shares-${p.days}`}>{signed(p.netShares, num)}</td>)}</tr>
+            <tr><th scope="row">Net dollars</th>{periods.map((p) => <td class={tone(p.net)} data-k={`net-${p.days}`}>{signed(p.net, (x) => money(x))}</td>)}</tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )}
 
   {insiderList.length > 0 && (
     <section aria-labelledby="insiders" data-entity-insiders>
@@ -187,3 +218,12 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures are shown as filed and may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>
+
+<style>
+  /* 3 and 12 month summary: three columns that fit a phone without scrolling sideways. */
+  table.data.periods th:first-child { white-space: normal; max-width: none; }
+  @media (max-width: 640px) {
+    table.data.periods th, table.data.periods td { padding: 0 8px; }
+    table.data.periods th:first-child { padding-left: 4px; }
+  }
+</style>

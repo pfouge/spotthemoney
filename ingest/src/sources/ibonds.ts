@@ -9,13 +9,15 @@
 //             first, no record_date field. The announcement for a period is the row whose
 //             issue_year_month equals its earning_period: that carries the newly set fixed
 //             rate and the composite rate for bonds bought in that period.
-// We fetch the whole matrix in one page (API max page size 10,000) and keep those rows only.
+// We fetch the whole matrix (API max page size 10,000; two pages since November 2026) and keep
+// those rows only.
 
 import { fiscalData } from "../lib/fiscaldata.js";
 import { getDb, closeDb } from "../lib/db.js";
 import type { IngestRunResult } from "@stm/shared";
 
 const ENDPOINT = "v1/accounting/od/i_bonds_interest_rates";
+const MAX_PAGES = 10;
 
 interface Row {
   earning_period: string;
@@ -36,9 +38,17 @@ function parseNum(v: unknown): number | null {
 export async function ingestIBonds(): Promise<IngestRunResult> {
   const sql = getDb();
 
+  // The matrix passed 10,000 rows (the API's largest page) with the November 2026 period, so
+  // read every page. Newest first: page 1 always carries the newest announcement.
   const resp = await fiscalData<Row>(ENDPOINT, { sort: "-earning_period_start", pageSize: 10000 });
-  const all = resp.data ?? [];
+  const all = [...(resp.data ?? [])];
   const totalPages = resp.meta["total-pages"] ?? 1;
+  let pagesRead = 1;
+  for (let page = 2; page <= Math.min(totalPages, MAX_PAGES); page++) {
+    const next = await fiscalData<Row>(ENDPOINT, { sort: "-earning_period_start", pageSize: 10000, pageNumber: page });
+    all.push(...(next.data ?? []));
+    pagesRead = page;
+  }
   if (all.length === 0) {
     return { source: "ibonds", rowsSeen: 0, rowsChanged: 0, status: "partial",
       error: "endpoint returned no rows — verify path/fields" };
@@ -94,8 +104,8 @@ export async function ingestIBonds(): Promise<IngestRunResult> {
     source: "ibonds",
     rowsSeen: rows.length,
     rowsChanged: changed,
-    status: totalPages > 1 ? "partial" : "success",
-    ...(totalPages > 1 ? { error: `dataset exceeds one page (${totalPages} pages) — raise pageSize` } : {}),
+    status: totalPages > pagesRead ? "partial" : "success",
+    ...(totalPages > pagesRead ? { error: `dataset has ${totalPages} pages, read ${pagesRead}: raise MAX_PAGES` } : {}),
   };
 }
 
