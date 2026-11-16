@@ -7,6 +7,7 @@
 import { getFlagship, personPath, companyPath, securityPath } from "./flagship";
 import { SITE_URL } from "./seo";
 import { getGuides, guidePath } from "./guides";
+import { buildCommittees, COMMITTEES_PATH } from "./committees";
 import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
 
 export interface SitemapUrl { loc: string; lastmod: string; changefreq?: string; priority?: number }
@@ -20,6 +21,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   const latestTxn = model.txns[0]?.filedAt ?? model.builtAt;
   // The member directory is indexable only when it has rows (pages/congress-members.astro).
   const congressMembers = [...model.people.values()].some((p) => p.isCongress);
+  // Committee pages exist only for committees with a member on record (lib/committees.ts).
+  const committees = buildCommittees(model, built, personPath);
   const guides = await getGuides();
   // Writing: published articles only (never drafts or future-dated ones), and /writing/ plus author
   // pages only when there is something published to list.
@@ -42,6 +45,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/insiders/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     { loc: "/congress/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     ...(congressMembers ? [{ loc: "/congress-members/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.7 }] : []),
+    ...(committees.length ? [{ loc: COMMITTEES_PATH, lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...committees.map((c) => ({ loc: c.path, lastmod: day(c.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/companies/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },

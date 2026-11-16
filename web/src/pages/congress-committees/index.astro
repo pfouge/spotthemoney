@@ -1,0 +1,75 @@
+---
+// Committee list: /congress-committees/ — every full committee of Congress with members on
+// record, and how many trades those members have disclosed. Figures come from lib/committees.ts
+// (unit-tested). Not under /congress/: every /congress/<x>/ address is a member profile.
+// A committee seat is context. Nothing here ties a trade to a committee's business.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, personPath, num, plural, senateShown } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+import { dayKey } from "../../lib/tablesort";
+import { buildCommittees, committeeLogLine, CHAMBER_LABEL, COMMITTEES_PATH } from "../../lib/committees";
+
+const model = await getFlagship();
+const today = new Date().toISOString().slice(0, 10);
+const committees = buildCommittees(model, today, personPath);
+const hasSenate = senateShown(model);
+const seated = new Set(committees.flatMap((c) => c.members.map((x) => x.id)));
+const trading = new Set(committees.flatMap((c) => c.members.filter((x) => x.trades > 0).map((x) => x.id)));
+const lastUpdated = committees.map((c) => c.latest).filter((x): x is string => !!x).sort().at(-1) ?? model.builtAt;
+const count = (ch: string) => committees.filter((c) => c.chamber === ch).length;
+
+// Build log: the figures to compare with a direct count on the database.
+console.log(`[web] ${committeeLogLine(committees)}`);
+
+const answer = committees.length === 0
+  ? "No committee assignments are on record here yet. They are read daily from the public congress-legislators project, and appear once the roster has been loaded."
+  : `${plural(committees.length, "committee")} of Congress ${committees.length === 1 ? "is" : "are"} listed here, with ${plural(seated.size, "member")} assigned to at least one. ${num(trading.size)} of those members ${trading.size === 1 ? "has" : "have"} at least one disclosed stock trade on record. Each committee's page lists its members and the trades they have disclosed.`;
+const description = "Committees of Congress with their current members and the stock trades those members have disclosed. House, Senate and joint committees.";
+const ld = datasetLd({ name: "Committees of Congress: members and their disclosed trades", path: COMMITTEES_PATH, description, dateModified: lastUpdated.slice(0, 10), keywords: ["congressional committees", "congress stock trades", "STOCK Act", "committee assignments"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
+const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
+  { label: "Committee", type: "text" }, { label: "Chamber", type: "text" }, { label: "Members", type: "num", cls: "num" },
+  { label: "Members with trades", type: "num", cls: "num" }, { label: "Trades, 12 months", type: "num", cls: "num" }, { label: "Latest disclosure", type: "num" },
+];
+---
+<BaseLayout title={["Committees of Congress: Members' Stock Trades", "Committees of Congress"]} description={description} section="Congress" noindex={committees.length === 0}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: "Committees", path: COMMITTEES_PATH }]} />
+  <h1>Committees of Congress</h1>
+  <p class="lede">Who sits on each committee today, and the stock trades those members have disclosed.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: congress-legislators committee data; House Clerk and Senate eFD PTRs" : "Sources: congress-legislators committee data; House Clerk PTRs"} />
+
+  {committees.length === 0 ? <p class="empty-reason">No committee assignments on record yet.</p> : (
+    <section aria-labelledby="list" data-committees>
+      <h2 id="list">All committees</h2>
+      <p class="section-note">{(["house", "senate", "joint"] as const).filter((ch) => count(ch) > 0).map((ch) => `${num(count(ch))} ${CHAMBER_LABEL[ch]}`).join(", ")}. Click a column title to sort. "Trades, 12 months" counts the transaction rows the committee's current members disclosed in the last 365 days.</p>
+      <div class="tablewrap"><table class="data" data-sortable>
+        <thead><tr>
+          {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+        </tr></thead>
+        <tbody>
+          {committees.map((c) => (
+            <tr data-code={c.code}>
+              <td data-v={c.name.toLowerCase()}><a href={c.path}>{c.name}</a></td>
+              <td data-v={c.chamber}>{CHAMBER_LABEL[c.chamber]}</td>
+              <td class="num" data-v={c.members.length}>{num(c.members.length)}</td>
+              <td class="num" data-v={c.withTrades}>{num(c.withTrades)}</td>
+              <td class="num" data-v={c.trades12m}>{num(c.trades12m)}</td>
+              <td class="mono" data-v={dayKey(c.latest)}>{c.latest ? formatDate(c.latest) : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    </section>
+  )}
+
+  <h2 id="about">What this page shows</h2>
+  <p>One row for each full committee that has a member on record: the standing and select committees of the House and Senate, and the joint committees. A member who sits only on a subcommittee is counted under its full committee. A member on several committees is counted on each, so the columns do not add up to the number of members of Congress.</p>
+  <p>The assignments are today's, from the public congress-legislators project, refreshed daily. This site has no history of past assignments. A committee's trades are therefore every trade its current members have disclosed, including trades made before a member joined the committee. Members who have left Congress are not listed on any committee.</p>
+  <p>A committee seat is shown for context only. This site does not compare a trade with a committee's work, and a seat on a committee is not evidence about any trade. To filter members by committee together with chamber, party and state, use the <a href="/congress-members/">member directory</a>. How the figures are built: <a href="/methodology/#committees">methodology</a>.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
+  <JsonLd data={ld} />
+</BaseLayout>

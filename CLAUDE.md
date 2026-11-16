@@ -2152,3 +2152,41 @@ the fuller record.
   the two new files, four new labels.
 - Not done: no committee page or committee view of trades (that is T0-07, next); no filter by
   ticker or by late filings; the directory is one static page (no per-state pages).
+
+### Committee pages: members and their disclosed trades (2026-11-16, scheduled parity run) — gap T0-07
+
+- **What.** `/congress-committees/` (list: committee, chamber, members, members with trades,
+  trades in 12 months, latest disclosure; sortable) and one page per full committee at
+  `/congress-committees/<slug>/` (49 on production): header facts, answer, the committee's
+  remit in the dataset's wording, **Members** (leaders first; party, seat, role, trades, trades
+  in 12 months, latest disclosure), **Most-traded stocks, last 12 months** (15 tickers by report
+  rows, with the number of members), **Trades disclosed by members** (`TxnTable`, newest 200),
+  other committees of the same chamber. In the `pages` sitemap, the search index (kind
+  "Committee") and `llms.txt`. A committee named on a member page now opens its page here (the
+  official site link moved to the committee page). `/congress/` and the directory link to the list.
+- **Rules** (`web/src/lib/committees.ts`, pure; tests `scripts/committees.test.ts`):
+  `buildCommittees(model, today, personPath)` is the one source for the pages, the sitemap and
+  the search index. A subcommittee-only seat counts for its full committee; no page for
+  subcommittees (230 would cost file headroom). Counts are the directory's: trades =
+  `p.txns.length`, 12 months by **disclosure** date. The slug is made from the name
+  (`committeeSlug`: "House Committee on Financial Services" → `house-financial-services`, at
+  most 60 characters, the code appended on a clash); a renamed committee gets a new address.
+- **Limits, stated on every page, in methodology `#committees` and in the guide:** the roster
+  holds today's seats and no history, so a committee's trades are every trade on record for its
+  current members (including trades made before they joined), and members who left are not on
+  it. A seat is context: no page compares a trade with a committee's work. The verifier fails a
+  committee page that uses conflict wording.
+- **Not under `/congress/`** for the reason given for the directory.
+- **Build log** prints `[web] committees: N pages, S seats, M members seated, W of them with
+  trades, Z committees with no trades; members/with trades/trades/12 months: HSBA …, SSBK …,
+  HSAS …, SLIN …` for comparison with SQL.
+- **Verifier:** `node scripts/verify-committees.mjs <base-url> [--sample N]` (Playwright): list
+  row against the committee's page, facts against the member table, member counts against
+  `congress-members.csv` and the directory's committee filter, trade table rows (at most 200,
+  all by listed members), member pages linking back, sorting, wording, 390 px. Eleven verifiers
+  now. `verify-a11y` includes the list and one committee page.
+- Guide `how-to-read-a-congressional-trade-report`: new section `#committees`, one FAQ, three
+  new covered files, two labels; `ctx.committeeTradeRows` is the live value for "200".
+- Not done: no committee filter on the trade map (it belongs with the table screener, T0-12:
+  the map's filter script and its verifier oracle would both need the seat list); no CSV per
+  committee; no subcommittee pages; no history of assignments.
