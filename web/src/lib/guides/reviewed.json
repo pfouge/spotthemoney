@@ -90,10 +90,10 @@
     }
   },
   "how-to-use-the-trade-map": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-16",
     "covers": {
-      "web/src/lib/notable.ts": "4cee2c01acac4071",
-      "web/src/components/NotableFeed.astro": "c36876fc3ccfffba",
+      "web/src/lib/notable.ts": "1311804488343b01",
+      "web/src/components/NotableFeed.astro": "ce6ab08c10ce4f73",
       "web/src/components/Heatmap.astro": "02dc9bcb5c349d6c",
       "web/src/scripts/heatmap.ts": "6951fe4f66db5b37",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
@@ -185,7 +185,7 @@
       "web/src/lib/links.ts": "b2b155c2322b1ff1",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "f85f79449b5b186b",
-      "web/src/lib/server/od.ts": "6db09eead6a3f98c",
+      "web/src/lib/server/od.ts": "9506e8622e4c72ed",
       "web/src/components/OdPageView.astro": "a75d34eef3e63e18",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
       "web/src/pages/stocks/[ticker].astro": "a36818d6c9aa4640",

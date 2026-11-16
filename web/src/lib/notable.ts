@@ -184,6 +184,59 @@ export interface FeedItem {
 export interface NotableData {
   built: string; newest: string; companies: number; senateThrough: string | null;
   items: FeedItem[]; clusters: FeedCluster[];
+  /** Present when insider buys or large sales were cut to keep the file small (capFeed): true totals and what was kept, per window. */
+  cap?: FeedCap;
+}
+export interface FeedCap { buys: Record<Win, { total: number; kept: number }>; sales: Record<Win, { total: number; kept: number }> }
+
+/**
+ * The largest insider buys and large sales kept per window when the market-wide feed would pass the
+ * size limit (stage 3b). Clusters, stake changes and Congress items are never cut. Chosen from the
+ * production volumes of the last 30 days (about 1,400 buys and 675 sales of $1M or more market-wide;
+ * 358 buys and 82 large sales in 7 days): the cut keeps the 700 largest buys and 300 largest large
+ * sales of 30 days, so every window still lists its biggest trades. notable-build tightens these
+ * further, in steps, if the JSON would still pass FEED_MAX_BYTES.
+ */
+export const FEED_CAPS = {
+  buys: { 1: 150, 7: 400, 30: 700 } as Record<Win, number>,
+  sales: { 1: 100, 7: 200, 30: 300 } as Record<Win, number>,
+};
+/** /data/notable.json must stay under this (bytes). */
+export const FEED_MAX_BYTES = 1_200_000;
+
+/** Cut insider buys and large sales to the largest per window; scale < 1 tightens the caps. Returns data unchanged when nothing is cut. */
+export function capFeed(data: NotableData, scale = 1, caps = FEED_CAPS): NotableData {
+  const keep = new Set<FeedItem>();
+  const cap: FeedCap = { buys: {} as FeedCap["buys"], sales: {} as FeedCap["sales"] };
+  let cut = false;
+  for (const [kind, tag] of [["buys", "insider-buy"], ["sales", "large-sale"]] as const) {
+    for (const w of WINDOWS) {
+      const since = sinceOf(data.newest, w);
+      const inWin = data.items.filter((it) => it.d >= since && it.tg.includes(tag)).sort((a, b) => b.v - a.v || b.id - a.id);
+      const n = Math.max(1, Math.floor(caps[kind][w] * scale));
+      for (const it of inWin.slice(0, n)) keep.add(it);
+      cap[kind][w] = { total: inWin.length, kept: Math.min(inWin.length, n) };
+      if (inWin.length > n) cut = true;
+    }
+  }
+  if (!cut) return data;
+  const items = data.items.filter((it) => keep.has(it) || !(it.tg.includes("insider-buy") || it.tg.includes("large-sale")) || it.tg.includes("stake-change") || it.tg.includes("congress"));
+  // report what is really in the file (an item kept for another reason counts)
+  for (const [kind, tag] of [["buys", "insider-buy"], ["sales", "large-sale"]] as const) {
+    for (const w of WINDOWS) { const since = sinceOf(data.newest, w); cap[kind][w].kept = items.filter((it) => it.d >= since && it.tg.includes(tag)).length; }
+  }
+  // cluster indexes (cl) point into data.clusters, which is never cut, so they stay valid
+  return { ...data, items, cap };
+}
+
+/** The one plain line shown when a list is cut, or "" when it is complete. */
+export function capLine(data: Pick<NotableData, "cap">, s: FeedState): string {
+  const kind = s.preset === "buys" ? "buys" : s.preset === "sales" ? "sales" : null;
+  const c = kind && data.cap?.[kind][s.win];
+  if (!kind || !c || c.kept >= c.total) return "";
+  const noun = kind === "buys" ? "insider buys" : "large sales";
+  const span = s.win === 1 ? "on the newest filing day" : `in ${s.win} days`;
+  return `Showing the ${c.kept.toLocaleString("en-US")} largest of ${c.total.toLocaleString("en-US")} ${noun} ${span}.`;
 }
 
 /** Sort number for "Biggest stake change": a first position outranks every percentage. */

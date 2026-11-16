@@ -47,7 +47,8 @@ export function flagshipSql() { return db(); }
 
 // types, constants and pure helpers live in flagship-core.ts (re-exported below)
 import type { Role, Seat, Person, Company, Security, Filing, Txn, LobbyingRow, ContractRow, CommitteeRow, DonationAgg, Flagship } from "./flagship-core";
-import { decodeEntities } from "./flagship-core";
+import { decodeEntities, emptyMarket } from "./flagship-core";
+import { loadMarketSlice } from "./market-model";
 export * from "./flagship-core";
 
 const APPROVED = new Set(["auto_approved", "approved"]);
@@ -58,7 +59,7 @@ async function load(): Promise<Flagship> {
   const builtAt = new Date().toISOString();
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
-    txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
+    market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), seats: new Map(), footnotes: new Map(),
   };
   const sql = db();
@@ -306,6 +307,9 @@ async function load(): Promise<Flagship> {
     } catch (err) {
       console.warn("[web] committee seats skipped:", (err as Error).message);
     }
+
+    // Market-scope Form 4 rows (stage 3b): own slice, own try/catch. Only the home feed reads it.
+    model.market = await loadMarketSlice(sql, model);
 
     model.counts = {
       people: model.people.size, companies: model.companies.size, securities: model.securities.size, filings: model.filings.size,

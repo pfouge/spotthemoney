@@ -9,7 +9,7 @@ import { SITE_URL, SOURCES } from "../lib/seo";
 import { FORM4_FLOOR } from "@stm/shared";
 import { formatDate } from "../lib/format";
 import Answer from "../components/Answer.astro";
-import { CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT } from "../lib/notable";
+import { FEED_CAPS, CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT } from "../lib/notable";
 import { getCoverage, filingMonths, latestStat } from "../lib/coverage";
 
 const model = await getFlagship();
@@ -68,7 +68,7 @@ import { MAX_NOTES_PER_FILING } from "../lib/footnotes";
     <li><strong>Large sale</strong>: a sale (code S) outside a plan worth at least ${num(LARGE_SALE_MIN)}.</li>
     <li><strong>Congress</strong>: a House or Senate purchase or sale of a stock with a ticker where the reported range starts at ${num(CONGRESS_MIN_LOW)} or more.</li>
   </ul>
-  <p>Insider values are shares times the filed price. Congress values are the range as filed. The feed covers the companies listed on the home page note, not the whole market.</p>
+  <p>Insider values are shares times the filed price. Congress values are the range as filed. The feed covers every company whose insiders have filed Form 4 with the SEC since October 2025, not only the companies on the map. When a window holds more insider buys or large sales than the page can carry, the feed keeps the largest by value (up to {FEED_CAPS.buys[1]}, {FEED_CAPS.buys[7]} and {FEED_CAPS.buys[30]} buys and {FEED_CAPS.sales[1]}, {FEED_CAPS.sales[7]} and {FEED_CAPS.sales[30]} large sales for 1, 7 and 30 days) and states the true total in a line above the list. Clusters, stake changes and congressional trades are never cut. Pages for companies outside the large-company set are built when opened, not in advance.</p>
 
   <h2 id="flags">Flags and feeds</h2>
   <ul>

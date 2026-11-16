@@ -2,7 +2,7 @@
 // selection live in lib/notable.ts (shared with the build, which writes the default view into the
 // HTML). All text goes in as text nodes (scripts/dom.ts): names and labels come from filings.
 import { h, type Kids } from "./dom";
-import { DEFAULT_STATE, FEED_PAGE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
+import { DEFAULT_STATE, FEED_PAGE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, capLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
 
 const KEYS = ["nw", "np", "nq", "ns"] as const;
 
@@ -69,6 +69,7 @@ function init(root: HTMLElement): void {
   const src = root.dataset.src!;
   const list = () => root.querySelector<HTMLUListElement>("[data-nf-list]");
   const count = root.querySelector<HTMLElement>("[data-nf-count]")!;
+  const capEl = root.querySelector<HTMLElement>("[data-nf-cap]");
   const emptyEl = root.querySelector<HTMLElement>("[data-nf-empty]")!;
   const more = root.querySelector<HTMLButtonElement>("[data-nf-more]")!;
   const input = root.querySelector<HTMLInputElement>("[data-nq]")!;
@@ -96,6 +97,7 @@ function init(root: HTMLElement): void {
     if (!ul) { ul = h("ul", { class: "nf-list", "data-nf-list": true }); count.after(ul); }
     ul.replaceChildren(...shown.map((e: Entry) => (e.k === "c" ? clusterEl(e) : itemEl(e))));
     ul.hidden = all.length === 0;
+    if (capEl) capEl.textContent = capLine(data, { ...state, win: view.win });
     count.textContent = all.length ? countLine(all.length, shown.length, { ...state, win: view.win }, data.newest, view.fellBack) : "";
     emptyEl.hidden = all.length > 0;
     emptyEl.replaceChildren(...(all.length ? [] : [emptyLine(state, view.offerAll), ...(view.offerAll ? [" ", allBtn()] : [])]));

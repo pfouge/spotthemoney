@@ -31,6 +31,8 @@ export interface Person {
   isCongress: boolean; isInsider: boolean;
   lastFiledAt: string | null; firstFiledAt: string | null;
   underReview: boolean;
+  /** Market scope only (stage 3b): the entity has no static page; the Worker renders it on request. */
+  od?: true;
 }
 export interface Company {
   id: number; name: string; cik: string | null; slug: string | null; primaryTicker: string | null;
@@ -41,12 +43,14 @@ export interface Company {
   contracts: ContractRow[];    // name-matched USAspending awards
   lobbying: LobbyingRow[];     // name-matched LDA filings (as client)
   underReview: boolean;
+  od?: true;
 }
 export interface Security {
   id: number; ticker: string; type: string; name: string | null; companyId: number | null;
   txns: Txn[];                 // all rendered transactions in this security
   insiderTxns: Txn[]; congressTxns: Txn[];
   underReview: boolean;
+  od?: true;
 }
 export interface Filing {
   id: number; source: string; externalId: string | null; personId: number | null; companyId: number | null;
@@ -84,7 +88,16 @@ export interface ContractRow {
 export interface CommitteeRow { id: number; fecId: string | null; name: string; party: string | null; type: string | null; total: number; count: number; latest: string | null }
 export interface DonationAgg { key: string; total: number; count: number }
 
+/** Market-scope Form 4 data (stage 3b). Separate from the tracked model on purpose: nothing but the home feed reads it. */
+export interface MarketSlice {
+  txns: Txn[]; people: Map<number, Person>; companies: Map<number, Company>; securities: Map<number, Security>;
+  filings: Map<number, Filing>;
+}
+export const emptyMarket = (): MarketSlice => ({ txns: [], people: new Map(), companies: new Map(), securities: new Map(), filings: new Map() });
+
 export interface Flagship {
+  /** Market-scope Form 4 rows and the entities only they reference (empty when the load is skipped or fails). */
+  market: MarketSlice;
   builtAt: string;
   connected: boolean;
   people: Map<number, Person>;
@@ -186,3 +199,19 @@ export function money(n: number | null | undefined, opts: { compact?: boolean } 
 }
 export function num(n: number | null | undefined): string { return n == null ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: 0 }); }
 export function plural(n: number, one: string, many = `${one}s`): string { return `${num(n)} ${n === 1 ? one : many}`; }
+
+/** Tracked Form 4 rows followed by market-scope rows (the feed's insider universe). */
+export function allFormFourTxns(m: Pick<Flagship, "txns" | "market">): Txn[] {
+  const out: Txn[] = [];
+  for (const t of m.txns) if (t.source === "sec_form4") out.push(t);
+  for (const t of m.market.txns) out.push(t);
+  return out;
+}
+
+export type EntityKind = "congress" | "insider" | "stock" | "company";
+/** The one place an entity address is built (same pattern for tracked and market entities). */
+export function entityPath(kind: EntityKind, e: { slug?: string | null; ticker?: string }): string | null {
+  if (kind === "stock") return e.ticker ? `/stocks/${e.ticker.toLowerCase()}/` : null;
+  if (!e.slug) return null;
+  return `/${kind === "congress" ? "congress" : kind === "insider" ? "insiders" : "companies"}/${e.slug}/`;
+}
