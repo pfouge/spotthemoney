@@ -3,7 +3,7 @@
 // All, newest filed) is written into the HTML here, so the page works without JavaScript and
 // search engines see it; scripts/notable.ts takes over from /data/notable.json for everything else.
 // The markup of one item must match what the script builds (same classes, same order).
-import { resolveView, DEFAULT_STATE, PRESETS, SORTS, WINDOWS, WIN_LABEL, FEED_PAGE, REASON_LABEL, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_PCT, CLUSTER_SELL_MIN_VALUE, countLine, emptyLine, shortDate, longDate, type NotableData, type Entry } from "../lib/notable";
+import { resolveView, DEFAULT_STATE, PRESETS, SORTS, WINDOWS, WIN_LABEL, FEED_PAGE, REASON_LABEL, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_PCT, CLUSTER_SELL_MIN_VALUE, countLine, capLine, emptyLine, shortDate, longDate, type NotableData, type Entry } from "../lib/notable";
 import { money } from "../lib/flagship";
 interface Props { data: NotableData }
 const { data } = Astro.props;
@@ -30,6 +30,7 @@ const empty = data.items.length === 0 && data.clusters.length === 0;
     </div>
   </div>
   <p class="nf-count" data-nf-count role="status" aria-live="polite">{empty ? "" : all.length ? countLine(all.length, shown.length, { ...DEFAULT_STATE, win: shownWin }, data.newest, view.fellBack) : ""}</p>
+  <p class="soft small nf-cap" data-nf-cap role="status">{capLine(data, { ...DEFAULT_STATE, win: shownWin })}</p>
   <noscript><p class="note">The filters need JavaScript. This list shows the last {shownWin} days.</p></noscript>
   {all.length > 0 && (
     <ul class="nf-list" data-nf-list>

@@ -29,7 +29,9 @@ const clusterWords = `${plural(nCbuy, "cluster buy")} and ${plural(nCsell, "clus
 const answer = nNotable > 0
   ? `In the 7 days to ${longDate(feed.newest)}, ${clusterWords} ${nCbuy + nCsell === 1 ? "was" : "were"} filed: ${CLUSTER_MIN_INSIDERS} or more insiders of one company trading the same way within ${CLUSTER_DAYS} days. The feed also lists ${plural(nNotable - nCbuy - nCsell, "other notable trade")} (insider buys, stake changes, large sales and congressional trades), each linked to its filing.`
   : "No trades matching the notable rules were filed in the latest 7 days of data, or the filings are still being read.";
-const coverage = `Partial coverage: insider filings here cover about ${num(feed.companies)} companies (large companies and every stock a member of Congress has traded), not the whole market. Congress: House reports daily, ${feed.senateThrough ? `Senate reports through ${longDate(feed.senateThrough)}` : "Senate reports are not included yet"}.`;
+const coverage = `Insider filings cover every company whose insiders have filed Form 4 with the SEC since October 2025 (about ${num(feed.companies)} companies), loaded daily. Congress: House reports daily, ${feed.senateThrough ? `Senate reports through ${longDate(feed.senateThrough)}` : "Senate reports are not included yet"}.`;
+// The trade map still runs on the tracked set (large companies and every stock a member of Congress has traded).
+const mapCompanies = new Set(model.txns.filter((t) => t.isPublished && t.source === "sec_form4" && t.securityId != null).map((t) => model.securities.get(t.securityId!)?.companyId ?? `t${t.securityId}`)).size;
 
 const ibond = await getLatestIBondRate();
 const ibondRate = ibond?.compositeRate != null ? formatPercent(ibond.compositeRate) : "—";
@@ -60,7 +62,7 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   <NotableFeed data={feed} />
 
   <h2 id="heatmap" class="nf-maph">Trade map</h2>
-  <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters.</p>
+  <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters, and covers about {num(mapCompanies)} companies (large companies and every stock a member of Congress has traded), not the whole market.</p>
   <aside class="nf-howto" aria-labelledby="howMapH">
     <h3 id="howMapH">How to read the map</h3>
     <p>
