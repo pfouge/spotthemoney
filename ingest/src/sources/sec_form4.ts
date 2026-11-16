@@ -66,7 +66,7 @@ import type { IngestRunResult } from "@stm/shared";
 
 const SOURCE = "sec_form4";
 // SEC_EDGAR_BASE is for tests against a local fake only (like FEC_API_BASE); never set it in a workflow.
-const SEC_BASE = (process.env.SEC_EDGAR_BASE ?? "https://www.sec.gov").replace(/\/$/, "");
+export const SEC_BASE = (process.env.SEC_EDGAR_BASE ?? "https://www.sec.gov").replace(/\/$/, "");
 
 const DEFAULT_USER_AGENT = "spotthemoney.com ingest (Peter Fougerousse <pfouge@gmail.com>)";
 
@@ -76,7 +76,7 @@ function userAgent(): string {
 
 const SEC_GAP_MS = 250;
 /** Options for every SEC request: honest UA + the published-limit pacing. */
-function sec(): { userAgent: string; minGapMs: number } {
+export function sec(): { userAgent: string; minGapMs: number } {
   return { userAgent: userAgent(), minGapMs: SEC_GAP_MS };
 }
 
@@ -244,7 +244,7 @@ interface ParsedTransaction {
   ownership: string | null;
 }
 
-interface ParsedForm4 {
+export interface ParsedForm4 {
   issuerCik: string | null;
   issuerName: string | null;
   issuerTradingSymbol: string | null;
@@ -486,6 +486,313 @@ export function isoDateDiffDays(later: string | null, earlier: string | null): n
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Writing one filing (shared by the daily pass and the market-wide index pass)
+// ──────────────────────────────────────────────────────────────────────────
+
+type Sql = ReturnType<typeof getDb>;
+
+export interface StoreForm4Input {
+  accession: string;
+  filingDate: string;
+  /** Stored as filings.source_url (the ownership XML for the daily pass, the filing index page for the index pass). */
+  xmlUrl: string;
+  /** The bytes archived to raw_documents (tracked filings only). */
+  xmlText: string;
+  parsed: ParsedForm4;
+  /** The tracked ticker the filing was fetched for (daily pass); the tracked company's own ticker on the index pass; null when unknown. */
+  ticker: string | null;
+  /** The tracked issuer's 10-digit CIK. */
+  cik: string | null;
+  /**
+   * false = the filing of a tracked company, written exactly as the daily pass always has.
+   * true  = market-wide: a NEW company is created tracked = false, a NEW security is_active = false,
+   *         existing companies / people / securities are left alone, the filing is scope 'market'
+   *         (or 'tracked' if the company turns out to be tracked), no raw document is archived,
+   *         and a person whose name slug is taken gets a CIK-suffixed slug instead of failing.
+   */
+  market: boolean;
+  warn?: (message: string) => void;
+}
+
+export type StoreForm4Result =
+  | { ok: false; reason: string }
+  | {
+      ok: true;
+      scope: "tracked" | "market";
+      /** false when a market filing was already stored (nothing written). */
+      inserted: boolean;
+      transactions: number;
+      futureDatesNulled: number;
+      archived: boolean;
+      companyCreated: boolean;
+      personCreated: boolean;
+      securityCreated: boolean;
+    };
+
+function padCik10(s: string | null | undefined): string | null {
+  const v = (s ?? "").trim();
+  if (!v) return null;
+  return /^\d{1,10}$/.test(v) ? v.padStart(10, "0") : v;
+}
+
+/**
+ * Write one parsed Form 4: company, person, insider role, security, filing and its transactions.
+ * The tracked path (market = false) is the daily pass's code moved here unchanged (2026-11-16) so
+ * the market-wide index pass can reuse it.
+ */
+export async function storeForm4Filing(sql: Sql, input: StoreForm4Input): Promise<StoreForm4Result> {
+  const { parsed, ticker, cik, market } = input;
+  const clean = scrubDeep({
+    accession: input.accession,
+    filingDate: input.filingDate,
+    xmlUrl: input.xmlUrl,
+    issuerCik: parsed.issuerCik,
+    issuerName: parsed.issuerName,
+    issuerTradingSymbol: parsed.issuerTradingSymbol ?? ticker,
+    rptOwnerCik: parsed.rptOwnerCik,
+    rptOwnerName: parsed.rptOwnerName,
+    isDirector: parsed.isDirector,
+    isOfficer: parsed.isOfficer,
+    officerTitle: parsed.officerTitle,
+    transactions: parsed.transactions,
+    footnotes: parsed.footnotes,
+    aff10b5One: parsed.aff10b5One,
+  });
+
+  // companies: upsert on cik (0001 unique).
+  const companyCik = (market ? padCik10(clean.issuerCik) : clean.issuerCik) ?? cik;
+  if (!companyCik) return { ok: false, reason: "no issuer CIK" };
+  // One clean symbol for companies.primary_ticker / securities.ticker. When the filing is
+  // the tracked issuer's own (issuerCik === cik) the tracked ticker wins so multi-class
+  // issuers keep the symbol we track; otherwise (tracked company filing as a 10% owner of
+  // another issuer) the issuer's first listed symbol is used.
+  const secTicker = (companyCik === cik ? ticker : null) ?? primaryTicker(clean.issuerTradingSymbol) ?? ticker;
+  // slug: set once (never regenerated — it is a public URL); a collision falls back
+  // to the CIK-based slug so two differently-named issuers never share a URL.
+  const companySlug = slugifyCompany(clean.issuerName, companyCik);
+  let companyId: number;
+  let scope: "tracked" | "market" = "tracked";
+  let companyCreated = false;
+  if (market) {
+    const made = await sql`
+      insert into companies (name, cik, primary_ticker, slug, tracked)
+      values (${clean.issuerName ?? secTicker ?? companyCik}, ${companyCik}, ${secTicker},
+              case when exists (select 1 from companies c2 where c2.slug = ${companySlug} and c2.cik <> ${companyCik})
+                   then ${`cik-${companyCik}`} else ${companySlug} end, false)
+      on conflict (cik) do nothing
+      returning id
+    `;
+    companyCreated = made.length > 0;
+    const [row] = await sql`select id, tracked from companies where cik = ${companyCik}`;
+    companyId = Number(row!.id);
+    scope = row!.tracked ? "tracked" : "market";
+  } else {
+    const [company] = await sql`
+      insert into companies (name, cik, primary_ticker, slug)
+      values (${clean.issuerName ?? secTicker ?? companyCik}, ${companyCik}, ${secTicker},
+              case when exists (select 1 from companies c2 where c2.slug = ${companySlug} and c2.cik <> ${companyCik})
+                   then ${`cik-${companyCik}`} else ${companySlug} end)
+      on conflict (cik) do update
+        set name = excluded.name,
+            primary_ticker = excluded.primary_ticker,
+            slug = coalesce(companies.slug, excluded.slug),
+            tracked = true
+      returning id, (xmax = 0) as inserted
+    `;
+    companyId = company!.id as number;
+    companyCreated = Boolean(company!.inserted);
+  }
+
+  // people: upsert on cik (0005 partial unique index). Slug collisions are
+  // quarantined rather than guessed at (contract-directed fallback behavior);
+  // the market-wide path suffixes the CIK instead, since collisions are routine there.
+  let personId: number;
+  let personCreated = false;
+  try {
+    const slug = slugifyName(clean.rptOwnerName ?? "");
+    if (market) {
+      const ownerCik = padCik10(clean.rptOwnerCik);
+      if (!ownerCik) return { ok: false, reason: "reporting owner has no CIK" };
+      if (!clean.rptOwnerName) return { ok: false, reason: "reporting owner has no name" };
+      const base = slug || `person-${ownerCik}`;
+      const made = await sql`
+        insert into people (full_name, cik, slug)
+        values (${clean.rptOwnerName}, ${ownerCik}, (case when exists (select 1 from people p2 where p2.slug = ${base}::citext)
+                                                          then ${`${base}-${ownerCik}`} else ${base} end)::citext)
+        on conflict (cik) where cik is not null do nothing
+        returning id
+      `;
+      personCreated = made.length > 0;
+      const [row] = await sql`select id from people where cik = ${ownerCik}`;
+      personId = Number(row!.id);
+    } else {
+      const [person] = await sql`
+        insert into people (full_name, cik, slug)
+        values (${clean.rptOwnerName}, ${clean.rptOwnerCik}, ${slug})
+        on conflict (cik) where cik is not null do update
+          set full_name = excluded.full_name
+        returning id, (xmax = 0) as inserted
+      `;
+      personId = person!.id as number;
+      personCreated = Boolean(person!.inserted);
+    }
+  } catch (err) {
+    return { ok: false, reason: `person upsert failed (likely slug collision): ${err instanceof Error ? err.message : String(err)}` };
+  }
+
+  // person_roles: ensure one insider role row for this person+company.
+  const [existingRole] = await sql`
+    select id from person_roles
+    where person_id = ${personId} and company_id = ${companyId} and role_kind = 'insider'
+    limit 1
+  `;
+  if (!existingRole) {
+    await sql`
+      insert into person_roles (person_id, role_kind, company_id, officer_title, is_director)
+      values (${personId}, 'insider', ${companyId}, ${clean.officerTitle}, ${clean.isDirector})
+    `;
+  }
+
+  // securities: upsert on (ticker, type='equity'). Market-wide: create inactive, leave existing alone.
+  let securityId: number | null = null;
+  let securityCreated = false;
+  if (market) {
+    const sym = primaryTicker(clean.issuerTradingSymbol);
+    if (sym) {
+      const made = await sql`
+        insert into securities (ticker, type, company_id, is_active)
+        values (${sym}, 'equity', ${companyId}, false)
+        on conflict (ticker, type) do nothing
+        returning id
+      `;
+      securityCreated = made.length > 0;
+      const [s] = await sql`select id, company_id from securities where type = 'equity' and ticker = ${sym}`;
+      // A ticker that belongs to another company stays unlinked rather than being re-pointed.
+      if (s && (s.company_id == null || Number(s.company_id) === companyId)) securityId = Number(s.id);
+    }
+  } else if (secTicker) {
+    const [security] = await sql`
+      insert into securities (ticker, type, company_id)
+      values (${secTicker}, 'equity', ${companyId})
+      on conflict (ticker, type) do update
+        set company_id = excluded.company_id
+      returning id, (xmax = 0) as inserted
+    `;
+    securityId = security!.id as number;
+    securityCreated = Boolean(security!.inserted);
+  }
+
+  // filings: upsert on (source, external_id). Not auto-published — new-source
+  // approval gate until Peter reviews a sample.
+  const payload = {
+    accession: clean.accession,
+    issuer: {
+      cik: clean.issuerCik,
+      name: clean.issuerName,
+      ticker: clean.issuerTradingSymbol,
+    },
+    owner: {
+      cik: clean.rptOwnerCik,
+      name: clean.rptOwnerName,
+    },
+    relationship: {
+      isDirector: clean.isDirector,
+      isOfficer: clean.isOfficer,
+      officerTitle: clean.officerTitle,
+    },
+    footnotes: clean.footnotes,
+    aff10b5One: clean.aff10b5One,
+    transactions: clean.transactions.map((t) => ({
+      code: t.transactionCode, date: t.transactionDate, shares: t.transactionShares,
+      price: t.transactionPricePerShare, sharesOwnedAfter: t.sharesOwnedAfter,
+      ownership: t.ownership, isDerivative: t.isDerivative,
+    })),
+  };
+
+  let filingId: number;
+  if (market) {
+    const [filing] = await sql`
+      insert into filings (
+        source, external_id, filer_person_id, filer_company_id,
+        filed_at, source_url, confidence, review, is_published, payload, scope
+      )
+      values (
+        'sec_form4', ${clean.accession}, ${personId}, ${companyId},
+        ${clean.filingDate}, ${clean.xmlUrl}, 1.0, 'auto_approved', false, ${sql.json(payload)}, ${scope}
+      )
+      on conflict (source, external_id) do nothing
+      returning id
+    `;
+    if (!filing) {
+      return { ok: true, scope, inserted: false, transactions: 0, futureDatesNulled: 0, archived: false, companyCreated, personCreated, securityCreated };
+    }
+    filingId = filing.id as number;
+  } else {
+    const [filing] = await sql`
+      insert into filings (
+        source, external_id, filer_person_id, filer_company_id,
+        filed_at, source_url, confidence, review, is_published, payload, scope
+      )
+      values (
+        'sec_form4', ${clean.accession}, ${personId}, ${companyId},
+        ${clean.filingDate}, ${clean.xmlUrl}, 1.0, 'auto_approved', false, ${sql.json(payload)}, 'tracked'
+      )
+      on conflict (source, external_id) do update
+        set scope = 'tracked',
+            filed_at = excluded.filed_at,
+            source_url = excluded.source_url,
+            payload = excluded.payload
+      returning id
+    `;
+    filingId = filing!.id as number;
+  }
+
+  // Raw-filing archive (roadmap B.6): the ownership XML we just parsed, keyed by URL.
+  // Never fatal — a storage failure records the hash and moves on. Market-wide filings are not
+  // archived (tens of thousands of documents nobody displays yet).
+  let archived = false;
+  if (!market) {
+    try {
+      const arch = await archiveBytes(sql, {
+        source: "sec_form4", sourceUrl: input.xmlUrl, bytes: new TextEncoder().encode(input.xmlText),
+        contentType: "application/xml", filingId,
+      });
+      if (arch.stored) archived = true;
+    } catch (err) {
+      input.warn?.(`archive failed for ${input.accession}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  // Re-ingest rule (contract §3.2): transactions have no natural key —
+  // delete and reinsert fresh on every (re-)ingest of this filing.
+  await sql`delete from transactions where filing_id = ${filingId}`;
+
+  let futureDatesNulled = 0;
+  let transactions = 0;
+  for (const txn of clean.transactions) {
+    const side = codeToSide(txn.transactionCode);
+    const guarded = guardFutureTxnDate(txn.transactionDate, clean.filingDate);
+    if (guarded.nulled) futureDatesNulled++;
+    const lagDays = isoDateDiffDays(clean.filingDate, guarded.date);
+    await sql`
+      insert into transactions (
+        filing_id, person_id, security_id, side, txn_code, is_derivative,
+        txn_date, disclosed_at, shares, price, disclosure_lag_days,
+        confidence, review, is_10b5_1, owner_type, asset_type
+      )
+      values (
+        ${filingId}, ${personId}, ${securityId}, ${side}, ${txn.transactionCode}, ${txn.isDerivative},
+        ${guarded.date}, ${clean.filingDate}, ${txn.transactionShares}, ${txn.transactionPricePerShare}, ${lagDays},
+        1.0, 'auto_approved', ${clean.aff10b5One}, ${txn.ownership === "I" ? "indirect" : "self"},
+        ${txn.isDerivative ? "derivative" : "stock"}
+      )
+    `;
+    transactions++;
+  }
+  return { ok: true, scope, inserted: true, transactions, futureDatesNulled, archived, companyCreated, personCreated, securityCreated };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Main job
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -665,174 +972,26 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
             continue;
           }
 
-          const clean = scrubDeep({
+          const stored = await storeForm4Filing(sql, {
             accession: entry.accession,
             filingDate: entry.filingDate,
             xmlUrl,
-            issuerCik: parsed.issuerCik,
-            issuerName: parsed.issuerName,
-            issuerTradingSymbol: parsed.issuerTradingSymbol ?? ticker,
-            rptOwnerCik: parsed.rptOwnerCik,
-            rptOwnerName: parsed.rptOwnerName,
-            isDirector: parsed.isDirector,
-            isOfficer: parsed.isOfficer,
-            officerTitle: parsed.officerTitle,
-            transactions: parsed.transactions,
-            footnotes: parsed.footnotes,
-            aff10b5One: parsed.aff10b5One,
+            xmlText,
+            parsed,
+            ticker,
+            cik,
+            market: false,
+            warn: (m) => ctx.warn(m),
           });
-
-          // companies: upsert on cik (0001 unique).
-          const companyCik = clean.issuerCik ?? cik;
-          // One clean symbol for companies.primary_ticker / securities.ticker. When the filing is
-          // the tracked issuer's own (issuerCik === cik) the tracked ticker wins so multi-class
-          // issuers keep the symbol we track; otherwise (tracked company filing as a 10% owner of
-          // another issuer) the issuer's first listed symbol is used.
-          const secTicker = (companyCik === cik ? ticker : null) ?? primaryTicker(clean.issuerTradingSymbol) ?? ticker;
-          // slug: set once (never regenerated — it is a public URL); a collision falls back
-          // to the CIK-based slug so two differently-named issuers never share a URL.
-          const companySlug = slugifyCompany(clean.issuerName, companyCik);
-          const [company] = await sql`
-            insert into companies (name, cik, primary_ticker, slug)
-            values (${clean.issuerName ?? ticker}, ${companyCik}, ${secTicker},
-                    case when exists (select 1 from companies c2 where c2.slug = ${companySlug} and c2.cik <> ${companyCik})
-                         then ${`cik-${companyCik}`} else ${companySlug} end)
-            on conflict (cik) do update
-              set name = excluded.name,
-                  primary_ticker = excluded.primary_ticker,
-                  slug = coalesce(companies.slug, excluded.slug),
-                  tracked = true
-            returning id
-          `;
-          const companyId = company!.id as number;
-
-          // people: upsert on cik (0005 partial unique index). Slug collisions are
-          // quarantined rather than guessed at (contract-directed fallback behavior).
-          let personId: number;
-          try {
-            const slug = slugifyName(clean.rptOwnerName!);
-            const [person] = await sql`
-              insert into people (full_name, cik, slug)
-              values (${clean.rptOwnerName}, ${clean.rptOwnerCik}, ${slug})
-              on conflict (cik) where cik is not null do update
-                set full_name = excluded.full_name
-              returning id
-            `;
-            personId = person!.id as number;
-          } catch (err) {
+          if (!stored.ok) {
             filingsQuarantined++;
-            ctx.quarantine(
-              entry.accession,
-              `person upsert failed (likely slug collision): ${err instanceof Error ? err.message : String(err)}`,
-            );
+            ctx.quarantine(entry.accession, stored.reason);
             continue;
           }
-
-          // person_roles: ensure one insider role row for this person+company.
-          const [existingRole] = await sql`
-            select id from person_roles
-            where person_id = ${personId} and company_id = ${companyId} and role_kind = 'insider'
-            limit 1
-          `;
-          if (!existingRole) {
-            await sql`
-              insert into person_roles (person_id, role_kind, company_id, officer_title, is_director)
-              values (${personId}, 'insider', ${companyId}, ${clean.officerTitle}, ${clean.isDirector})
-            `;
-          }
-
-          // securities: upsert on (ticker, type='equity').
-          const [security] = await sql`
-            insert into securities (ticker, type, company_id)
-            values (${secTicker}, 'equity', ${companyId})
-            on conflict (ticker, type) do update
-              set company_id = excluded.company_id
-            returning id
-          `;
-          const securityId = security!.id as number;
-
-          // filings: upsert on (source, external_id). Not auto-published — new-source
-          // approval gate until Peter reviews a sample.
-          const payload = {
-            accession: clean.accession,
-            issuer: {
-              cik: clean.issuerCik,
-              name: clean.issuerName,
-              ticker: clean.issuerTradingSymbol,
-            },
-            owner: {
-              cik: clean.rptOwnerCik,
-              name: clean.rptOwnerName,
-            },
-            relationship: {
-              isDirector: clean.isDirector,
-              isOfficer: clean.isOfficer,
-              officerTitle: clean.officerTitle,
-            },
-            footnotes: clean.footnotes,
-            aff10b5One: clean.aff10b5One,
-            transactions: clean.transactions.map((t) => ({
-              code: t.transactionCode, date: t.transactionDate, shares: t.transactionShares,
-              price: t.transactionPricePerShare, sharesOwnedAfter: t.sharesOwnedAfter,
-              ownership: t.ownership, isDerivative: t.isDerivative,
-            })),
-          };
-
-          const [filing] = await sql`
-            insert into filings (
-              source, external_id, filer_person_id, filer_company_id,
-              filed_at, source_url, confidence, review, is_published, payload, scope
-            )
-            values (
-              'sec_form4', ${clean.accession}, ${personId}, ${companyId},
-              ${clean.filingDate}, ${clean.xmlUrl}, 1.0, 'auto_approved', false, ${sql.json(payload)}, 'tracked'
-            )
-            on conflict (source, external_id) do update
-              set scope = 'tracked',
-                  filed_at = excluded.filed_at,
-                  source_url = excluded.source_url,
-                  payload = excluded.payload
-            returning id
-          `;
-          const filingId = filing!.id as number;
-
-          // Raw-filing archive (roadmap B.6): the ownership XML we just parsed, keyed by URL.
-          // Never fatal — a storage failure records the hash and moves on.
-          try {
-            const arch = await archiveBytes(sql, {
-              source: "sec_form4", sourceUrl: xmlUrl, bytes: new TextEncoder().encode(xmlText),
-              contentType: "application/xml", filingId,
-            });
-            if (arch.stored) documentsArchived++;
-          } catch (err) {
-            ctx.warn(`archive failed for ${entry.accession}: ${err instanceof Error ? err.message : String(err)}`);
-          }
-
-          // Re-ingest rule (contract §3.2): transactions have no natural key —
-          // delete and reinsert fresh on every (re-)ingest of this filing.
-          await sql`delete from transactions where filing_id = ${filingId}`;
-
-          for (const txn of clean.transactions) {
-            const side = codeToSide(txn.transactionCode);
-            const guarded = guardFutureTxnDate(txn.transactionDate, clean.filingDate);
-            if (guarded.nulled) futureDatesNulled++;
-            const lagDays = isoDateDiffDays(clean.filingDate, guarded.date);
-            await sql`
-              insert into transactions (
-                filing_id, person_id, security_id, side, txn_code, is_derivative,
-                txn_date, disclosed_at, shares, price, disclosure_lag_days,
-                confidence, review, is_10b5_1, owner_type, asset_type
-              )
-              values (
-                ${filingId}, ${personId}, ${securityId}, ${side}, ${txn.transactionCode}, ${txn.isDerivative},
-                ${guarded.date}, ${clean.filingDate}, ${txn.transactionShares}, ${txn.transactionPricePerShare}, ${lagDays},
-                1.0, 'auto_approved', ${clean.aff10b5One}, ${txn.ownership === "I" ? "indirect" : "self"},
-                ${txn.isDerivative ? "derivative" : "stock"}
-              )
-            `;
-            transactionsWritten++;
-            ctx.rowsChanged++;
-          }
+          if (stored.archived) documentsArchived++;
+          futureDatesNulled += stored.futureDatesNulled;
+          transactionsWritten += stored.transactions;
+          ctx.rowsChanged += stored.transactions;
           outage.ok();
         } catch (err) {
           filingsQuarantined++;

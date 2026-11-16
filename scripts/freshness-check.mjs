@@ -44,6 +44,10 @@ const CHECKS = [
     newest: `select max(filed_at)::date from filings where source = 'house_ptr'` },
   { code: "sec_form4", label: "SEC Form 4 (insider trades)", runDays: 2, dataDays: 6,
     newest: `select max(filed_at)::date from filings where source = 'sec_form4' and scope = 'tracked'` },
+  // Market-wide Form 4 from the EDGAR daily index (kept off the site). A partial run counts as
+  // alive: the rule treats success and partial alike.
+  { code: "sec_form4_index", label: "SEC Form 4, market-wide (daily index)", runDays: 2, dataDays: 6,
+    newest: `select max(filed_at)::date from filings where source = 'sec_form4' and scope = 'market'` },
   { code: "senate_lda", label: "Senate lobbying filings", runDays: 2, dataDays: 7,
     newest: `select max(posted_at)::date from lobbying` },
   // Both feeds carry future-dated records (planned contract actions, filer typos); without the
