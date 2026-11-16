@@ -21,4 +21,18 @@ export default defineConfig({
   // ever move server-side; the app plan uses Supabase Auth client-side instead (docs/05).
   session: false,
   build: { format: "directory" },
+  vite: {
+    build: {
+      rollupOptions: {
+        output: {
+          // The shared stylesheet was always emitted as _astro/viz.<hash>.css, a name Rollup derives
+          // from chunk order. Adding the on-demand entity routes (stage 3a) changed that order and
+          // renamed it global.<hash>.css, which rewrote the stylesheet link in every static page
+          // although the file's contents did not change. Pin the name so the static build stays
+          // byte-identical. Everything else keeps Astro's default pattern.
+          assetFileNames: (asset) => ((asset.names?.[0] ?? asset.name) === "global.css" ? "_astro/viz.[hash][extname]" : "_astro/[name].[hash][extname]"),
+        },
+      },
+    },
+  },
 });

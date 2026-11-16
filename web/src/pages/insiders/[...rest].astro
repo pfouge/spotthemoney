@@ -1,0 +1,16 @@
+---
+// insider pages outside the tracked set, rendered by the Worker on request (stage 3a). A prerendered
+// sibling route and the static files win for tracked entities; this route only runs when no
+// static file exists. Keep this file free of imports of postgres, fs, flagship or db.
+export const prerender = false;
+import OdPageView from "../../components/OdPageView.astro";
+import { fetchOd, guideLinks, oneSegment, notFound } from "../../lib/server/odsource";
+
+const key = oneSegment(Astro.params.rest);
+const doc = key ? await fetchOd("insider", key!, Astro.url).catch(() => undefined) : null;
+if (doc === undefined) return new Response("Temporarily unavailable", { status: 503, headers: { "cache-control": "no-store", "retry-after": "60" } });
+if (!doc) return notFound(Astro.url);
+const guides = await guideLinks(Astro.url);
+Astro.response.headers.set("Cache-Control", "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800");
+---
+<OdPageView doc={doc} guides={guides} />

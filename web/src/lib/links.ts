@@ -11,7 +11,8 @@
 //
 // Rule for all three: a link is added only where the target is certain. No fuzzy matching.
 import type { Flagship, Company } from "./flagship";
-import { companyPath, normalizeOrgName } from "./flagship";
+import { companyPath } from "./flagship-core";
+import { normalizeOrgName } from "@stm/shared";
 
 // ── organisations ────────────────────────────────────────────────────────────────────────
 let _orgs: { model: Flagship; map: Map<string, Company> } | null = null;

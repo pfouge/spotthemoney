@@ -13,7 +13,7 @@
 // · on-page SEO for each sampled page (title <= 60 chars, description 50-160, one h1,
 // indexable, canonical = its own URL, og:image + twitter card) · every member and stock
 // page in a sitemap has at least one data row (empty ones must be noindex and unlisted).
-// `--all` checks every URL in every sitemap instead of a sample.
+// `--static` leaves the on-demand (market) pages unsampled. `--all` checks every URL in every sitemap instead of a sample.
 // Exit code 1 on any failure; prints a summary either way.
 //
 // Cloudflare challenges (2026-10-12): from cloud networks (GitHub's runners) Bot Fight Mode can
@@ -27,6 +27,10 @@ import { isCloudflareChallenge, warn } from "./lib/cf-challenge.mjs";
 
 const base = (process.argv[2] ?? "https://spotthemoney.com").replace(/\/$/, "");
 const FAIL_ON_CHALLENGE = process.argv.includes("--fail-on-challenge");
+// --static: the target is a plain static file server (the build itself, before deploy). The market
+// child sitemaps (/sitemaps/market-*.xml) list pages only the Worker renders on request, so they are
+// checked as sitemaps but their pages are not sampled; the deploy workflow probes them on the live site.
+const STATIC = process.argv.includes("--static");
 const sampleArg = process.argv.indexOf("--sample");
 const SAMPLE = process.argv.includes("--all") ? Infinity : sampleArg > 0 ? Number(process.argv[sampleArg + 1]) : 3;
 
@@ -103,6 +107,7 @@ const sampled = [];
     ok(urls.every((u) => /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(child.text)), `child ${c} missing lastmod`);
     total += urls.length;
     notes.push(`${c.split("/").pop()}: ${urls.length} URLs`);
+    if (STATIC && /\/sitemaps\/market-/.test(c)) { notes.push(`  (not sampled: on-demand pages, --static)`); continue; }
     const paths = urls.map((u) => u.replace(/^https?:\/\/[^/]+/, ""));
     // deterministic spread: first, last, and evenly spaced middles
     const pick = new Set();

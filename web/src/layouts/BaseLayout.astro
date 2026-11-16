@@ -6,7 +6,6 @@ import Mark from "../components/Mark.astro";
 import Wordmark from "../components/Wordmark.astro";
 
 import { fitTitle, fitDescription } from "../lib/seo";
-import Tape from "../components/Tape.astro";
 import { adClient } from "../lib/ads";
 
 // title / description: a string, or preferred wording first with shorter fallbacks after it
@@ -25,8 +24,11 @@ import { adClient } from "../lib/ads";
 interface Props {
   title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean; modified?: string | null;
   author?: string; canonical?: string; ogImage?: string; ogType?: string; published?: string | null; ads?: boolean;
+  /** false leaves out the ticker tape, the one part of the layout that reads the build-time model (on-demand pages). */
+  tape?: boolean;
 }
-const { noindex = false, author = "Spot the Money", ogType = "website", ads = true } = Astro.props;
+const { noindex = false, author = "Spot the Money", ogType = "website", ads = true, tape = true } = Astro.props;
+const Tape = tape ? (await import("../components/Tape.astro")).default : null;
 const adsense = ads && !noindex ? adClient() : "";
 const title = fitTitle(Astro.props.title);
 const description = fitDescription(Astro.props.description ?? "Which members of Congress and corporate insiders are buying and selling stock: disclosed trades on one heatmap, updated daily, free.");
@@ -175,7 +177,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
         <p class="share-note">These are ordinary links. Nothing is sent to any of these services unless you choose one.</p>
       </div>
     </dialog>
-    <Tape />
+    {Tape && <Tape />}
 
     <main id="main" tabindex="-1">
       <div class="container">

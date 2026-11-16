@@ -37,7 +37,9 @@ const ids = (html) => new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m
 
 // The pages to read: every sitemap URL (or a sample of each sitemap), plus the hubs.
 const index = (await fetch(`${base}/sitemap-index.xml`).then((r) => r.text()).catch(() => ""));
-const maps = [...index.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
+// The market child sitemaps list pages the Worker renders on request (stage 3a). They are linked from
+// nowhere on purpose and a static server has no such pages; scripts/verify-od.mjs checks them.
+const maps = [...index.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname).filter((m) => !m.startsWith("/sitemaps/market-"));
 ok(maps.length > 0, "no sitemaps listed in /sitemap-index.xml");
 const sitemapPaths = new Set(); const pages = new Set(["/"]);
 for (const map of maps) {

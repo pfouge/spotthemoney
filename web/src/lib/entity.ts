@@ -3,7 +3,7 @@
 // members: every number is a count, a date or a sum of reported values; nothing is inferred
 // about why anyone traded.
 import type { Flagship, Person, Security, Company, Txn } from "./flagship";
-import { personPath, securityPath, companyPath, roleLabel, daysAgo } from "./flagship";
+import { personPath, securityPath, companyPath, roleLabel, daysAgo } from "./flagship-core";
 import { sizeByTicker, CAP_BANDS, type SizeEstimate } from "./capband";
 
 const isForm4 = (t: Txn) => t.source === "sec_form4";

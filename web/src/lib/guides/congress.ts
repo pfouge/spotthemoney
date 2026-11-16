@@ -64,7 +64,7 @@ export const congressGuides: ((c: GuideCtx) => Guide)[] = [
       ],
       related: ["how-to-read-a-congressional-trade-report", "late-congressional-trade-disclosures", "congress-trade-amount-ranges", "what-disclosure-data-cannot-tell-you"],
       seeLive: [{ label: "Newest congressional trades", href: "/congress/" }, { label: "Trade map", href: "/" }],
-      covers: ["web/src/lib/flagship.ts#CONGRESS_DEADLINE_DAYS"],
+      covers: ["web/src/lib/flagship-core.ts#CONGRESS_DEADLINE_DAYS"],
       ui: [],
       facts: ["tradingBan", "stockAct"],
     };
@@ -192,7 +192,7 @@ ${table(["Range on the form", "Top of range used in totals here"], [
     ],
     related: ["how-to-read-a-congressional-trade-report", "how-to-use-the-trade-map", "what-disclosure-data-cannot-tell-you"],
     seeLive: [{ label: "Trade map", href: "/" }, { label: "How values are computed", href: "/methodology/#values" }],
-    covers: ["web/src/lib/heatmap.ts", "web/src/lib/flagship.ts#amountLabel"],
+    covers: ["web/src/lib/heatmap.ts", "web/src/lib/flagship-core.ts#amountLabel"],
     ui: [],
     facts: ["stockAct"],
   }),
@@ -240,7 +240,7 @@ ${table(["Range on the form", "Top of range used in totals here"], [
       ],
       related: ["congress-stock-trading-rules", "how-to-read-a-congressional-trade-report", "what-disclosure-data-cannot-tell-you"],
       seeLive: [{ label: "Congress trades with days-to-report", href: "/congress/" }, { label: "Lag and late rules", href: "/methodology/#lag" }],
-      covers: ["web/src/lib/flagship.ts#isLate", "web/src/lib/flagship.ts#CONGRESS_DEADLINE_DAYS", "web/src/lib/flagship.ts#FORM4_DEADLINE_DAYS"],
+      covers: ["web/src/lib/flagship-core.ts#isLate", "web/src/lib/flagship-core.ts#CONGRESS_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS"],
       ui: [{ text: "Lag", on: "/congress/" }],
       facts: ["stockAct"],
     };
