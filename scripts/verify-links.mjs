@@ -17,6 +17,7 @@
 //   node scripts/verify-links.mjs http://127.0.0.1:4321            (every sitemap page)
 //   node scripts/verify-links.mjs https://spotthemoney.com --sample 40   (40 pages per sitemap)
 // No browser needed. With --sample the ORPHAN and DEPTH checks are skipped (they need every page).
+import { loadOdIndex } from "./lib/odindex.mjs";
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:\/\//.test(a)) ?? "http://127.0.0.1:4321").replace(/\/$/, "");
 const sampleN = args.includes("--sample") ? Number(args[args.indexOf("--sample") + 1]) || 40 : 0;
@@ -50,6 +51,8 @@ for (const map of maps) {
   locs.filter((_, i) => i % step === 0).slice(0, sampleN || locs.length).forEach((l) => pages.add(l));
 }
 const full = !sampleN;
+const od = await loadOdIndex(base);
+console.log(`od-index: ${od.size} on-demand entities linked from built pages (${od.isStatic ? "static server: accepted without fetching" : "live server: a sample is fetched"})`);
 
 // Read the pages; collect links.
 const linksFrom = new Map(); const inbound = new Map(); const targets = new Map(); // target path → first page that links to it
@@ -71,6 +74,7 @@ await pool([...pages], 8, async (path) => {
 // 1. BROKEN
 const plain = [...targets.keys()].filter((k) => !k.includes("#"));
 await pool(plain, 8, async (t) => {
+  if (od.accept(t)) { ok(true, ""); return; }
   if (/\.(csv|xml|txt|json|png|svg|ico|webmanifest|woff2?)$/.test(t)) { const r = await fetch(base + t, { method: "HEAD" }).catch(() => null); ok(r?.status === 200, `BROKEN ${t} (HTTP ${r?.status ?? 0}), linked from ${targets.get(t)}`); return; }
   const { status } = await get(t);
   ok(status === 200, `BROKEN ${t} (HTTP ${status}), linked from ${targets.get(t)}`);

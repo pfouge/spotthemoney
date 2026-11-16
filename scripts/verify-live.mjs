@@ -172,6 +172,28 @@ if (challenged.length) {
   const msg = `${challenged.length} request(s) to ${base} got a Cloudflare challenge instead of the site (${challenged.slice(0, 4).join(", ")}${challenged.length > 4 ? ", …" : ""}); those checks are inconclusive, not failed.`;
   if (FAIL_ON_CHALLENGE) failures.push(msg); else warn(msg);
 }
+// Stage 3b: the home feed links on-demand (market) pages that have no file. The static index of the ones
+// linked must exist and be well formed; with --static they are accepted without fetching (verify-od.mjs
+// fetches a sample under the Worker), on a live server a few are fetched here.
+{
+  const oi = await get("/data/od-index.json").catch(() => null);
+  if (oi && !oi.challenge) {
+    let idx = null; try { idx = JSON.parse(oi.text); } catch { /* reported below */ }
+    if (ok(oi.status === 200 && idx && ["insiders", "companies", "stocks"].every((k) => Array.isArray(idx[k])), "/data/od-index.json is missing or malformed")) {
+      const nf = await get("/data/notable.json"); let feed = null; try { feed = JSON.parse(nf.text); } catch { /* ignore */ }
+      if (feed) {
+        const isOd = (p) => { const m = /^\/(insiders|stocks|companies)\/([^/]+)\/$/.exec(p ?? ""); return m ? (idx[m[1]] ?? []).includes(m[2]) : false; };
+        const fileless = []; // feed links to market-looking pages that the index does not list
+        const odLinks = new Set();
+        for (const it of feed.items) for (const p of [it.np, it.tp]) if (isOd(p)) odLinks.add(p);
+        if (!STATIC) for (const p of [...odLinks].slice(0, 5)) { const r = await get(p); ok(r.status === 200 || r.challenge, `feed link ${p}: HTTP ${r.status}`); }
+        notes.push(`  od-index: ${idx.insiders.length} insiders, ${idx.stocks.length} stocks, ${idx.companies.length} companies; ${odLinks.size} linked from feed items${STATIC ? " (accepted without fetching)" : ""}`);
+        void fileless;
+      }
+    }
+  }
+}
+
 if (failures.length) {
   console.log(`✗ ${failures.length} failure(s):`);
   for (const f of failures) console.log(`  - ${f}`);

@@ -211,6 +211,22 @@ for (const fn of [["od_insider", pi.k], ["od_stock", ps.k.toUpperCase()], ["od_c
   ok((r2.headers.get("set-cookie") ?? "") === "", "no Set-Cookie on an on-demand page");
 }
 
+// ---------- 4. links from the built home feed (stage 3b) ----------
+section("market links in the home feed resolve under the Worker");
+{
+  const feed = await (await fetch(`${staticBase}/data/notable.json`)).json();
+  const idx = await (await fetch(`${staticBase}/data/od-index.json`)).json();
+  const isOd = (p) => { const m = /^\/(insiders|stocks|companies)\/([^/]+)\/$/.exec(p ?? ""); return !!m && (idx[m[1]] ?? []).includes(m[2]); };
+  const links = new Set();
+  for (const it of feed.items) { if (isOd(it.np)) links.add(it.np); if (isOd(it.tp)) links.add(it.tp); }
+  for (const c of feed.clusters) { if (isOd(c.tp)) links.add(c.tp); for (const w of c.who) if (isOd(w.p)) links.add(w.p); }
+  ok(links.size > 0, "the home feed links at least one on-demand page", `${links.size}`);
+  const all = [...links]; const step = Math.max(1, Math.floor(all.length / 20));
+  const sample = all.filter((_, i) => i % step === 0).slice(0, 20);
+  for (const path of sample) { const r = await fetch(base + path); await r.arrayBuffer(); ok(r.status === 200, `feed link ${path} answers 200 under the Worker`, r.status); }
+  console.log(`  ${links.size} on-demand links in the feed, ${sample.length} fetched`);
+}
+
 console.log("\nparity summary:", JSON.stringify(parity));
 console.log(failed ? `\nFAILED ${failed} of ${ran} checks` : `\nok: ${ran} checks`);
 await browser.close(); await sql.end();
