@@ -2114,3 +2114,41 @@ the fuller record.
 - Guides: `what-is-form-4` (now covers `footnotes.ts` and `TxnTable.astro`),
   `form-4-transaction-codes`, `rule-10b5-1-trading-plans`,
   `ten-percent-owners-and-joint-filings` each gained a sentence.
+
+### Member directory with filters (2026-11-16, scheduled parity run) — gap T0-03
+
+- **What.** New page `/congress-members/` (`web/src/pages/congress-members.astro`): one row per
+  member of Congress on record (member, chamber, party, seat, committees, trades, trades in 12
+  months, latest disclosure), a name search and five filters (chamber, party, state, committee,
+  activity), sortable columns (the shared `scripts/tablesort.ts`), a count line with "Reset
+  filters". The filter state is in the URL hash (`#chamber=senate&party=D&state=TX`); a hash
+  with no `=` is a jump link and leaves the filters alone. Without JavaScript the whole table
+  shows and the controls are hidden. In the `pages` sitemap, the search index and `llms.txt`.
+- **Why the address is not `/congress/members/`:** four verifiers (live, links, profile, share)
+  and the a11y sampler treat every `/congress/<x>/` as a member profile. Do not put a
+  non-profile page under `/congress/`.
+- **Rules** (`web/src/lib/directory.ts`, pure; tests `scripts/directory.test.ts`; the browser
+  script `web/src/scripts/directory.ts` uses the same `matches`): "Trades" = `p.txns.length`;
+  12 months and the activity filter go by **disclosure** date; a subcommittee seat counts for
+  its full committee; the committee filter lists full committees only; former members
+  (`valid_to` in the past) stay listed, marked "left office". Default order is by surname
+  (`sortName`, a sort key only; the name is shown as stored). Committee seats are context:
+  nothing ties a trade to one (stated on the page, in methodology `#member-directory` and in
+  the guide).
+- **`/congress/`:** the "All members on record" name list is replaced by one sentence and a
+  link to the directory (the chip reads "Member directory"). The answer sentence no longer says
+  "House filings only until the Senate feed is live" once Senate reports are public.
+- **Build log** prints `[web] member directory: N members (H House, S Senate), W with trades,
+  R disclosed in the last 90 days, F former, C committees, T states` for comparison with SQL.
+- **Verifier:** `node scripts/verify-directory.mjs <base-url>` (Playwright): every option of
+  every filter against a count made from the text in the rows, row count against
+  `congress-members.csv`, committee members against their own pages, combined filters, the
+  hash and its reload, Reset, a jump link, search, the empty state, sorting, 390 px, no
+  JavaScript. Run it with the other verifiers (ten now). `verify-a11y` includes the page.
+- **Seed:** `scripts/seed-local.sql` gained three members with no trades (two senators, one
+  independent; one representative who left office) and committee seats, so the directory, the
+  member pages' committee section and the no-trades member page are exercised locally.
+- Guide `how-to-read-a-congressional-trade-report`: new section `#directory`, one FAQ, covers
+  the two new files, four new labels.
+- Not done: no committee page or committee view of trades (that is T0-07, next); no filter by
+  ticker or by late filings; the directory is one static page (no per-state pages).

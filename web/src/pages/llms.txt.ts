@@ -37,6 +37,7 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 ## Follow the Money (SEC EDGAR, House Clerk, FEC, Senate LDA, USAspending)
 - [Insider trades](${SITE_URL}/insiders/): newest Form 4 filings, cluster buys, CEO/CFO buys, officer sales (${num(c.insiderTxns ?? 0)} transactions on record).
 - [Congress stock trades](${SITE_URL}/congress/): STOCK Act disclosures, days-to-report, late filers (${num(c.congressTxns ?? 0)} trades on record).
+- [Member directory](${SITE_URL}/congress-members/): every member of Congress on record with trade counts; filters for chamber, party, state, committee and recent activity.
 - [Stocks](${SITE_URL}/stocks/): one page per ticker with insider and congressional activity (${num(c.securities ?? 0)} tickers).
 - [Companies](${SITE_URL}/companies/): insiders, contracts and lobbying per company (${num(c.companies ?? 0)} companies).
 - [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).

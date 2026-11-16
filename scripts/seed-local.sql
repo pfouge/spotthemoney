@@ -89,6 +89,35 @@ insert into person_roles (person_id, role_kind, chamber, state, district, party,
   ((select id from people where slug='elena-marsh'), 'congress', 'house', 'CA', '17', 'D', '2025-01-03'),
   ((select id from people where slug='samuel-okafor'), 'congress', 'house', 'OH', '11', 'D', '2025-01-03');
 
+-- Members with no trades (for the member directory's filters): two senators, one of them an
+-- independent, and a representative who has left office. Invented names.
+insert into people (full_name, first_name, last_name, slug) values
+  ('Priya Lindqvist', 'Priya', 'Lindqvist', 'priya-lindqvist'),
+  ('Walter Abara Jr.', 'Walter', 'Abara', 'walter-abara-jr'),
+  ('Marcus Delacroix', 'Marcus', 'Delacroix', 'marcus-delacroix');
+insert into person_roles (person_id, role_kind, chamber, state, district, party, valid_from, valid_to) values
+  ((select id from people where slug='priya-lindqvist'), 'congress', 'senate', 'TX', null, 'I', '2023-01-03', null),
+  ((select id from people where slug='walter-abara-jr'), 'congress', 'senate', 'OH', null, 'R', '2025-01-03', null),
+  ((select id from people where slug='marcus-delacroix'), 'congress', 'house', 'AK', '0', 'D', '2023-01-03', current_date - 200);
+
+-- Committee seats (migration 0015), so member pages and the directory's committee filter have data.
+delete from congress_committees;
+insert into congress_committees (code, parent_code, chamber, name) values
+  ('HSAG', null, 'house', 'House Committee on Agriculture'),
+  ('HSAG15', 'HSAG', 'house', 'Livestock, Dairy, and Poultry'),
+  ('HSBA', null, 'house', 'House Committee on Financial Services'),
+  ('SSAF', null, 'senate', 'Senate Committee on Agriculture, Nutrition, and Forestry'),
+  ('SSBK', null, 'senate', 'Senate Committee on Banking, Housing, and Urban Affairs');
+insert into congress_committee_members (committee_code, person_id, side, rank, title) values
+  ('HSAG', (select id from people where slug='jordan-whitfield'), 'majority', 1, 'Chair'),
+  ('HSAG15', (select id from people where slug='jordan-whitfield'), 'majority', 2, null),
+  ('HSBA', (select id from people where slug='elena-marsh'), 'minority', 3, null),
+  ('HSAG', (select id from people where slug='samuel-okafor'), 'minority', 4, null),
+  ('HSAG15', (select id from people where slug='samuel-okafor'), 'minority', 4, null),
+  ('SSAF', (select id from people where slug='priya-lindqvist'), 'minority', 2, null),
+  ('SSBK', (select id from people where slug='priya-lindqvist'), 'minority', 5, null),
+  ('SSBK', (select id from people where slug='walter-abara-jr'), 'majority', 1, 'Chair');
+
 -- ── Form 4 filings + transactions (a spread of dates, codes, a cluster buy on PLTR, a late one) ─
 create temp table seed_f4 (accession text, person_cik text, ticker text, filed date, txn date, code text, shares numeric, price numeric, published boolean, aff boolean, after_shares numeric);
 insert into seed_f4 values

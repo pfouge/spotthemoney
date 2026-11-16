@@ -72,7 +72,7 @@ export const congressGuides: ((c: GuideCtx) => Guide)[] = [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-11-15",
+    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-11-16",
     title: "How to read a congressional trade report",
     seoTitle: ["How to Read a Congressional Stock Trade Report (PTR)", "How to Read a Congressional Trade Report"],
     description: ["A periodic transaction report lists the asset, owner, type, trade date, filing date and a dollar range. What each column means, with the House and Senate codes.", "What each column of a congressional trade report means: owner, type, dates and the dollar range, with House and Senate codes."],
@@ -108,6 +108,10 @@ ${table(["Column", "What it tells you"], [
 <li><strong>Disclosed trades and filings.</strong> Every row with its link to the original report, then the list of reports themselves.</li>
 </ul>
 <p>The page ends with other members from the same state, members who traded the same tickers, and short answers to the questions people ask most about that member. All of it is counted from the same rows as the trade table.</p>` },
+      { id: "directory", h: "How do I find a member, or all the members from one state or committee?", html: `
+<p>Use the ${`<a href="/congress-members/">member directory</a>`}. It lists every member of Congress on record here in one table, with the chamber, party, seat, the number of committees, the number of trades on record, the number disclosed in the last 12 months and the date of the latest disclosure. The search box finds a member by name, and five filters narrow the list: chamber, party, state, committee and activity. They work together, so "Senate" with "Texas" shows the senators from Texas.</p>
+<p>The activity filter goes by the date a trade was disclosed. "Disclosed a trade in the last 90 days" lists members whose newest report became public in that time, whenever the trade itself took place. "No trades on record" lists members with no transaction on this site. It does not mean the member owns no stocks, because holdings are in the annual disclosure, which is not included here.</p>
+<p>The committee filter lists the members assigned to a committee or to one of its subcommittees. Like the committee list on a member's page, it is there for context. It says who sits where and nothing about any trade. Members who have left office stay in the directory, marked "left office", with no committee. Click a column title to sort, and copy the page address to share the list you have filtered: the address keeps the filters.</p>` },
       { id: "dates", h: "Which date should I look at?", html: `
 <p>Both, because the gap between them is the point. The trade date tells you when the member bought or sold. The disclosed date tells you when the public could first know. A member has up to ${c.congressDeadlineDays} days, so a trade you are reading about today may be six weeks old.</p>
 <p>The Lag column on this site is the number of days between the two. When it is more than ${c.congressDeadlineDays}, the row carries a "late" flag. See ${`<a href="/guides/late-congressional-trade-disclosures/">late disclosures</a>`}.</p>
@@ -125,6 +129,7 @@ ${table(["Column", "What it tells you"], [
     faqs: [
       { q: "What does SP mean on a congressional trade report?", a: "SP means the asset belongs to the member's spouse. House reports also use DC for a dependent child and JT for a joint holding; a blank owner means the member.", on: ["congress"] },
       { q: "What is a PTR in Congress?", a: "A PTR is a periodic transaction report, the public form a member of Congress files after buying, selling or exchanging a security worth more than $1,000." },
+      { q: "How do I see which members of Congress from my state trade stocks?", a: "Open the member directory on this site and choose your state. The table lists each member with the number of trades on record and the date of the latest disclosure, and it can also be narrowed by chamber, party, committee and recent activity.", on: ["congress"] },
       { q: "Do congressional trade reports show how many shares were traded?", a: "No. A report gives a dollar range and the trade date. It does not give the number of shares, the price or the profit." },
       { q: "Why do some congressional trades have no ticker?", a: "Because the asset is not a listed stock. Bonds, private funds and other assets are reported by name only, so they appear in a member's table but not on the trade map, which is organised by ticker." },
     ],
@@ -135,9 +140,9 @@ ${table(["Column", "What it tells you"], [
       { name: "Senate eFD search", url: "https://efdsearch.senate.gov/search/home/" },
     ],
     related: ["congress-stock-trading-rules", "congress-trade-amount-ranges", "late-congressional-trade-disclosures", "house-and-senate-disclosure-differences"],
-    seeLive: [{ label: "Congress trades, newest first", href: "/congress/" }, { label: "What is covered and what is not", href: "/methodology/#coverage" }],
-    covers: ["web/src/components/TxnTable.astro", "ingest/py/senate_import.py", "web/src/lib/profile.ts", "web/src/pages/congress/[slug].astro"],
-    ui: [{ text: "Trade date", on: "/congress/" }, { text: "Disclosed", on: "/congress/" }, { text: "Lag", on: "/congress/" }],
+    seeLive: [{ label: "Congress trades, newest first", href: "/congress/" }, { label: "Member directory, with filters", href: "/congress-members/" }, { label: "What is covered and what is not", href: "/methodology/#coverage" }],
+    covers: ["web/src/components/TxnTable.astro", "ingest/py/senate_import.py", "web/src/lib/profile.ts", "web/src/pages/congress/[slug].astro", "web/src/lib/directory.ts", "web/src/pages/congress-members.astro"],
+    ui: [{ text: "Trade date", on: "/congress/" }, { text: "Disclosed", on: "/congress/" }, { text: "Lag", on: "/congress/" }, { text: "Both chambers", on: "/congress-members/" }, { text: "Any committee", on: "/congress-members/" }, { text: "Disclosed a trade in the last 90 days", on: "/congress-members/" }, { text: "No trades on record", on: "/congress-members/" }],
     facts: ["stockAct"],
   }),
 

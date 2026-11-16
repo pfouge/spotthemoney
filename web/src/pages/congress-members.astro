@@ -1,0 +1,125 @@
+---
+// Member directory: /congress-members/ — every member of Congress on record in one table, with
+// filters for name, chamber, party, state, committee and trading activity, and sortable columns.
+// Rows and filter rules come from lib/directory.ts (unit-tested); the browser side is
+// scripts/directory.ts. Without JavaScript the whole table is shown and the controls are hidden.
+// Committee seats are current assignments, shown for context: nothing here ties a trade to one.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, personPath, num, plural, senateShown, CONGRESS_DEADLINE_DAYS } from "../lib/flagship";
+import { datasetLd, SOURCES } from "../lib/seo";
+import { formatDate } from "../lib/format";
+import { stateName } from "../lib/profile";
+import { dayKey } from "../lib/tablesort";
+import { directoryRows, committeeOptions, matches, NO_FILTER, ACTIVITY, ACTIVITY_LABEL, PARTY_LABEL, type PartyKey } from "../lib/directory";
+
+const model = await getFlagship();
+const today = new Date().toISOString().slice(0, 10);
+const rows = directoryRows(model, today, personPath);
+const committees = committeeOptions(model, rows);
+const hasSenate = senateShown(model);
+
+const house = rows.filter((r) => r.chamber === "house").length, senate = rows.filter((r) => r.chamber === "senate").length;
+const withTrades = rows.filter((r) => r.trades > 0).length;
+const recent = rows.filter((r) => matches({ ...r, committees: r.committees }, { ...NO_FILTER, activity: "90" }, today)).length;
+const former = rows.filter((r) => r.former).length;
+const parties = (["D", "R", "I"] as PartyKey[]).map((k) => ({ k, n: rows.filter((r) => r.party === k).length })).filter((x) => x.n > 0);
+const states = [...new Set(rows.map((r) => r.state).filter(Boolean))]
+  .map((code) => ({ code, name: stateName(code) ?? code, n: rows.filter((r) => r.state === code).length }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+const committeeGroups = (["house", "senate", "joint"] as const)
+  .map((ch) => ({ label: ch === "house" ? "House committees" : ch === "senate" ? "Senate committees" : "Joint committees", items: committees.filter((c) => c.chamber === ch) }))
+  .filter((g) => g.items.length > 0);
+const lastUpdated = rows.map((r) => r.latest).filter((x): x is string => !!x).sort().at(-1) ?? model.builtAt;
+
+// Build log: the figures to compare with a direct count on the database.
+console.log(`[web] member directory: ${rows.length} members (${house} House, ${senate} Senate), ${withTrades} with trades, ${recent} disclosed in the last 90 days, ${former} former, ${committees.length} committees, ${states.length} states`);
+
+const answer = rows.length === 0
+  ? "No members of Congress are on record here yet. The roster is read daily from the public congress-legislators project, and trades are added as periodic transaction reports are filed."
+  : `${plural(rows.length, "member")} of Congress ${rows.length === 1 ? "is" : "are"} listed here: ${num(house)} in the House and ${num(senate)} in the Senate. ${num(withTrades)} ${withTrades === 1 ? "has" : "have"} at least one disclosed stock trade on record, and ${num(recent)} disclosed a trade in the last 90 days.`;
+const description = "Directory of members of Congress with their disclosed stock trades. Filter by chamber, party, state, committee and recent trading activity.";
+const csv = (await getDownloads()).files.find((f) => f.name === "congress-members.csv");
+const ld = datasetLd({ downloads: [csv?.path], name: "Members of Congress: directory with disclosed trade counts", path: "/congress-members/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["members of Congress", "congress stock trades", "STOCK Act", "committee assignments"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
+const sortTh = (label: string, type: "text" | "num", cls = "") => ({ label, type, cls });
+const heads = [sortTh("Member", "text"), sortTh("Chamber", "text"), sortTh("Party", "text"), sortTh("Seat", "text"), sortTh("Committees", "num", "num"), sortTh("Trades", "num", "num"), sortTh("Trades, 12 months", "num", "num"), sortTh("Latest disclosure", "num")];
+---
+<BaseLayout title="Members of Congress: Stock Trade Directory" description={description} section="Congress" noindex={rows.length === 0}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: "Members", path: "/congress-members/" }]} />
+  <h1>Members of Congress</h1>
+  <p class="lede">Every member on record, with the number of stock trades each has disclosed. Narrow the list by chamber, party, state, committee or recent activity.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: House Clerk PTRs; Senate eFD PTRs; congress-legislators roster" : "Sources: House Clerk PTRs; congress-legislators roster"} />
+
+  {rows.length === 0 ? <p class="empty-reason">No members on record yet.</p> : (
+    <div class="directory" data-directory>
+      <div class="controls dir-controls" role="group" aria-label="Filter members">
+        <div class="ctl"><label class="lbl" for="dir-q">Name</label><input id="dir-q" class="hm-input" data-dir="q" type="search" placeholder="Search by name" autocomplete="off" maxlength="60" /></div>
+        <div class="ctl"><span class="lbl">Chamber</span>
+          <select data-dir="chamber" aria-label="Chamber"><option value="">Both chambers</option><option value="house">House</option><option value="senate">Senate</option></select>
+        </div>
+        <div class="ctl"><span class="lbl">Party</span>
+          <select data-dir="party" aria-label="Party"><option value="">Any party</option>{parties.map((p) => <option value={p.k}>{PARTY_LABEL[p.k]}s</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">State</span>
+          <select data-dir="state" aria-label="State"><option value="">All states</option>{states.map((s) => <option value={s.code}>{s.name}</option>)}</select>
+        </div>
+        {committeeGroups.length > 0 && (
+          <div class="ctl"><span class="lbl">Committee</span>
+            <select data-dir="committee" aria-label="Committee"><option value="">Any committee</option>
+              {committeeGroups.map((g) => <optgroup label={g.label}>{g.items.map((c) => <option value={c.code}>{c.name}</option>)}</optgroup>)}
+            </select>
+          </div>
+        )}
+        <div class="ctl"><span class="lbl">Activity</span>
+          <select data-dir="activity" aria-label="Trading activity">{ACTIVITY.map((a) => <option value={a}>{ACTIVITY_LABEL[a]}</option>)}</select>
+        </div>
+      </div>
+      <p class="section-note dir-count"><span data-dir="count" aria-live="polite">Showing all {num(rows.length)} members</span> <button type="button" class="linklike" data-dir="reset" hidden>Reset filters</button></p>
+      <DownloadCsv file={csv} note="every member on record, with trade counts" />
+
+      <div class="tablewrap"><table class="data dir-table" data-sortable>
+        <thead><tr>
+          {heads.map((h) => <th class={h.cls || undefined} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+        </tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr data-name={r.name.toLowerCase()} data-ch={r.chamber} data-party={r.party} data-st={r.state} data-c={r.committees.join(" ")} data-n={r.trades} data-latest={r.latest ?? ""}>
+              <td data-v={r.sortName}>{r.path ? <a href={r.path}>{r.name}</a> : r.name}{r.former && <span class="soft"> · left office</span>}</td>
+              <td data-v={r.chamber}>{r.chamber === "senate" ? "Senate" : r.chamber === "house" ? "House" : ""}</td>
+              <td data-v={PARTY_LABEL[r.party]}>{PARTY_LABEL[r.party]}</td>
+              <td data-v={r.seat} title={stateName(r.state) ?? undefined}>{r.seat}</td>
+              <td class="num" data-v={r.committees.length || ""}>{r.committees.length || ""}</td>
+              <td class="num" data-v={r.trades}>{num(r.trades)}</td>
+              <td class="num" data-v={r.trades12m}>{num(r.trades12m)}</td>
+              <td class="mono" data-v={dayKey(r.latest)}>{r.latest ? formatDate(r.latest) : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p class="empty-reason" data-dir="empty" hidden>No member matches these filters. <button type="button" class="linklike" data-dir="reset2">Clear the filters</button></p>
+    </div>
+  )}
+
+  <h2 id="about">What this page shows</h2>
+  <p>One row for each member of Congress on record here: sitting members from the public roster, and members who filed a report and have since left office. "Trades" counts every transaction row in the member's periodic transaction reports on this site; "Trades, 12 months" counts those disclosed in the last 365 days. A member's own page has every trade, with dates, amount ranges and a link to each filing.</p>
+  <p>The activity filter goes by the date a trade was disclosed, not the date it was made, because members have {CONGRESS_DEADLINE_DAYS} days to file. A member with no trades on record may still own stocks: this site reads transaction reports, and annual holdings reports are not included. Scanned paper filings are held until they have been read by a person, so a member who files on paper can show fewer trades here than they reported.</p>
+  <p>"Committees" is the number of full committees a sitting member is assigned to, from the congress-legislators project. The committee filter lists members of that committee or any of its subcommittees. Assignments are shown for context only. Former members have no committee listed. How the figures are built: <a href="/methodology/#member-pages">methodology</a>. How to read a report: <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  .dir-controls .hm-input { width: 190px; }
+  .dir-count { margin: 0 0 0.25rem; }
+  .dir-table tr[hidden] { display: none; }
+  .linklike { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+  :global(html:not(.js)) .dir-controls { display: none; }
+</style>
+<script>
+  import "../scripts/directory";
+</script>
