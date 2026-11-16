@@ -38,7 +38,7 @@ const pendingOcr = [...model.filings.values()].filter((f) => f.source !== "sec_f
 const avgLagAll = avg(all.map((t) => t.lagDays));
 const answer = all.length === 0
   ? `No congressional trades have met the publishing bar yet. House periodic transaction reports are parsed daily from the Clerk's disclosures; Senate reports are pending a separate decision. ${plural(members.length, "member")} and ${plural(model.filings.size - model.txns.filter((t) => t.source === "sec_form4").length, "filing")} are on record so far.`
-  : `${plural(withRows.length, "member")} of Congress have ${plural(all.length, "disclosed trade")} on record, ${num(month.length)} of them disclosed in the last 30 days. The average filing came ${avgLagAll == null ? "—" : Math.round(avgLagAll)} days after the trade against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline, and ${plural(all.filter(isLate).length, "trade was", "trades were")} filed late. House filings only until the Senate feed is live.`;
+  : `${plural(withRows.length, "member")} of Congress have ${plural(all.length, "disclosed trade")} on record, ${num(month.length)} of them disclosed in the last 30 days. The average filing came ${avgLagAll == null ? "—" : Math.round(avgLagAll)} days after the trade against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline, and ${plural(all.filter(isLate).length, "trade was", "trades were")} filed late.${hasSenate ? "" : " House filings only until the Senate feed is live."}`;
 const description = "Newest STOCK Act stock trades by members of Congress: most active traders, late filers against the 45-day deadline and most-traded tickers.";
 const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")?.path], name: "Congressional stock trade disclosures (STOCK Act PTRs)", path: "/congress/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["congress stock trades", "STOCK Act", "periodic transaction report", "late filers"], sources: [SOURCES.house, SOURCES.senate], parentCatalogPath: "/" });
 ---
@@ -56,7 +56,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <Heatmap kind="congress" primary={true} />
 
   <nav class="feeds" aria-label="Sections">
-    <a href="#heatmap">Trade map</a>{model.txns.some((t) => t.isPublished && t.source !== "sec_form4") && <a href="#charts">Charts</a>}<a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="#members">All members</a>
+    <a href="#heatmap">Trade map</a>{model.txns.some((t) => t.isPublished && t.source !== "sec_form4") && <a href="#charts">Charts</a>}<a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="/congress-members/">Member directory</a>
   </nav>
 
   <VizCongress />
@@ -94,9 +94,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
 
   <h2 id="members">All members on record</h2>
   {members.length === 0 ? <p class="empty-reason">No members on record yet.</p> : (
-    <ul class="cols">
-      {members.sort((a, b) => a.name.localeCompare(b.name)).map((p) => { const pp = personPath(p); return <li>{pp ? <a href={pp}>{p.name}</a> : p.name} <span class="soft">{plural(p.txns.length, "trade")}</span></li>; })}
-    </ul>
+    <p>{plural(members.length, "member")} of Congress {members.length === 1 ? "is" : "are"} on record, {num(withRows.length)} with at least one disclosed trade. <a href="/congress-members/">Open the member directory</a> to filter them by chamber, party, state, committee and recent activity.</p>
   )}
 
   <MiniCharts kind="congress" />

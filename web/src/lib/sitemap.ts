@@ -18,6 +18,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   const model = await getFlagship();
   const built = model.builtAt.slice(0, 10);
   const latestTxn = model.txns[0]?.filedAt ?? model.builtAt;
+  // The member directory is indexable only when it has rows (pages/congress-members.astro).
+  const congressMembers = [...model.people.values()].some((p) => p.isCongress);
   const guides = await getGuides();
   // Writing: published articles only (never drafts or future-dated ones), and /writing/ plus author
   // pages only when there is something published to list.
@@ -39,6 +41,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/rates/tips/", lastmod: built, changefreq: "daily", priority: 0.8 },
     { loc: "/insiders/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     { loc: "/congress/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
+    ...(congressMembers ? [{ loc: "/congress-members/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.7 }] : []),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/companies/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },

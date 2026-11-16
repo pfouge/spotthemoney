@@ -81,7 +81,9 @@
       "web/src/components/TxnTable.astro": "16fafd7273f9b780",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "c4c2eb82161e667a"
+      "web/src/pages/congress/[slug].astro": "c4c2eb82161e667a",
+      "web/src/lib/directory.ts": "0466a663969706ab",
+      "web/src/pages/congress-members.astro": "b5f156c6692d56c9"
     }
   },
   "how-to-use-the-trade-map": {
