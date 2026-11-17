@@ -16,10 +16,12 @@ const values = Object.entries(process.env)
   .filter(([k, v]) => SECRET_ENV.test(k) && !k.startsWith("PUBLIC_") && typeof v === "string" && v.length >= 12)
   .map(([k, v]) => ({ rule: `value of $${k}`, needle: v }));
 // The password alone, in case the URL is rebuilt with different options around it.
-try {
-  const pw = decodeURIComponent(new URL(process.env.DATABASE_URL ?? "").password);
-  if (pw.length >= 8) values.push({ rule: "password inside $DATABASE_URL", needle: pw });
-} catch { /* no or unparsable DATABASE_URL */ }
+for (const name of ["DATABASE_URL", "BUILD_DATABASE_URL"]) {
+  try {
+    const pw = decodeURIComponent(new URL(process.env[name] ?? "").password);
+    if (pw.length >= 8) values.push({ rule: `password inside $${name}`, needle: pw });
+  } catch { /* not set or unparsable */ }
+}
 
 const SHAPES = [
   ["Postgres URL with a password", /postgres(?:ql)?:\/\/[^\s:/@"'`$]+:[^\s@"'`$<>{}[\]]{6,}@[A-Za-z0-9.-]+/],

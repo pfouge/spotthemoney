@@ -53,7 +53,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # The read-only build role when it is set up (migration 0023); these jobs only read.
+      DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL || secrets.DATABASE_URL }}
       PUBLIC_SITE_URL: https://spotthemoney.com
       PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
       PUBLIC_AD_CLIENT: ${{ vars.PUBLIC_AD_CLIENT }}
@@ -261,6 +262,7 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     secrets:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BUILD_DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 

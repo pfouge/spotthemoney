@@ -2558,3 +2558,29 @@ routes, secrets in git history and in the build, GitHub workflows, 7 days of Sup
   in public (moving it risks operator lookups under the pinned search_path); the `qa` and `deploy`
   builds connect as the database owner (a read-only build role would be better); supabase_admin's
   default privileges in public cannot be changed by this role.
+
+### Security audit follow-ups (2026-11-17, same interactive session)
+
+Peter's choices: rate limit by a Cloudflare rule, Content-Security-Policy in report-only mode
+first, rotate the database password, a read-only role for builds, Claude merges and deploys.
+
+- **Migration `0023_parity_switch_build_role.sql`** (applied to production after a rolled-back
+  dry run). `od_insider`, `od_stock`, `od_company` drop `p_any` when the call arrives through the
+  API (`session_user = 'authenticator'`); a direct connection keeps it, so the local parity test
+  is unchanged. **A later migration that rewrites one of the three must keep that first line.**
+  New role `site_build`: select on every table in public except `accounts`, `watchlists`,
+  `watchlist_items`; no writes, no function grants, bypasses row-level security, not a member of
+  `authenticator`. **A new private table is readable by it by default: revoke in the migration.**
+- **Builds use `BUILD_DATABASE_URL`** when that secret exists (`deploy.yml` build step, `qa.yml`,
+  the `merge` job of `publish.yml`), otherwise `DATABASE_URL` as before. Migrations and ingest
+  keep the owner's `DATABASE_URL`. Every caller of `deploy.yml` passes the new secret through.
+- **`Content-Security-Policy-Report-Only`** in `web/public/_headers` and `web/src/middleware.ts`
+  (keep the two identical). Nothing is blocked; violations show in the browser console. It
+  allows inline scripts (the theme switch, JSON-LD and the analytics snippet are inline), so its
+  value today is the list of hosts. To enforce: read the console on a stock page, a page with
+  ads on and the watchlist, fix what it reports, rename the header, and drop `frame-ancestors`
+  for `/embed/*`.
+- **Dashboard settings changed** (not in the repo): Supabase Auth "Allow new users to sign up"
+  off; Cloudflare rate-limiting rule on `/api/`, `/auth/` and the on-demand entity paths.
+- Still open: `citext` in public; supabase_admin's default privileges; `p_floor` on the `od_*`
+  functions is not clamped (published public filings only).

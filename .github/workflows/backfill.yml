@@ -141,6 +141,7 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     secrets:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BUILD_DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
