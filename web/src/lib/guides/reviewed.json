@@ -78,7 +78,7 @@
     }
   },
   "how-to-read-a-congressional-trade-report": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-17",
     "covers": {
       "web/src/components/TxnTable.astro": "f85f79449b5b186b",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
@@ -88,7 +88,9 @@
       "web/src/pages/congress-members.astro": "7371c36d1f365a40",
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
       "web/src/pages/congress-committees/index.astro": "f9f29c15f18323e1",
-      "web/src/pages/congress-committees/[slug].astro": "a07927923968a333"
+      "web/src/pages/congress-committees/[slug].astro": "a07927923968a333",
+      "web/src/lib/screener.ts": "f2c6fa30cdd12fd5",
+      "web/src/pages/congress-trades.astro": "8c9b43aa4f4b6a58"
     }
   },
   "how-to-use-the-trade-map": {

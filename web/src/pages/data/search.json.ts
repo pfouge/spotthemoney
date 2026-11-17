@@ -26,7 +26,7 @@ export const GET: APIRoute = async () => {
     rows.push(["Company", c.name, c.primaryTicker ?? "", path, c.txns.length]);
   }
   for (const [title, sub, url] of [
-    ["Congress trades", "Every disclosed trade by members", "/congress/"], ["Member directory", "Members of Congress by chamber, party, state, committee", "/congress-members/"], ["Insider trades", "Form 4 filings", "/insiders/"],
+    ["Congress trades", "Every disclosed trade by members", "/congress/"], ["Member directory", "Members of Congress by chamber, party, state, committee", "/congress-members/"], ["Congress trade screener", "Filter every disclosed trade by member, ticker, party, state, committee, amount", "/congress-trades/"], ["Insider trades", "Form 4 filings", "/insiders/"],
     ["Newest disclosures", "Latest filings", "/disclosures/"], ["Free CSV downloads", "Download the data", "/downloads/"], ["RSS feeds", "Newest congressional and insider trades in a feed reader", "/feeds/"], ["Lobbying", "Senate LDA filings", "/lobbying/"],
     ["Federal contracts", "USAspending awards", "/contracts/"], ["Campaign donations", "FEC receipts", "/donations/"],
     ["Treasury yields", "Yield curve", "/rates/treasury-yields/"], ["I-Bonds", "Current rate and next reset", "/rates/i-bonds/"], ["TIPS", "Real yields", "/rates/tips/"],

@@ -4,6 +4,7 @@
 // lastmod is the newest filing/record date behind the page (or the build date for static pages),
 // which is also what scripts/indexnow-ping.mjs uses to decide which URLs to ping.
 
+import { screenerTxns } from "./screener";
 import { getFlagship, personPath, companyPath, securityPath } from "./flagship";
 import { SITE_URL } from "./seo";
 import { getGuides, guidePath } from "./guides";
@@ -23,6 +24,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   const latestTxn = model.txns[0]?.filedAt ?? model.builtAt;
   // The member directory is indexable only when it has rows (pages/congress-members.astro).
   const congressMembers = [...model.people.values()].some((p) => p.isCongress);
+  // The Congress trade screener is indexable only when it has rows (pages/congress-trades.astro).
+  const congressTrades = screenerTxns(model).length > 0;
   // Committee pages exist only for committees with a member on record (lib/committees.ts).
   const committees = buildCommittees(model, built, personPath);
   // Issue pages exist for every issue area a filing on record lists (lib/lobbyissues.ts).
@@ -49,6 +52,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/insiders/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     { loc: "/congress/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     ...(congressMembers ? [{ loc: "/congress-members/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.7 }] : []),
+    ...(congressTrades ? [{ loc: "/congress-trades/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.8 }] : []),
     ...(committees.length ? [{ loc: COMMITTEES_PATH, lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     ...committees.map((c) => ({ loc: c.path, lastmod: day(c.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },

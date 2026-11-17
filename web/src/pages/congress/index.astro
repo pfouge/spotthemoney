@@ -57,7 +57,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <Heatmap kind="congress" primary={true} />
 
   <nav class="feeds" aria-label="Sections">
-    <a href="#heatmap">Trade map</a>{model.txns.some((t) => t.isPublished && t.source !== "sec_form4") && <a href="#charts">Charts</a>}<a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="/congress-members/">Member directory</a>{hasCommittees && <a href="/congress-committees/">Committees</a>}
+    <a href="#heatmap">Trade map</a>{model.txns.some((t) => t.isPublished && t.source !== "sec_form4") && <a href="#charts">Charts</a>}<a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="/congress-trades/">Trade screener</a><a href="/congress-members/">Member directory</a>{hasCommittees && <a href="/congress-committees/">Committees</a>}
   </nav>
 
   <VizCongress />
@@ -96,7 +96,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
 
   <h2 id="members">All members on record</h2>
   {members.length === 0 ? <p class="empty-reason">No members on record yet.</p> : (
-    <p>{plural(members.length, "member")} of Congress {members.length === 1 ? "is" : "are"} on record, {num(withRows.length)} with at least one disclosed trade. <a href="/congress-members/">Open the member directory</a> to filter them by chamber, party, state, committee and recent activity.{hasCommittees && <> Or <a href="/congress-committees/">browse by committee</a>: each committee's members and the trades they have disclosed.</>}</p>
+    <p>{plural(members.length, "member")} of Congress {members.length === 1 ? "is" : "are"} on record, {num(withRows.length)} with at least one disclosed trade. <a href="/congress-members/">Open the member directory</a> to filter them by chamber, party, state, committee and recent activity. To filter the trades themselves, by member, ticker, side, amount and date, use the <a href="/congress-trades/">trade screener</a>.{hasCommittees && <> Or <a href="/congress-committees/">browse by committee</a>: each committee's members and the trades they have disclosed.</>}</p>
   )}
 
   <MiniCharts kind="congress" />

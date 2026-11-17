@@ -4,6 +4,7 @@
 import { feedDef } from "../feeds";
 import { WATCH_WINDOW_DAYS } from "../watchcards";
 import { COMMITTEE_TRADE_ROWS } from "../committees";
+import { DEFAULT_PER as SCREENER_ROWS } from "../screener";
 import { getFlagship, senateShown, CONGRESS_DEADLINE_DAYS, FORM4_DEADLINE_DAYS, num } from "../flagship";
 import { CAP_BANDS } from "../capband";
 import { JOINT_MIN_VALUE } from "../joint";
@@ -27,6 +28,8 @@ export interface GuideCtx {
   feedCongressItems: number; feedPurchaseItems: number; feedInsiderItems: number;
   /** Rows in a committee page's trade table (lib/committees.ts). */
   committeeTradeRows: number;
+  /** Rows per page the Congress trade screener opens on (lib/screener.ts). */
+  screenerRows: number;
   /** Issue names shown in one lobbying table cell, and rows in an issue page's tables (lib/lobbyissues.ts). */
   issuesInline: number; issueFilingRows: number; issueTopRows: number;
   /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
@@ -66,6 +69,7 @@ async function build(): Promise<GuideCtx> {
     watchWindowDays: WATCH_WINDOW_DAYS,
     feedCongressItems: feedDef("congress-trades").limit, feedPurchaseItems: feedDef("insider-purchases").limit, feedInsiderItems: feedDef("insider-trades").limit,
     committeeTradeRows: COMMITTEE_TRADE_ROWS,
+    screenerRows: SCREENER_ROWS,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
