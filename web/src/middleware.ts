@@ -15,6 +15,9 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Permissions-Policy":
     "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()",
   "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  // Report-only: nothing is blocked. Keep identical to public/_headers.
+  "Content-Security-Policy-Report-Only":
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.google-analytics.com https://static.cloudflareinsights.com https://s3.tradingview.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://cloudflareinsights.com https://*.cloudflareinsights.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; frame-src 'self' https://*.tradingview.com https://*.tradingview-widget.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
 };
 
 const EDGE_CACHE = "public, s-maxage=86400, stale-while-revalidate=604800";

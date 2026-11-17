@@ -58,7 +58,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # The read-only build role when it is set up (migration 0023); these jobs only read.
+      DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL || secrets.DATABASE_URL }}
       PUBLIC_SITE_URL: https://spotthemoney.com
       PUBLIC_CF_ANALYTICS_TOKEN: ${{ vars.PUBLIC_CF_ANALYTICS_TOKEN }}
       PUBLIC_AD_CLIENT: ${{ vars.PUBLIC_AD_CLIENT }}

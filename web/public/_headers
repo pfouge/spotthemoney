@@ -2,6 +2,11 @@
 # responses. On-demand (prerender = false) routes get the same security headers from
 # src/middleware.ts — keep the two lists in sync when either changes.
 #
+# Content-Security-Policy-Report-Only (2026-11-17): reported in the browser console, nothing is
+# blocked. Before switching it to an enforcing Content-Security-Policy, read the console on a
+# stock page (TradingView), a page with ads on, and the watchlist; /embed/* must then drop
+# frame-ancestors. The same value is in src/middleware.ts.
+#
 # Cache policy (nsnexplorer lesson): HTML revalidates at the edge within 2 minutes of a deploy,
 # so no manual cache purge is ever needed; fingerprinted /_astro/* assets are immutable.
 # A more specific block must first detach the /* value ("! Cache-Control"): without that the two
@@ -13,6 +18,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.google-analytics.com https://static.cloudflareinsights.com https://s3.tradingview.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://cloudflareinsights.com https://*.cloudflareinsights.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; frame-src 'self' https://*.tradingview.com https://*.tradingview-widget.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
   Cache-Control: public, max-age=0, s-maxage=120, must-revalidate
 
 # Embeddable charts are meant to sit in an iframe on other sites, so /embed/* drops the

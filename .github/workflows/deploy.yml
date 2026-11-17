@@ -39,6 +39,9 @@ on:
     secrets:
       DATABASE_URL:
         required: true
+      # Read-only role for the build (migration 0023). Without it the build uses DATABASE_URL.
+      BUILD_DATABASE_URL:
+        required: false
       CLOUDFLARE_API_TOKEN:
         required: true
       CLOUDFLARE_ACCOUNT_ID:
@@ -85,6 +88,8 @@ jobs:
         run: node db/migrate.mjs
 
       - name: Build site from the database
+        env:
+          DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           set -o pipefail
           npm run build --workspace=@stm/web 2>&1 | tee build.log
@@ -96,6 +101,8 @@ jobs:
       # No credential may be written into the output: the Worker bundle or any static file. The
       # database connection string was once inlined into the Worker by the bundler (2026-11-17).
       - name: Check the build output for secrets
+        env:
+          BUILD_DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL }}
         run: node scripts/check-build-secrets.mjs web/dist
 
       # Discovery plumbing must be valid in every build (roadmap B.2): sitemap index + children,
