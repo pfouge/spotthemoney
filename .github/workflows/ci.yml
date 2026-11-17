@@ -3,6 +3,10 @@ name: ci
 on:
   pull_request:
 
+# The job token can read the repository and nothing else (security audit, 2026-11-17).
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

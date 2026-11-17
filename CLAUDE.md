@@ -2510,3 +2510,51 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
   labels) and methodology `#congress-screener` updated.
 - Not done: saved screens; the insider screener (waits for market-wide stage 3b-2); a custom
   date range.
+
+### SESSION STATE 2026-11-17: security audit (interactive session)
+
+Scope: database privileges and row-level security, Supabase and WorkOS sign-in settings, Worker
+routes, secrets in git history and in the build, GitHub workflows, 7 days of Supabase API logs.
+
+- **How the site reaches the database (corrects older notes):** the browser never calls Supabase.
+  The Worker calls `/rest/v1/rpc/*` with the publishable key, plus the visitor's WorkOS token for
+  account calls. The publishable key and project URL are public, and anyone can obtain their own
+  WorkOS token, so grants and row-level security are still the whole defence.
+- **Found and fixed, migration `0022_api_privileges.sql` (applied to production the same day,
+  dry-run first in a rolled-back transaction):** anon and authenticated held TRUNCATE, REFERENCES,
+  TRIGGER and MAINTAIN on every table in public (row-level security does not cover TRUNCATE; not
+  reachable through PostgREST, which has no such verb); the cause was the migrating role's default
+  privileges, now removed, together with the default that made every new function executable by
+  PUBLIC. **Consequence for every later migration: a new table or function is closed to the API
+  roles until the migration grants by name** (`grant select on … to authenticated`,
+  `grant execute on function … to anon`). `app_user_id()` answers only for a WorkOS user id
+  (`user_…`). All API-callable functions have a fixed search_path; `od_vis` and
+  `od_person_visible` are left without one on purpose (inlined per row, not executable by API roles).
+- **Found and fixed in code:** `web/src/lib/db.ts` and `flagship.ts` read
+  `import.meta.env.DATABASE_URL`, which the bundler replaces with the value, so the database
+  connection string was inside the deployed Worker script (not in any public file: checked).
+  **Never read a secret through `import.meta.env`; use `process.env` at build time and
+  `cloudflare:workers` env in the Worker.** `scripts/check-build-secrets.mjs` now fails `deploy`
+  and `qa` if a secret value or credential shape is in `web/dist`.
+- **Workflows:** `ci`, `deploy`, `ingest`, `ingest-congress-ptr`, `measure`, `x-daily` now set
+  `permissions: contents: read`. No workflow uses `pull_request_target`; `qa` skips pull requests
+  from forks, and `ci` uses no secrets.
+- **Checked and fine:** every table in public has row-level security on; tables with no policy
+  have no API grants; isolation between two signed-in users and anon tested on every policy and
+  function (reads, writes, moving rows across accounts, the definer functions); storage bucket
+  `raw-filings` is private with no policies; no GraphQL, no realtime publication; WorkOS JWT
+  template is `{"role":"authenticated"}` and Supabase trusts only the production WorkOS client;
+  session cookie is HttpOnly, Secure, SameSite=Lax; POSTs check Origin; account responses are
+  `private, no-store`; git history (96 commits) holds only placeholders and test vectors; 7 days
+  of API logs show the Worker's `od_*` calls and the ingest jobs' storage uploads, nothing else.
+- **Left for Peter:** rotate the database password (it was in the Worker script, and one audit
+  tool call printed it inside the audit session), then update the `DATABASE_URL` GitHub secret;
+  turn off "Allow new users to sign up" in Supabase Auth (email sign-up is on; no user ever
+  signed up, and 0022 makes such a token useless for account data).
+- **Left open, by choice:** no rate limit on `/api/*`, `/auth/*` or the on-demand pages (one free
+  Cloudflare rate-limiting rule would cover it); no Content-Security-Policy header (ads, analytics
+  and the TradingView frames make it a project of its own); `od_*` accept `p_any` and `p_floor`
+  from any caller, which only returns public filings the static site shows anyway; `citext` stays
+  in public (moving it risks operator lookups under the pinned search_path); the `qa` and `deploy`
+  builds connect as the database owner (a read-only build role would be better); supabase_admin's
+  default privileges in public cannot be changed by this role.

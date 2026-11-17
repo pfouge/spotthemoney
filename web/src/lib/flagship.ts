@@ -37,7 +37,9 @@ function loadRootEnv() {
 function db() {
   if (_sql !== undefined) return _sql;
   loadRootEnv();
-  const url = process.env.DATABASE_URL ?? import.meta.env.DATABASE_URL;
+  // process.env only. `import.meta.env.DATABASE_URL` is replaced by the VALUE at build time, which
+  // wrote the connection string (with its password) into the Worker bundle (found 2026-11-17).
+  const url = process.env.DATABASE_URL;
   _sql = url ? postgres(url, { max: 1 }) : null;
   return _sql;
 }
