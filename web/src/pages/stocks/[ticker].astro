@@ -12,6 +12,8 @@ import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
+import ScreenerLink from "../../components/ScreenerLink.astro";
+import { screenerCountsFor } from "../../lib/screener";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, securityPath, companyPath, personPath, withinDays, num, plural, money, sum, senateShown } from "../../lib/flagship";
 import { datasetLd, SOURCES, fitDescription } from "../../lib/seo";
@@ -200,6 +202,7 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <AdSlot label="Advertisement" show={txns.length > 0} />
 
   <h2 id="congress-trades">Congressional trades</h2>
+  <ScreenerLink ticker={s.ticker} n={screenerCountsFor(model, personPath).ticker.get(s.ticker.toUpperCase()) ?? 0} of={`in ${s.ticker} by members of Congress`} />
   <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
 
   {related.length > 0 && (

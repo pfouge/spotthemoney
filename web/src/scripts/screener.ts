@@ -4,7 +4,7 @@
 // goes in as text nodes (scripts/dom.ts): names come from filings. Nothing is sent anywhere.
 import { h } from "./dom";
 import {
-  unpack, screen, summaryLine, parseHash, toHash, isViewHash, isDefaultFilter, firstDir, isLateRow, rangeLabel, assetLabel, shortDate, seatTag, tickerPath,
+  unpack, screen, summaryLine, memberSlug, viewCsv, viewCsvName, parseHash, toHash, isViewHash, isDefaultFilter, firstDir, isLateRow, rangeLabel, assetLabel, shortDate, seatTag, tickerPath,
   NO_FILTER, DEFAULT_VIEW, DEFAULT_PER, SIDE_LABEL, OWNER_LABEL, type ScreenData, type ScreenRow, type ScreenView, type ScreenFilter, type SortKey,
 } from "../lib/screener";
 
@@ -16,7 +16,8 @@ async function start(root: HTMLElement): Promise<void> {
   const sel = (name: string) => ctl<HTMLSelectElement>(name);
   const q = ctl<HTMLInputElement>("q"), tbody = ctl<HTMLTableSectionElement>("rows"), count = ctl<HTMLElement>("count"), empty = ctl<HTMLElement>("empty"),
     reset = ctl<HTMLButtonElement>("reset"), prev = ctl<HTMLButtonElement>("prev"), next = ctl<HTMLButtonElement>("next"),
-    pageinfo = ctl<HTMLElement>("pageinfo"), pager = ctl<HTMLElement>("pager"), per = sel("per");
+    pageinfo = ctl<HTMLElement>("pageinfo"), pager = ctl<HTMLElement>("pager"), per = sel("per"),
+    pins = ctl<HTMLElement>("pins"), download = ctl<HTMLButtonElement>("download");
   const heads = Array.from(root.querySelectorAll<HTMLTableCellElement>("th[data-sort]"));
   if (!tbody) return;
 
@@ -40,7 +41,11 @@ async function start(root: HTMLElement): Promise<void> {
 
   const has = (s: HTMLSelectElement | null, v: string) => !!s && Array.from(s.options).some((o) => o.value === v);
   const pick = (s: HTMLSelectElement | null, v: string, fallback = "") => { if (s) s.value = has(s, v) ? v : fallback; };
+  // One member or one ticker alone: set by a link from another page, kept until removed.
+  const memberNames = new Map(data.members.map((m) => [memberSlug(m), m.n] as [string, string]).filter(([s]) => s));
+  const tickers = new Set(all.map((r) => r.ticker.toUpperCase()).filter(Boolean));
   const readFilter = (): ScreenFilter => ({
+    member: view.f.member, ticker: view.f.ticker,
     q: q?.value ?? "", chamber: (sel("chamber")?.value ?? "") as ScreenFilter["chamber"], party: (sel("party")?.value ?? "") as ScreenFilter["party"],
     state: sel("state")?.value ?? "", committee: sel("committee")?.value ?? "", side: (sel("side")?.value ?? "") as ScreenFilter["side"],
     min: Number(sel("min")?.value ?? 0), owner: (sel("owner")?.value ?? "") as ScreenFilter["owner"], asset: (sel("asset")?.value ?? "") as ScreenFilter["asset"],
@@ -78,6 +83,20 @@ async function start(root: HTMLElement): Promise<void> {
     if (empty) empty.hidden = res.total > 0;
     if (pager) pager.hidden = res.total === 0;
     if (reset) reset.hidden = isDefaultFilter(view.f);
+    if (pins) {
+      const pin = (label: string, clear: () => void): HTMLElement => {
+        const b = h("button", { type: "button", "aria-label": `Remove: ${label}` }, "Remove");
+        b.addEventListener("click", () => { clear(); view = { ...view, page: 1 }; render(true); });
+        return h("span", { class: "pin" }, label, b);
+      };
+      const kids: HTMLElement[] = [];
+      if (view.f.member) kids.push(pin(`Only trades by ${memberNames.get(view.f.member) ?? view.f.member}`, () => { view = { ...view, f: { ...view.f, member: "" } }; }));
+      if (view.f.ticker) kids.push(pin(`Only ${view.f.ticker}`, () => { view = { ...view, f: { ...view.f, ticker: "" } }; }));
+      pins.replaceChildren(...kids);
+      pins.hidden = kids.length === 0;
+    }
+    if (download) download.disabled = res.total === 0;
+    root.dataset.member = view.f.member; root.dataset.ticker = view.f.ticker;
     if (prev) prev.disabled = res.page <= 1;
     if (next) next.disabled = res.page >= res.pages;
     if (pageinfo) pageinfo.textContent = `Page ${res.page.toLocaleString("en-US")} of ${res.pages.toLocaleString("en-US")}`;
@@ -111,13 +130,21 @@ async function start(root: HTMLElement): Promise<void> {
   root.querySelectorAll<HTMLButtonElement>('[data-scr="reset"], [data-scr="reset2"]').forEach((b) => b.addEventListener("click", () => {
     view = { ...view, f: { ...NO_FILTER }, page: 1 }; writeControls(view); render(true);
   }));
+  download?.addEventListener("click", () => {
+    const url = URL.createObjectURL(new Blob([viewCsv(all, view, data.built)], { type: "text/csv;charset=utf-8" }));
+    const a = h("a", { href: url, download: viewCsvName(view, data.built) });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  });
+  // A member or ticker the table does not hold falls back to "any", like a state with no trades.
+  const known = (v: ScreenView): ScreenView => ({ ...v, f: { ...v.f, member: memberNames.has(v.f.member) ? v.f.member : "", ticker: tickers.has(v.f.ticker) ? v.f.ticker : "" } });
   // A hash without one of the screener's keys is a jump link (the skip link, a heading): leave the view alone.
   window.addEventListener("hashchange", () => {
     if (location.hash.length > 1 && !isViewHash(location.hash)) return;
-    view = parseHash(location.hash); writeControls(view); view = { ...view, f: readFilter() }; render(false);
+    view = known(parseHash(location.hash)); writeControls(view); view = { ...view, f: readFilter() }; render(false);
   });
 
-  if (isViewHash(location.hash)) view = parseHash(location.hash);
+  if (isViewHash(location.hash)) view = known(parseHash(location.hash));
   writeControls(view);
   // A value the controls do not offer (a state with no trades, say) falls back to "any": read it back.
   view = { ...view, f: { ...readFilter(), q: view.f.q } };

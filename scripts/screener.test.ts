@@ -1,9 +1,10 @@
 // Congress trade screener rules (web/src/lib/screener.ts): packing, filters, sorting, paging, the address.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { parseCsv } from "../web/src/lib/csv";
 import {
   screenerData, screenerTxns, unpack, matches, screen, sortRows, summaryLine, parseHash, toHash, isViewHash, isDefaultFilter, isLateRow,
-  rangeLabel, minLabel, assetLabel, shortDate, seatTag, firstDir, NO_FILTER, DEFAULT_VIEW, DEFAULT_PER, type ScreenFilter, type ScreenView,
+  rangeLabel, minLabel, assetLabel, shortDate, seatTag, firstDir, memberSlug, screenerHref, screenerCounts, viewCsv, viewCsvName, NO_FILTER, DEFAULT_VIEW, DEFAULT_PER, type ScreenFilter, type ScreenView,
 } from "../web/src/lib/screener";
 
 const TODAY = "2026-11-17";
@@ -148,4 +149,55 @@ test("the address: round trip, defaults leave it empty, junk is ignored, a jump 
   assert.equal(isViewHash("#about"), false); assert.equal(isViewHash("#heatmap=1"), false); assert.equal(isViewHash("#side=buy"), true); assert.equal(isViewHash(""), false);
   assert.equal(isDefaultFilter(f({})), true); assert.equal(isDefaultFilter(f({ min: 15001 })), false);
   assert.equal(DEFAULT_PER, 50);
+});
+
+test("one member or one ticker alone: exact, not a search", () => {
+  assert.equal(memberSlug(all.find((r) => r.id === 1)!.m), "ann-b-zeta");
+  assert.equal(memberSlug({ p: null }), "");
+  assert.deepEqual(ids(f({ member: "ann-b-zeta" })), [1, 2]);
+  assert.deepEqual(ids(f({ member: "ann" })), []);            // a slug, not a search word
+  assert.deepEqual(ids(f({ ticker: "NVDA" })), [1, 3]);
+  assert.deepEqual(ids(f({ ticker: "A" })), []);              // "A" is not AAPL
+  assert.deepEqual(ids(f({ ticker: "NVDA", member: "carl-alpha-jr-" })), [3]);
+  assert.deepEqual(ids(f({ ticker: "AAPL", side: "sell" })), [2]);
+  assert.equal(isDefaultFilter(f({ ticker: "NVDA" })), false); assert.equal(isDefaultFilter(f({ member: "x" })), false);
+  const v = view({}, { member: "ann-b-zeta", ticker: "BRK.B" });
+  assert.equal(toHash(v), "#member=ann-b-zeta&ticker=BRK.B");
+  assert.deepEqual(parseHash(toHash(v)), v);
+  assert.equal(parseHash("#ticker=nvda").f.ticker, "NVDA");
+  assert.deepEqual(parseHash("#member=Not%20A%20Slug!&ticker=%3Cscript%3E").f, NO_FILTER);
+  assert.equal(isViewHash("#member=ann-b-zeta"), true); assert.equal(isViewHash("#ticker=NVDA"), true);
+});
+
+test("links into the screener carry the number of rows the screener opens on", () => {
+  assert.equal(screenerHref({ committee: "HSAP" }), "/congress-trades/#committee=HSAP");
+  assert.equal(screenerHref({ member: "ann-b-zeta" }), "/congress-trades/#member=ann-b-zeta");
+  assert.equal(screenerHref({ ticker: "NVDA" }), "/congress-trades/#ticker=NVDA");
+  const c = screenerCounts(data);
+  assert.equal(c.total, 5);
+  for (const [code, n] of c.committee) assert.equal(n, ids(f({ committee: code })).length);
+  for (const [slug, n] of c.member) assert.equal(n, ids(f({ member: slug })).length);
+  for (const [t, n] of c.ticker) assert.equal(n, ids(f({ ticker: t })).length);
+  assert.deepEqual([...c.committee].sort(), [["HSAG", 2], ["HSAP", 2], ["SSAF", 2]]);
+  assert.deepEqual([...c.ticker].sort(), [["AAPL", 2], ["NVDA", 2]]);
+  assert.equal([...c.member.values()].reduce((a, b) => a + b, 0), 5);
+});
+
+test("the rows of a view as CSV: every matching row, in the view's order, all pages", () => {
+  const v: ScreenView = { ...view({ sort: "amount", dir: "desc", per: 25, page: 1 } as any, { state: "TX" }) };
+  const rows = parseCsv(viewCsv(all, v, data.built));
+  assert.deepEqual(rows[0], ["trade_id", "filer", "chamber", "party", "state", "seat", "ticker", "asset_type", "side", "owner", "trade_date", "disclosed_date", "lag_days", "late", "amount_low", "amount_high", "filing_url"]);
+  assert.deepEqual(rows.slice(1).map((r) => Number(r[0])), sortRows(all.filter((r) => matches(r, v.f, data.built)), "amount", "desc").map((r) => r.id));
+  assert.deepEqual(rows.slice(1).map((r) => Number(r[0])), [4, 3, 1, 2]);
+  assert.deepEqual(rows.find((r) => r[0] === "4"), ["4", "Carl Alpha Jr.", "senate", "D", "TX", "TX", "", "bond", "sell", "joint", "2026-02-20", "2026-03-01", "9", "false", "5000001", "", "https://example.test/102.pdf"]);
+  assert.equal(rows.find((r) => r[0] === "2")![13], "true");
+  // A page number does not cut the file, and a view with no match is a header alone.
+  assert.equal(parseCsv(viewCsv(all, { ...v, per: 25, page: 9 }, data.built)).length, 5);
+  assert.equal(parseCsv(viewCsv(all, view({}, { q: "zzzz" }), data.built)).length, 1);
+  // A name from a filing that starts like a formula cannot run as one.
+  const evil = [{ ...all[0]!, m: { ...all[0]!.m, n: "=HYPERLINK(1)" } }];
+  assert.ok(viewCsv(evil, DEFAULT_VIEW, data.built).includes("'=HYPERLINK(1)"));
+  assert.equal(viewCsvName(DEFAULT_VIEW, "2026-11-17"), "congress-trades-all-2026-11-17.csv");
+  assert.equal(viewCsvName(view({}, { chamber: "senate", side: "buy", min: 100001 }), "2026-11-17"), "congress-trades-senate-buy-min100001-filtered-2026-11-17.csv");
+  assert.equal(viewCsvName(view({}, { q: "pelosi" }), "2026-11-17"), "congress-trades-filtered-2026-11-17.csv");
 });

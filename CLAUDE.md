@@ -2399,3 +2399,39 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
   (`verify-links` treats `#committee=HSBA` as a missing anchor; teach it the screener's keys
   first), a maximum-amount filter, a filter by trade date, asset-type detail beyond ticker or
   no ticker.
+
+### Screener: links in from other pages, one member or ticker alone, download the rows (2026-11-17, scheduled parity run) — queue item 6, stage 1 follow-ups
+
+- **Links in.** `web/src/components/ScreenerLink.astro` prints "Open all N rows ... in the trade
+  screener" (`p[data-screener-link][data-n]`) above the trade table on member pages
+  (`/congress-trades/#member=<slug>`), committee pages (`#committee=<code>`) and the
+  congressional section of stock pages (`#ticker=<SYMBOL>`). N comes from `screenerCountsFor`
+  in `web/src/lib/screener.ts` (memoised per build; counted with the screener's own rows, so it
+  is the number the screener opens on, and can be lower than a count elsewhere on the page when
+  rows are under review). No link when N is 0. The directory and the committee list link to the
+  screener in their text.
+- **Two exact filters with no control.** `ScreenFilter.member` (the slug of the member's page)
+  and `ScreenFilter.ticker` (upper case), hash keys `member` and `ticker`. Exact on purpose: a
+  search for "A" matches every name with an a in it, and two members can share a surname. On the
+  screener they show as a line above the count (`[data-scr="pins"]`: "Only trades by X",
+  "Only NVDA", each with a Remove button); the other filters apply on top, Reset clears them, a
+  value the data file does not hold falls back to every trade.
+- **Download these rows.** `[data-scr="download"]`: `viewCsv` writes every row the view matches,
+  in the view's order and across all pages, with `lib/csv.ts` (BOM, CRLF, formula guard); the
+  file is a Blob made in the browser, named by `viewCsvName`. Column names follow
+  `congress-trades.csv` where the meaning is the same. Nothing is sent anywhere, so the privacy
+  page is unchanged. Hidden without JavaScript; off when nothing matches.
+- **Verifiers.** `verify-links` no longer reads a screener view as an anchor and has a SCREEN
+  check: a link's keys are the screener's (its own list), its committee, member or ticker has
+  rows in `/data/congress-screener.json`, the number beside the link equals a recount from that
+  file, and a member or stock page whose member or ticker has rows carries the link.
+  `verify-screener` opens `#member=` and `#ticker=` views (the shortest ticker included) and
+  compares them with the CSV oracle by `page_url` and ticker, tests Remove, Reset and unknown
+  values, and downloads the file for an unfiltered and a filtered, sorted view and compares it
+  with the screen row for row and with `congress-trades.csv` cell for cell.
+- Guide `how-to-read-a-congressional-trade-report`: a paragraph in `#screener`, one FAQ
+  sentence, one label, `ScreenerLink.astro` covered. Methodology `#congress-screener` extended.
+- Guide `what-is-form-4`: one sentence in the stock page's description.
+- Build log: `[web] screener links: N rows; C committees (top five with counts); M members
+  (top five); T tickers (top five)`, for comparison with SQL.
+- Not done: a maximum amount, a trade-date window, saved screens, the insider screener.

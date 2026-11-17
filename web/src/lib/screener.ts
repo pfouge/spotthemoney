@@ -9,6 +9,7 @@
 // links a trade to a committee.
 import type { Flagship, Person, Txn } from "./flagship";
 import { CONGRESS_DEADLINE_DAYS, money } from "./flagship-core";
+import { toCsv, type Column } from "./csv";
 import { partyKey, seatCode, topCommittee, daysBetween, sortName, type PartyKey } from "./directory";
 
 // ── data ─────────────────────────────────────────────────────────────────────────────────
@@ -107,15 +108,25 @@ export interface ScreenFilter {
   w: 0 | 30 | 90 | 365;
   /** "late": reported after the deadline; "ontime": within it. */
   late: "" | "late" | "ontime";
+  /** Exactly one member, by the slug of the member's page ("kevin-hern"); "" = any. Set by a link
+   *  from a member page, shown on the screener as a removable line, not a control. */
+  member: string;
+  /** Exactly one ticker symbol, upper case ("NVDA"); "" = any. Set by a link from a stock page. */
+  ticker: string;
 }
-export const NO_FILTER: ScreenFilter = { q: "", chamber: "", party: "", state: "", committee: "", side: "", min: 0, owner: "", asset: "", w: 0, late: "" };
+export const NO_FILTER: ScreenFilter = { q: "", chamber: "", party: "", state: "", committee: "", side: "", min: 0, owner: "", asset: "", w: 0, late: "", member: "", ticker: "" };
 export interface ScreenView { f: ScreenFilter; sort: SortKey; dir: "asc" | "desc"; page: number; per: number }
 export const DEFAULT_VIEW: ScreenView = { f: NO_FILTER, sort: "disclosed", dir: "desc", page: 1, per: DEFAULT_PER };
 
 /** Reported after the deadline this site applies to congressional reports. */
 export function isLateRow(r: Pick<ScreenRow, "lag">): boolean { return r.lag != null && r.lag > CONGRESS_DEADLINE_DAYS; }
 
+/** The slug of a member's page ("/congress/kevin-hern/" → "kevin-hern"); "" when the member has no page. */
+export function memberSlug(m: Pick<ScreenMember, "p">): string { return m.p ? m.p.replace(/\/+$/, "").split("/").pop() ?? "" : ""; }
+
 export function matches(r: ScreenRow, f: ScreenFilter, built: string): boolean {
+  if (f.member && memberSlug(r.m) !== f.member) return false;
+  if (f.ticker && r.ticker.toUpperCase() !== f.ticker) return false;
   if (f.chamber && r.m.ch !== f.chamber) return false;
   if (f.party && r.m.pa !== f.party) return false;
   if (f.state && r.m.st !== f.state) return false;
@@ -212,9 +223,9 @@ export function tickerPath(ticker: string): string { return `/stocks/${ticker.to
 
 // ── the address ──────────────────────────────────────────────────────────────────────────
 export function isDefaultFilter(f: ScreenFilter): boolean {
-  return !f.q.trim() && !f.chamber && !f.party && !f.state && !f.committee && !f.side && !f.min && !f.owner && !f.asset && !f.w && !f.late;
+  return !f.q.trim() && !f.chamber && !f.party && !f.state && !f.committee && !f.side && !f.min && !f.owner && !f.asset && !f.w && !f.late && !f.member && !f.ticker;
 }
-const KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "owner", "asset", "w", "late", "sort", "dir", "page", "per"];
+const KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "owner", "asset", "w", "late", "member", "ticker", "sort", "dir", "page", "per"];
 /** True when a hash is a saved view (carries one of the screener's keys), not a jump link. */
 export function isViewHash(hash: string): boolean {
   if (!hash.includes("=")) return false;
@@ -235,6 +246,8 @@ export function parseHash(hash: string): ScreenView {
   const as = p.get("asset"); if (as === "ticker" || as === "other") f.asset = as;
   const w = Number(p.get("w")); if ((WINDOWS as readonly number[]).includes(w)) f.w = w as ScreenFilter["w"];
   const la = p.get("late"); if (la === "late" || la === "ontime") f.late = la;
+  const me = (p.get("member") ?? "").toLowerCase(); if (/^[a-z0-9]+(-[a-z0-9]+)*$/.test(me) && me.length <= 80) f.member = me;
+  const ti = (p.get("ticker") ?? "").toUpperCase(); if (/^[A-Z0-9][A-Z0-9.\-]{0,9}$/.test(ti)) f.ticker = ti;
   f.q = (p.get("q") ?? "").slice(0, 60);
   const so = p.get("sort") ?? ""; const sort = (SORT_KEYS as readonly string[]).includes(so) ? (so as SortKey) : DEFAULT_VIEW.sort;
   const di = p.get("dir"); const dir = di === "asc" || di === "desc" ? di : firstDir(sort);
@@ -255,10 +268,87 @@ export function toHash(v: ScreenView): string {
   if (f.asset) p.set("asset", f.asset);
   if (f.w) p.set("w", String(f.w));
   if (f.late) p.set("late", f.late);
+  if (f.member) p.set("member", f.member);
+  if (f.ticker) p.set("ticker", f.ticker);
   if (f.q.trim()) p.set("q", f.q.trim());
   if (v.sort !== DEFAULT_VIEW.sort || v.dir !== firstDir(v.sort)) { p.set("sort", v.sort); p.set("dir", v.dir); }
   if (v.page > 1) p.set("page", String(v.page));
   if (v.per !== DEFAULT_PER) p.set("per", String(v.per));
   const s = p.toString();
   return s ? `#${s}` : "";
+}
+
+// ── links into the screener from other pages ─────────────────────────────────────────────
+/** The address of the screener narrowed to one committee, one member or one ticker. */
+export function screenerHref(f: Partial<Pick<ScreenFilter, "committee" | "member" | "ticker">>): string {
+  return `/congress-trades/${toHash({ ...DEFAULT_VIEW, f: { ...NO_FILTER, ...f } })}`;
+}
+export interface ScreenerCounts {
+  /** Rows in the screener, in all. */
+  total: number;
+  /** Rows by members who sit on each full committee today, by committee code. */
+  committee: Map<string, number>;
+  /** Rows by each member, by the slug of the member's page. */
+  member: Map<string, number>;
+  /** Rows in each ticker symbol (upper case). */
+  ticker: Map<string, number>;
+}
+/** How many rows a link into the screener will show, counted with the screener's own `matches`
+ *  so the number beside a link is the number the screener opens on. */
+export function screenerCounts(d: ScreenData): ScreenerCounts {
+  const out: ScreenerCounts = { total: 0, committee: new Map(), member: new Map(), ticker: new Map() };
+  const add = (m: Map<string, number>, k: string) => { if (k) m.set(k, (m.get(k) ?? 0) + 1); };
+  for (const r of unpack(d)) {
+    out.total++;
+    for (const c of r.m.c) add(out.committee, c);
+    add(out.member, memberSlug(r.m));
+    add(out.ticker, r.ticker.toUpperCase());
+  }
+  return out;
+}
+const countCache = new WeakMap<object, ScreenerCounts>();
+/** `screenerCounts` for a build model, worked out once per build (hundreds of pages ask). */
+export function screenerCountsFor(m: Flagship, path: (p: Person) => string | null): ScreenerCounts {
+  let c = countCache.get(m);
+  if (!c) {
+    c = screenerCounts(screenerData(m, new Date().toISOString().slice(0, 10), path));
+    countCache.set(m, c);
+    // Build log: the figures to compare with a direct count on the database.
+    const top = (x: Map<string, number>) => [...x].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5).map(([k, n]) => `${k} ${n}`).join(", ");
+    console.log(`[web] screener links: ${c.total} rows; ${c.committee.size} committees (${top(c.committee)}); ${c.member.size} members (${top(c.member)}); ${c.ticker.size} tickers (${top(c.ticker)})`);
+  }
+  return c;
+}
+
+// ── the rows on screen as a CSV file ─────────────────────────────────────────────────────
+// Column names follow /downloads/congress-trades.csv where the meaning is the same.
+const CSV_COLUMNS: Column<ScreenRow>[] = [
+  { key: "trade_id", about: "Row id on this site", get: (r) => r.id },
+  { key: "filer", about: "Member who filed the report", get: (r) => r.m.n },
+  { key: "chamber", about: "house or senate", get: (r) => r.m.ch },
+  { key: "party", about: "D, R or I", get: (r) => r.m.pa },
+  { key: "state", about: "State code", get: (r) => r.m.st },
+  { key: "seat", about: "State, and district for a representative", get: (r) => r.m.se },
+  { key: "ticker", about: "Ticker symbol, blank when the report gives none", get: (r) => r.ticker },
+  { key: "asset_type", about: "Asset type as read from the report", get: (r) => r.asset },
+  { key: "side", about: "buy, sell or exchange", get: (r) => r.side },
+  { key: "owner", about: "Whose asset", get: (r) => r.owner },
+  { key: "trade_date", about: "Trade date", get: (r) => r.txn },
+  { key: "disclosed_date", about: "Day the report was filed", get: (r) => r.disc },
+  { key: "lag_days", about: "Days from trade to report", get: (r) => r.lag },
+  { key: "late", about: "Reported after the deadline", get: (r) => (r.lag == null ? null : isLateRow(r)) },
+  { key: "amount_low", about: "Low end of the reported range", get: (r) => r.low },
+  { key: "amount_high", about: "High end of the reported range", get: (r) => r.high },
+  { key: "filing_url", about: "The original report", get: (r) => r.url },
+];
+/** Every row a view matches, in the view's order (all pages), as CSV text. Made in the browser. */
+export function viewCsv(all: ScreenRow[], v: ScreenView, built: string): string {
+  return toCsv(CSV_COLUMNS, sortRows(all.filter((r) => matches(r, v.f, built)), v.sort, v.dir));
+}
+/** A file name that says what was filtered: "congress-trades-senate-buy-2026-11-17.csv". */
+export function viewCsvName(v: ScreenView, built: string): string {
+  const f = v.f;
+  const bits = [f.member, f.ticker, f.committee, f.chamber, f.party, f.state, f.side, f.owner, f.min ? `min${f.min}` : "", f.asset, f.w ? `${f.w}d` : "", f.late]
+    .filter(Boolean).map((b) => String(b).toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+  return `congress-trades-${bits.length || f.q.trim() ? [...bits, "filtered"].join("-") : "all"}-${built}.csv`;
 }

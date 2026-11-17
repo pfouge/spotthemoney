@@ -83,14 +83,15 @@
       "web/src/components/TxnTable.astro": "f85f79449b5b186b",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "a9de1b3198bde044",
+      "web/src/pages/congress/[slug].astro": "3d25690dbaafaaf3",
       "web/src/lib/directory.ts": "0466a663969706ab",
-      "web/src/pages/congress-members.astro": "7371c36d1f365a40",
+      "web/src/pages/congress-members.astro": "6a6bde89ed17d42d",
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
-      "web/src/pages/congress-committees/index.astro": "f9f29c15f18323e1",
-      "web/src/pages/congress-committees/[slug].astro": "a07927923968a333",
-      "web/src/lib/screener.ts": "f2c6fa30cdd12fd5",
-      "web/src/pages/congress-trades.astro": "8c9b43aa4f4b6a58"
+      "web/src/pages/congress-committees/index.astro": "5b2137a71662a90d",
+      "web/src/pages/congress-committees/[slug].astro": "9775526e21f68d84",
+      "web/src/lib/screener.ts": "26dbba59fd1cd318",
+      "web/src/pages/congress-trades.astro": "e99b2d37071b3622",
+      "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5"
     }
   },
   "how-to-use-the-trade-map": {
@@ -192,7 +193,7 @@
       "web/src/lib/server/od.ts": "7d2ced0be0a68bf0",
       "web/src/components/OdPageView.astro": "a75d34eef3e63e18",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "3c34f55c81d8669c",
+      "web/src/pages/stocks/[ticker].astro": "ca3766c6db0944df",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
       "web/src/pages/companies/[slug].astro": "77b788e3d5873df0"
     }

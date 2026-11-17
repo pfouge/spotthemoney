@@ -1,0 +1,17 @@
+---
+// A link into the Congress trade screener (/congress-trades/) narrowed to one committee, one
+// member or one ticker, with the number of rows the screener opens on (lib/screener.ts
+// `screenerCounts`, counted with the screener's own filter). Renders nothing when there are no
+// rows, so a page never links to an empty view. Rows under review are not in the screener, so
+// the number can be lower than a count elsewhere on the page.
+import { num } from "../lib/flagship";
+import { screenerHref } from "../lib/screener";
+interface Props { committee?: string; member?: string; ticker?: string; n: number; of: string }
+const { committee, member, ticker, n, of } = Astro.props;
+const href = screenerHref({ ...(committee ? { committee } : {}), ...(member ? { member } : {}), ...(ticker ? { ticker: ticker.toUpperCase() } : {}) });
+---
+{n > 0 && (
+  <p class="section-note" data-screener-link data-n={n}>
+    <a href={href}>Open {n === 1 ? "the 1 row" : `all ${num(n)} rows`} {of} in the trade screener</a> to filter {n === 1 ? "it" : "them"} by side, amount, owner, date and reporting time, sort any column and download the result.
+  </p>
+)}

@@ -66,6 +66,7 @@ const rows = (tradesCsv ?? []).filter((r) => r.under_review !== "true" && r.disc
   committees: memberCommittees.get(r.filer) ?? new Set(), ticker: r.ticker, side: r.side, owner: r.owner,
   low: r.amount_low === "" ? null : Number(r.amount_low), high: r.amount_high === "" ? null : Number(r.amount_high),
   lag: r.lag_days === "" ? null : Number(r.lag_days), late: r.late, disc: r.disclosed_date, txn: r.trade_date,
+  slug: (r.page_url || "").replace(/\/+$/, "").split("/").pop() ?? "",
 }));
 const oracle = {
   chamber: (v) => (r) => !v || r.chamber === v,
@@ -236,6 +237,68 @@ await page.fill('[data-scr="q"]', "zzzz-no-such-member");
 ok((await ds()).shown === 0 && await page.locator('[data-scr="empty"]').isVisible() && !(await page.locator('[data-scr="pager"]').isVisible()), "a search with no match says so and hides the pager");
 await page.click('[data-scr="reset2"]');
 ok((await ds()).shown === total, "the empty state's button clears the filters");
+
+// ── one member or one ticker alone (the links from member and stock pages) ───────────────
+const open = async (hash) => { await page.goto(base + PATH, { waitUntil: "load" }); await ready(); await page.evaluate((h) => { location.hash = h; }, hash); await page.waitForFunction((h) => location.hash === h || location.hash === "", hash); await ready(); };
+const bySlug = new Map(); for (const r of rows) if (r.slug) bySlug.set(r.slug, (bySlug.get(r.slug) ?? 0) + 1);
+const byTicker = new Map(); for (const r of rows) if (r.ticker) byTicker.set(r.ticker.toUpperCase(), (byTicker.get(r.ticker.toUpperCase()) ?? 0) + 1);
+const someSlugs = [...bySlug.keys()].sort((a, b) => bySlug.get(b) - bySlug.get(a)).filter((_, i, xs) => i === 0 || i === xs.length - 1 || i === Math.floor(xs.length / 2));
+for (const slug of someSlugs) {
+  await open(`#member=${slug}`);
+  const got = await ds();
+  ok(got.shown === bySlug.get(slug) && got.members === 1, `#member=${slug}: ${got.shown} trades by ${got.members} member on screen, ${bySlug.get(slug)} in the CSV`);
+  const name = rows.find((r) => r.slug === slug).member;
+  ok(((await page.locator('[data-scr="pins"]').textContent()) ?? "").includes(`Only trades by ${name}`), `#member=${slug}: the page says it shows only ${name}`);
+  ok((await pageRows()).every((r) => r.cells[0].startsWith(name)), `#member=${slug}: every row shown is by ${name}`);
+}
+// The shortest ticker is the one a search would get wrong ("A" is in every name).
+const someTickers = [...byTicker.keys()].sort((a, b) => a.length - b.length || byTicker.get(b) - byTicker.get(a)).filter((_, i, xs) => i === 0 || i === xs.length - 1);
+for (const t of someTickers) {
+  await open(`#ticker=${encodeURIComponent(t)}`);
+  const got = await ds();
+  ok(got.shown === byTicker.get(t), `#ticker=${t}: ${got.shown} trades on screen, ${byTicker.get(t)} in the CSV`);
+  ok(((await page.locator('[data-scr="pins"]').textContent()) ?? "").includes(`Only ${t}`), `#ticker=${t}: the page says it shows only ${t}`);
+  ok((await pageRows()).every((r) => r.cells[1] === t), `#ticker=${t}: every row shown is ${t}`);
+}
+if (someSlugs.length && someTickers.length) {
+  const slug = someSlugs[0];
+  await open(`#member=${slug}`);
+  await setCtl("side", sides[0]);
+  const exp = rows.filter((r) => r.slug === slug && r.side === sides[0]).length;
+  ok((await ds()).shown === exp, `one member and a side filter together: ${(await ds()).shown} on screen, ${exp} in the CSV`);
+  ok((await page.evaluate(() => location.hash)).includes(`member=${slug}`), "changing a filter keeps the member in the address");
+  await page.reload({ waitUntil: "load" }); await ready();
+  ok((await ds()).shown === exp, "reloading keeps the member and the filter");
+  await page.click('[data-scr="pins"] button');
+  ok((await ds()).shown === want({ side: sides[0] }).length && !(await page.evaluate(() => location.hash)).includes("member="), "Remove drops the member and keeps the other filter");
+  ok(!(await page.locator('[data-scr="pins"]').isVisible()), "the line is gone once nothing is pinned");
+  await open(`#member=${slug}`);
+  await page.click('[data-scr="reset"]');
+  ok((await ds()).shown === total && (await page.evaluate(() => location.hash)) === "", "Reset drops the member too");
+  await open("#member=no-such-member-zz&ticker=ZZZZZZ");
+  ok((await ds()).shown === total && !(await page.locator('[data-scr="pins"]').isVisible()), "a member or ticker the table does not hold shows every trade");
+}
+
+// ── download these rows ──────────────────────────────────────────────────────────────────
+{
+  const { readFile } = await import("node:fs/promises");
+  const grab = async () => { const [d] = await Promise.all([page.waitForEvent("download"), page.click('[data-scr="download"]')]); return { name: d.suggestedFilename(), rows: parseCsv(await readFile(await d.path(), "utf8")) }; };
+  await page.goto(base + PATH, { waitUntil: "load" }); await ready();
+  const every = await grab();
+  ok(every.rows.length === total && every.name === `congress-trades-all-${built}.csv`, `with no filter the download has every row (${every.rows.length} of ${total}) and is named ${every.name}`);
+  const c = { chamber: chambers[0], side: sides[0] };
+  for (const [k, v] of Object.entries(c)) await setCtl(k, v);
+  await setCtl("per", 25); await clickSort("amount");
+  const onScreen = await allIds();
+  await page.goto(base + PATH + (await page.evaluate(() => location.hash)), { waitUntil: "load" }); await ready();
+  const some = await grab();
+  ok(some.rows.map((r) => r.trade_id).join() === onScreen.join(), `the download of a filtered, sorted view has the same ${onScreen.length} rows in the same order as the screen, every page`);
+  ok(/filtered/.test(some.name) && some.name.endsWith(".csv"), `a filtered download is named as filtered (${some.name})`);
+  ok(some.rows.every((r) => { const o = byId.get(r.trade_id); return o && o.member === r.filer && (o.ticker || "") === r.ticker && o.side === r.side && o.disc === r.disclosed_date && String(o.low ?? "") === r.amount_low && String(o.high ?? "") === r.amount_high && (o.late || "") === r.late; }), "each downloaded row carries the same member, ticker, side, date, range and late flag as congress-trades.csv");
+  await page.fill('[data-scr="q"]', "zzzz-no-such-member");
+  ok(await page.locator('[data-scr="download"]').isDisabled(), "the download button is off when nothing matches");
+  await page.goto(base + PATH, { waitUntil: "load" }); await ready();
+}
 
 // ── a sample of the links, late flags, wording ───────────────────────────────────────────
 const sample = [...new Set((await pageRows()).flatMap((r) => r.hrefs))].slice(0, 16);
