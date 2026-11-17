@@ -1,0 +1,171 @@
+---
+// Congress trade screener: /congress-trades/ — every published row of the House and Senate
+// periodic transaction reports on record, with filters (member or ticker, chamber, party, state,
+// committee, side, amount, owner, asset, disclosure window, late) and sortable columns.
+// Rules are in lib/screener.ts (unit-tested). The page prints the newest rows itself; the browser
+// script (scripts/screener.ts) loads /data/congress-screener.json and takes over, so without
+// JavaScript the newest rows are still here and the controls are hidden.
+// Not under /congress/: every /congress/<x>/ address is a member profile.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, personPath, num, plural, senateShown, CONGRESS_DEADLINE_DAYS } from "../lib/flagship";
+import { datasetLd, SOURCES } from "../lib/seo";
+import { stateName } from "../lib/profile";
+import { flagHref } from "../lib/links";
+import { PARTY_LABEL, type PartyKey } from "../lib/directory";
+import {
+  screenerData, unpack, screen, summaryLine, isLateRow, rangeLabel, minLabel, assetLabel, shortDate, seatTag, tickerPath,
+  DEFAULT_VIEW, DEFAULT_PER, PER_PAGE, SIDES, SIDE_LABEL, SIDE_OPTION, OWNERS, OWNER_LABEL, MIN_STEPS, WINDOWS, WINDOW_LABEL, SORT_KEYS, firstDir,
+} from "../lib/screener";
+
+const model = await getFlagship();
+const today = new Date().toISOString().slice(0, 10);
+const data = screenerData(model, today, personPath);
+const all = unpack(data);
+const first = screen(all, DEFAULT_VIEW, data.built);
+const hasSenate = senateShown(model);
+
+const houseRows = all.filter((r) => r.m.ch === "house").length, senateRows = all.filter((r) => r.m.ch === "senate").length;
+const exchanges = all.filter((r) => r.side === "exchange").length;
+const late = all.filter(isLateRow).length, noTicker = all.filter((r) => !r.ticker).length;
+const newest = all.map((r) => r.disc).sort().at(-1) ?? null;
+const oldest = all.map((r) => r.disc).sort()[0] ?? null;
+const parties = (["D", "R", "I"] as PartyKey[]).filter((k) => data.members.some((m) => m.pa === k));
+const states = [...new Set(data.members.map((m) => m.st).filter(Boolean))]
+  .map((code) => ({ code, name: stateName(code) ?? code })).sort((a, b) => a.name.localeCompare(b.name));
+// Committees with at least one member in the table (full committees; a subcommittee seat counts for its parent).
+const names = new Map<string, { name: string; chamber: "house" | "senate" | "joint" }>();
+for (const seats of model.seats.values()) for (const s of seats) if (!s.parent && !names.has(s.code)) names.set(s.code, { name: s.name, chamber: s.chamber });
+const codes = new Set(data.members.flatMap((m) => m.c));
+const committeeGroups = (["house", "senate", "joint"] as const)
+  .map((ch) => ({ label: ch === "house" ? "House committees" : ch === "senate" ? "Senate committees" : "Joint committees", items: [...codes].filter((c) => names.get(c)?.chamber === ch).map((c) => ({ code: c, name: names.get(c)!.name })).sort((a, b) => a.name.localeCompare(b.name)) }))
+  .filter((g) => g.items.length > 0);
+const lastUpdated = newest ?? model.builtAt;
+
+// Build log: the figures to compare with a direct count on the database.
+console.log(`[web] congress screener: ${all.length} rows (${houseRows} House, ${senateRows} Senate) by ${data.members.length} members in ${data.filings.length} reports; ${first.buys} purchases, ${first.sells} sales, ${exchanges} exchanges; ${first.tickers} tickers, ${noTicker} rows with no ticker, ${late} late; disclosed ${oldest ?? "-"} to ${newest ?? "-"}`);
+
+const answer = all.length === 0
+  ? "No congressional trades are on record here yet. Rows are added as House and Senate periodic transaction reports are filed and read."
+  : `${plural(all.length, "transaction")} from the periodic transaction reports of ${plural(data.members.length, "member")} of Congress ${all.length === 1 ? "is" : "are"} in this table: ${num(first.buys)} ${first.buys === 1 ? "purchase" : "purchases"} and ${num(first.sells)} ${first.sells === 1 ? "sale" : "sales"}, disclosed between ${shortDate(oldest)} and ${shortDate(newest)}. ${num(late)} ${late === 1 ? "was" : "were"} reported more than ${CONGRESS_DEADLINE_DAYS} days after the trade.`;
+const description = "Screen every disclosed stock trade by members of Congress: filter by member, ticker, chamber, party, state, committee, side, amount and date.";
+const csv = (await getDownloads()).files.find((f) => f.name === "congress-trades.csv");
+const ld = datasetLd({ downloads: [csv?.path], name: "Congress trade screener: disclosed transactions with filters", path: "/congress-trades/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["congress stock trades", "STOCK Act", "periodic transaction report", "stock screener"], sources: hasSenate ? [SOURCES.house, SOURCES.senate] : [SOURCES.house], parentCatalogPath: "/" });
+const lateHref = flagHref("late", "house_ptr");
+const HEAD: Record<(typeof SORT_KEYS)[number], string> = { member: "Member", ticker: "Asset", trade: "Trade date", disclosed: "Disclosed", lag: "Lag", amount: "Amount" };
+const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HEAD[k] });
+---
+<BaseLayout title="Congress Trade Screener: Filter Every Disclosed Trade" description={description} section="Congress" noindex={all.length === 0}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: "Trade screener", path: "/congress-trades/" }]} />
+  <h1>Congress trade screener</h1>
+  <p class="lede">Every transaction members of Congress have disclosed, in one table. Narrow it by member, ticker, chamber, party, state, committee, side, amount, owner and date, and sort any column.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: House Clerk PTRs; Senate eFD PTRs; congress-legislators roster" : "Sources: House Clerk PTRs; congress-legislators roster"} />
+
+  {all.length === 0 ? <p class="empty-reason">No congressional trades on record yet.</p> : (
+    <div class="screener" data-screener data-src="/data/congress-screener.json" data-late-href={lateHref ?? undefined} data-total={all.length}>
+      <div class="controls scr-controls" role="group" aria-label="Filter trades">
+        <div class="ctl"><label class="lbl" for="scr-q">Member or ticker</label><input id="scr-q" class="hm-input" data-scr="q" type="search" placeholder="Member or ticker" autocomplete="off" maxlength="60" /></div>
+        <div class="ctl"><span class="lbl">Chamber</span>
+          <select data-scr="chamber" aria-label="Chamber"><option value="">Both chambers</option><option value="house">House</option>{senateRows > 0 && <option value="senate">Senate</option>}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Party</span>
+          <select data-scr="party" aria-label="Party"><option value="">Any party</option>{parties.map((k) => <option value={k}>{PARTY_LABEL[k]}s</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">State</span>
+          <select data-scr="state" aria-label="State"><option value="">All states</option>{states.map((s) => <option value={s.code}>{s.name}</option>)}</select>
+        </div>
+        {committeeGroups.length > 0 && (
+          <div class="ctl"><span class="lbl">Committee</span>
+            <select data-scr="committee" aria-label="Committee the member sits on"><option value="">Any committee</option>
+              {committeeGroups.map((g) => <optgroup label={g.label}>{g.items.map((c) => <option value={c.code}>{c.name}</option>)}</optgroup>)}
+            </select>
+          </div>
+        )}
+        <div class="ctl"><span class="lbl">Side</span>
+          <select data-scr="side" aria-label="Side"><option value="">Purchases and sales</option>{SIDES.filter((s) => all.some((r) => r.side === s)).map((s) => <option value={s}>{SIDE_OPTION[s]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Amount</span>
+          <select data-scr="min" aria-label="Amount, by the low end of the reported range"><option value="0">Any amount</option>{MIN_STEPS.map((s) => <option value={s}>{minLabel(s)}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Owner</span>
+          <select data-scr="owner" aria-label="Whose asset"><option value="">Any owner</option>{OWNERS.filter((o) => all.some((r) => r.owner === o)).map((o) => <option value={o}>{OWNER_LABEL[o]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Asset</span>
+          <select data-scr="asset" aria-label="Asset"><option value="">Any asset</option><option value="ticker">With a ticker</option><option value="other">No ticker (bonds, funds, other)</option></select>
+        </div>
+        <div class="ctl"><span class="lbl">Disclosed</span>
+          <select data-scr="w" aria-label="When disclosed"><option value="0">Any date</option>{WINDOWS.map((w) => <option value={w}>{WINDOW_LABEL[w]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Timing</span>
+          <select data-scr="late" aria-label="Reporting time"><option value="">Any reporting time</option><option value="late">Reported late</option><option value="ontime">Reported on time</option></select>
+        </div>
+      </div>
+      <p class="section-note scr-count"><span data-scr="count" aria-live="polite">{summaryLine(first, all.length)}</span> <button type="button" class="linklike" data-scr="reset" hidden>Reset filters</button></p>
+      <DownloadCsv file={csv} note="every congressional trade on record, not only the rows filtered here" />
+
+      <div class="tablewrap"><table class="data txns scr-table">
+        <thead><tr>
+          <th aria-sort="none" data-sort="member"><button type="button" class="sort" aria-label="Sort by member">Member<span class="arr" aria-hidden="true"></span></button></th>
+          <th aria-sort="none" data-sort="ticker"><button type="button" class="sort" aria-label="Sort by asset">Asset<span class="arr" aria-hidden="true"></span></button></th>
+          <th>Side</th>
+          <th>Owner</th>
+          {[sortTh("trade"), sortTh("disclosed"), sortTh("lag", "num"), sortTh("amount", "num")].map((h) => (
+            <th class={h.cls || undefined} aria-sort={h.k === DEFAULT_VIEW.sort ? "descending" : "none"} data-sort={h.k} data-first={firstDir(h.k)}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true">{h.k === DEFAULT_VIEW.sort ? "▼" : ""}</span></button></th>
+          ))}
+          <th>Source</th>
+        </tr></thead>
+        <tbody data-scr="rows">
+          {first.rows.map((r) => (
+            <tr data-id={r.id}>
+              <td>{r.m.p ? <a href={r.m.p}>{r.m.n}</a> : r.m.n}{seatTag(r.m) && <span class="soft small"> {seatTag(r.m)}</span>}{r.m.f === 1 && <span class="soft small"> · left office</span>}</td>
+              <td class="mono">{r.ticker ? <a href={tickerPath(r.ticker)}>{r.ticker}</a> : <span class="soft">{assetLabel(r.asset)}</span>}</td>
+              <td class={`side ${r.side}`}>{SIDE_LABEL[r.side] ?? "Other"}</td>
+              <td>{OWNER_LABEL[r.owner] ?? ""}</td>
+              <td class="mono">{shortDate(r.txn)}</td>
+              <td class="mono">{shortDate(r.disc)}</td>
+              <td class="num">{r.lag == null ? "" : `${r.lag}d`}{isLateRow(r) && <> {lateHref ? <a class="flag late" href={lateHref} title="What this flag means">late</a> : <span class="flag late">late</span>}</>}</td>
+              <td class="num strong">{rangeLabel(r.low, r.high)}</td>
+              <td>{r.url ? <a href={r.url} rel="noopener nofollow" target="_blank">{r.m.ch === "senate" ? "Senate PTR" : "House PTR"} ↗</a> : (r.m.ch === "senate" ? "Senate PTR" : "House PTR")}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p class="empty-reason" data-scr="empty" hidden>No trade matches these filters. <button type="button" class="linklike" data-scr="reset2">Clear the filters</button></p>
+      <div class="scr-pager" data-scr="pager">
+        <button type="button" class="chip" data-scr="prev" disabled>Previous</button>
+        <span data-scr="pageinfo" class="soft">Page 1 of {num(first.pages)}</span>
+        <button type="button" class="chip" data-scr="next" disabled={first.pages <= 1}>Next</button>
+        <label class="scr-per soft">Rows per page <select data-scr="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
+      </div>
+      <noscript><p class="section-note">These are the {num(first.rows.length)} most recently disclosed of {num(all.length)} transactions. The filters need JavaScript; the CSV file above has every row.</p></noscript>
+    </div>
+  )}
+
+  <h2 id="about">What this table shows</h2>
+  <p>One row for each transaction in a periodic transaction report on record here: the member who filed, the asset, whether it was a purchase, a sale or an exchange, whose asset it was, the trade date, the day the report was filed, the days between the two, the dollar range the report gives, and a link to the original report. Members report a range, not an exact figure, so no dollar total is shown. The reports are the authority for every row.</p>
+  <p>"Disclosed" windows count back from the day this page was built, by the date the report was filed, not the trade date, because members have {CONGRESS_DEADLINE_DAYS} days to file. "Reported late" means more than {CONGRESS_DEADLINE_DAYS} days passed between the trade and the report; a late report is a filing matter and says nothing about why a trade was made. The amount filter goes by the low end of the reported range: "{minLabel(MIN_STEPS[2])}" keeps rows whose range starts at {minLabel(MIN_STEPS[2]).replace(" or more", "")} or higher.</p>
+  <p>The committee filter keeps trades by members who sit on that committee, or one of its subcommittees, today. The roster has current seats and no history, so a member's rows include trades made before they joined, and a seat is shown for context only: nothing here ties a trade to a committee's work. Scanned paper filings are held until they have been read by a person, and rows still under review are not in this table. How the figures are built: <a href="/methodology/#congress-screener">methodology</a>. How to read a report: <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>. See also the <a href="/congress-members/">member directory</a> and the <a href="/congress-committees/">committee pages</a>.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  .scr-controls .hm-input { width: 190px; }
+  .scr-count { margin: 0 0 0.25rem; }
+  .scr-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
+  .scr-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
+  .scr-pager button.chip:disabled { opacity: 0.45; cursor: default; }
+  .scr-pager[hidden] { display: none; }
+  .scr-per { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .linklike { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+  .screener[data-loading] .scr-table { opacity: 0.6; }
+  :global(html:not(.js)) .scr-controls, :global(html:not(.js)) .scr-pager { display: none; }
+</style>
+<script>
+  import "../scripts/screener";
+</script>

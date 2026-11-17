@@ -2340,3 +2340,62 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
 - Not done: industry on the on-demand pages (needs the `od_*` functions, the interactive
   thread's files), an industry filter on the trade map or in a screener, ratios by industry,
   related companies by industry, the code in the CSV files or in JSON-LD.
+
+### Congress trade screener (2026-11-17, scheduled parity run) — queue item 6, stage 1 (congressional trades only)
+
+- **What.** New page `/congress-trades/` (`web/src/pages/congress-trades.astro`): every published
+  row of the House and Senate periodic transaction reports on record in one table (member with
+  party and seat, asset, side, owner, trade date, disclosed, lag with the late flag, amount range,
+  link to the report). A search box (member or ticker) and ten filters: chamber, party, state,
+  committee, side, amount, owner, asset (with a ticker or without), disclosure window (30, 90,
+  365 days) and reporting time (late or on time). Six sortable columns, pages of 25, 50 or 100
+  rows (opens on 50), a count line (trades, members, purchases, sales, tickers), Reset. The
+  filters, sort order, page and rows per page are in the URL hash
+  (`#chamber=senate&side=buy&min=100001&sort=amount&dir=desc`); a hash without one of the
+  screener's keys is a jump link. In the `pages` sitemap, the search index and `llms.txt`;
+  `/congress/` links to it (chip "Trade screener"). Two new files in the deploy.
+- **How it is built.** The page prints the first 50 rows itself (so they are there without
+  JavaScript, with the controls and pager hidden). `web/src/scripts/screener.ts` then loads
+  `/data/congress-screener.json` (`pages/data/congress-screener.json.ts`; packed: each member and
+  each report link written once, a row is a 12-item array) and filters, sorts and pages in the
+  browser. A static table of every row was rejected: about 7,500 rows would be several MB of HTML.
+- **Rules** (`web/src/lib/screener.ts`, pure; tests `scripts/screener.test.ts`; the page, the
+  browser script and the tests use the same `matches`, `screen`, `parseHash`, `toHash`):
+  rows are `model.txns` that are congressional, published, with a disclosure date and a filer
+  (`screenerTxns`), so rows under review are NOT in the screener (they are on member pages and
+  in the CSV, flagged). Date windows count back from the BUILD day (`data.built`), by disclosure
+  date. Late = the member pages' rule (`lagDays > CONGRESS_DEADLINE_DAYS`); a row with no lag is
+  neither late nor on time. The amount filter compares the LOW end of the reported range
+  (`MIN_STEPS`); sorting by amount is low end, then high end, an open-topped range above the
+  rest. Empty values sort last in both directions; ties fall back to newest disclosure, then id.
+  The committee filter uses today's seats (a subcommittee seat counts for its full committee)
+  and is context only. No dollar totals anywhere: reports give ranges.
+- **Do not give the table `data-sortable`**: `scripts/tablesort.ts` would sort only the rows of
+  the current page. The screener sorts the whole result itself (`th[data-sort]`).
+- **Build log** prints `[web] congress screener: N rows (H House, S Senate) by M members in R
+  reports; B purchases, S sales, X exchanges; T tickers, W rows with no ticker, L late; disclosed
+  D to D` for comparison with SQL.
+- **Verifier:** `node scripts/verify-screener.mjs <base-url>` (Playwright; the fourteenth). Its
+  oracle is the CSV downloads, written by other code: `congress-trades.csv` for the rows and
+  `congress-committee-assignments.csv` for the seats. Every option of every filter (trades and
+  members against the recount), combined filters paged through and compared id by id, paging,
+  rows per page, sorting, the address and its reload, Reset, a jump link, junk values, search,
+  the empty state, that the rows printed without JavaScript are the first page with JavaScript
+  cell for cell, a sample of row links, the late flag, wording, 390 px. `verify-a11y` includes
+  the page.
+- **Seed:** `scripts/seed-local.sql` gained 48 generated House rows (every side, owner and
+  amount step, late reports, an open-topped range, bonds and other assets with no ticker) and one
+  Senate report with three rows (Walter Abara Jr.), so the local site has Senate rows, exchanges
+  and more than one page. The seed's `exchange` type now maps to side `exchange` (was `other`).
+- Guide `how-to-read-a-congressional-trade-report`: new section `#screener`, one FAQ, two new
+  covered files, four labels; `ctx.screenerRows` is the live value for the page size.
+  Methodology `#congress-screener`.
+- Run notes: the cloud sandbox only advances while a tool call is running, so a background gate
+  needs repeated short polls; start it with `setsid nohup` (a foreground command that hits the
+  2-minute limit takes background children with it); Node's own `fetch` crashed once against
+  `python3 -m http.server` (undici assertion), so the verifier uses Playwright's request API.
+- Not done: Form 4 rows (the insider screener waits for market-wide stage 3b-2), saved screens,
+  a "download these rows" button, links into the screener from committee and member pages
+  (`verify-links` treats `#committee=HSBA` as a missing anchor; teach it the screener's keys
+  first), a maximum-amount filter, a filter by trade date, asset-type detail beyond ticker or
+  no ticker.

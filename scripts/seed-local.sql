@@ -186,6 +186,21 @@ insert into seed_ptr values
   ('20031003', 'samuel-okafor',    current_date - 15, current_date - 30, 'sale_partial', 'LMT', 15001, 50000, 'self', 'stock', 0.9, false),
   ('20031004', 'samuel-okafor',    current_date - 40, current_date - 44, 'purchase', 'SPY', 1001, 15000, 'self', 'etf', 0.9, false),
   ('20031005', 'elena-marsh',      current_date - 8,  null, null, null, null, null, null, null, 0.3, false); -- needs_ocr
+-- Generated rows for the Congress trade screener (/congress-trades/): enough rows to page through,
+-- with every side, owner and amount step, late reports, an open-topped range and assets with no ticker.
+insert into seed_ptr
+select '2004' || lpad((g / 4)::text, 4, '0'),
+       (array['jordan-whitfield','elena-marsh','samuel-okafor'])[1 + (g / 4) % 3],
+       current_date - (3 + (g / 4) * 9),
+       current_date - (3 + (g / 4) * 9) - (5 + (g * 7) % 60),
+       (array['purchase','sale','sale_partial','purchase','exchange'])[1 + g % 5],
+       (array['NVDA','AAPL','MSFT','PLTR','LMT', null])[1 + g % 6],
+       (array[1001,15001,50001,100001,250001,1000001,5000001])[1 + g % 7],
+       (array[15000,50000,100000,250000,500000,5000000,null])[1 + g % 7],
+       (array['self','spouse','joint','dependent'])[1 + g % 4],
+       case when g % 6 = 5 then (array['bond','other'])[1 + (g / 6) % 2] else 'stock' end,
+       0.9, false
+  from generate_series(0, 47) g;
 insert into filings (source, external_id, filer_person_id, filed_at, source_url, confidence, review, is_published, payload)
 select distinct on (s.doc) 'house_ptr', s.doc, p.id, s.filed::timestamptz,
        'https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/' || extract(year from s.filed) || '/' || s.doc || '.pdf',
@@ -193,12 +208,23 @@ select distinct on (s.doc) 'house_ptr', s.doc, p.id, s.filed::timestamptz,
   from seed_ptr s join people p on p.slug = s.slug order by s.doc;
 insert into transactions (filing_id, person_id, security_id, side, txn_code, txn_date, disclosed_at, amount_low, amount_high, disclosure_lag_days, confidence, review, owner_type, asset_type)
 select fi.id, fi.filer_person_id, sec.id,
-       case s.ttype when 'purchase' then 'buy' when 'sale' then 'sell' when 'sale_partial' then 'sell' else 'other' end::txn_side,
+       case s.ttype when 'purchase' then 'buy' when 'sale' then 'sell' when 'sale_partial' then 'sell' when 'exchange' then 'exchange' else 'other' end::txn_side,
        s.ttype, s.txn, s.filed, s.lo, s.hi, s.filed - s.txn, s.conf, 'auto_approved', s.owner, s.atype
   from seed_ptr s join filings fi on fi.external_id = s.doc and fi.source = 'house_ptr'
   left join securities sec on sec.ticker = s.ticker and sec.type = case when s.atype = 'etf' then 'etf' else 'equity' end::security_type
  where s.ttype is not null;
 insert into review_queue (filing_id, reason, confidence, status) select id, 'needs_ocr', 0.3, 'pending' from filings where external_id = '20031005';
+
+-- One Senate report (Walter Abara Jr.), so the screener's chamber filter has Senate rows locally.
+insert into filings (source, external_id, filer_person_id, filed_at, source_url, confidence, review, is_published, payload)
+select 'senate_ptr', 'seed-senate-0001', p.id, (current_date - 6)::timestamptz,
+       'https://efdsearch.senate.gov/search/view/ptr/seed-senate-0001/', 0.95, 'auto_approved', false, jsonb_build_object('seed', true)
+  from people p where p.slug = 'walter-abara-jr';
+insert into transactions (filing_id, person_id, security_id, side, txn_code, txn_date, disclosed_at, amount_low, amount_high, disclosure_lag_days, confidence, review, owner_type, asset_type)
+select fi.id, fi.filer_person_id, sec.id, v.side::txn_side, v.code, current_date - 6 - v.lag, current_date - 6, v.lo, v.hi, v.lag, 0.95, 'auto_approved', v.owner, 'stock'
+  from filings fi, (values ('buy', 'purchase', 'MSFT', 100001, 250000, 20, 'self'), ('sell', 'sale', 'NVDA', 15001, 50000, 52, 'spouse'), ('buy', 'purchase', 'LMT', 1001, 15000, 30, 'joint')) as v(side, code, ticker, lo, hi, lag, owner)
+  join securities sec on sec.ticker = v.ticker and sec.type = 'equity'
+ where fi.source = 'senate_ptr' and fi.external_id = 'seed-senate-0001';
 
 -- ── lobbying / contracts / committees / donations ────────────────────────────────────────
 insert into lobbying (registrant, client, issue_area, amount, period_year, period_quarter, filing_uuid, filing_type, issues, source_ref) values
