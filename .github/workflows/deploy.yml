@@ -48,6 +48,10 @@ concurrency:
   group: deploy-web
   cancel-in-progress: true
 
+# The job token can read the repository and nothing else (security audit, 2026-11-17).
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -88,6 +92,11 @@ jobs:
           # adapter writes a Worker config under dist/server/; a fully static build writes it
           # under dist/client/. Deploy whichever exists.
           test -f web/dist/server/wrangler.json || test -f web/dist/client/wrangler.json
+
+      # No credential may be written into the output: the Worker bundle or any static file. The
+      # database connection string was once inlined into the Worker by the bundler (2026-11-17).
+      - name: Check the build output for secrets
+        run: node scripts/check-build-secrets.mjs web/dist
 
       # Discovery plumbing must be valid in every build (roadmap B.2): sitemap index + children,
       # robots.txt AI allow lines, llms.txt, JSON-LD on a sample of pages, no empty tables, no

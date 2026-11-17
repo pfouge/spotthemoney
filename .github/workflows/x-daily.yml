@@ -23,6 +23,10 @@ concurrency:
   group: x-daily
   cancel-in-progress: false
 
+# The job token can read the repository and nothing else (security audit, 2026-11-17).
+permissions:
+  contents: read
+
 jobs:
   post:
     runs-on: ubuntu-latest

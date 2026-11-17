@@ -94,6 +94,11 @@ jobs:
           npm run build --workspace=@stm/web 2>&1 | tee build.log
           test -f web/dist/server/wrangler.json || test -f web/dist/client/wrangler.json
 
+      # No credential may be written into the output: the Worker bundle or any static file. The
+      # database connection string was once inlined into the Worker by the bundler (2026-11-17).
+      - name: Check the build output for secrets
+        run: node scripts/check-build-secrets.mjs web/dist
+
       - name: Make the QA copy un-indexable
         working-directory: web/dist/client
         run: |

@@ -39,6 +39,10 @@ concurrency:
 env:
   ASTRO_TELEMETRY_DISABLED: "1"
 
+# The job token can read the repository and nothing else (security audit, 2026-11-17).
+permissions:
+  contents: read
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
