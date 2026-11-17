@@ -53,20 +53,27 @@ insert into companies (name, cik, primary_ticker, slug) values
   ('NVIDIA CORP', '0001045810', 'NVDA', 'nvidia-corp'),
   ('MICROSOFT CORP', '0000789019', 'MSFT', 'microsoft-corp'),
   ('PALANTIR TECHNOLOGIES INC.', '0001321655', 'PLTR', 'palantir-technologies-inc'),
-  ('LOCKHEED MARTIN CORP', '0000936468', 'LMT', 'lockheed-martin-corp');
+  ('LOCKHEED MARTIN CORP', '0000936468', 'LMT', 'lockheed-martin-corp'),
+  -- Two companies with an industry code and no insider filings, for the industry pages
+  -- (web/src/lib/industries.ts): Apple shares a division with NVIDIA under another code, AMD
+  -- shares NVIDIA's code. Their stock is in congressional reports only.
+  ('APPLE INC', '0000320193', 'AAPL', 'apple-inc'),
+  ('ADVANCED MICRO DEVICES INC', '0000002488', 'AMD', 'advanced-micro-devices-inc');
 -- Industry codes as the sec_company_sic job stores them (migration 0021). Lockheed has a row with
 -- no code (the SEC lists none), Palantir has no row at all: neither page may show an industry.
 truncate company_sic;
 insert into company_sic (cik, sic, sic_description) values
   ('0001045810', '3674', 'Semiconductors & Related Devices'),
   ('0000789019', '7372', 'Services-Prepackaged Software'),
+  ('0000320193', '3571', 'Electronic Computers'),
+  ('0000002488', '3674', 'Semiconductors & Related Devices'),
   ('0000936468', null, null);
 insert into securities (ticker, type, name, company_id) values
   ('NVDA', 'equity', 'NVIDIA Corp', (select id from companies where cik='0001045810')),
   ('MSFT', 'equity', 'Microsoft Corp', (select id from companies where cik='0000789019')),
   ('PLTR', 'equity', 'Palantir Technologies', (select id from companies where cik='0001321655')),
   ('LMT', 'equity', 'Lockheed Martin', (select id from companies where cik='0000936468')),
-  ('SPY', 'etf', 'SPDR S&P 500 ETF', null), ('AAPL', 'equity', 'Apple Inc', null), ('AMD', 'equity', 'Advanced Micro Devices', null),
+  ('SPY', 'etf', 'SPDR S&P 500 ETF', null), ('AAPL', 'equity', 'Apple Inc', (select id from companies where cik='0000320193')), ('AMD', 'equity', 'Advanced Micro Devices', (select id from companies where cik='0000002488')),
   ('ABT', 'equity', 'Abbott Laboratories', null), ('ADBE', 'equity', 'Adobe Inc', null);
 
 insert into people (full_name, slug, cik) values

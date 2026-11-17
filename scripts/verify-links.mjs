@@ -137,10 +137,15 @@ for (const path of pages) {
     for (const h of hrefs(jump)) ok(have.has(h.slice(1)), `ENTITY ${path}: jump link ${h} goes nowhere`);
     if (kind !== "congress") ok(/data-learn-more/.test(main), `ENTITY ${path}: no "Guides for this page" block`);
     // Industry fact (company and stock pages): only the SEC's code, its wording and the division.
-    const ind = /<div data-industry[^>]*>\s*<dt[^>]*>[^<]*<\/dt>\s*<dd[^>]*>([^<]*)<\/dd>/.exec(main)?.[1];
+    // The fact links to the page of its division at the code (lib/industries.ts); the general link
+    // check above proves the page and the anchor exist.
+    const indM = /<div data-industry[^>]*>\s*<dt[^>]*>[^<]*<\/dt>\s*<dd[^>]*>(?:<a href="([^"]*)"[^>]*>)?([^<]*)(?:<\/a>)?<\/dd>/.exec(main);
+    const ind = indM?.[2];
     if (ind != null) {
       industryFacts++;
       const text = ind.replace(/&amp;/g, "&");
+      const code = /SIC (\d{4})/.exec(text)?.[1];
+      if (/SIC \d{4},/.test(text)) ok(new RegExp(`^/industries/[a-z-]+/#sic-${code}$`).test(indM[1] ?? ""), `INDUSTRY ${path}: fact "${text}" links to "${indM[1] ?? ""}", not to its division's page at #sic-${code}`);
       ok(/^(.+ \()?SIC \d{4}(, [A-Z][a-z, ]+)?\)?$/.test(text), `INDUSTRY ${path}: fact "${text}" is not "wording (SIC ####, division)"`);
       ok(DIVISIONS.some((d) => text.includes(`, ${d}`)) || !/SIC \d{4},/.test(text), `INDUSTRY ${path}: division in "${text}" is not one of the SIC manual's`);
       ok(kind === "stocks" || kind === "companies", `INDUSTRY ${path}: industry fact on a ${kind} page`);

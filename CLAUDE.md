@@ -2435,3 +2435,45 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
 - Build log: `[web] screener links: N rows; C committees (top five with counts); M members
   (top five); T tickers (top five)`, for comparison with SQL.
 - Not done: a maximum amount, a trade-date window, saved screens, the insider screener.
+
+### Companies by industry (2026-11-17, scheduled parity run) — sector from SIC, stage 2
+
+- **What.** `/industries/` (one sortable row per SIC division with a company on the site:
+  industry codes, companies, companies with an insider purchase, with an insider sale, traded by
+  Congress, each over 12 months) and `/industries/<slug>/` per division (9 on production; a
+  page per code would be about 258 files). A division page has header facts, a table of the SIC
+  codes its companies carry, and a table of the companies (ticker, code and the SEC's wording,
+  open-market purchases, open-market sales, congressional rows, latest Form 4), by code then
+  name, sortable. The first company row of each code carries `id="sic-<code>"`. The Industry
+  line on company and stock pages is now a link to its division page at that anchor
+  (`industryHref`). `/companies/` links to the list. In the `pages` sitemap, the search index
+  (kind "Industry"), `llms.txt`. New download `companies.csv` (company, cik, ticker, tickers,
+  sic_code, sic_description, sic_division, insiders_on_file, page_url; kind `companies`).
+- **Rules** (`web/src/lib/industries.ts`, pure; tests `scripts/industries.test.ts`;
+  `siteIndustries(model)` in `industries-build.ts` is the one call for pages, sitemap and
+  search): a company is listed when it has a CIK, a page and a code that falls in a division.
+  Purchases = Form 4 code P with side buy, sales = code S with side sell (so awards, F, D,
+  derivative rows and repeat filings are out), congressional rows = non-Form 4 rows in the
+  company's securities; all by **disclosure** date, 365 days back from the BUILD day
+  (`model.builtAt`), never after it. Division figures count companies with at least one such
+  row. Counts only: no dollars, no ranking of industries, no ratio, and no page compares a
+  trade with a company's industry (the verifier fails ranking or verdict wording).
+- **Build log** prints `[web] industries: N divisions, W of C companies with a code, K codes,
+  Z in no division; companies/codes/purchases/sales/congress rows in 12 months: A …, B …`
+  for comparison with SQL.
+- **Verifier:** `node scripts/verify-industries.mjs <base-url>` (no browser; the fifteenth).
+  Oracle: `companies.csv` (written in `downloads.ts` from the stored codes, not from
+  `industries.ts`), the insider trade files and `congress-trades.csv`, with its own copy of
+  the manual's ranges. Recounts every division's and every company's figures, the code table,
+  anchors, the back links from company and stock pages, sitemap, wording. `verify-links`
+  INDUSTRY now also requires the Industry line to link to `/industries/<division>/#sic-<code>`.
+  `verify-a11y` includes the list and one division page.
+- **Seed:** Apple (3571) and AMD (3674) are now companies with a code and no insider filings;
+  the AAPL and AMD securities belong to them.
+- Fixed on the way: `/companies/` said "998 companys" (`plural` needs the plural form for a
+  word ending in y).
+- Guides `what-is-form-4` (covers `industries.ts`, one new label) and `how-to-cite-and-reuse`
+  (names `companies.csv`) updated, re-read, accepted. Methodology `#industries`.
+- Not done: an industry filter on the trade map or in a screener, ratios by industry, related
+  companies by industry, industry on the on-demand pages, market-wide companies on these pages
+  (all touch the market-wide thread's files or wait for it).

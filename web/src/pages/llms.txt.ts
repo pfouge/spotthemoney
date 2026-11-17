@@ -42,6 +42,7 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [Committees of Congress](${SITE_URL}/congress-committees/): one page per committee with its current members and the trades they have disclosed. Membership is context only.
 - [Stocks](${SITE_URL}/stocks/): one page per ticker with insider and congressional activity (${num(c.securities ?? 0)} tickers).
 - [Companies](${SITE_URL}/companies/): insiders, contracts and lobbying per company (${num(c.companies ?? 0)} companies).
+- [Companies by industry](${SITE_URL}/industries/): the companies grouped by the division of the industry code (SIC) the SEC assigns to each, with counts of open-market insider purchases and sales and of congressional trades disclosed in the last 12 months. The classification is the SEC's and is a label only.
 - [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
 - [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
 - [Newest disclosures](${SITE_URL}/disclosures/): one feed across every source, newest first.

@@ -10,6 +10,8 @@ import { SITE_URL } from "./seo";
 import { getGuides, guidePath } from "./guides";
 import { buildCommittees, COMMITTEES_PATH } from "./committees";
 import { buildIssues, ISSUES_PATH } from "./lobbyissues";
+import { siteIndustries } from "./industries-build";
+import { INDUSTRIES_PATH } from "./industries";
 import { getMarketIndexable, SITEMAP_URL_LIMIT } from "./market";
 import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
 
@@ -30,6 +32,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   const committees = buildCommittees(model, built, personPath);
   // Issue pages exist for every issue area a filing on record lists (lib/lobbyissues.ts).
   const issues = buildIssues(model.lobbying, model.issueNames, new Date().getUTCFullYear());
+  // Industry pages exist for every SIC division with a company on the site (lib/industries.ts).
+  const industries = siteIndustries(model).divisions;
   const guides = await getGuides();
   // Writing: published articles only (never drafts or future-dated ones), and /writing/ plus author
   // pages only when there is something published to list.
@@ -57,6 +61,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     ...committees.map((c) => ({ loc: c.path, lastmod: day(c.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/companies/", lastmod: built, changefreq: "daily", priority: 0.7 },
+    ...(industries.length ? [{ loc: INDUSTRIES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...industries.map((d) => ({ loc: d.path, lastmod: built, changefreq: "daily" as const, priority: 0.5 })),
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/donations/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/lobbying/", lastmod: built, changefreq: "daily", priority: 0.7 },
