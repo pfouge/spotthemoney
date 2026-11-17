@@ -5,6 +5,7 @@
 import type { Flagship, Person, Security, Company, Txn } from "./flagship";
 import { personPath, securityPath, companyPath, roleLabel, daysAgo } from "./flagship-core";
 import { sizeByTicker, CAP_BANDS, type SizeEstimate } from "./capband";
+import { sicDivision } from "@stm/shared";
 
 const isForm4 = (t: Txn) => t.source === "sec_form4";
 const val = (ts: Txn[]) => ts.reduce((a, t) => a + (t.value ?? 0), 0);
@@ -176,6 +177,30 @@ export function relatedCompanies(m: Flagship, c: Company, limit = 8): { company:
     if (out.length >= limit) break;
   }
   return out;
+}
+
+// ── industry, as the SEC classifies the company ──────────────────────────────────────────
+export interface Industry {
+  /** Four-digit SIC code as the SEC states it. */
+  code: string;
+  /** The SEC's wording for the code; null when the SEC gives none. */
+  description: string | null;
+  /** Division of the SIC manual the code falls in (first two digits); null when it is in none. */
+  division: string | null;
+  /** What the page prints: "Semiconductors & Related Devices (SIC 3674, Manufacturing)". */
+  label: string;
+}
+/**
+ * The company's industry from its SEC SIC code, or null when no code is on file. Nothing is
+ * inferred: the code and wording are the SEC's, the division is a lookup on the code.
+ */
+export function industryOf(m: Flagship, company: Pick<Company, "cik"> | null | undefined): Industry | null {
+  if (!company?.cik) return null;
+  const e = m.companySic.get(company.cik.padStart(10, "0"));
+  if (!e) return null;
+  const division = sicDivision(e.sic)?.name ?? null;
+  const inside = `SIC ${e.sic}${division ? `, ${division}` : ""}`;
+  return { code: e.sic, description: e.description, division, label: e.description ? `${e.description} (${inside})` : inside };
 }
 
 // ── size band, cached (sizeByTicker walks every company) ─────────────────────────────────

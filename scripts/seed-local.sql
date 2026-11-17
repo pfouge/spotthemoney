@@ -54,6 +54,13 @@ insert into companies (name, cik, primary_ticker, slug) values
   ('MICROSOFT CORP', '0000789019', 'MSFT', 'microsoft-corp'),
   ('PALANTIR TECHNOLOGIES INC.', '0001321655', 'PLTR', 'palantir-technologies-inc'),
   ('LOCKHEED MARTIN CORP', '0000936468', 'LMT', 'lockheed-martin-corp');
+-- Industry codes as the sec_company_sic job stores them (migration 0021). Lockheed has a row with
+-- no code (the SEC lists none), Palantir has no row at all: neither page may show an industry.
+truncate company_sic;
+insert into company_sic (cik, sic, sic_description) values
+  ('0001045810', '3674', 'Semiconductors & Related Devices'),
+  ('0000789019', '7372', 'Services-Prepackaged Software'),
+  ('0000936468', null, null);
 insert into securities (ticker, type, name, company_id) values
   ('NVDA', 'equity', 'NVIDIA Corp', (select id from companies where cik='0001045810')),
   ('MSFT', 'equity', 'Microsoft Corp', (select id from companies where cik='0000789019')),

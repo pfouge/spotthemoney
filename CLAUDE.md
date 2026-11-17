@@ -2303,3 +2303,40 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
 - A plain table did not suit `/feeds/` (table cells do not wrap on this site): the feeds are a
   list of cards with a scoped style in the page.
 - Not done: no feed of notable trades or clusters; no Atom or JSON Feed; no feed per page.
+
+### Industry from the SEC's SIC code (2026-11-17, scheduled parity run) — queue item 3, "sector from SIC", stage 1
+
+- **What.** Company pages and stock pages carry a header fact "Industry, as the SEC classifies
+  it": the SEC's wording, the four-digit SIC code and the division of the SIC manual the code
+  falls in, for example "Semiconductors & Related Devices (SIC 3674, Manufacturing)"
+  (`div[data-industry]` in `dl.facts`). A company with no code on file has no such line.
+  Static pages of the tracked set only; the on-demand pages do not show it yet.
+- **Data.** Migration **0021** `company_sic(cik, sic, sic_description, checked_at, updated_at)`,
+  keyed by 10-digit CIK like `company_size`, RLS on with no public policy. A table of its own so
+  `companies` and the frozen `site_*` views are untouched; `companies.sector` stays unused. A
+  row with `sic` NULL means "asked, the SEC lists none" (or HTTP 404). Next free migration: 0022.
+- **Source `sec_company_sic`** (`ingest/src/sources/sec_company_sic.ts`; tests beside it): one
+  request per company to `data.sec.gov/submissions/CIK<10 digits>.json`, fields `sic` and
+  `sicDescription`. Companies never asked come first (tracked before market), then at most 300
+  rows a run last checked over 90 days ago. `SEC_SIC_MAX_MINUTES` (40) ends a run as `partial`
+  with `remaining`; 5 failures in a row end it as `failed`; it also fails if the first 50
+  answers hold no `sic` key (wrong shape) instead of filling the table with NULLs. Its own
+  daily group `company-facts` in `ingest.yml` (both matrix lists); `freshness-check.mjs` lists
+  it. Test fake: `scripts/fake-sec-submissions.mjs` through `SEC_DATA_BASE` (tests only), modes
+  `ok`, `down`, `noshape`. **The request shape was written from memory of the SEC API (data.sec.gov
+  is not reachable from the cloud sandbox); the first run on a GitHub runner is the proof.**
+- **Division.** `shared/src/sic.ts` (`cleanSicCode`, `sicDivision`, `SIC_DIVISIONS`): a lookup on
+  the code's first two digits with the SIC manual's ranges; null for a code in no division.
+  Nothing is inferred and nothing on the site uses the industry for a total, ranking or flag.
+- **Web.** `model.companySic` (CIK to code and wording, loaded in `flagship.ts` in its own
+  try/catch, so a missing table or an empty one only leaves the fact out), `industryOf` in
+  `web/src/lib/entity.ts` (test in `scripts/entity.test.ts`). The build log prints
+  `[web] industry codes: N of M companies on the site have a SIC code (K codes on file); <division> n, ...`
+  for comparison with SQL. Methodology `#industry`; a paragraph in guide `what-is-form-4`.
+- **Verifier.** `verify-links` (INDUSTRY): an industry fact is "wording (SIC ####, division)",
+  the division is one of the manual's eleven names (its own list, not the code's), and the fact
+  is only on stock and company pages. The seed has two companies with a code, one with a NULL
+  row and one with no row.
+- Not done: industry on the on-demand pages (needs the `od_*` functions, the interactive
+  thread's files), an industry filter on the trade map or in a screener, ratios by industry,
+  related companies by industry, the code in the CSV files or in JSON-LD.

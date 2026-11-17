@@ -107,7 +107,11 @@ if (full) {
 }
 
 // 4–6. Entity pages, automatic links, flags.
-let entities = 0, autos = 0, flagLinks = 0, periodTables = 0, noteLinks = 0, noteBlocks = 0;
+let entities = 0, autos = 0, flagLinks = 0, periodTables = 0, noteLinks = 0, noteBlocks = 0, industryFacts = 0;
+// The ten divisions of the SIC manual plus "Nonclassifiable", as shared/src/sic.ts names them (kept
+// as a separate list on purpose: the verifier must not read the code it checks).
+const DIVISIONS = ["Agriculture, forestry and fishing", "Mining", "Construction", "Manufacturing", "Transportation, communications and utilities",
+  "Wholesale trade", "Retail trade", "Finance, insurance and real estate", "Services", "Public administration", "Nonclassifiable"];
 for (const path of pages) {
   const { html } = await get(path);
   if (!html) continue;
@@ -122,6 +126,15 @@ for (const path of pages) {
     const have = ids(html);
     for (const h of hrefs(jump)) ok(have.has(h.slice(1)), `ENTITY ${path}: jump link ${h} goes nowhere`);
     if (kind !== "congress") ok(/data-learn-more/.test(main), `ENTITY ${path}: no "Guides for this page" block`);
+    // Industry fact (company and stock pages): only the SEC's code, its wording and the division.
+    const ind = /<div data-industry[^>]*>\s*<dt[^>]*>[^<]*<\/dt>\s*<dd[^>]*>([^<]*)<\/dd>/.exec(main)?.[1];
+    if (ind != null) {
+      industryFacts++;
+      const text = ind.replace(/&amp;/g, "&");
+      ok(/^(.+ \()?SIC \d{4}(, [A-Z][a-z, ]+)?\)?$/.test(text), `INDUSTRY ${path}: fact "${text}" is not "wording (SIC ####, division)"`);
+      ok(DIVISIONS.some((d) => text.includes(`, ${d}`)) || !/SIC \d{4},/.test(text), `INDUSTRY ${path}: division in "${text}" is not one of the SIC manual's`);
+      ok(kind === "stocks" || kind === "companies", `INDUSTRY ${path}: industry fact on a ${kind} page`);
+    }
     if (kind === "stocks") {
       // 3 and 12 month summary: there whenever the page lists insiders, and its own sums agree.
       const sec = /<section[^>]*data-entity-periods[\s\S]*?<\/section>/.exec(main)?.[0] ?? "";
@@ -175,4 +188,4 @@ for (const path of pages) {
 }
 
 if (failures.length) { console.error(`✗ ${failures.length} of ${checks} link checks failed:`); for (const f of [...new Set(failures)].slice(0, 50)) console.error("  " + f); process.exit(1); }
-console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${periodTables} period tables, ${autos} automatic guide links, ${flagLinks} flag links, ${noteLinks} footnote links to ${noteBlocks} footnote blocks` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));
+console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${periodTables} period tables, ${industryFacts} industry facts, ${autos} automatic guide links, ${flagLinks} flag links, ${noteLinks} footnote links to ${noteBlocks} footnote blocks` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));

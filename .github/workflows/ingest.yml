@@ -87,6 +87,8 @@ jobs:
             sources: sec_form4
           - name: insiders-market
             sources: sec_form4_index
+          - name: company-facts
+            sources: sec_company_sic
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations
@@ -141,6 +143,8 @@ jobs:
             sources: sec_form4
           - name: insiders-market
             sources: sec_form4_index
+          - name: company-facts
+            sources: sec_company_sic
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations

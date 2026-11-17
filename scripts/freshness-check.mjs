@@ -48,6 +48,9 @@ const CHECKS = [
   // alive: the rule treats success and partial alike.
   { code: "sec_form4_index", label: "SEC Form 4, market-wide (daily index)", runDays: 2, dataDays: 6,
     newest: `select max(filed_at)::date from filings where source = 'sec_form4' and scope = 'market'` },
+  // Industry codes from the SEC's submissions data (table company_sic). No data date: a company's
+  // code rarely changes; the run itself is what must stay alive.
+  { code: "sec_company_sic", label: "SEC industry codes (SIC)", runDays: 2 },
   { code: "senate_lda", label: "Senate lobbying filings", runDays: 2, dataDays: 7,
     newest: `select max(posted_at)::date from lobbying` },
   // Both feeds carry future-dated records (planned contract actions, filer typos); without the
