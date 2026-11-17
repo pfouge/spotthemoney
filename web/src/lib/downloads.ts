@@ -13,8 +13,9 @@
 //   - One file per member with trades and per ticker with trades; none per corporate insider
 //     (that would double the file count, which is capped at 20,000 on the current plan) —
 //     an insider's rows are in the ticker file of the company they report for.
-import type { Flagship, Person, Security, Txn, LobbyingRow, ContractRow } from "./flagship";
-import { getFlagship, flagshipSql, personPath, roleLabel, isLate } from "./flagship";
+import type { Flagship, Person, Security, Txn, LobbyingRow, ContractRow, Company } from "./flagship";
+import { getFlagship, flagshipSql, personPath, companyPath, roleLabel, isLate } from "./flagship";
+import { cleanSicCode, sicDivision } from "@stm/shared";
 import { SITE_URL, edgarFilingUrl } from "./seo";
 import { toCsv, type Column } from "./csv";
 import { changeCsv } from "./holdings";
@@ -32,7 +33,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "lobbying" | "contracts" | "rates";
+  kind: "trades" | "members" | "seats" | "companies" | "lobbying" | "contracts" | "rates";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -195,6 +196,24 @@ async function build(): Promise<Downloads> {
   for (const piece of mergeOldSmall(splitByPeriod(insiders, (t) => t.disclosedAt))) {
     add(file({ name: `insider-trades-${piece.period}.csv`, group: "insiders", kind: "trades", title: `Insider transactions, ${piece.label}`, about: `Form 4 rows disclosed in ${piece.label}.`, updated: newest(piece.rows.map((t) => t.disclosedAt)) }, cols, piece.rows));
   }
+
+  // Companies, with the industry code the SEC assigns to each (company_sic). Written here from
+  // the stored codes directly, not from lib/industries.ts, so scripts/verify-industries.mjs can
+  // recount the industry pages from this file.
+  const companies = [...m.companies.values()].filter((c) => c.slug).sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+  const sicOf = (c: Company) => { const e = c.cik ? m.companySic.get(c.cik.padStart(10, "0")) : undefined; const code = e ? cleanSicCode(e.sic) : null; return code ? { code, description: e!.description?.trim() || null } : null; };
+  const companyCols: Column<Company>[] = [
+    { key: "company", about: "Company name as the SEC states it.", get: (c) => c.name },
+    { key: "cik", about: "The company's SEC Central Index Key, ten digits.", get: (c) => (c.cik ? c.cik.padStart(10, "0") : null) },
+    { key: "ticker", about: "Primary ticker symbol, when the company has one.", get: (c) => c.primaryTicker },
+    { key: "tickers", about: "Every ticker of the company's securities on this site, separated by semicolons.", get: (c) => [...new Set(c.securityIds.map((id) => m.securities.get(id)?.ticker).filter(Boolean))].sort().join(";") || null },
+    { key: "sic_code", about: "Four-digit Standard Industrial Classification code the SEC has assigned to the company. Empty when the SEC lists none.", get: (c) => sicOf(c)?.code },
+    { key: "sic_description", about: "The SEC's wording for that code.", get: (c) => sicOf(c)?.description },
+    { key: "sic_division", about: "Division of the SIC manual the code falls in, looked up from its first two digits. A label only.", get: (c) => { const s = sicOf(c); return s ? sicDivision(s.code)?.name ?? null : null; } },
+    { key: "insiders_on_file", about: "Insiders with a role at the company on this site.", get: (c) => c.insiders.length },
+    { key: "page_url", about: "The company's page on this site.", get: (c) => `${SITE_URL}${companyPath(c)}` },
+  ];
+  add(file({ name: "companies.csv", group: "insiders", kind: "companies", title: "Companies and their SEC industry codes", about: "One row per company on this site, with the industry code (SIC) the SEC assigns to it.", updated: m.builtAt.slice(0, 10) }, companyCols, companies));
 
   // Washington
   const lobCols: Column<LobbyingRow>[] = [

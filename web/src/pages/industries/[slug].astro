@@ -1,0 +1,121 @@
+---
+// One industry division: /industries/<slug>/ — the SIC codes in it that companies on the site
+// carry, and those companies with counts of disclosed trades. Figures come from
+// lib/industries.ts. Counts of filed rows only; an industry is a label.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import { getFlagship, num, plural } from "../../lib/flagship";
+import { datasetLd, SOURCES } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+import { siteIndustries } from "../../lib/industries-build";
+import { INDUSTRIES_PATH } from "../../lib/industries";
+
+export async function getStaticPaths() {
+  const model = await getFlagship();
+  return siteIndustries(model).divisions.map((d) => ({ params: { slug: d.slug }, props: { code: d.code } }));
+}
+
+const { code } = Astro.props as { code: string };
+const model = await getFlagship();
+const x = siteIndustries(model);
+const d = x.divisions.find((v) => v.code === code)!;
+const built = model.builtAt.slice(0, 10);
+const others = x.divisions.filter((v) => v.code !== d.code);
+const two = (n: number) => String(n).padStart(2, "0");
+const range = d.from === d.to ? `${two(d.from)}` : `${two(d.from)} to ${two(d.to)}`;
+const n = d.companies.length;
+const first = new Set<string>(); // the first company row of each code carries the code's anchor
+const rowId = (sic: string) => { if (first.has(sic)) return undefined; first.add(sic); return `sic-${sic}`; };
+
+const answer = `${plural(n, "company", "companies")} on this site ${n === 1 ? "has" : "have"} an SEC industry code in the ${d.name} division, across ${plural(d.codes.length, "industry code")}. In the 12 months to ${formatDate(built)}, insiders at ${num(d.withBuys)} of them reported an open-market purchase and at ${num(d.withSells)} an open-market sale, and ${num(d.withCongress)} had stock in a congressional trade report.`;
+const description = `Companies the SEC classifies under ${d.name}: each with its industry code and counts of insider and congressional trades disclosed in the last 12 months.`;
+const ld = datasetLd({ name: `Companies in ${d.name}, by SEC industry code`, path: d.path, description, dateModified: built, keywords: [d.name, "industry", "SIC code", "insider trading", "Form 4"], sources: [SOURCES.edgar], parentCatalogPath: INDUSTRIES_PATH });
+const heads: { label: string; type: "text" | "num" | "date"; cls?: string }[] = [
+  { label: "Company", type: "text" }, { label: "Ticker", type: "text" }, { label: "Industry code", type: "text" },
+  { label: "Insider purchases", type: "num", cls: "num" }, { label: "Insider sales", type: "num", cls: "num" }, { label: "Congress trades", type: "num", cls: "num" },
+  { label: "Latest Form 4", type: "text" },
+];
+---
+<BaseLayout title={[`${d.name}: Companies, Insider and Congress Trades`, `${d.name}: Companies and Insider Trades`, `${d.name} Companies`, `Industry Division ${d.code}`]} description={[description, `Companies the SEC classifies under ${d.name}, with counts of disclosed insider and congressional trades.`, `${d.name}: companies and their disclosed trades.`, `Companies in SIC division ${d.code}.`]} section="Companies">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: "Industries", path: INDUSTRIES_PATH }, { name: d.name, path: d.path }]} />
+  <h1>{d.name}</h1>
+  <p class="lede">Companies the SEC classifies in this division, and the trades disclosed in them.</p>
+
+  <dl class="facts" data-industry-facts data-built={built}>
+    <div><dt>SIC division</dt><dd><span class="mono">{d.code}</span>, major groups {range}</dd></div>
+    <div><dt>Industry codes</dt><dd data-fact="codes">{num(d.codes.length)}</dd></div>
+    <div><dt>Companies</dt><dd data-fact="companies">{num(n)}</dd></div>
+    <div><dt>With insider purchases, 12 months</dt><dd data-fact="with-buys">{num(d.withBuys)}</dd></div>
+    <div><dt>With insider sales, 12 months</dt><dd data-fact="with-sells">{num(d.withSells)}</dd></div>
+    <div><dt>Traded by Congress, 12 months</dt><dd data-fact="with-congress">{num(d.withCongress)}</dd></div>
+  </dl>
+
+  <Answer text={answer} updated={model.builtAt} sourceNote="Source: SEC EDGAR (industry codes and Form 4); House and Senate reports" />
+
+  <nav class="jump" aria-label="On this page">
+    <span>On this page</span>
+    <a href="#codes">Industry codes</a><a href="#companies">Companies</a><a href="#about">About this page</a>{others.length > 0 && <a href="#others">Other divisions</a>}
+  </nav>
+
+  <section aria-labelledby="codes" data-industry-codes>
+    <h2 id="codes">Industry codes in this division</h2>
+    <p class="section-note">The SIC codes that companies on this site carry, in the SEC's wording. A code opens the first of its companies in the table below. Click a column title to sort.</p>
+    <div class="tablewrap"><table class="data" data-sortable>
+      <thead><tr>
+        <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by code">Code<span class="arr" aria-hidden="true"></span></button></th>
+        <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by industry">Industry<span class="arr" aria-hidden="true"></span></button></th>
+        <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by companies">Companies<span class="arr" aria-hidden="true"></span></button></th>
+      </tr></thead>
+      <tbody>
+        {d.codes.map((c) => <tr data-sic={c.sic}><td class="mono" data-v={c.sic}><a href={`#${c.anchor}`}>{c.sic}</a></td><td data-v={(c.description ?? "").toLowerCase()}>{c.description ?? ""}</td><td class="num" data-v={c.companies}>{num(c.companies)}</td></tr>)}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section aria-labelledby="companies" data-industry-companies>
+    <h2 id="companies">Companies</h2>
+    <p class="section-note">By industry code, then by name. The three counts are rows disclosed in the 12 months to {formatDate(built)}: open-market purchases and sales reported by insiders on Form 4, and rows of House and Senate reports in the company's stock. Click a column title to sort.</p>
+    <div class="tablewrap"><table class="data" data-sortable>
+      <thead><tr>
+        {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      </tr></thead>
+      <tbody>
+        {d.companies.map((c) => (
+          <tr id={rowId(c.sic)} data-company={c.id} data-sic={c.sic}>
+            <td data-v={c.name.toLowerCase()}>{c.path ? <a href={c.path}>{c.name}</a> : c.name}</td>
+            <td class="mono" data-v={(c.ticker ?? "").toLowerCase()}>{c.ticker ? (c.tickerPath ? <a href={c.tickerPath}>{c.ticker}</a> : c.ticker) : ""}</td>
+            <td data-v={c.sic}><span class="mono">{c.sic}</span> {c.description ?? ""}</td>
+            <td class="num" data-k="buys" data-v={c.buys}>{num(c.buys)}</td>
+            <td class="num" data-k="sells" data-v={c.sells}>{num(c.sells)}</td>
+            <td class="num" data-k="congress" data-v={c.congress}>{num(c.congress)}</td>
+            <td class="mono" data-k="latest" data-v={c.latest ?? ""}>{c.latest ?? ""}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table></div>
+  </section>
+
+  <div class="prose">
+  <h2 id="about">About this page</h2>
+  <p>{d.name} is division {d.code} of the Standard Industrial Classification manual, which covers codes that begin with {range}. A company is listed here because the SEC's record of the company carries a code in that range. The code and its wording are the SEC's; this site adds only the division, by looking up the code's first two digits.</p>
+  <p>The classification dates from 1987 and is broad, a company has a single code even when it works in several industries, and the SEC chooses the code. The division is a way to find companies. It does not measure anything, and nothing here compares a trade with the industry of the company.</p>
+  <p>"Insider purchases" and "Insider sales" count Form 4 rows with transaction code P and code S, which are open-market trades. Awards, option exercises, gifts and shares withheld for tax are not counted, and one sale filled in several lots is several rows. "Congress trades" counts rows of House and Senate periodic transaction reports in the company's stock. All three go by the day the filing was disclosed. The list covers the companies this site tracks, not the whole market. Each company's page has the filings themselves.</p>
+  <p>See <a href={INDUSTRIES_PATH}>all divisions</a>, the <a href="/companies/">company list</a>, the <a href="/methodology/#industries">methodology</a> and the <a href="/guides/what-is-form-4/">guide to Form 4</a>.</p>
+  </div>
+
+  {others.length > 0 && (
+    <section aria-labelledby="others">
+      <h2 id="others">Other divisions</h2>
+      <ul class="cols">{others.map((o) => <li><a href={o.path}>{o.name}</a> <span class="soft">{num(o.companies.length)}</span></li>)}</ul>
+    </section>
+  )}
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  ul.cols { columns: 2 280px; padding-left: 1.1rem; margin: 0.5rem 0; }
+  ul.cols li { break-inside: avoid; margin: 0 0 0.3rem; }
+</style>

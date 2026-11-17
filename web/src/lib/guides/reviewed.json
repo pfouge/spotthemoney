@@ -50,15 +50,15 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-17",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "4cc9d3c134940d24",
-      "web/src/lib/downloads.ts": "0a5838fd54ad118d",
+      "web/src/lib/downloads.ts": "39fde97597925661",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "8c010edafbd64d3a",
+      "web/src/pages/downloads/index.astro": "197b28bafc2af8c4",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"
     }
   },
@@ -187,15 +187,16 @@
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
       "web/src/lib/entity.ts": "4bf646367321d06f",
+      "web/src/lib/industries.ts": "fbe7ab75d1ab8c70",
       "web/src/lib/links.ts": "b2b155c2322b1ff1",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "f85f79449b5b186b",
       "web/src/lib/server/od.ts": "7d2ced0be0a68bf0",
       "web/src/components/OdPageView.astro": "a75d34eef3e63e18",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "ca3766c6db0944df",
+      "web/src/pages/stocks/[ticker].astro": "b8610db325fd1b64",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
-      "web/src/pages/companies/[slug].astro": "77b788e3d5873df0"
+      "web/src/pages/companies/[slug].astro": "ed620af1936a7f1f"
     }
   }
 }
