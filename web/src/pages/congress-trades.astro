@@ -1,7 +1,7 @@
 ---
 // Congress trade screener: /congress-trades/ — every published row of the House and Senate
 // periodic transaction reports on record, with filters (member or ticker, chamber, party, state,
-// committee, side, amount, owner, asset, disclosure window, late) and sortable columns.
+// committee, side, amount, upper limit, owner, asset, disclosure window, trade window, late) and sortable columns.
 // Rules are in lib/screener.ts (unit-tested). The page prints the newest rows itself; the browser
 // script (scripts/screener.ts) loads /data/congress-screener.json and takes over, so without
 // JavaScript the newest rows are still here and the controls are hidden.
@@ -18,8 +18,8 @@ import { stateName } from "../lib/profile";
 import { flagHref } from "../lib/links";
 import { PARTY_LABEL, type PartyKey } from "../lib/directory";
 import {
-  screenerData, unpack, screen, summaryLine, isLateRow, rangeLabel, minLabel, assetLabel, shortDate, seatTag, tickerPath,
-  DEFAULT_VIEW, DEFAULT_PER, PER_PAGE, SIDES, SIDE_LABEL, SIDE_OPTION, OWNERS, OWNER_LABEL, MIN_STEPS, WINDOWS, WINDOW_LABEL, SORT_KEYS, firstDir,
+  screenerData, unpack, screen, matches, summaryLine, isLateRow, rangeLabel, minLabel, maxLabel, assetLabel, shortDate, seatTag, tickerPath,
+  DEFAULT_VIEW, DEFAULT_PER, PER_PAGE, SIDES, SIDE_LABEL, SIDE_OPTION, OWNERS, OWNER_LABEL, MIN_STEPS, MAX_STEPS, WINDOWS, WINDOW_LABEL, TRADE_WINDOW_LABEL, SORT_KEYS, firstDir,
 } from "../lib/screener";
 
 const model = await getFlagship();
@@ -48,6 +48,8 @@ const lastUpdated = newest ?? model.builtAt;
 
 // Build log: the figures to compare with a direct count on the database.
 console.log(`[web] congress screener: ${all.length} rows (${houseRows} House, ${senateRows} Senate) by ${data.members.length} members in ${data.filings.length} reports; ${first.buys} purchases, ${first.sells} sales, ${exchanges} exchanges; ${first.tickers} tickers, ${noTicker} rows with no ticker, ${late} late; disclosed ${oldest ?? "-"} to ${newest ?? "-"}`);
+const hits = (f: Partial<typeof DEFAULT_VIEW.f>) => all.filter((r) => matches(r, { ...DEFAULT_VIEW.f, ...f }, data.built)).length;
+console.log(`[web] congress screener limits: high end at most ${MAX_STEPS.map((s) => `${s} ${hits({ max: s })}`).join(", ")}; no stated top ${all.filter((r) => r.high == null).length}; band ${MIN_STEPS[0]} to ${MAX_STEPS[1]} ${hits({ min: MIN_STEPS[0], max: MAX_STEPS[1] })}; traded in the last ${WINDOWS.map((w) => `${w} days ${hits({ tw: w })}`).join(", ")}; no trade date ${all.filter((r) => !r.txn).length}`);
 
 const answer = all.length === 0
   ? "No congressional trades are on record here yet. Rows are added as House and Senate periodic transaction reports are filed and read."
@@ -62,7 +64,7 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
 <BaseLayout title="Congress Trade Screener: Filter Every Disclosed Trade" description={description} section="Congress" noindex={all.length === 0}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: "Trade screener", path: "/congress-trades/" }]} />
   <h1>Congress trade screener</h1>
-  <p class="lede">Every transaction members of Congress have disclosed, in one table. Narrow it by member, ticker, chamber, party, state, committee, side, amount, owner and date, and sort any column.</p>
+  <p class="lede">Every transaction members of Congress have disclosed, in one table. Narrow it by member, ticker, chamber, party, state, committee, side, amount, owner, trade date and disclosure date, and sort any column.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: House Clerk PTRs; Senate eFD PTRs; congress-legislators roster" : "Sources: House Clerk PTRs; congress-legislators roster"} />
 
@@ -92,6 +94,9 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
         <div class="ctl"><span class="lbl">Amount</span>
           <select data-scr="min" aria-label="Amount, by the low end of the reported range"><option value="0">Any amount</option>{MIN_STEPS.map((s) => <option value={s}>{minLabel(s)}</option>)}</select>
         </div>
+        <div class="ctl"><span class="lbl">Upper limit</span>
+          <select data-scr="max" aria-label="Upper limit, by the high end of the reported range"><option value="0">No upper limit</option>{MAX_STEPS.map((s) => <option value={s}>{maxLabel(s)}</option>)}</select>
+        </div>
         <div class="ctl"><span class="lbl">Owner</span>
           <select data-scr="owner" aria-label="Whose asset"><option value="">Any owner</option>{OWNERS.filter((o) => all.some((r) => r.owner === o)).map((o) => <option value={o}>{OWNER_LABEL[o]}</option>)}</select>
         </div>
@@ -99,7 +104,10 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
           <select data-scr="asset" aria-label="Asset"><option value="">Any asset</option><option value="ticker">With a ticker</option><option value="other">No ticker (bonds, funds, other)</option></select>
         </div>
         <div class="ctl"><span class="lbl">Disclosed</span>
-          <select data-scr="w" aria-label="When disclosed"><option value="0">Any date</option>{WINDOWS.map((w) => <option value={w}>{WINDOW_LABEL[w]}</option>)}</select>
+          <select data-scr="w" aria-label="When disclosed"><option value="0">Any disclosure date</option>{WINDOWS.map((w) => <option value={w}>{WINDOW_LABEL[w]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Traded</span>
+          <select data-scr="tw" aria-label="When traded"><option value="0">Any trade date</option>{WINDOWS.map((w) => <option value={w}>{TRADE_WINDOW_LABEL[w]}</option>)}</select>
         </div>
         <div class="ctl"><span class="lbl">Timing</span>
           <select data-scr="late" aria-label="Reporting time"><option value="">Any reporting time</option><option value="late">Reported late</option><option value="ontime">Reported on time</option></select>
@@ -150,7 +158,7 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
 
   <h2 id="about">What this table shows</h2>
   <p>One row for each transaction in a periodic transaction report on record here: the member who filed, the asset, whether it was a purchase, a sale or an exchange, whose asset it was, the trade date, the day the report was filed, the days between the two, the dollar range the report gives, and a link to the original report. Members report a range, not an exact figure, so no dollar total is shown. The reports are the authority for every row.</p>
-  <p>"Disclosed" windows count back from the day this page was built, by the date the report was filed, not the trade date, because members have {CONGRESS_DEADLINE_DAYS} days to file. A link from a member's page or a stock's page opens this table on that member or that ticker alone; the line above the count says so and has a button to remove it. "Download these rows" saves the rows that match the filters as a CSV file made in your browser, with the same reuse limits as the other <a href="/downloads/">downloads</a>. "Reported late" means more than {CONGRESS_DEADLINE_DAYS} days passed between the trade and the report; a late report is a filing matter and says nothing about why a trade was made. The amount filter goes by the low end of the reported range: "{minLabel(MIN_STEPS[2])}" keeps rows whose range starts at {minLabel(MIN_STEPS[2]).replace(" or more", "")} or higher.</p>
+  <p>"Disclosed" windows count back from the day this page was built, by the date the report was filed, not the trade date, because members have {CONGRESS_DEADLINE_DAYS} days to file. A link from a member's page or a stock's page opens this table on that member or that ticker alone; the line above the count says so and has a button to remove it. "Download these rows" saves the rows that match the filters as a CSV file made in your browser, with the same reuse limits as the other <a href="/downloads/">downloads</a>. "Reported late" means more than {CONGRESS_DEADLINE_DAYS} days passed between the trade and the report; a late report is a filing matter and says nothing about why a trade was made. The amount filter goes by the low end of the reported range: "{minLabel(MIN_STEPS[2])}" keeps rows whose range starts at {minLabel(MIN_STEPS[2]).replace(" or more", "")} or higher. The upper limit goes by the high end: "{maxLabel(MAX_STEPS[1])}" keeps rows whose range ends at {maxLabel(MAX_STEPS[1]).replace(" or less", "")} or lower, and a range with no stated top is never under a limit. Set both to see one band, for example {minLabel(MIN_STEPS[0]).replace(" or more", "")} to {maxLabel(MAX_STEPS[1]).replace(" or less", "")}. "Traded" windows count back from the same day by the trade date the report gives; a row with no usable trade date is in none of them.</p>
   <p>The committee filter keeps trades by members who sit on that committee, or one of its subcommittees, today. The roster has current seats and no history, so a member's rows include trades made before they joined, and a seat is shown for context only: nothing here ties a trade to a committee's work. Scanned paper filings are held until they have been read by a person, and rows still under review are not in this table. How the figures are built: <a href="/methodology/#congress-screener">methodology</a>. How to read a report: <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>. See also the <a href="/congress-members/">member directory</a> and the <a href="/congress-committees/">committee pages</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
   <JsonLd data={ld} />
@@ -158,6 +166,8 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
 
 <style>
   .scr-controls .hm-input { width: 190px; }
+  /* The window labels ("Disclosed in the last 12 months") are longer than the site-wide 240px. */
+  .scr-controls select { max-width: 290px; }
   .scr-count { margin: 0 0 0.25rem; }
   .scr-pins { margin: 0 0 0.25rem; }
   .scr-pins[hidden] { display: none; }

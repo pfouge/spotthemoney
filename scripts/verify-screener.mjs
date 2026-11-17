@@ -75,9 +75,11 @@ const oracle = {
   committee: (v) => (r) => !v || r.committees.has(v),
   side: (v) => (r) => !v || r.side === v,
   min: (v) => (r) => !Number(v) || (r.low != null && r.low >= Number(v)),
+  max: (v) => (r) => !Number(v) || (r.high != null && r.high <= Number(v)),
   owner: (v) => (r) => !v || r.owner === v,
   asset: (v) => (r) => !v || (v === "ticker" ? !!r.ticker : !r.ticker),
   w: (v) => (r) => !Number(v) || (age(r.disc) >= 0 && age(r.disc) <= Number(v)),
+  tw: (v) => (r) => !Number(v) || (!!r.txn && age(r.txn) >= 0 && age(r.txn) <= Number(v)),
   late: (v) => (r) => !v || (v === "late" ? r.late === "true" : r.late === "false"),
 };
 const FILTERS = Object.keys(oracle);
@@ -148,7 +150,7 @@ const combos = [];
 for (const chamber of chambers) for (const side of sides.slice(0, 2)) combos.push({ chamber, side });
 for (const party of parties) combos.push({ party, late: "late" }, { party, min: 15001, asset: "ticker" });
 for (const owner of owners.slice(0, 2)) combos.push({ owner, w: 365, side: sides[0] });
-combos.push({ min: 100001, w: 90 }, { asset: "other" }, { late: "ontime", side: sides[0], min: 50001 });
+combos.push({ min: 100001, w: 90 }, { asset: "other" }, { min: 15001, max: 50000 }, { max: 15000, side: sides[0], tw: 365 }, { tw: 90, w: 30 }, { min: 250001, max: 100000 }, { late: "ontime", side: sides[0], min: 50001 });
 await setCtl("per", 25);
 for (const c of combos) {
   for (const [k, v] of Object.entries(c)) await setCtl(k, v);
@@ -215,7 +217,27 @@ await page.click('[data-scr="reset"]');
 ok((await ds()).shown === total && (await page.evaluate(() => location.hash)) === "", "Reset shows every trade and clears the address");
 await page.goto(base + PATH + "#about", { waitUntil: "load" }); await ready();
 ok((await ds()).shown === total, "a jump link (#about) leaves every trade in the table");
-await page.goto(base + PATH + "#state=ZZ&min=7&side=short", { waitUntil: "load" }); await ready();
+// A band (low end and upper limit together) and a trade window: the address, a reload, the controls.
+{
+  const band = { min: 15001, max: 50000, tw: 365 };
+  for (const [k, v] of Object.entries(band)) await setCtl(k, v);
+  const exp = want(band), h = await page.evaluate(() => location.hash);
+  ok((await ds()).shown === exp.length, `a band of $15,001 to $50,000 traded in 12 months: ${(await ds()).shown} on screen, ${exp.length} in the CSV`);
+  ok(h.includes("min=15001") && h.includes("max=50000") && h.includes("tw=365"), `the address keeps the upper limit and the trade window (${h})`);
+  ok(exp.every((r) => r.low >= 15001 && r.high <= 50000 && r.txn), "every row the oracle keeps for the band lies inside it and has a trade date");
+  await page.reload({ waitUntil: "load" }); await ready();
+  ok((await ds()).shown === exp.length && (await page.inputValue('[data-scr="max"]')) === "50000" && (await page.inputValue('[data-scr="tw"]')) === "365", "reloading keeps the upper limit and the trade window and sets their controls");
+  ok((await pageRows()).every((r) => r.cells[4] !== ""), "every row shown under a trade window has a trade date");
+  await page.click('[data-scr="reset"]');
+  ok((await ds()).shown === total && (await page.inputValue('[data-scr="max"]')) === "0" && (await page.inputValue('[data-scr="tw"]')) === "0", "Reset clears the upper limit and the trade window");
+  const noTop = rows.filter((r) => r.high == null).length, noDate = rows.filter((r) => !r.txn).length;
+  const maxes = (await optionsOf("max")).filter((v) => v !== "0"), tws = (await optionsOf("tw")).filter((v) => v !== "0");
+  ok(maxes.every((v, i) => i === 0 || want({ max: maxes[i - 1] }).length <= want({ max: v }).length), "a higher upper limit never keeps fewer rows");
+  ok(tws.every((v, i) => i === 0 || want({ tw: tws[i - 1] }).length <= want({ tw: v }).length), "a longer trade window never keeps fewer rows");
+  if (maxes.length) ok(want({ max: maxes.at(-1) }).length <= total - noTop, `no upper limit keeps a range with no stated top (${noTop} such rows)`);
+  if (tws.length) ok(want({ tw: tws.at(-1) }).length <= total - noDate, `no trade window keeps a row with no trade date (${noDate} such rows)`);
+}
+await page.goto(base + PATH + "#state=ZZ&min=7&max=7&tw=45&side=short", { waitUntil: "load" }); await ready();
 ok((await ds()).shown === total, "an address with values the screener does not offer shows every trade");
 
 // ── search, the empty state ──────────────────────────────────────────────────────────────

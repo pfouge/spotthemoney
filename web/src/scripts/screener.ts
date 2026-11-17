@@ -48,14 +48,14 @@ async function start(root: HTMLElement): Promise<void> {
     member: view.f.member, ticker: view.f.ticker,
     q: q?.value ?? "", chamber: (sel("chamber")?.value ?? "") as ScreenFilter["chamber"], party: (sel("party")?.value ?? "") as ScreenFilter["party"],
     state: sel("state")?.value ?? "", committee: sel("committee")?.value ?? "", side: (sel("side")?.value ?? "") as ScreenFilter["side"],
-    min: Number(sel("min")?.value ?? 0), owner: (sel("owner")?.value ?? "") as ScreenFilter["owner"], asset: (sel("asset")?.value ?? "") as ScreenFilter["asset"],
+    min: Number(sel("min")?.value ?? 0), max: Number(sel("max")?.value ?? 0), tw: Number(sel("tw")?.value ?? 0) as ScreenFilter["tw"], owner: (sel("owner")?.value ?? "") as ScreenFilter["owner"], asset: (sel("asset")?.value ?? "") as ScreenFilter["asset"],
     w: Number(sel("w")?.value ?? 0) as ScreenFilter["w"], late: (sel("late")?.value ?? "") as ScreenFilter["late"],
   });
   const writeControls = (v: ScreenView): void => {
     const f = v.f;
     if (q) q.value = f.q;
     pick(sel("chamber"), f.chamber); pick(sel("party"), f.party); pick(sel("state"), f.state); pick(sel("committee"), f.committee);
-    pick(sel("side"), f.side); pick(sel("min"), String(f.min), "0"); pick(sel("owner"), f.owner); pick(sel("asset"), f.asset);
+    pick(sel("side"), f.side); pick(sel("min"), String(f.min), "0"); pick(sel("max"), String(f.max), "0"); pick(sel("tw"), String(f.tw), "0"); pick(sel("owner"), f.owner); pick(sel("asset"), f.asset);
     pick(sel("w"), String(f.w), "0"); pick(sel("late"), f.late); pick(per, String(v.per), String(DEFAULT_PER));
   };
 

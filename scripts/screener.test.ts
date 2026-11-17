@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { parseCsv } from "../web/src/lib/csv";
 import {
   screenerData, screenerTxns, unpack, matches, screen, sortRows, summaryLine, parseHash, toHash, isViewHash, isDefaultFilter, isLateRow,
-  rangeLabel, minLabel, assetLabel, shortDate, seatTag, firstDir, memberSlug, screenerHref, screenerCounts, viewCsv, viewCsvName, NO_FILTER, DEFAULT_VIEW, DEFAULT_PER, type ScreenFilter, type ScreenView,
+  rangeLabel, minLabel, maxLabel, MAX_STEPS, assetLabel, shortDate, seatTag, firstDir, memberSlug, screenerHref, screenerCounts, viewCsv, viewCsvName, NO_FILTER, DEFAULT_VIEW, DEFAULT_PER, type ScreenFilter, type ScreenView,
 } from "../web/src/lib/screener";
 
 const TODAY = "2026-11-17";
@@ -87,6 +87,25 @@ test("filters: amount goes by the low end of the range; late and on time; window
   assert.deepEqual(edge.filter((r) => matches(r, f({ w: 90 }), "2026-11-17")).map((r) => r.id), [90]);
 });
 
+test("filters: the upper limit goes by the high end of the range; trade windows by trade date", () => {
+  assert.deepEqual(ids(f({ max: 15000 })), [2, 5]);
+  assert.deepEqual(ids(f({ max: 50000 })), [1, 2, 5]);
+  assert.deepEqual(ids(f({ max: 1000000 })), [1, 2, 5]);       // 3 ends at $5M; 4 has no stated top and is under no limit
+  assert.deepEqual(ids(f({ min: 15001, max: 50000 })), [1]);   // both together make one band
+  assert.deepEqual(ids(f({ min: 50001, max: 15000 })), []);    // an impossible band matches nothing
+  assert.deepEqual(ids(f({ tw: 30 })), [1]);
+  assert.deepEqual(ids(f({ tw: 90 })), [1, 2]);
+  assert.deepEqual(ids(f({ tw: 365 })), [1, 2, 3, 4]);         // 5 has no trade date: in no trade window
+  assert.deepEqual(ids(f({ tw: 90, w: 30, side: "sell" })), [2]);
+  // Inclusive edge, never the future, and a row with no high end or no trade date never passes.
+  const edge = unpack({ built: "2026-11-17", members: data.members, filings: [""], rows: [
+    [80, 0, "X", "stock", "buy", "self", "2026-08-19", "2026-11-01", -1, 1001, 15000, 0], [81, 0, "X", "stock", "buy", "self", "2026-08-18", "2026-11-01", -1, 1001, 15001, 0],
+    [82, 0, "X", "stock", "buy", "self", "2026-11-18", "2026-11-01", -1, 1001, -1, 0], [83, 0, "X", "stock", "buy", "self", "", "2026-11-01", -1, -1, 15000, 0]] });
+  assert.deepEqual(edge.filter((r) => matches(r, f({ tw: 90 }), "2026-11-17")).map((r) => r.id), [80]);
+  assert.deepEqual(edge.filter((r) => matches(r, f({ max: 15000 }), "2026-11-17")).map((r) => r.id), [80, 83]);
+  assert.equal(maxLabel(50000), "$50,000 or less"); assert.equal(MAX_STEPS.length, 6);
+});
+
 test("search: every word must be in the member's name or the ticker; filters combine", () => {
   assert.deepEqual(ids(f({ q: "zeta" })), [1, 2]);
   assert.deepEqual(ids(f({ q: "NVDA" })), [1, 3]);
@@ -139,15 +158,16 @@ test("labels", () => {
 
 test("the address: round trip, defaults leave it empty, junk is ignored, a jump link is not a view", () => {
   assert.equal(toHash(DEFAULT_VIEW), "");
-  const v: ScreenView = { f: f({ chamber: "senate", party: "D", state: "TX", committee: "SSAF", side: "buy", min: 100001, owner: "joint", asset: "ticker", w: 90, late: "late", q: "nvda" }), sort: "amount", dir: "asc", page: 3, per: 25 };
+  const v: ScreenView = { f: f({ chamber: "senate", party: "D", state: "TX", committee: "SSAF", side: "buy", min: 100001, max: 1000000, owner: "joint", asset: "ticker", w: 90, tw: 365, late: "late", q: "nvda" }), sort: "amount", dir: "asc", page: 3, per: 25 };
   assert.deepEqual(parseHash(toHash(v)), v);
   assert.equal(toHash(view({ sort: "amount", dir: "desc" } as any)), "#sort=amount&dir=desc");
   assert.equal(toHash(view({ sort: "disclosed", dir: "asc" } as any)), "#sort=disclosed&dir=asc");
-  const junk = parseHash("#chamber=lords&party=X&state=TEXAS&min=7&owner=dog&asset=x&w=45&late=maybe&sort=price&dir=up&page=-2&per=1000&side=short");
+  const junk = parseHash("#chamber=lords&party=X&state=TEXAS&min=7&max=15001&tw=45&owner=dog&asset=x&w=45&late=maybe&sort=price&dir=up&page=-2&per=1000&side=short");
   assert.deepEqual(junk, { ...DEFAULT_VIEW, f: { ...NO_FILTER } });
   assert.equal(parseHash("#sort=member").dir, "asc");
   assert.equal(isViewHash("#about"), false); assert.equal(isViewHash("#heatmap=1"), false); assert.equal(isViewHash("#side=buy"), true); assert.equal(isViewHash(""), false);
-  assert.equal(isDefaultFilter(f({})), true); assert.equal(isDefaultFilter(f({ min: 15001 })), false);
+  assert.equal(isDefaultFilter(f({})), true); assert.equal(isDefaultFilter(f({ min: 15001 })), false); assert.equal(isDefaultFilter(f({ max: 15000 })), false); assert.equal(isDefaultFilter(f({ tw: 30 })), false);
+  assert.equal(toHash(view({}, { min: 15001, max: 50000, tw: 90 })), "#min=15001&max=50000&tw=90");
   assert.equal(DEFAULT_PER, 50);
 });
 

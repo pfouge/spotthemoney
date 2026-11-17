@@ -2477,3 +2477,36 @@ Full status, numbers and the stage 3 plan: Project doc `claude/parity-form4-mark
 - Not done: an industry filter on the trade map or in a screener, ratios by industry, related
   companies by industry, industry on the on-demand pages, market-wide companies on these pages
   (all touch the market-wide thread's files or wait for it).
+
+### Screener: an upper limit on the amount and a trade-date window (2026-11-17, scheduled parity run) — queue item 6, stage 1, last follow-ups
+
+- **What.** Two more filters on `/congress-trades/`, each a select and a hash key:
+  `max` ("Upper limit": "$15,000 or less" to "$1,000,000 or less", `MAX_STEPS`) and `tw`
+  ("Traded": last 30 days, 90 days, 12 months; `TRADE_WINDOW_LABEL`, the same `WINDOWS` as the
+  disclosure filter). The disclosure select's first option now reads "Any disclosure date".
+- **Rules** (`matches` in `web/src/lib/screener.ts`; tests in `scripts/screener.test.ts`):
+  `max` passes a row whose range's HIGH end is at most the step, so `min` and `max` together
+  select one band (`#min=15001&max=50000`); a range with no stated top passes no upper limit;
+  an impossible pair (min above max) shows the empty state. `tw` counts back from the BUILD day
+  (`data.built`) by trade date, edge inclusive, never the future; a row with no trade date
+  (missing, or dated after the report and blanked by `flagship.ts`) is in no trade window.
+  Junk values are ignored like the other keys. The download's file name carries `max…` and
+  `traded…d`.
+- **A new hash key goes in three places:** `KEYS` / `parseHash` / `toHash` in `screener.ts`,
+  `SCREEN_KEYS` in `scripts/verify-links.mjs`, and the `oracle` object in
+  `scripts/verify-screener.mjs` (its filter loop tries every option of every key in `oracle`).
+- **Build log** prints `[web] congress screener limits: high end at most 15000 N, ...; no stated
+  top N; band 15001 to 50000 N; traded in the last 30 days N, 90 days N, 365 days N; no trade
+  date N` for comparison with SQL.
+- **Verifier.** `verify-screener` tries every option of both new filters against the CSV oracle,
+  pages through four more combined views (a band, an upper limit with a side and a trade window,
+  both windows together, an impossible band), and checks the address, a reload, the controls,
+  Reset, that a higher limit or longer window never keeps fewer rows, and junk values.
+- **Data fault found, not fixed here (parser, queue item 3):** 14 House rows in 11 reports have a
+  high end below the low end (for example low 318, high 74). The report gave an exact amount
+  with cents ("$318.74") and the House parser split it at the decimal point. They display as
+  "$318–$74". All are under $3,000, so every filter still places them correctly.
+- Guide `how-to-read-a-congressional-trade-report` (`#screener` paragraph, FAQ sentence, two
+  labels) and methodology `#congress-screener` updated.
+- Not done: saved screens; the insider screener (waits for market-wide stage 3b-2); a custom
+  date range.

@@ -89,8 +89,8 @@
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
       "web/src/pages/congress-committees/index.astro": "5b2137a71662a90d",
       "web/src/pages/congress-committees/[slug].astro": "9775526e21f68d84",
-      "web/src/lib/screener.ts": "26dbba59fd1cd318",
-      "web/src/pages/congress-trades.astro": "e99b2d37071b3622",
+      "web/src/lib/screener.ts": "6884fcdf60754c78",
+      "web/src/pages/congress-trades.astro": "bf9468134c374f7c",
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5"
     }
   },
