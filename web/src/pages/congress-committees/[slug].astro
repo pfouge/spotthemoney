@@ -7,6 +7,8 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import TxnTable from "../../components/TxnTable.astro";
+import ScreenerLink from "../../components/ScreenerLink.astro";
+import { screenerCountsFor } from "../../lib/screener";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, personPath, securityPath, companyPath, num, plural } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -139,6 +141,7 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
     <section aria-labelledby="trades" data-committee-trades>
       <h2 id="trades">Trades disclosed by members</h2>
       <p class="section-note">Newest disclosures first, each with a link to the original report. {c.trades > COMMITTEE_TRADE_ROWS ? `The table holds the ${COMMITTEE_TRADE_ROWS} most recent of ${num(c.trades)} rows; every row is on the member's own page.` : "Every row is also on the member's own page."} A trade may predate the member's seat on this committee.</p>
+      <ScreenerLink committee={c.code} n={screenerCountsFor(model, personPath).committee.get(c.code) ?? 0} of="by this committee's members" />
       <TxnTable model={model} txns={c.txns} showPerson showSecurity limit={COMMITTEE_TRADE_ROWS} />
     </section>
   )}

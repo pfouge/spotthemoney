@@ -11,6 +11,10 @@
 //   5. AUTO     an automatic glossary link that points at its own page, at a missing guide,
 //               or twice at the same guide from one page.
 //   6. FLAG     a "late" or "10b5-1 plan" flag in a trade table that is not a link to its guide.
+//   8. SCREEN   a link into the Congress trade screener (/congress-trades/#committee=…, #member=…,
+//               #ticker=…) that names a key the screener does not have, a committee, member or
+//               ticker with no row in the screener's data file, or a row count beside the link
+//               that is not the number of rows the data file holds for it.
 //   7. NOTES    a Form 4 "notes" link with no footnote block on its page, a block printed twice,
 //               an empty or over-long block, or an XML escape shown as text.
 //
@@ -79,8 +83,14 @@ await pool(plain, 8, async (t) => {
   const { status } = await get(t);
   ok(status === 200, `BROKEN ${t} (HTTP ${status}), linked from ${targets.get(t)}`);
 });
+// A hash on the screener that carries one of its keys is a saved view, not an anchor (its own list,
+// not the code's: web/src/lib/screener.ts KEYS).
+const SCREENER = "/congress-trades/";
+const SCREEN_KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "owner", "asset", "w", "late", "member", "ticker", "sort", "dir", "page", "per"];
+const isScreenView = (path, hash) => path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key));
 for (const k of [...targets.keys()].filter((x) => x.includes("#"))) {
   const [path, hash] = [k.slice(0, k.indexOf("#")), k.slice(k.indexOf("#") + 1)];
+  if (isScreenView(path, hash)) continue;   // checked under SCREEN below
   const { status, html } = await get(path);
   if (status !== 200 || !html || !hash || hash === "main") continue;
   ok(ids(html).has(hash), `BROKEN anchor #${hash} on ${path}, linked from ${targets.get(k)}`);
@@ -187,5 +197,50 @@ for (const path of pages) {
   }
 }
 
+// 8. SCREEN: links into the Congress trade screener, recounted from the screener's data file.
+let screenLinks = 0;
+{
+  const data = await fetch(`${base}/data/congress-screener.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const count = { committee: new Map(), member: new Map(), ticker: new Map() };
+  const add = (m, key) => { if (key) m.set(key, (m.get(key) ?? 0) + 1); };
+  for (const r of data?.rows ?? []) {
+    const mem = data.members[r[1]];
+    for (const c of mem?.c ?? []) add(count.committee, c);
+    add(count.member, (mem?.p ?? "").replace(/\/+$/, "").split("/").pop());
+    add(count.ticker, String(r[2]).toUpperCase());
+  }
+  for (const path of pages) {
+    const { html } = await get(path);
+    if (!html) continue;
+    const main = mainOf(html);
+    const noted = new Map([...main.matchAll(/<p[^>]*data-screener-link[^>]*data-n="(\d+)"[^>]*>\s*<a[^>]*href="([^"]+)"/g)].map((m) => [m[2].replace(/&amp;/g, "&"), Number(m[1])]));
+    for (const h of hrefs(main)) {
+      const t = clean(h);
+      if (!t || t.path !== SCREENER || !t.hash) continue;
+      if (!isScreenView(t.path, t.hash)) continue;
+      screenLinks++;
+      const q = new URLSearchParams(t.hash);
+      if (!ok([...q.keys()].every((key) => SCREEN_KEYS.includes(key)), `SCREEN ${path}: the link ${h} uses a key the screener does not have`)) continue;
+      if (!ok(!!data, `SCREEN ${path}: links into the screener but /data/congress-screener.json is not served`)) break;
+      let expected = null;
+      for (const key of ["committee", "member", "ticker"]) {
+        if (!q.has(key)) continue;
+        const n = count[key].get(q.get(key)) ?? 0;
+        ok(n > 0, `SCREEN ${path}: ${h} names a ${key} with no row in the screener`);
+        expected = expected == null ? n : null;   // a count is checked for a link with one such key
+      }
+      if (noted.has(h) && [...q.keys()].length === 1) ok(noted.get(h) === expected, `SCREEN ${path}: the link ${h} says ${noted.get(h)} rows, the screener's data file has ${expected}`);
+    }
+    // Where a link belongs: a member page or a stock
+    // page whose member or ticker has rows in the screener.
+    if (data) {
+      const slug = /^\/congress\/([^/]+)\/$/.exec(path)?.[1], tick = /^\/stocks\/([^/]+)\/$/.exec(path)?.[1]?.toUpperCase();
+      if (slug && count.member.has(slug)) ok(noted.has(`${SCREENER}#member=${slug}`), `SCREEN ${path}: the member has ${count.member.get(slug)} rows in the screener but the page has no link to them`);
+      if (tick && count.ticker.has(tick)) ok(noted.has(`${SCREENER}#ticker=${encodeURIComponent(tick)}`), `SCREEN ${path}: ${tick} has ${count.ticker.get(tick)} rows in the screener but the page has no link to them`);
+      // (A committee page's code is not in its address; its link is checked above when present.)
+    }
+  }
+}
+
 if (failures.length) { console.error(`✗ ${failures.length} of ${checks} link checks failed:`); for (const f of [...new Set(failures)].slice(0, 50)) console.error("  " + f); process.exit(1); }
-console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${periodTables} period tables, ${industryFacts} industry facts, ${autos} automatic guide links, ${flagLinks} flag links, ${noteLinks} footnote links to ${noteBlocks} footnote blocks` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));
+console.log(`✓ ${checks} link checks passed: ${pages.size} pages read, ${plain.length} distinct internal targets all answer, ${entities} entity pages, ${periodTables} period tables, ${industryFacts} industry facts, ${autos} automatic guide links, ${flagLinks} flag links, ${screenLinks} links into the screener, ${noteLinks} footnote links to ${noteBlocks} footnote blocks` + (full ? `; no orphans, deepest sitemap page is ${maxDepth} clicks from home, ${thin} pages have a single inbound link` : "; orphan and depth checks skipped (sample)"));

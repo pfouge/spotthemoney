@@ -105,8 +105,10 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
           <select data-scr="late" aria-label="Reporting time"><option value="">Any reporting time</option><option value="late">Reported late</option><option value="ontime">Reported on time</option></select>
         </div>
       </div>
+      <p class="section-note scr-pins" data-scr="pins" hidden></p>
       <p class="section-note scr-count"><span data-scr="count" aria-live="polite">{summaryLine(first, all.length)}</span> <button type="button" class="linklike" data-scr="reset" hidden>Reset filters</button></p>
       <DownloadCsv file={csv} note="every congressional trade on record, not only the rows filtered here" />
+      <p class="dl-row scr-dl" data-scr="dlrow"><button type="button" class="dl" data-scr="download">Download these rows (CSV)</button> <span class="dl-meta" data-scr="dlnote">The rows that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
 
       <div class="tablewrap"><table class="data txns scr-table">
         <thead><tr>
@@ -148,7 +150,7 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
 
   <h2 id="about">What this table shows</h2>
   <p>One row for each transaction in a periodic transaction report on record here: the member who filed, the asset, whether it was a purchase, a sale or an exchange, whose asset it was, the trade date, the day the report was filed, the days between the two, the dollar range the report gives, and a link to the original report. Members report a range, not an exact figure, so no dollar total is shown. The reports are the authority for every row.</p>
-  <p>"Disclosed" windows count back from the day this page was built, by the date the report was filed, not the trade date, because members have {CONGRESS_DEADLINE_DAYS} days to file. "Reported late" means more than {CONGRESS_DEADLINE_DAYS} days passed between the trade and the report; a late report is a filing matter and says nothing about why a trade was made. The amount filter goes by the low end of the reported range: "{minLabel(MIN_STEPS[2])}" keeps rows whose range starts at {minLabel(MIN_STEPS[2]).replace(" or more", "")} or higher.</p>
+  <p>"Disclosed" windows count back from the day this page was built, by the date the report was filed, not the trade date, because members have {CONGRESS_DEADLINE_DAYS} days to file. A link from a member's page or a stock's page opens this table on that member or that ticker alone; the line above the count says so and has a button to remove it. "Download these rows" saves the rows that match the filters as a CSV file made in your browser, with the same reuse limits as the other <a href="/downloads/">downloads</a>. "Reported late" means more than {CONGRESS_DEADLINE_DAYS} days passed between the trade and the report; a late report is a filing matter and says nothing about why a trade was made. The amount filter goes by the low end of the reported range: "{minLabel(MIN_STEPS[2])}" keeps rows whose range starts at {minLabel(MIN_STEPS[2]).replace(" or more", "")} or higher.</p>
   <p>The committee filter keeps trades by members who sit on that committee, or one of its subcommittees, today. The roster has current seats and no history, so a member's rows include trades made before they joined, and a seat is shown for context only: nothing here ties a trade to a committee's work. Scanned paper filings are held until they have been read by a person, and rows still under review are not in this table. How the figures are built: <a href="/methodology/#congress-screener">methodology</a>. How to read a report: <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>. See also the <a href="/congress-members/">member directory</a> and the <a href="/congress-committees/">committee pages</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
   <JsonLd data={ld} />
@@ -157,6 +159,15 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
 <style>
   .scr-controls .hm-input { width: 190px; }
   .scr-count { margin: 0 0 0.25rem; }
+  .scr-pins { margin: 0 0 0.25rem; }
+  .scr-pins[hidden] { display: none; }
+  .scr-pins :global(.pin) { display: inline-flex; align-items: center; gap: 8px; margin-right: 10px; padding: 3px 6px 3px 12px; border-radius: var(--r-pill); background: var(--chip); color: var(--ink); }
+  .scr-pins :global(.pin button) { font: inherit; color: var(--signal); background: none; border: 0; padding: 2px 6px; cursor: pointer; text-decoration: underline; }
+  .scr-dl { margin-top: 0; }
+  .scr-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
+  .scr-dl button.dl:hover { background: var(--chip); }
+  .scr-dl button.dl:disabled { opacity: 0.45; cursor: default; }
+  :global(html:not(.js)) .scr-dl { display: none; }
   .scr-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
   .scr-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
   .scr-pager button.chip:disabled { opacity: 0.45; cursor: default; }

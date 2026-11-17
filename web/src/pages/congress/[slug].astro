@@ -14,6 +14,8 @@ import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
+import ScreenerLink from "../../components/ScreenerLink.astro";
+import { screenerCountsFor } from "../../lib/screener";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, personPath, roleLabel, avg, num, plural, isLate, withinDays, CONGRESS_DEADLINE_DAYS, money, sum, securityPath, companyPath } from "../../lib/flagship";
 import { personLd, fitDescription, SITE_URL } from "../../lib/seo";
@@ -243,6 +245,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
 
   <h2 id="trades">Disclosed trades</h2>
   <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
+  <ScreenerLink member={p.slug!} n={screenerCountsFor(model, personPath).member.get(p.slug!) ?? 0} of={`by ${p.name}`} />
   <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />
 
   <AdSlot label="Advertisement" show={!noindex} />
