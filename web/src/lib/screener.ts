@@ -92,8 +92,12 @@ export const OWNERS = ["self", "spouse", "joint", "dependent"] as const;
 export const OWNER_LABEL: Record<string, string> = { self: "Self", spouse: "Spouse", joint: "Joint", dependent: "Dependent child" };
 /** Amount steps: a row passes when the LOW end of its reported range is at least the step. */
 export const MIN_STEPS = [15001, 50001, 100001, 250001, 500001, 1000000] as const;
+/** Upper limits: a row passes when the HIGH end of its reported range is at most the step. */
+export const MAX_STEPS = [15000, 50000, 100000, 250000, 500000, 1000000] as const;
 export const WINDOWS = [30, 90, 365] as const;
 export const WINDOW_LABEL: Record<number, string> = { 30: "Disclosed in the last 30 days", 90: "Disclosed in the last 90 days", 365: "Disclosed in the last 12 months" };
+/** The same windows, by trade date. */
+export const TRADE_WINDOW_LABEL: Record<number, string> = { 30: "Traded in the last 30 days", 90: "Traded in the last 90 days", 365: "Traded in the last 12 months" };
 export const PER_PAGE = [25, 50, 100] as const;
 export const DEFAULT_PER = 50;
 export const SORT_KEYS = ["disclosed", "trade", "member", "ticker", "lag", "amount"] as const;
@@ -101,11 +105,16 @@ export type SortKey = (typeof SORT_KEYS)[number];
 
 export interface ScreenFilter {
   q: string; chamber: "" | "house" | "senate"; party: PartyKey; state: string; committee: string;
-  side: "" | (typeof SIDES)[number]; min: number; owner: "" | (typeof OWNERS)[number];
+  side: "" | (typeof SIDES)[number]; min: number;
+  /** Upper limit on the HIGH end of the reported range; 0 = none. A range with no top never passes. */
+  max: number;
+  owner: "" | (typeof OWNERS)[number];
   /** "ticker": rows with a ticker symbol; "other": rows without one (bonds, funds, other assets). */
   asset: "" | "ticker" | "other";
   /** Disclosure window in days back from the build day; 0 = any date. */
   w: 0 | 30 | 90 | 365;
+  /** Trade-date window in days back from the build day; 0 = any date. A row with no trade date never passes. */
+  tw: 0 | 30 | 90 | 365;
   /** "late": reported after the deadline; "ontime": within it. */
   late: "" | "late" | "ontime";
   /** Exactly one member, by the slug of the member's page ("kevin-hern"); "" = any. Set by a link
@@ -114,7 +123,7 @@ export interface ScreenFilter {
   /** Exactly one ticker symbol, upper case ("NVDA"); "" = any. Set by a link from a stock page. */
   ticker: string;
 }
-export const NO_FILTER: ScreenFilter = { q: "", chamber: "", party: "", state: "", committee: "", side: "", min: 0, owner: "", asset: "", w: 0, late: "", member: "", ticker: "" };
+export const NO_FILTER: ScreenFilter = { q: "", chamber: "", party: "", state: "", committee: "", side: "", min: 0, max: 0, owner: "", asset: "", w: 0, tw: 0, late: "", member: "", ticker: "" };
 export interface ScreenView { f: ScreenFilter; sort: SortKey; dir: "asc" | "desc"; page: number; per: number }
 export const DEFAULT_VIEW: ScreenView = { f: NO_FILTER, sort: "disclosed", dir: "desc", page: 1, per: DEFAULT_PER };
 
@@ -134,11 +143,13 @@ export function matches(r: ScreenRow, f: ScreenFilter, built: string): boolean {
   if (f.side && r.side !== f.side) return false;
   if (f.owner && r.owner !== f.owner) return false;
   if (f.min > 0 && !(r.low != null && r.low >= f.min)) return false;
+  if (f.max > 0 && !(r.high != null && r.high <= f.max)) return false;
   if (f.asset === "ticker" && !r.ticker) return false;
   if (f.asset === "other" && r.ticker) return false;
   if (f.late === "late" && !isLateRow(r)) return false;
   if (f.late === "ontime" && (r.lag == null || isLateRow(r))) return false;
   if (f.w > 0) { const age = daysBetween(r.disc, built); if (age < 0 || age > f.w) return false; }
+  if (f.tw > 0) { if (!r.txn) return false; const age = daysBetween(r.txn, built); if (age < 0 || age > f.tw) return false; }
   const q = f.q.trim().toLowerCase();
   if (q) {
     const hay = `${r.m.n} ${r.ticker}`.toLowerCase();
@@ -211,6 +222,7 @@ export function rangeLabel(low: number | null, high: number | null): string {
   return "";
 }
 export function minLabel(step: number): string { return `$${n(step)} or more`; }
+export function maxLabel(step: number): string { return `$${n(step)} or less`; }
 const ASSET: Record<string, string> = { stock: "stock, no ticker", etf: "ETF", bond: "bond", fund: "fund", hedge_fund: "hedge fund", private_equity: "private equity", option: "option", crypto: "crypto", other: "other asset" };
 /** What to print where a row has no ticker. */
 export function assetLabel(asset: string): string { return ASSET[asset] ?? (asset ? asset.replace(/_/g, " ") : "no ticker"); }
@@ -223,9 +235,9 @@ export function tickerPath(ticker: string): string { return `/stocks/${ticker.to
 
 // ── the address ──────────────────────────────────────────────────────────────────────────
 export function isDefaultFilter(f: ScreenFilter): boolean {
-  return !f.q.trim() && !f.chamber && !f.party && !f.state && !f.committee && !f.side && !f.min && !f.owner && !f.asset && !f.w && !f.late && !f.member && !f.ticker;
+  return !f.q.trim() && !f.chamber && !f.party && !f.state && !f.committee && !f.side && !f.min && !f.max && !f.owner && !f.asset && !f.w && !f.tw && !f.late && !f.member && !f.ticker;
 }
-const KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "owner", "asset", "w", "late", "member", "ticker", "sort", "dir", "page", "per"];
+const KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "max", "owner", "asset", "w", "tw", "late", "member", "ticker", "sort", "dir", "page", "per"];
 /** True when a hash is a saved view (carries one of the screener's keys), not a jump link. */
 export function isViewHash(hash: string): boolean {
   if (!hash.includes("=")) return false;
@@ -242,9 +254,11 @@ export function parseHash(hash: string): ScreenView {
   const co = (p.get("committee") ?? "").toUpperCase(); if (/^[A-Z0-9]{2,8}$/.test(co)) f.committee = co;
   const si = p.get("side") ?? ""; if ((SIDES as readonly string[]).includes(si)) f.side = si as ScreenFilter["side"];
   const mi = Number(p.get("min")); if ((MIN_STEPS as readonly number[]).includes(mi)) f.min = mi;
+  const mx = Number(p.get("max")); if ((MAX_STEPS as readonly number[]).includes(mx)) f.max = mx;
   const ow = p.get("owner") ?? ""; if ((OWNERS as readonly string[]).includes(ow)) f.owner = ow as ScreenFilter["owner"];
   const as = p.get("asset"); if (as === "ticker" || as === "other") f.asset = as;
   const w = Number(p.get("w")); if ((WINDOWS as readonly number[]).includes(w)) f.w = w as ScreenFilter["w"];
+  const tw = Number(p.get("tw")); if ((WINDOWS as readonly number[]).includes(tw)) f.tw = tw as ScreenFilter["tw"];
   const la = p.get("late"); if (la === "late" || la === "ontime") f.late = la;
   const me = (p.get("member") ?? "").toLowerCase(); if (/^[a-z0-9]+(-[a-z0-9]+)*$/.test(me) && me.length <= 80) f.member = me;
   const ti = (p.get("ticker") ?? "").toUpperCase(); if (/^[A-Z0-9][A-Z0-9.\-]{0,9}$/.test(ti)) f.ticker = ti;
@@ -264,9 +278,11 @@ export function toHash(v: ScreenView): string {
   if (f.committee) p.set("committee", f.committee);
   if (f.side) p.set("side", f.side);
   if (f.min) p.set("min", String(f.min));
+  if (f.max) p.set("max", String(f.max));
   if (f.owner) p.set("owner", f.owner);
   if (f.asset) p.set("asset", f.asset);
   if (f.w) p.set("w", String(f.w));
+  if (f.tw) p.set("tw", String(f.tw));
   if (f.late) p.set("late", f.late);
   if (f.member) p.set("member", f.member);
   if (f.ticker) p.set("ticker", f.ticker);
@@ -348,7 +364,7 @@ export function viewCsv(all: ScreenRow[], v: ScreenView, built: string): string 
 /** A file name that says what was filtered: "congress-trades-senate-buy-2026-11-17.csv". */
 export function viewCsvName(v: ScreenView, built: string): string {
   const f = v.f;
-  const bits = [f.member, f.ticker, f.committee, f.chamber, f.party, f.state, f.side, f.owner, f.min ? `min${f.min}` : "", f.asset, f.w ? `${f.w}d` : "", f.late]
+  const bits = [f.member, f.ticker, f.committee, f.chamber, f.party, f.state, f.side, f.owner, f.min ? `min${f.min}` : "", f.max ? `max${f.max}` : "", f.asset, f.w ? `${f.w}d` : "", f.tw ? `traded${f.tw}d` : "", f.late]
     .filter(Boolean).map((b) => String(b).toLowerCase().replace(/[^a-z0-9]+/g, "-"));
   return `congress-trades-${bits.length || f.q.trim() ? [...bits, "filtered"].join("-") : "all"}-${built}.csv`;
 }
