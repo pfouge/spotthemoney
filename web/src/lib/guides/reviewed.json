@@ -179,20 +179,20 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-17",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
-      "web/src/lib/entity.ts": "d8009eb2fe0cc43d",
+      "web/src/lib/entity.ts": "4bf646367321d06f",
       "web/src/lib/links.ts": "b2b155c2322b1ff1",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "f85f79449b5b186b",
-      "web/src/lib/server/od.ts": "9506e8622e4c72ed",
+      "web/src/lib/server/od.ts": "7d2ced0be0a68bf0",
       "web/src/components/OdPageView.astro": "a75d34eef3e63e18",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "a36818d6c9aa4640",
+      "web/src/pages/stocks/[ticker].astro": "3c34f55c81d8669c",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
-      "web/src/pages/companies/[slug].astro": "02c997c89682b910"
+      "web/src/pages/companies/[slug].astro": "77b788e3d5873df0"
     }
   }
 }

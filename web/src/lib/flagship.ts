@@ -14,7 +14,7 @@
 
 import { cleanFootnotes } from "./footnotes";
 import postgres from "postgres";
-import { normalizeOrgName, FORM4_FLOOR } from "@stm/shared";
+import { normalizeOrgName, FORM4_FLOOR, cleanSicCode, sicDivision } from "@stm/shared";
 import { refPriceMap, buildTxn, jointMap } from "./txnbuild";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -60,7 +60,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), seats: new Map(), footnotes: new Map(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -145,7 +145,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), seats: new Map(), footnotes: new Map() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -291,6 +291,33 @@ async function load(): Promise<Flagship> {
       for (const r of sizeRows) model.companySize.set(r.cik.padStart(10, "0"), { shares: r.shares, sharesAsOf: r.shares_as_of, float: r.float, floatAsOf: r.float_as_of });
     } catch (err) {
       console.warn("[web] company size skipped:", (err as Error).message);
+    }
+
+    // Industry codes (SIC) for the Industry fact on company and stock pages. Optional in the same
+    // way: before migration 0021 is applied or the job has run, the pages leave the fact out.
+    try {
+      const sicRows = await sql<{ cik: string; sic: string; description: string | null }[]>`
+        select cik, sic, sic_description as description from company_sic where sic is not null`;
+      for (const r of sicRows) {
+        const code = cleanSicCode(r.sic);
+        if (code) model.companySic.set(r.cik.padStart(10, "0"), { sic: code, description: r.description });
+      }
+      // One line to compare with SQL on the production build: tracked companies with a code, and by division.
+      const byDivision = new Map<string, number>();
+      let withCode = 0, withCik = 0;
+      for (const c of model.companies.values()) {
+        if (!c.cik) continue;
+        withCik++;
+        const e = model.companySic.get(c.cik.padStart(10, "0"));
+        if (!e) continue;
+        withCode++;
+        const d = sicDivision(e.sic)?.name ?? "no division";
+        byDivision.set(d, (byDivision.get(d) ?? 0) + 1);
+      }
+      const parts = [...byDivision.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([d, n]) => `${d} ${n}`);
+      console.log(`[web] industry codes: ${withCode} of ${withCik} companies on the site have a SIC code (${model.companySic.size} codes on file)${parts.length ? "; " + parts.join(", ") : ""}`);
+    } catch (err) {
+      console.warn("[web] industry codes skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

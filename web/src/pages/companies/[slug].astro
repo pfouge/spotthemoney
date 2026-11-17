@@ -3,7 +3,7 @@
 // federal contracts and lobbying (exact normalized-name match on USAspending recipient /
 // LDA client; a miss simply shows the reason line).
 import LearnMore from "../../components/LearnMore.astro";
-import { insiderRows, memberRows, relatedCompanies, sizeOf, tickerPages } from "../../lib/entity";
+import { insiderRows, memberRows, relatedCompanies, sizeOf, industryOf, tickerPages } from "../../lib/entity";
 import { orgPath } from "../../lib/links";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
@@ -47,6 +47,7 @@ const insiderList = insiderRows(model, txns);
 const memberList = memberRows(model, congressTxns);
 const relatedCos = relatedCompanies(model, c);
 const size = sizeOf(model, c.primaryTicker);
+const industry = industryOf(model, c);
 const primarySec = c.primaryTicker ? tickerPages(model).get(c.primaryTicker.toLowerCase()) : undefined;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const jump: [string, string][] = [
@@ -74,6 +75,7 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <div class="title-row"><h1>{c.name}</h1><Follow kind="company" entity={c.slug!} label={c.name} /></div>
   <dl class="facts" data-entity-facts>
     {securities.length > 0 && <div><dt>{securities.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{[...new Map(securities.map((s) => [s.ticker, s])).values()].map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}</dd></div>}
+    {industry && <div data-industry><dt>Industry, as the SEC classifies it</dt><dd>{industry.label}</dd></div>}
     {size && <div><dt>Size, estimated from filings</dt><dd>{size.label} ({size.range})</dd></div>}
     <div><dt>Insiders on file</dt><dd>{c.insiders.length ? <a href="#insiders">{num(c.insiders.length)}</a> : "0"}</dd></div>
     {memberList.length > 0 && <div><dt>Members of Congress who traded it</dt><dd><a href="#members">{num(memberList.length)}</a></dd></div>}

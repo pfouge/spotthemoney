@@ -116,6 +116,8 @@ export interface Flagship {
   issueNames: Map<string, string>;     // LDA general issue code → display name (for the charts)
   /** 10-digit CIK → size figures from SEC filings (company_size, migration 0013); see lib/capband.ts. */
   companySize: Map<string, { shares: number | null; sharesAsOf: string | null; float: number | null; floatAsOf: string | null }>;
+  /** 10-digit CIK → the SEC's industry code for the company (company_sic, migration 0021); see industryOf in lib/entity.ts. Only companies that have a code. */
+  companySic: Map<string, { sic: string; description: string | null }>;
   /** Person id → current committee and subcommittee seats. Empty until the roster job has run with migration 0015. */
   seats: Map<number, Seat[]>;
   /** Form 4 filing id → the filing's footnotes as clean text (lib/footnotes.ts). Only filings that have any. */

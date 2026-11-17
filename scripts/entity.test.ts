@@ -2,7 +2,7 @@
 // automatic links (web/src/lib/links.ts). Run:  npx tsx --test scripts/entity.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { codeRows, yearRows, insiderRows, memberRows, relatedTickers, colleagues, relatedCompanies, codeLabel, insiderPeriods } from "../web/src/lib/entity";
+import { codeRows, yearRows, insiderRows, memberRows, relatedTickers, colleagues, relatedCompanies, codeLabel, insiderPeriods, industryOf } from "../web/src/lib/entity";
 import { autolink, flagHref, orgPath, GLOSSARY } from "../web/src/lib/links";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -144,4 +144,21 @@ test("insiderPeriods: open-market P and S only, by disclosure date, people count
   assert.deepEqual([y!.buys, y!.sells, y!.sellers, y!.sharesSold, y!.sold, y!.planSells, y!.netShares, y!.net], [2, 2, 2, 430, 4700, 1, -280, -3700]);
   const none = insiderPeriods([], since);
   assert.deepEqual(none.map((p) => [p.buys, p.sells, p.netShares, p.net]), [[0, 0, 0, 0], [0, 0, 0, 0]]);
+});
+
+test("industry: the SEC's code and wording, with the division looked up from the code", () => {
+  const m = { companySic: new Map([
+    ["0000000001", { sic: "3674", description: "Semiconductors & Related Devices" }],
+    ["0000000002", { sic: "7372", description: null }],
+    ["0000000003", { sic: "1800", description: "Odd Code" }],
+  ]) } as unknown as Flagship;
+  assert.deepEqual(industryOf(m, { cik: "1" }), { code: "3674", description: "Semiconductors & Related Devices", division: "Manufacturing", label: "Semiconductors & Related Devices (SIC 3674, Manufacturing)" });
+  assert.equal(industryOf(m, { cik: "0000000002" })!.label, "SIC 7372, Services");
+  // A code outside every division keeps its wording and code, with no division invented.
+  assert.equal(industryOf(m, { cik: "3" })!.label, "Odd Code (SIC 1800)");
+  assert.equal(industryOf(m, { cik: "3" })!.division, null);
+  // No code on file, no CIK, no company: nothing is shown.
+  assert.equal(industryOf(m, { cik: "4" }), null);
+  assert.equal(industryOf(m, { cik: null }), null);
+  assert.equal(industryOf(m, null), null);
 });

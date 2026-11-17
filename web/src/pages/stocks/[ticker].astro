@@ -1,7 +1,7 @@
 ---
 // Ticker page: /stocks/<ticker>/ — insider and congressional activity in one security.
 import LearnMore from "../../components/LearnMore.astro";
-import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, insiderPeriods, isOpenSale } from "../../lib/entity";
+import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, industryOf, insiderPeriods, isOpenSale } from "../../lib/entity";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -57,6 +57,7 @@ const memberList = memberRows(model, congress);
 const codes = codeRows(insider);
 const related = relatedTickers(model, s.ticker, txns);
 const size = sizeOf(model, s.ticker);
+const industry = industryOf(model, company);
 const lastTrade = txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const WHO_ROWS = 15;
 // Open-market buying and selling over 3 and 12 months (lib/entity.ts insiderPeriods).
@@ -92,6 +93,7 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <dl class="facts" data-entity-facts>
     {company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     <div><dt>Security</dt><dd>{s.type === "etf" ? "ETF" : s.type === "adr" ? "ADR" : s.type.charAt(0).toUpperCase() + s.type.slice(1)}</dd></div>
+    {industry && <div data-industry><dt>Industry, as the SEC classifies it</dt><dd>{industry.label}</dd></div>}
     {size && <div><dt>Size, estimated from filings</dt><dd>{size.label} ({size.range})</dd></div>}
     {insiderList.length > 0 && <div><dt>Insiders on record</dt><dd><a href="#insiders">{num(insiderList.length)}</a></dd></div>}
     {memberList.length > 0 && <div><dt>Members of Congress</dt><dd><a href="#members">{num(memberList.length)}</a></dd></div>}
