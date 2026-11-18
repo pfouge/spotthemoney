@@ -2649,3 +2649,45 @@ first, rotate the database password, a read-only role for builds, Claude merges 
 - **Known, not fixed:** on a row with an exact amount the parser never sees a complete range, so
   following lines can run into the asset name (report 20033725: the asset text of the $15.00
   exchange row starts with a comment from the row before). Parser work, queue item 3.
+
+### Email alerts, stage 1: tables and the ways out (2026-11-18, scheduled parity run) — queue item 7
+
+Nothing is sent, nothing on the site changed, and the privacy page is still true ("no emails").
+This stage is the database only, built first so that turning a digest off, the one-click
+unsubscribe link and account deletion exist and are tested before there is any way in.
+
+- **Stage plan.** 1 (this change): tables, functions, tests. 2: a job that builds each
+  account's digest of newly published trades by the pages it follows and writes it to
+  `alert_outbox`; it sends nothing. 3: privacy page wording first, then the controls on
+  `/watchlist/` and the Worker routes (`/api/alerts`, an unsubscribe page that accepts the
+  one-click POST of RFC 8058), behind a site switch like `ACCOUNTS_ENABLED`. 4, with Peter: a
+  provider adapter and the key; only then is the database switch turned on.
+- **Migration 0025** (`db/migrations/0025_email_alerts_stage1.sql`). Next free number: 0026.
+  - `app_settings(key, value jsonb)`: one row, `alerts_enabled` = false. **The database-side
+    switch.** While false, `alert_save` refuses to turn a digest ON whatever the site does;
+    turning off and unsubscribing always work. Turn it on only in stage 4:
+    `update app_settings set value = 'true'::jsonb where key = 'alerts_enabled'`.
+  - `alert_prefs`: one row per account that ever chose a digest (`digest` off, daily, weekly;
+    `unsub_token`, 64 hex characters, never changes; `opted_in_at`, `unsubscribed_at`,
+    `last_digest_at` = trades loaded up to here are covered, reset when a digest is turned on).
+    No second email address: a digest goes to `accounts.email`.
+  - `alert_outbox`: what would be sent (kind `digest_daily` or `digest_weekly`, period, address,
+    subject, text, optional HTML, `item_count` > 0, status pending, sent, failed, cancelled;
+    one row per account, kind and period end).
+  - All three: row-level security on, **no policy, no grant to anon or authenticated**, and
+    nothing for `site_build` on the two private ones. A signed-in visitor cannot read even
+    their own row. Access is three definer-rights functions with a fixed search_path:
+    `alert_state()` and `alert_save(p_digest)` for `authenticated` (the caller comes from the
+    WorkOS token), `alert_unsubscribe(p_token)` for `anon` and `authenticated` (returns `{ok}`
+    only). `alerts_enabled()` is not callable through the API.
+  - Turning off or unsubscribing sets pending outbox rows to `cancelled` and keeps sent ones.
+    `account_delete()` (0017) removes the setting and the outbox rows through the foreign keys.
+- **Verifier:** `node scripts/verify-alerts-db.mjs <local-db>` (62 checks, as `anon` and
+  `authenticated` the way PostgREST calls; refuses a Supabase host; puts the switch back). It
+  and `verify-accounts-db.mjs` need `grant usage on schema auth to anon, authenticated` on the
+  local database (the local `auth` stub; Supabase has it).
+- **For stage 2:** write the digest job in `ingest/` (owner connection; it may read the private
+  tables); what counts as "new" is `filings.created_at > last_digest_at` on published rows, the
+  watchlist feed's rule (`watch_feed_rows`); delete or blank sent outbox bodies after a set
+  time (they show what an account follows) and say so on the privacy page in stage 3; the
+  postal address a commercial email must carry is Peter's to give.
