@@ -31,6 +31,7 @@ import { ingestCitationCount } from "./jobs/citation_count.js";
 import { ingestSearchConsoleWeekly } from "./jobs/search_console_weekly.js";
 import { runXDaily } from "./jobs/x_daily.js";
 import { runArchiveBackfill } from "./jobs/archive_backfill.js";
+import { runAlertsDigest } from "./jobs/alerts_digest.js";
 import type { IngestRunResult } from "@stm/shared";
 
 // `daily: true` jobs run when no source is named (the scheduled ingest.yml run), in this
@@ -56,6 +57,9 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   sec_form4_index: { label: "SEC EDGAR daily index, market-wide Form 4 (kept off the site)", cadence: "daily", daily: true, run: ingestSecForm4Index },
   sec_form4_history: { label: "SEC EDGAR Form 4 history pass (back to 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSecForm4History },
   twelvedata_eod: { label: "Twelve Data EOD Prices", cadence: "daily", daily: true, run: ingestTwelvedataEod },
+  // Builds email digests into alert_outbox and sends nothing; a skip while the database switch
+  // (app_settings alerts_enabled) is off, so it can ride with the daily batch.
+  alerts_digest: { label: "Email digests for watchlists (builds the outbox, sends nothing)", cadence: "daily", daily: true, run: runAlertsDigest },
   x_daily: { label: "Daily X thread of notable filings", cadence: "daily", daily: false, run: runXDaily },
   archive_backfill: { label: "Raw-filing archive backfill (unstored rows)", cadence: "on_demand", daily: false, run: runArchiveBackfill },
   citation_count: { label: "AI answer-engine citation count", cadence: "monthly", daily: false, run: ingestCitationCount },

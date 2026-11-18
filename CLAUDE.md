@@ -2691,3 +2691,55 @@ unsubscribe link and account deletion exist and are tested before there is any w
   watchlist feed's rule (`watch_feed_rows`); delete or blank sent outbox bodies after a set
   time (they show what an account follows) and say so on the privacy page in stage 3; the
   postal address a commercial email must carry is Peter's to give.
+
+### Email alerts, stage 2: the digest builder (2026-11-18, scheduled parity run) — queue item 7
+
+Still nothing is sent, nothing on the site changed, and the privacy page is still true. This
+stage is the job that works out what each digest would say and stores it.
+
+- **Job `alerts_digest`** (`ingest/src/jobs/alerts_digest.ts`; pure rules and wording in
+  `ingest/src/lib/digest.ts`, tests beside it). In the daily batch, last in the `company-facts`
+  group of `ingest.yml`; listed in `scripts/freshness-check.mjs`. No migration.
+- **While the database switch is off it reports a skip** (`stats.skipped`; NOT CONFIGURED in
+  the freshness table) and builds nothing. `ALERTS_DRY_RUN=1` builds every digest and writes
+  nothing, switch on or off; with `ALERTS_DRY_RUN_OUT=<dir>` it saves them for a look (never
+  commit those files). `ALERTS_NOW` sets the clock, tests only. `ALERTS_POSTAL_ADDRESS`, when
+  set, is the last line of every digest (`stats.postal_address_set`).
+- **What is new for an account:** rows of published filings loaded (`filings.created_at`) after
+  its `last_digest_at` and up to the run time less `SETTLE_MINUTES` (120), for the pages on any
+  of its watchlists (members and insiders by slug, stocks by ticker, companies by slug; a row
+  that matches several is listed under the person first). Three rules the watchlist feed does
+  not have: the settling time (a filing is published at the END of the job that loaded it, so
+  the last two hours wait for the next digest); only rows disclosed in the last `MAX_AGE_DAYS`
+  (30), because a backfill loads old filings as new (130,000 in one week in November 2026);
+  superseded Senate reports are out. It reads `filings`, not `site_filings`, so a followed
+  insider outside the tracked set is covered. **Known limit:** a filing held for review and
+  published more than two hours after it was loaded is in no digest (it is on the watchlist
+  page); a `published_at` column would close that.
+- **What an item is:** a House or Senate row is one item (the range as reported, the owner when
+  not the member). A Form 4 is summed per filing: its open-market purchases (code P) one item,
+  its sales (code S) one item, everything else one item that is only a count. **No dollar
+  figure is computed for a Form 4** (shares and the price or price range as filed), so the
+  price-box fault of `shared/src/tradevalue.ts` cannot reach an email. No reason for a trade,
+  no advice, no em-dash (a unit test checks). At most `MAX_ITEMS` (40) are printed, the rest
+  counted with a link to the watchlist; at most `MAX_ROWS` (2,000) rows are read per account.
+- **When** (`isDue`): daily once the last digest is 12 hours old; weekly on Mondays UTC, or any
+  day once the last one is 8 days old. A second run the same day builds nothing.
+- **Per account, one transaction:** lock the setting, check the digest and its clock are
+  unchanged, insert at most one `alert_outbox` row (`pending`; text and HTML; none when nothing
+  is new), move `last_digest_at` to the period end. An account with no address is skipped and
+  keeps its period. One account's failure does not stop the others (`partial`).
+- **Housekeeping, every run, switch on or off:** a `pending` row older than 3 days is
+  cancelled; the body of a row sent over 30 days ago is blanked. **Stage 3 must say both on the
+  privacy page.**
+- **The unsubscribe address is fixed here:** `/alerts/unsubscribe/?token=<64 hex>`
+  (`unsubscribeUrl`). Stage 3 must answer it (GET and the one-click POST).
+- **Stats and log carry counts only**: no address, account id or token (the verifier checks).
+- **Verifier:** `node scripts/verify-alerts-digest.mjs <local-db>` (54 checks; `SHOW=1` prints
+  two digests). It runs the real job through the runner with the clock set, against the seed:
+  skip, dry run, daily and weekly rows, item counts against its own SQL, own token only,
+  unpublished and old filings left out, a three-lot sale as one item, second run, a quiet day,
+  the settling time, unsubscribe, housekeeping, no personal data in stats. It moves a few seeded
+  values and puts them back. Eighteen verifiers now.
+- For stage 3: the watchlist page's "new" badge (`watch_feed_rows`) has no 30-day rule, so a
+  backfill inflates it; worth the same rule when that function is next touched.
