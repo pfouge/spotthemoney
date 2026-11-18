@@ -2820,3 +2820,11 @@ terms and the guide read as before. One thing is live: the unsubscribe address. 
   keeps its search_path and is still for signed-in visitors only.
 - Guide `how-to-follow-members-insiders-and-stocks`: one paragraph in `#watchlist`; covers 0026.
 - No page file changed: the watchlist script already splits rows by `is_new`.
+- **Deploy run 44392224095 of this change ended red although the deploy was fine** (migration
+  applied, version serving 100% of traffic): in the live check the runner could not open a
+  connection to Cloudflare's edge (`ETIMEDOUT`) and `verify-live.mjs` crashed on the unhandled
+  error. `verify-live.mjs` now tries each request three times (5 s and 15 s apart); a request
+  with no answer at all is **inconclusive**, like a challenge (a warning; a failure with
+  `--fail-on-challenge`, which the pre-deploy check of the build on the runner uses). Any answer,
+  5xx included, is still checked. `verify-od.mjs` has the same bare `fetch` calls and was left
+  alone (the market-wide thread's file).

@@ -38,10 +38,28 @@ const failures = [];
 const notes = [];
 const ok = (cond, msg) => { if (!cond) failures.push(msg); return cond; };
 const challenged = [];
+// Requests that never got an answer (connect timeout, reset) after three tries. Seen 2026-11-18: a
+// GitHub runner could not open a connection to Cloudflare's edge for the whole step, and the
+// unhandled error failed a deploy that had gone out fine. Like a challenge, no answer says nothing
+// about the site, so it is inconclusive (a failure with --fail-on-challenge). An answer of any
+// kind, 5xx included, is still checked.
+const unreached = [];
+const UA = { "user-agent": "spotthemoney verify-live (+https://spotthemoney.com/contact/)" };
+async function reach(url) {
+  for (let i = 0; i < 3; i++) {
+    try { return await fetch(url, { headers: UA, redirect: "follow" }); }
+    catch (e) {
+      console.log(`  … ${url}: no answer (${e?.cause?.code ?? e?.cause?.errors?.[0]?.code ?? e?.message}), try ${i + 1} of 3`);
+      if (i < 2) await new Promise((r) => setTimeout(r, [5000, 15000][i]));
+    }
+  }
+  return null;
+}
 
 async function get(path) {
   const url = path.startsWith("http") ? path : base + path;
-  const res = await fetch(url, { headers: { "user-agent": "spotthemoney verify-live (+https://spotthemoney.com/contact/)" }, redirect: "follow" });
+  const res = await reach(url);
+  if (!res) { unreached.push(path); return { url, status: 0, type: "", text: "", challenge: true }; }
   const text = await res.text();
   const challenge = isCloudflareChallenge(res.status, res.headers, text);
   if (challenge) challenged.push(path);
@@ -159,9 +177,10 @@ for (const path of sampled) {
 for (const [t, n] of titles) if (n > 1) failures.push(`duplicate title on ${n} pages: ${t}`);
 // the share image itself
 {
-  const r = await fetch(base + "/og.png", { headers: { "user-agent": "spotthemoney verify-live (+https://spotthemoney.com/contact/)" } });
-  const body = /image\/png/.test(r.headers.get("content-type") ?? "") ? "" : await r.text();
-  if (isCloudflareChallenge(r.status, r.headers, body)) challenged.push("/og.png");
+  const r = await reach(base + "/og.png");
+  const body = !r || /image\/png/.test(r.headers.get("content-type") ?? "") ? "" : await r.text();
+  if (!r) unreached.push("/og.png");
+  else if (isCloudflareChallenge(r.status, r.headers, body)) challenged.push("/og.png");
   else ok(r.status === 200 && /image\/png/.test(r.headers.get("content-type") ?? ""), `og.png status ${r.status}`);
 }
 
@@ -170,6 +189,10 @@ for (const n of notes) console.log(`  · ${n}`);
 console.log(`  · sampled ${sampled.length} pages`);
 if (challenged.length) {
   const msg = `${challenged.length} request(s) to ${base} got a Cloudflare challenge instead of the site (${challenged.slice(0, 4).join(", ")}${challenged.length > 4 ? ", …" : ""}); those checks are inconclusive, not failed.`;
+  if (FAIL_ON_CHALLENGE) failures.push(msg); else warn(msg);
+}
+if (unreached.length) {
+  const msg = `${unreached.length} request(s) to ${base} got no answer after three tries (${unreached.slice(0, 4).join(", ")}${unreached.length > 4 ? ", …" : ""}); those checks are inconclusive, not failed.`;
   if (FAIL_ON_CHALLENGE) failures.push(msg); else warn(msg);
 }
 // Stage 3b: the home feed links on-demand (market) pages that have no file. The static index of the ones
@@ -199,4 +222,4 @@ if (failures.length) {
   for (const f of failures) console.log(`  - ${f}`);
   process.exit(1);
 }
-console.log(challenged.length && !FAIL_ON_CHALLENGE ? `✓ no failures (${challenged.length} inconclusive — Cloudflare challenge)` : "✓ all checks passed");
+console.log((challenged.length || unreached.length) && !FAIL_ON_CHALLENGE ? `✓ no failures (${challenged.length} inconclusive — Cloudflare challenge; ${unreached.length} with no answer)` : "✓ all checks passed");
