@@ -41,9 +41,9 @@ const devVars = new URL("../web/dist/server/.dev.vars", import.meta.url).pathnam
 writeFileSync(devVars, Object.entries(vars).map(([k, v]) => `${k}="${v}"`).join("\n") + "\n");
 const wr = spawn("npx", ["wrangler", "dev", "--config", "dist/server/wrangler.json", "--port", String(PORT), "--ip", "127.0.0.1",
   // without this, wrangler dev presents every request as addressed to the custom domain in wrangler.jsonc
-  "--local-upstream", `localhost:${PORT}`], { cwd: new URL("../web/", import.meta.url).pathname, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" } });
+  "--local-upstream", `localhost:${PORT}`], { cwd: new URL("../web/", import.meta.url).pathname, stdio: ["ignore", "pipe", "pipe"], detached: true, env: { ...process.env, CI: "1", WRANGLER_SEND_METRICS: "false" } });
 let wlog = ""; wr.stdout.on("data", (d) => (wlog += d)); wr.stderr.on("data", (d) => (wlog += d));
-const cleanup = async () => { wr.kill("SIGTERM"); rmSync(devVars, { force: true }); await fakes.close(); await sql`delete from accounts where id in (${A.id}, ${B.id})`.catch(() => {}); await sql.end(); };
+const cleanup = async () => { await sql`update app_settings set value = 'false'::jsonb where key = 'alerts_enabled'`.catch(() => {}); await sql`delete from accounts where id = 'user_e2e_U00000000000000003'`.catch(() => {}); try { process.kill(-wr.pid, "SIGKILL"); } catch { wr.kill("SIGKILL"); } rmSync(devVars, { force: true }); await fakes.close(); await sql`delete from accounts where id in (${A.id}, ${B.id})`.catch(() => {}); await sql.end(); };
 
 let { chromium } = await import("playwright");
 let browser;
@@ -76,6 +76,39 @@ try {
   ok(r.status === 404 || r.status === 405, "sign-out by GET is not possible", r.status);
   r = await fetch(`${BASE}/stocks/${stock.key}/`);
   ok(r.status === 200 && (await r.text()).includes("data-follow"), "stock page is served with a Follow button");
+
+  // ── email digests: the unsubscribe page works whatever the switches say ──
+  const alertsOn = /data-alerts="on"/.test(await (await fetch(`${BASE}/watchlist/`)).text());
+  const [{ was }] = await sql`select value as was from app_settings where key = 'alerts_enabled'`;
+  await sql`delete from accounts where id = 'user_e2e_U00000000000000003'`;
+  await sql`insert into accounts (id, email) values ('user_e2e_U00000000000000003', 'u@example.test')`;
+  const [{ tok }] = await sql`insert into alert_prefs (account_id, digest, opted_in_at) values ('user_e2e_U00000000000000003', 'daily', now()) returning unsub_token as tok`;
+  const unknown = "ab".repeat(32);
+  const unsub = (t, slash = "/") => `${BASE}/alerts/unsubscribe${slash}?token=${t}`;
+  r = await fetch(unsub(tok)); let html = await r.text();
+  ok(r.status === 200 && html.includes("<form method=\"post\"") && html.includes(tok), "unsubscribe link opens a page with one button", r.status);
+  ok((r.headers.get("cache-control") ?? "").includes("no-store") && (r.headers.get("x-robots-tag") ?? "").includes("noindex"), "the unsubscribe page is never cached or indexed");
+  ok((r.headers.get("x-frame-options") ?? "") === "DENY", "the unsubscribe page carries the site's security headers");
+  ok((await sql`select digest from alert_prefs where unsub_token = ${tok}`)[0].digest === "daily", "opening the link changes nothing (mail scanners open links)");
+  r = await fetch(unsub(tok, "")); ok(r.status === 200, "the address also works without the trailing slash", r.status);
+  r = await fetch(unsub("nope")); ok(r.status === 400 && (await r.text()).includes("incomplete"), "a cut-off link is told so", r.status);
+  r = await fetch(unsub("nope"), { method: "POST" }); ok(r.status === 400, "a cut-off link cannot be posted", r.status);
+  const logBefore = fakes.log.length;
+  r = await fetch(unsub(unknown), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "List-Unsubscribe=One-Click" });
+  const unknownHtml = await r.text();
+  ok(r.status === 200 && unknownHtml.includes("You are unsubscribed"), "an unknown token gets the same answer as a known one", r.status);
+  ok(fakes.log.slice(logBefore).includes("rpc alert_unsubscribe as anon"), "the unsubscribe call runs as anon, with no sign-in");
+  // the one-click POST of RFC 8058: no Origin, no cookie, form-encoded body
+  r = await fetch(unsub(tok), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "List-Unsubscribe=One-Click" });
+  html = await r.text();
+  ok(r.status === 200 && html.includes("You are unsubscribed") && !html.includes("<form"), "one-click POST without an Origin unsubscribes", r.status);
+  ok(html.replaceAll(tok, "T") === unknownHtml.replaceAll(unknown, "T"), "known and unknown tokens read the same");
+  const [after1] = await sql`select digest, unsubscribed_at is not null as stamped from alert_prefs where unsub_token = ${tok}`;
+  ok(after1.digest === "off" && after1.stamped, "the digest is off in the database", JSON.stringify(after1));
+  r = await fetch(unsub(tok), { method: "POST", headers: { Origin: "https://mail.example" } });
+  ok(r.status === 200, "repeating it, from any origin, is harmless", r.status);
+  await sql`delete from accounts where id = 'user_e2e_U00000000000000003'`;
+  r = await fetch(`${BASE}/api/alerts`); ok(r.status === 401, "the digest setting needs a sign-in", r.status);
 
   // ── the browser ──
   browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
@@ -113,6 +146,47 @@ try {
   await page.waitForTimeout(800);
   const after = await sql`select last_seen_feed_at > now() - interval '1 minute' as fresh from accounts where id = ${A.id}`;
   ok(after[0]?.fresh === true, "opening the watchlist marks the feed as seen");
+
+  // email digests through the real Worker, as A
+  const alertsGet = await page.evaluate(async () => { const r = await fetch("/api/alerts"); return { status: r.status, body: await r.json().catch(() => ({})) }; });
+  const saveAs = (d) => page.evaluate(async (digest) => { const r = await fetch("/api/alerts-save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ digest }) }); return { status: r.status, body: await r.json().catch(() => ({})) }; }, d);
+  const prefOf = async () => (await sql`select digest from alert_prefs where account_id = ${A.id}`)[0]?.digest ?? "none";
+  if (!alertsOn) {
+    ok(alertsGet.status === 404, "site switch off: the digest setting is a 404", alertsGet.status);
+    await sql`update app_settings set value = 'true'::jsonb where key = 'alerts_enabled'`;
+    const on = await saveAs("daily");
+    ok(on.status === 404 && (await prefOf()) === "none", "site switch off: a digest cannot be turned on even with the database switch on", on.status);
+    const off = await saveAs("off");
+    ok(off.status === 200 && off.body.digest === "off", "site switch off: turning a digest off still works", off.status);
+    ok((await page.locator("[data-wl-digest]").count()) === 0, "site switch off: no digest control on the watchlist page");
+    await sql`update app_settings set value = to_jsonb(${was === true}::boolean) where key = 'alerts_enabled'`;
+  } else {
+    await sql`update app_settings set value = 'false'::jsonb where key = 'alerts_enabled'`;
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForSelector("[data-wl-body] h2", { timeout: 10000 }).catch(() => {});
+    ok((await page.locator("[data-wl-digest]").count()) === 0, "database switch off: no digest control");
+    const refused = await saveAs("daily");
+    ok(refused.status === 400 && /not available yet/.test(refused.body.error ?? "") && (await prefOf()) === "none", "database switch off: turning a digest on is refused", JSON.stringify(refused));
+    await sql`update app_settings set value = 'true'::jsonb where key = 'alerts_enabled'`;
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForSelector("[data-wl-digest]", { timeout: 10000 }).catch(() => {});
+    ok((await page.locator("[data-wl-digest] input[type=radio]").count()) === 3, "both switches on: the digest control shows");
+    ok((await page.locator("[data-wl-digest-status]").innerText().catch(() => "")).includes(A.email), "the control names A's address");
+    await page.locator("[data-wl-digest] label", { hasText: "Daily" }).click();
+    await page.waitForTimeout(1200);
+    ok((await prefOf()) === "daily", "picking Daily stores a daily digest for A", await prefOf());
+    const bad = await saveAs("hourly");
+    ok(bad.status === 400 && (await prefOf()) === "daily", "an unknown frequency is refused", bad.status);
+    const crossSite = await fetch(`${BASE}/api/alerts-save`, { method: "POST", headers: { Origin: "https://evil.example", "Content-Type": "application/json", Cookie: (await ctxA.cookies(BASE)).map((c) => `${c.name}=${c.value}`).join("; ") }, body: JSON.stringify({ digest: "off" }) });
+    ok(crossSite.status === 403 && (await prefOf()) === "daily", "another site cannot change the setting with A's cookies", crossSite.status);
+    const [{ tokA }] = await sql`select unsub_token as "tokA" from alert_prefs where account_id = ${A.id}`;
+    const one = await fetch(unsub(tokA), { method: "POST" });
+    ok(one.status === 200 && (await prefOf()) === "off", "the link in A's email turns A's digest off");
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForSelector("[data-wl-digest]", { timeout: 10000 }).catch(() => {});
+    ok((await page.locator("[data-wl-digest] input:checked").getAttribute("value").catch(() => "")) === "off", "after unsubscribing the control reads Off");
+    await sql`update app_settings set value = to_jsonb(${was === true}::boolean) where key = 'alerts_enabled'`;
+  }
 
   // share the list; a signed-out visitor sees it; B copies it after signing in
   await page.locator("button", { hasText: "Share with a link" }).first().click();

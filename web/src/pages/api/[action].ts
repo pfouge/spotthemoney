@@ -10,11 +10,13 @@
 //   POST /api/copy      { slug }                           copy a shared list
 //   POST /api/seen      mark the feed as read
 //   POST /api/delete-account
+//   GET  /api/alerts       the visitor's email-digest setting   } 404 while ALERTS_ENABLED is
+//   POST /api/alerts-save  { digest: off | daily | weekly }     } false, except saving "off"
 //   GET  /api/public?slug=… a shared list as anyone may see it (no sign-in needed)
 //
 // Never cached (Cache-Control: private, no-store). POSTs must come from this site.
 import type { APIRoute } from "astro";
-import { ACTIONS, isSlug, sameOrigin } from "../../lib/account";
+import { ACTIONS, alertActionAllowed, isSlug, sameOrigin } from "../../lib/account";
 import { DbError, configured, getSession, json, rpc, signedOutCookies, workos } from "../../lib/server/session";
 
 export const prerender = false;
@@ -50,6 +52,7 @@ async function handle(method: "GET" | "POST", action: string, request: Request):
     }
     const args = a.args(body);
     if (typeof args === "string") return json({ error: args }, 400, setCookies);
+    if (a.alerts && !alertActionAllowed(action, args)) return json({ error: "Not found." }, 404, setCookies);
     const data = await rpc(a.fn, args, session.accessToken);
     if (action === "me") return json({ signedIn: true, available: true, email: session.email, ...(data as object) }, 200, setCookies);
     if (action === "feed") return json({ rows: data }, 200, setCookies);

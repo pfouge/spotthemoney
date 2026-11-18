@@ -58,6 +58,20 @@ for (const [label, path, dark, viewport] of [
   await page.route("**/api/me", (r) => r.fulfill({ json: me }));
   await page.route("**/api/feed", (r) => r.fulfill({ json: { rows: [] } }));
   await page.route("**/api/seen", (r) => r.fulfill({ json: me }));
+  // Email digests (stage 3): the page says whether its build has the site switch on. Off: the
+  // page must not ask for the setting or show the control. On (a PUBLIC_ALERTS_PREVIEW=1 build):
+  // the control is there, starts on the stored choice, saves a pick and falls back on a failure.
+  const alertCalls = [], saves = [];
+  let digest = "off", failNext = false;
+  const alertState = () => ({ available: true, email: me.email, digest, opted_in_at: null, unsubscribed_at: null, last_digest_at: null });
+  await page.route("**/api/alerts", (r) => { alertCalls.push(r.request().method()); return r.fulfill({ json: alertState() }); });
+  await page.route("**/api/alerts-save", (r) => {
+    const body = JSON.parse(r.request().postData() ?? "{}");
+    saves.push(body);
+    if (failNext) { failNext = false; return r.fulfill({ status: 400, json: { error: "Email alerts are not available yet." } }); }
+    digest = body.digest;
+    return r.fulfill({ json: alertState() });
+  });
   await page.route("**/api/public?slug=*", (r) => r.fulfill({ json: { name: "Verify list", updated_at: "2026-10-10", items, recent: [] } }));
   await page.goto(base + path, { waitUntil: "networkidle" });
   await page.waitForSelector(".wl-row .wl-who", { timeout: 20000 }).catch(() => {});
@@ -86,6 +100,34 @@ for (const [label, path, dark, viewport] of [
   await page.locator("[data-tv-mini]").first().scrollIntoViewIfNeeded();
   const mounted = await page.waitForFunction(() => !!document.querySelector("[data-tv-mini]")?.getAttribute("data-tv-mounted"), null, { timeout: 8000 }).then(() => true, () => false);
   ok(mounted, `${label}: the first chart starts loading once it is on screen`);
+  if (path === "/watchlist/") {
+    const mode = await page.locator("[data-watchlist]").getAttribute("data-alerts");
+    ok(mode === "on" || mode === "off", `${label}: the page states its email-digest switch (${mode})`);
+    const section = page.locator("[data-wl-digest]");
+    if (mode !== "on") {
+      ok((await section.count()) === 0 && alertCalls.length === 0, `${label}: digests are off, so no control and no request for the setting`);
+      ok(!(await page.locator("[data-wl-body]").innerText()).toLowerCase().includes("digest"), `${label}: the page does not mention a digest`);
+    } else {
+      ok((await section.count()) === 1 && alertCalls.join() === "GET", `${label}: one digest control, the setting asked for once`);
+      const radios = section.locator("input[type=radio]");
+      ok((await radios.count()) === 3 && (await section.locator("input:checked").getAttribute("value")) === "off", `${label}: off, daily, weekly; starts on Off`);
+      ok((await section.locator("[data-wl-digest-status]").innerText()).includes(me.email), `${label}: the control names the address a digest would go to`);
+      await section.locator("label", { hasText: "Daily" }).click();
+      await page.waitForFunction(() => document.querySelector("[data-wl-digest] input:checked")?.value === "daily" && !document.querySelector("[data-wl-digest] input:disabled"), null, { timeout: 5000 }).catch(() => {});
+      ok(JSON.stringify(saves) === JSON.stringify([{ digest: "daily" }]), `${label}: picking Daily saves {digest: "daily"} ${JSON.stringify(saves)}`);
+      ok((await section.locator("[data-wl-digest-status]").innerText()).startsWith("A daily digest is sent"), `${label}: the status line follows the saved choice`);
+      failNext = true;
+      await section.locator("label", { hasText: "Weekly" }).click();
+      await page.waitForFunction(() => !document.querySelector("[data-wl-digest] input:disabled"), null, { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(150);
+      ok((await section.locator("input:checked").getAttribute("value")) === "daily", `${label}: a refused save puts the choice back`);
+      await section.locator("label", { hasText: "Off" }).click();
+      await page.waitForFunction(() => document.querySelector("[data-wl-digest] input:checked")?.value === "off" && !document.querySelector("[data-wl-digest] input:disabled"), null, { timeout: 5000 }).catch(() => {});
+      ok(saves.at(-1)?.digest === "off" && (await section.locator("[data-wl-digest-status]").innerText()).startsWith("No digest is being sent"), `${label}: Off saves and says so`);
+      ok(await section.locator('a[href="/privacy/#email-alerts"]').count() === 1, `${label}: the control links to the privacy section`);
+      ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${label}: no sideways scrolling with the digest control`);
+    }
+  }
   ok(errors.length === 0, `${label}: no page errors ${errors.join("; ")}`);
   await page.addScriptTag({ content: axeSrc });
   const v = await page.evaluate(async () => (await window.axe.run(document.querySelector("main"), { runOnly: ["wcag2a", "wcag2aa", "wcag21aa"] })).violations.map((x) => `${x.id} (${x.nodes.length}): ${x.nodes[0]?.target.join(" ")}`));

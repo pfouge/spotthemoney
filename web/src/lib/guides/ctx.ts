@@ -2,6 +2,7 @@
 // the current I-Bond rate from the database. A guide that quotes one of these can never
 // disagree with the site, because both read the same thing.
 import { feedDef } from "../feeds";
+import { ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS } from "../account";
 import { WATCH_WINDOW_DAYS } from "../watchcards";
 import { COMMITTEE_TRADE_ROWS } from "../committees";
 import { DEFAULT_PER as SCREENER_ROWS } from "../screener";
@@ -25,6 +26,8 @@ export interface GuideCtx {
   congressDeadlineDays: number;
   /** Days of trades counted in the watchlist cards (lib/watchcards.ts). */
   watchWindowDays: number;
+  /** Email digests: the site switch (lib/account.ts) and the two retention periods. */
+  alertsEnabled: boolean; alertPendingDays: number; alertBodyDays: number; alertMaxAgeDays: number;
   /** Item limits of the RSS feeds (lib/feeds.ts). */
   feedCongressItems: number; feedPurchaseItems: number; feedInsiderItems: number;
   /** Rows in a committee page's trade table (lib/committees.ts). */
@@ -71,6 +74,7 @@ async function build(): Promise<GuideCtx> {
     facts: FACTS,
     congressDeadlineDays: CONGRESS_DEADLINE_DAYS,
     watchWindowDays: WATCH_WINDOW_DAYS,
+    alertsEnabled: ALERTS_ENABLED, alertPendingDays: ALERT_PENDING_DAYS, alertBodyDays: ALERT_BODY_DAYS, alertMaxAgeDays: ALERT_MAX_AGE_DAYS,
     feedCongressItems: feedDef("congress-trades").limit, feedPurchaseItems: feedDef("insider-purchases").limit, feedInsiderItems: feedDef("insider-trades").limit,
     committeeTradeRows: COMMITTEE_TRADE_ROWS,
     screenerRows: SCREENER_ROWS,

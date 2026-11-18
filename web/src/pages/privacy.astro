@@ -10,8 +10,18 @@ import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import Answer from "../components/Answer.astro";
+import { ALERTS_ENABLED, ALERTS_PROVIDER, ALERTS_SINCE, ALERT_BODY_DAYS, ALERT_PENDING_DAYS, alertsLaunchProblem } from "../lib/account";
 
-const POLICY_UPDATED = "2026-11-15";
+// Email digests (lib/account.ts ALERTS_ENABLED): while the switch is off this page reads exactly
+// as before. When it is on, the "Email alerts" paragraph, the list of companies and the
+// retention paragraph change with it and the page takes the launch day as its date, so the
+// policy and the feature can never be out of step. The build stops if the live switch is on
+// without a named delivery company.
+const launchProblem = alertsLaunchProblem();
+if (launchProblem) throw new Error(`[privacy] ${launchProblem}`);
+const BASE_UPDATED = "2026-11-15";
+const POLICY_UPDATED = ALERTS_ENABLED && ALERTS_SINCE > BASE_UPDATED ? ALERTS_SINCE : BASE_UPDATED;
+const mailer = ALERTS_PROVIDER.name || "an email delivery company (to be named here before the first email is sent)";
 const description = "What Spot the Money collects about visitors and account holders: optional free accounts for watchlists, how visits are counted with Google Analytics and Cloudflare, and how advertising and embedded charts work.";
 const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SITE_URL}/privacy/#page`, name: "Privacy policy", url: `${SITE_URL}/privacy/`, description, dateModified: POLICY_UPDATED, isPartOf: { "@type": "WebSite", name: "Spot the Money", url: `${SITE_URL}/` } };
 ---
@@ -44,7 +54,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p><strong>Links to sources.</strong> Rows link to the original filing on a government website. Those sites have their own privacy practices.</p>
 
   <h2 id="share">Who we share information with</h2>
-  <p>We do not sell or rent personal information. Information reaches other parties only in these cases: the companies that run the site for us (Cloudflare for hosting and visit counts; Google, for Google Analytics; WorkOS, which runs sign-in for accounts; Supabase, which stores the public records the pages are built from and, for account holders, their account and watchlists; GitHub, which holds the site's code and runs the daily updates); when the law requires it or to protect the site and its users from fraud or abuse; and, if the site were ever sold or merged, as part of that transfer under terms no less protective than these.</p>
+  <p>We do not sell or rent personal information. Information reaches other parties only in these cases: the companies that run the site for us (Cloudflare for hosting and visit counts; Google, for Google Analytics; WorkOS, which runs sign-in for accounts; Supabase, which stores the public records the pages are built from and, for account holders, their account and watchlists; GitHub, which holds the site's code and runs the daily updates{ALERTS_ENABLED && <Fragment>; {mailer}, which delivers email digests to account holders who turn them on</Fragment>}); when the law requires it or to protect the site and its users from fraud or abuse; and, if the site were ever sold or merged, as part of that transfer under terms no less protective than these.</p>
 
   <h2 id="records">People named in public records</h2>
   <p>The trades, filings and other records on this site were filed with U.S. government bodies by or about the people and organisations named in them, and are public by law. We publish them as filed and link each one to its source. We do not add home addresses, contact details or other private information about anyone named. If a record here does not match its source, tell us and we will fix it: see <a href="/corrections/">Corrections</a>. We do not remove accurate public records on request.</p>
@@ -60,10 +70,14 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p><strong>Cookies for signed-in visitors.</strong> Only when you sign in, the site sets three first-party cookies that it needs to work: <code>stm_session</code>, your encrypted sign-in session, which page scripts cannot read (30 days); <code>stm_signed_in</code>, which only says that you are signed in, so pages know to ask for your watchlist (30 days); and <code>stm_oauth_state</code>, which protects the sign-in itself and lasts ten minutes. If you press Follow before signing in, the page you were on remembers it in your browser's session storage until you come back, then forgets it.</p>
   <p><strong>Shared lists.</strong> A list is private until you turn on sharing. A shared list can be seen by anyone with its link: its name, the pages on it and their recent disclosed trades, never your email address or account number. Turning sharing off makes the link stop working.</p>
   <p><strong>Deleting your account.</strong> "Delete my account" on your watchlist page removes your account, your lists and your WorkOS sign-in at once. Copies can remain in our database provider's backups for up to seven days before they are overwritten.</p>
-  <p><strong>Email alerts.</strong> Not yet offered: new trades appear on your watchlist page only. If email alerts are added, this policy will be updated first; they will be something you switch on, never a pre-ticked box, and every email will carry a working unsubscribe link.</p>
+  {ALERTS_ENABLED ? (
+  <p id="email-alerts"><strong>Email alerts.</strong> Off unless you turn them on. On your watchlist page you can choose a daily or weekly email that lists the trades newly published for the pages you follow. It goes to your account's email address; we keep no second address. For this we keep your choice, when you made it, when your last digest was put together, and a random code that makes the unsubscribe link in each email work without signing in. A digest is stored until it is sent: one that is not sent within {ALERT_PENDING_DAYS} days is discarded, and the text of a sent one is erased after {ALERT_BODY_DAYS} days. The emails are delivered for us by {ALERTS_PROVIDER.name ? <a href={ALERTS_PROVIDER.url} rel="noopener nofollow">{ALERTS_PROVIDER.name}</a> : mailer}, which receives your address and the email itself. We do not record whether you open an email or what you click in it. Every email carries an unsubscribe link that works with one click and needs no sign-in; you can also turn digests off on your watchlist page, and deleting your account removes all of this.</p>
+  ) : (
+  <p id="email-alerts"><strong>Email alerts.</strong> Not yet offered: new trades appear on your watchlist page only. If email alerts are added, this policy will be updated first; they will be something you switch on, never a pre-ticked box, and every email will carry a working unsubscribe link.</p>
+  )}
 
   <h2 id="retention">How long we keep it, and how it is protected</h2>
-  <p>Cloudflare visit counts are kept as totals. Google Analytics keeps visit-level data for 14 months, after which only totals remain. Account details are kept until you delete your account. Email correspondence is kept for as long as it is needed to deal with the matter and for our records, and is deleted on request unless the law requires us to keep it. The site is served only over an encrypted connection. No system is perfectly secure, and we cannot promise that information will never be accessed without permission.</p>
+  <p>Cloudflare visit counts are kept as totals. Google Analytics keeps visit-level data for 14 months, after which only totals remain. Account details are kept until you delete your account.{ALERTS_ENABLED && ` The text of an email digest is erased ${ALERT_BODY_DAYS} days after it was sent.`} Email correspondence is kept for as long as it is needed to deal with the matter and for our records, and is deleted on request unless the law requires us to keep it. The site is served only over an encrypted connection. No system is perfectly secure, and we cannot promise that information will never be accessed without permission.</p>
 
   <h2 id="children">Children</h2>
   <p>The site is meant for adults and is not directed at children under 13. We do not knowingly collect personal information from children. If you believe a child has sent us personal information, write to us and we will delete it.</p>

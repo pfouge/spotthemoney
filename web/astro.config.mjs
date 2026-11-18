@@ -20,6 +20,11 @@ export default defineConfig({
   // require. Turn on (and add a SESSION KV namespace to wrangler.jsonc) only if accounts
   // ever move server-side; the app plan uses Supabase Auth client-side instead (docs/05).
   session: false,
+  // Astro's own cross-site POST check is off because it cannot exempt one route, and the
+  // unsubscribe link in an email digest must accept a mail program's one-click POST (RFC 8058),
+  // which carries no Origin. src/middleware.ts does the check instead, more strictly (every
+  // POST, PUT, PATCH and DELETE, whatever its content type), with that one address exempt.
+  security: { checkOrigin: false },
   build: { format: "directory" },
   vite: {
     build: {

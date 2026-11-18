@@ -2743,3 +2743,55 @@ stage is the job that works out what each digest would say and stores it.
   values and puts them back. Eighteen verifiers now.
 - For stage 3: the watchlist page's "new" badge (`watch_feed_rows`) has no 30-day rule, so a
   backfill inflates it; worth the same rule when that function is next touched.
+
+### Email alerts, stage 3: the site side, switched off (2026-11-18, scheduled parity run) — queue item 7
+
+Still nothing is sent and a visitor sees no change: the watchlist page, the privacy page, the
+terms and the guide read as before. One thing is live: the unsubscribe address. No migration.
+
+- **Two switches, both off.** `ALERTS_LIVE` (false) in `web/src/lib/account.ts` is the site
+  switch; `ALERTS_ENABLED` is that, or a local build with `PUBLIC_ALERTS_PREVIEW=1` (no workflow
+  sets it; it exists so the verifiers can exercise the "on" state). The database switch
+  (`app_settings` `alerts_enabled`, 0025) still decides whether anyone can turn a digest on.
+- **What the site switch turns on:** the "Email digest" section on `/watchlist/` (Off, Daily,
+  Weekly on Mondays; saved on pick; shown only when the database switch is on too), the API
+  actions `GET /api/alerts` (`alert_state`) and `POST /api/alerts-save` (`alert_save`), and the
+  "on" wording of the privacy page (`#email-alerts`, the list of companies, retention), the terms
+  (`#accounts`) and the guide `how-to-follow-members-insiders-and-stocks` (section `#alerts`,
+  one FAQ). The wording lives in those files behind the same constant, so the policy and the
+  feature cannot be out of step. While the switch is off the two actions are a 404, except
+  saving "off" (`alertActionAllowed`): a way out never depends on a switch.
+- **Stage 4 checklist (with Peter):** fill `ALERTS_PROVIDER` (name and the provider's privacy
+  page) and `ALERTS_SINCE` (the day), then set `ALERTS_LIVE`; `alertsLaunchProblem()` stops the
+  build otherwise. **The privacy page promises that opens and clicks are not recorded: switch
+  the provider's open and click tracking off.** Then the database switch, then the sender.
+  `/watchlist/` carries `data-alerts="on|off"` so a verifier can tell which build it is reading.
+- **`/alerts/unsubscribe/?token=<64 hex>`** (`web/src/pages/alerts/unsubscribe.ts`, rules and
+  HTML in `web/src/lib/unsubscribe.ts`), live whatever the switches say. GET shows one button
+  and changes nothing (mail scanners open every link). POST calls `alert_unsubscribe` as `anon`
+  and answers "You are unsubscribed" for a known and an unknown token alike. A token that is
+  not 64 hex characters gets "this link is incomplete" (400). No sign-in, no Origin check.
+  The page is a document of its own (no layout, script, analytics or outside file), never
+  cached or indexed, and sends no referrer (the token is in the address).
+- **Cross-site check moved from Astro to `middleware.ts`.** Astro's `security.checkOrigin`
+  refuses a form POST without this site's Origin and cannot exempt a route, which would break
+  the one-click unsubscribe of RFC 8058. It is now off in `astro.config.mjs`, and
+  `crossSiteRefused` (`lib/account.ts`, called first in `middleware.ts`) refuses every POST,
+  PUT, PATCH and DELETE without this site's Origin, whatever its content type, except
+  `/alerts/unsubscribe`. **A new on-demand route that accepts requests from elsewhere must be
+  added to `ORIGIN_EXEMPT` on purpose; nothing else should be.**
+- **Verifiers.** `scripts/unsubscribe.test.ts` (13 unit tests: switch off, launch guard, action
+  arguments, the page, the cross-site rule, the periods the privacy page states against the
+  job's constants, the off-state wording). `verify-watchlist` reads `data-alerts`: off = no
+  control and no request for the setting; on = the control, a save, a refused save put back.
+  `verify-accounts-e2e` (63 checks on a preview build, 58 on a normal one) runs the unsubscribe
+  page and both switch states through the real Worker. **It needs `pkill -9 -f workerd` before
+  each run and often needs a second try**: `wrangler dev` in the cloud sandbox dies on the
+  "follow while signed out" request about two runs in three (a wrangler proxy fault, seen on
+  unchanged code too). The verifier now kills wrangler's whole process group when it ends.
+- To see the "on" state locally: `PUBLIC_ALERTS_PREVIEW=1 npm run build`, then
+  `verify-watchlist`, `verify-guides`, `verify-links`, `verify-a11y`, `verify-accounts-e2e`.
+- Not done: the Cloudflare rate-limiting rule (dashboard) covers `/api/`, `/auth/` and the
+  entity pages, not `/alerts/`; a guessed token is 244 random bits, so this is about load, not
+  access. No `List-Unsubscribe` headers yet (they belong to the sender, stage 4). The watchlist
+  "new" badge still has no 30-day rule.
