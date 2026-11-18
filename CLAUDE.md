@@ -2619,3 +2619,33 @@ first, rotate the database password, a read-only role for builds, Claude merges 
 - Not done: the two columns are not in `congress-trades.csv` (all trade files share one header);
   no flag for Form 4 rows (waits for the market-wide work); no "first" count on member pages or
   in the feeds; sorting by run length.
+
+### House amounts: exact figures and the open-topped spouse box (2026-11-18, scheduled parity run) — queue item (e2)
+
+- **Fault.** The vendored House parser reads "any two dollar figures" from the amount cell, so
+  two shapes were stored wrongly: an exact amount with cents ("$2,761.57" became low 2761,
+  high 57, shown as "$2,761–$57"; 14 rows in 11 reports on production) and the form's
+  open-topped box for an asset held only by a spouse or dependent child ("Spouse/DC Over
+  $1,000,000" became 1,000,000 to 1,000,000; 10 rows in 4 reports, found in this run).
+- **Job layer** (`fix_amounts` in `ingest/py/congress_ptr_job.py`, used by `map_transaction_record`,
+  so by the House loop and the Senate import; tests `ingest/py/test_amounts.py`): reads the
+  cell's own text (`amount_range_text`, which the parser keeps). Exact amount: low = high = the
+  figure rounded to the dollar, half up. "... Over $X" with no dash: low X, high NULL. A high end
+  below the low end that neither rule explains: both NULL (the row shows no amount). Stats
+  `amounts_exact`, `amounts_over`, `amounts_unreadable`. The vendored parser is untouched and the
+  payload keeps its values as parsed.
+- **Stored rows: migration 0024, not `--reprocess`.** `--reprocess` re-reads every report in the
+  window and gives every row a new id (row anchors, feed ids, shared trade links). The migration
+  updates the 24 rows in place, each tied to the payload text and the stored pair; idempotent.
+  Next free migration number: 0025.
+- **Web.** `amountLabel` (`flagship-core.ts`) and `rangeLabel` (`screener.ts`) print one figure
+  when low equals high ("$319", not "$319–$319"); an open top was already "over $1.0M". An
+  open-topped row has no top to add, so it is off the trade map, as the one "over $50,000,000"
+  row already was. The screener build log gained "one exact figure N; high end below low end N"
+  (expect 14 and 0, and "no stated top" 11, on production).
+- Methodology `#values`, guides `congress-trade-amount-ranges` and
+  `how-to-read-a-congressional-trade-report` each gained a sentence. The seed has one exact row
+  and one open-topped spouse row.
+- **Known, not fixed:** on a row with an exact amount the parser never sees a complete range, so
+  following lines can run into the asset name (report 20033725: the asset text of the $15.00
+  exchange row starts with a comment from the row before). Parser work, queue item 3.

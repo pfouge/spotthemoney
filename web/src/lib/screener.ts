@@ -254,7 +254,7 @@ export function summaryLine(r: ScreenResult, all: number): string {
 // ── labels shared by the page and the script ─────────────────────────────────────────────
 /** The dollar range as the report gives it, written as on the member pages. */
 export function rangeLabel(low: number | null, high: number | null): string {
-  if (low != null && high != null) return `${money(low)}–${money(high)}`;
+  if (low != null && high != null) return low === high ? money(low) : `${money(low)}–${money(high)}`;
   if (high != null) return `up to ${money(high)}`;
   if (low != null) return `over ${money(low)}`;
   return "";

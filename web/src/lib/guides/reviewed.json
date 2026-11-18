@@ -13,10 +13,10 @@
     }
   },
   "congress-trade-amount-ranges": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-18",
     "covers": {
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
-      "web/src/lib/flagship-core.ts#amountLabel": "7d01b7656a5f74e6"
+      "web/src/lib/flagship-core.ts#amountLabel": "221ac26ddd5ed1ae"
     }
   },
   "federal-contracts-usaspending": {
@@ -35,10 +35,10 @@
     }
   },
   "house-and-senate-disclosure-differences": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-18",
     "covers": {
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
-      "ingest/py/congress_ptr_job.py": "5557b731f74d3c8b",
+      "ingest/py/congress_ptr_job.py": "931cbe58060d7c88",
       "web/src/lib/coverage.ts": "2ec70049de78f292"
     }
   },
@@ -89,8 +89,8 @@
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
       "web/src/pages/congress-committees/index.astro": "5b2137a71662a90d",
       "web/src/pages/congress-committees/[slug].astro": "9775526e21f68d84",
-      "web/src/lib/screener.ts": "1358aa4a3694b7ea",
-      "web/src/pages/congress-trades.astro": "207088e998023e17",
+      "web/src/lib/screener.ts": "528bda637853c2d1",
+      "web/src/pages/congress-trades.astro": "2bff842301f593c9",
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5",
       "web/src/lib/tickerhistory.ts": "50fdeba2cb1f0a66"
     }
