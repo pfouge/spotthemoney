@@ -12,6 +12,9 @@
 # (the diagnostic of record) and fails the run — GitHub emails it — if any configured source
 # is stale or failing; the table lands in the run summary.
 #
+# alerts_digest (in the company-facts group) builds email digests into alert_outbox and sends
+# nothing; it is a skip while the database switch is off.
+#
 # Not in the daily batch (run by their own workflows or by hand): x_daily (x-daily.yml),
 # citation_count / search_console_weekly (measure.yml), archive_backfill (dispatch here).
 
@@ -92,7 +95,7 @@ jobs:
           - name: insiders-market
             sources: sec_form4_index
           - name: company-facts
-            sources: sec_company_sic
+            sources: sec_company_sic alerts_digest
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations
@@ -148,7 +151,7 @@ jobs:
           - name: insiders-market
             sources: sec_form4_index
           - name: company-facts
-            sources: sec_company_sic
+            sources: sec_company_sic alerts_digest
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations

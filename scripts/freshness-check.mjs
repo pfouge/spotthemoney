@@ -65,6 +65,9 @@ const CHECKS = [
   { code: "twelvedata_eod", label: "Stock prices (Twelve Data)", runDays: 2, dataDays: 6,
     newest: `select max(price_date) from security_prices` },
   { code: "universe", label: "Tracked-ticker universe", runDays: 2 },
+  // Builds email digests into alert_outbox and sends nothing. While the database switch is off
+  // (app_settings alerts_enabled) the job reports a skip: NOT CONFIGURED, never a failure.
+  { code: "alerts_digest", label: "Email digests (outbox only)", runDays: 2 },
 ];
 
 const sql = postgres(process.env.DATABASE_URL, { max: 1 });
