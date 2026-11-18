@@ -44,6 +44,11 @@ export const ALERT_PENDING_DAYS = 3;
 export const ALERT_BODY_DAYS = 30;
 /** A digest lists trades disclosed within this many days (MAX_AGE_DAYS in the same job). */
 export const ALERT_MAX_AGE_DAYS = 30;
+/**
+ * A trade on the watchlist page counts as "new" only when it was disclosed within this many days
+ * (watch_feed_rows, migration 0026). A backfill loads old filings; they go under "Earlier trades".
+ */
+export const FEED_NEW_MAX_AGE_DAYS = 30;
 
 /** Why the live switch may not be on yet, or null. Called by the privacy page at build time. */
 export function alertsLaunchProblem(live = ALERTS_LIVE, provider = ALERTS_PROVIDER, since = ALERTS_SINCE): string | null {

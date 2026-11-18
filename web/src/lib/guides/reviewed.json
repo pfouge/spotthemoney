@@ -66,7 +66,8 @@
     "reviewed": "2026-11-18",
     "covers": {
       "db/migrations/0017_accounts_watchlists.sql": "4a5e6b6c524d3c41",
-      "web/src/lib/account.ts": "ffc6223a9af5e545",
+      "db/migrations/0026_watch_feed_new_age.sql": "bcb89a59da716eba",
+      "web/src/lib/account.ts": "522c937089cc8f0a",
       "web/src/scripts/account.ts": "4604217b975ebb66",
       "web/src/scripts/watchlist.ts": "575c63bcd2bf694d",
       "web/src/components/Follow.astro": "08c98b2cdae7c3b9",

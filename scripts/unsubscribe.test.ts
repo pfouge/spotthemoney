@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  ACTIONS, ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS, DIGESTS, DIGEST_LABEL,
+  ACTIONS, ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS, FEED_NEW_MAX_AGE_DAYS, DIGESTS, DIGEST_LABEL,
   alertActionAllowed, alertsLaunchProblem, crossSiteRefused, isDigest, isUnsubToken,
 } from "../web/src/lib/account";
 import { UNSUB_HEADERS, unsubPage, unsubPlan, type UnsubView } from "../web/src/lib/unsubscribe";
@@ -119,6 +119,15 @@ test("the periods the privacy page states are the job's", () => {
   assert.equal(num("PENDING_MAX_AGE_DAYS"), ALERT_PENDING_DAYS);
   assert.equal(num("SENT_BODY_DAYS"), ALERT_BODY_DAYS);
   assert.equal(num("MAX_AGE_DAYS"), ALERT_MAX_AGE_DAYS);
+});
+
+test("the watchlist's rule for a new trade is the one the guide states, and the digest's", () => {
+  const sql = read("../db/migrations/0026_watch_feed_new_age.sql");
+  const m = sql.match(/f\.created_at > \(select at from seen\) and t\.disclosed_at >= current_date - (\d+),/);
+  assert.ok(m, "watch_feed_rows marks a row new by load time and disclosure age");
+  assert.equal(Number(m![1]), FEED_NEW_MAX_AGE_DAYS);
+  assert.equal(FEED_NEW_MAX_AGE_DAYS, ALERT_MAX_AGE_DAYS);
+  assert.match(sql, /set search_path = public, pg_temp/);
 });
 
 test("with the switch off the privacy page, terms and guide keep their wording", () => {
