@@ -86,7 +86,7 @@ await pool(plain, 8, async (t) => {
 // A hash on the screener that carries one of its keys is a saved view, not an anchor (its own list,
 // not the code's: web/src/lib/screener.ts KEYS).
 const SCREENER = "/congress-trades/";
-const SCREEN_KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "max", "owner", "asset", "w", "tw", "late", "member", "ticker", "sort", "dir", "page", "per"];
+const SCREEN_KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "max", "owner", "asset", "w", "tw", "late", "hist", "member", "ticker", "sort", "dir", "page", "per"];
 const isScreenView = (path, hash) => path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key));
 for (const k of [...targets.keys()].filter((x) => x.includes("#"))) {
   const [path, hash] = [k.slice(0, k.indexOf("#")), k.slice(k.indexOf("#") + 1)];

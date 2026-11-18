@@ -68,6 +68,25 @@ const rows = (tradesCsv ?? []).filter((r) => r.under_review !== "true" && r.disc
   lag: r.lag_days === "" ? null : Number(r.lag_days), late: r.late, disc: r.disclosed_date, txn: r.trade_date,
   slug: (r.page_url || "").replace(/\/+$/, "").split("/").pop() ?? "",
 }));
+// Ticker history (web/src/lib/tickerhistory.ts), recomputed here from the CSV rows with this
+// script's own copy of the rule: per member and ticker, by trade date; the earliest date is
+// "first" when it is 90 days or more after the record starts; a purchase (or sale) on the third or
+// a later one-sided date running is in a run; a date with both ends the count; an exchange is neither.
+const HIST_FROM = new Date(Date.parse("2025-10-01T00:00:00Z") + 90 * 86400000).toISOString().slice(0, 10), RUN_MIN = 3;
+{
+  const groups = new Map();
+  for (const r of rows) { r.first = false; r.run = 0; if (!r.ticker || !/^\d{4}-\d{2}-\d{2}$/.test(r.txn)) continue; const k = `${r.key}|${r.ticker.toUpperCase()}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+  for (const list of groups.values()) {
+    let last = "", n = 0;
+    [...new Set(list.map((r) => r.txn))].sort().forEach((day, i) => {
+      const on = list.filter((r) => r.txn === day), b = on.some((r) => r.side === "buy"), s = on.some((r) => r.side === "sell");
+      if (b && s) { last = ""; n = 0; } else if (b || s) { const kind = b ? "buy" : "sell"; n = kind === last ? n + 1 : 1; last = kind; }
+      for (const r of on) { r.first = i === 0 && day >= HIST_FROM; r.run = b !== s && r.side === (b ? "buy" : "sell") ? n : 0; }
+    });
+  }
+}
+const ord = (n) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+const runText = (r) => (r.run >= RUN_MIN ? `${ord(r.run)} ${r.side === "buy" ? "buy" : "sale"} in a row` : "");
 const oracle = {
   chamber: (v) => (r) => !v || r.chamber === v,
   party: (v) => (r) => !v || r.party === v,
@@ -81,6 +100,7 @@ const oracle = {
   w: (v) => (r) => !Number(v) || (age(r.disc) >= 0 && age(r.disc) <= Number(v)),
   tw: (v) => (r) => !Number(v) || (!!r.txn && age(r.txn) >= 0 && age(r.txn) <= Number(v)),
   late: (v) => (r) => !v || (v === "late" ? r.late === "true" : r.late === "false"),
+  hist: (v) => (r) => !v || (v === "first" ? r.first : r.run >= RUN_MIN),
 };
 const FILTERS = Object.keys(oracle);
 const want = (state) => rows.filter((r) => FILTERS.every((k) => oracle[k](state[k] ?? "")(r)) && (!state.q || state.q.toLowerCase().split(/\s+/).every((w) => `${r.member} ${r.ticker}`.toLowerCase().includes(w))));
@@ -137,7 +157,7 @@ for (const name of FILTERS) {
     ok(got.members === new Set(exp.map((r) => r.key)).size, `${name}=${v || "(any)"}: ${got.members} members on screen, ${new Set(exp.map((r) => r.key)).size} in the CSV`);
     const text = await countText();
     ok(exp.length === 0 ? text.startsWith("No trade matches") : text.includes(fmt(exp.length)), `${name}=${v || "(any)"}: the count line says ${exp.length}`);
-    if (["chamber", "party", "state", "committee", "side", "owner"].includes(name) && v) ok(exp.length > 0, `${name}=${v}: an offered option lists at least one trade`);
+    if (["chamber", "party", "state", "committee", "side", "owner", "hist"].includes(name) && v) ok(exp.length > 0, `${name}=${v}: an offered option lists at least one trade`);
     states++;
   }
   await reset();
@@ -150,7 +170,7 @@ const combos = [];
 for (const chamber of chambers) for (const side of sides.slice(0, 2)) combos.push({ chamber, side });
 for (const party of parties) combos.push({ party, late: "late" }, { party, min: 15001, asset: "ticker" });
 for (const owner of owners.slice(0, 2)) combos.push({ owner, w: 365, side: sides[0] });
-combos.push({ min: 100001, w: 90 }, { asset: "other" }, { min: 15001, max: 50000 }, { max: 15000, side: sides[0], tw: 365 }, { tw: 90, w: 30 }, { min: 250001, max: 100000 }, { late: "ontime", side: sides[0], min: 50001 });
+combos.push({ min: 100001, w: 90 }, { asset: "other" }, { min: 15001, max: 50000 }, { max: 15000, side: sides[0], tw: 365 }, { tw: 90, w: 30 }, { min: 250001, max: 100000 }, { late: "ontime", side: sides[0], min: 50001 }, { hist: "first", side: sides[0] }, { hist: "run", w: 365 }, { hist: "first", late: "late" });
 await setCtl("per", 25);
 for (const c of combos) {
   for (const [k, v] of Object.entries(c)) await setCtl(k, v);
@@ -301,6 +321,50 @@ if (someSlugs.length && someTickers.length) {
   ok((await ds()).shown === total && !(await page.locator('[data-scr="pins"]').isVisible()), "a member or ticker the table does not hold shows every trade");
 }
 
+// ── ticker history: the flags on screen, the address, the member pages ───────────────────
+{
+  const flagsOf = (cell) => ({ first: /first on record/.test(cell), run: (/\d+(?:st|nd|rd|th) (?:buy|sale) in a row/.exec(cell) ?? [""])[0] });
+  for (const v of ["", "first", "run"]) {
+    await page.goto(base + PATH, { waitUntil: "load" }); await ready();
+    if (v) await setCtl("hist", v);
+    await setCtl("per", 100);
+    const shown = await pageRows();
+    ok(shown.every((r) => { const o = byId.get(r.id), f = flagsOf(r.cells[2]); return o && f.first === o.first && f.run === runText(o); }), `hist=${v || "(any)"}: every row shown carries "first on record" and its run flag exactly when the recount from the CSV says so`);
+    if (v) {
+      const h = await page.evaluate(() => location.hash);
+      ok(h.includes(`hist=${v}`), `the address keeps the ticker history filter (${h})`);
+      const n = (await ds()).shown;
+      await page.reload({ waitUntil: "load" }); await ready();
+      ok((await ds()).shown === n && (await page.inputValue('[data-scr="hist"]')) === v, `reloading keeps hist=${v} and sets its control`);
+      ok(shown.length > 0 && shown.every((r) => (v === "first" ? flagsOf(r.cells[2]).first : !!flagsOf(r.cells[2]).run)), `hist=${v}: every row shown has the flag`);
+    }
+  }
+  await page.click('[data-scr="reset"]');
+  ok((await ds()).shown === total && (await page.inputValue('[data-scr="hist"]')) === "", "Reset clears the ticker history filter");
+  await page.goto(base + PATH + "#hist=streak", { waitUntil: "load" }); await ready();
+  ok((await ds()).shown === total, "a ticker history value the screener does not offer shows every trade");
+  // What the rule promises, on the oracle itself.
+  const firsts = rows.filter((r) => r.first), runs = rows.filter((r) => r.run >= RUN_MIN);
+  ok(firsts.every((r) => r.txn >= HIST_FROM && r.ticker), `no row traded before ${HIST_FROM} or without a ticker is first on record`);
+  ok(new Set(firsts.map((r) => `${r.key}|${r.ticker.toUpperCase()}|${r.txn}`)).size === new Set(firsts.map((r) => `${r.key}|${r.ticker.toUpperCase()}`)).size, "a member has one first trade date per ticker");
+  ok(runs.every((r) => r.side === "buy" || r.side === "sell"), "only purchases and sales are in a run");
+  // The same flags on the members' own pages (the trade tables read the same map).
+  const pick = [...firsts.slice(0, 3), ...runs.slice(0, 3), ...rows.filter((r) => r.ticker && r.txn && !r.first && r.run < RUN_MIN).slice(0, 3)].filter((r) => r.slug);
+  let seenOnPages = 0;
+  for (const r of pick) {
+    const res = await page.request.get(`${base}/congress/${r.slug}/`);
+    if (!res.ok()) continue;
+    const m = new RegExp(`<tr[^>]*id="t${r.id}"[\\s\\S]*?</tr>`).exec(await res.text());
+    if (!m) continue;                       // an older row than the page's table holds
+    seenOnPages++;
+    const cell = m[0].replace(/<[^>]+>/g, " ");
+    ok(/first on record/.test(cell) === r.first && ((/\d+(?:st|nd|rd|th) (?:buy|sale) in a row/.exec(cell) ?? [""])[0]) === runText(r), `/congress/${r.slug}/ row t${r.id}: the flags match the recount (first ${r.first}, run "${runText(r)}")`);
+    if (r.first || runText(r)) ok(/href="\/guides\/how-to-read-a-congressional-trade-report\/#ticker-history"/.test(m[0]), `/congress/${r.slug}/ row t${r.id}: the flag links to the guide section`);
+  }
+  if (firsts.length + runs.length > 0) ok(seenOnPages > 0, "at least one sampled row was found on its member's page");
+  console.log(`  ticker history: ${firsts.length} rows first on record, ${runs.length} rows in a run of ${RUN_MIN} or more (recount from the CSV)`);
+}
+
 // ── download these rows ──────────────────────────────────────────────────────────────────
 {
   const { readFile } = await import("node:fs/promises");
@@ -317,6 +381,7 @@ if (someSlugs.length && someTickers.length) {
   ok(some.rows.map((r) => r.trade_id).join() === onScreen.join(), `the download of a filtered, sorted view has the same ${onScreen.length} rows in the same order as the screen, every page`);
   ok(/filtered/.test(some.name) && some.name.endsWith(".csv"), `a filtered download is named as filtered (${some.name})`);
   ok(some.rows.every((r) => { const o = byId.get(r.trade_id); return o && o.member === r.filer && (o.ticker || "") === r.ticker && o.side === r.side && o.disc === r.disclosed_date && String(o.low ?? "") === r.amount_low && String(o.high ?? "") === r.amount_high && (o.late || "") === r.late; }), "each downloaded row carries the same member, ticker, side, date, range and late flag as congress-trades.csv");
+  ok(every.rows.every((r) => { const o = byId.get(r.trade_id); return o && r.first_in_ticker_on_record === (o.ticker && o.txn ? String(o.first) : "") && r.same_side_run === (o.run > 0 ? String(o.run) : ""); }), "each downloaded row carries the first-on-record mark and the run number the recount from the CSV gives");
   await page.fill('[data-scr="q"]', "zzzz-no-such-member");
   ok(await page.locator('[data-scr="download"]').isDisabled(), "the download button is off when nothing matches");
   await page.goto(base + PATH, { waitUntil: "load" }); await ready();

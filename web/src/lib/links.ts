@@ -13,6 +13,7 @@
 import type { Flagship, Company } from "./flagship";
 import { companyPath } from "./flagship-core";
 import { normalizeOrgName } from "@stm/shared";
+import { isHistFlag } from "./tickerhistory";
 
 // ── organisations ────────────────────────────────────────────────────────────────────────
 let _orgs: { model: Flagship; map: Map<string, Company> } | null = null;
@@ -37,6 +38,8 @@ const G = (slug: string, hash = "") => `/guides/${slug}/${hash ? `#${hash}` : ""
 /** The guide that explains a trade-table flag; null when there is none (e.g. "under review"). */
 export function flagHref(flag: string, source: string): string | null {
   const form4 = source === "sec_form4";
+  // "first on record", "3rd buy in a row" (lib/tickerhistory.ts): congressional rows only.
+  if (isHistFlag(flag)) return form4 ? null : G("how-to-read-a-congressional-trade-report", "ticker-history");
   switch (flag) {
     case "late": return form4 ? G("what-is-form-4", "when") : G("late-congressional-trade-disclosures", "how-counted");
     case "10b5-1 plan": return G("rule-10b5-1-trading-plans");

@@ -206,10 +206,10 @@ test("links into the screener carry the number of rows the screener opens on", (
 test("the rows of a view as CSV: every matching row, in the view's order, all pages", () => {
   const v: ScreenView = { ...view({ sort: "amount", dir: "desc", per: 25, page: 1 } as any, { state: "TX" }) };
   const rows = parseCsv(viewCsv(all, v, data.built));
-  assert.deepEqual(rows[0], ["trade_id", "filer", "chamber", "party", "state", "seat", "ticker", "asset_type", "side", "owner", "trade_date", "disclosed_date", "lag_days", "late", "amount_low", "amount_high", "filing_url"]);
+  assert.deepEqual(rows[0], ["trade_id", "filer", "chamber", "party", "state", "seat", "ticker", "asset_type", "side", "owner", "trade_date", "disclosed_date", "lag_days", "late", "amount_low", "amount_high", "first_in_ticker_on_record", "same_side_run", "filing_url"]);
   assert.deepEqual(rows.slice(1).map((r) => Number(r[0])), sortRows(all.filter((r) => matches(r, v.f, data.built)), "amount", "desc").map((r) => r.id));
   assert.deepEqual(rows.slice(1).map((r) => Number(r[0])), [4, 3, 1, 2]);
-  assert.deepEqual(rows.find((r) => r[0] === "4"), ["4", "Carl Alpha Jr.", "senate", "D", "TX", "TX", "", "bond", "sell", "joint", "2026-02-20", "2026-03-01", "9", "false", "5000001", "", "https://example.test/102.pdf"]);
+  assert.deepEqual(rows.find((r) => r[0] === "4"), ["4", "Carl Alpha Jr.", "senate", "D", "TX", "TX", "", "bond", "sell", "joint", "2026-02-20", "2026-03-01", "9", "false", "5000001", "", "", "", "https://example.test/102.pdf"]);
   assert.equal(rows.find((r) => r[0] === "2")![13], "true");
   // A page number does not cut the file, and a view with no match is a header alone.
   assert.equal(parseCsv(viewCsv(all, { ...v, per: 25, page: 9 }, data.built)).length, 5);
@@ -220,4 +220,32 @@ test("the rows of a view as CSV: every matching row, in the view's order, all pa
   assert.equal(viewCsvName(DEFAULT_VIEW, "2026-11-17"), "congress-trades-all-2026-11-17.csv");
   assert.equal(viewCsvName(view({}, { chamber: "senate", side: "buy", min: 100001 }), "2026-11-17"), "congress-trades-senate-buy-min100001-filtered-2026-11-17.csv");
   assert.equal(viewCsvName(view({}, { q: "pelosi" }), "2026-11-17"), "congress-trades-filtered-2026-11-17.csv");
+});
+
+test("ticker history: packed with each row, filtered by hist, kept in the address and the download", () => {
+  // Its own small model: one member buys NVDA on three dates running, then sells; AAPL once, before the flag can apply.
+  let n = 500;
+  const t = (sec: number, side: string, day: string) => ({ ...txn(1, { sec, side, txn: day, disc: "2026-11-01" }), id: ++n });
+  const m2: any = { ...model, txns: [t(1, "buy", "2026-06-01"), t(1, "buy", "2026-06-08"), t(1, "buy", "2026-06-15"), t(1, "sell", "2026-07-01"), t(2, "sell", "2025-11-03"), { ...t(1, "buy", "2026-08-01"), securityId: null }] };
+  const d2 = screenerData(m2, TODAY, (p: any) => `/congress/${p.slug}/`);
+  assert.ok(d2.rows.every((r) => r.length === 14));
+  const rows2 = unpack(JSON.parse(JSON.stringify(d2)));
+  assert.deepEqual(rows2.map((r) => [r.id, r.first, r.run]), [[501, true, 1], [502, false, 2], [503, false, 3], [504, false, 1], [505, false, 1], [506, false, 0]]);
+  const hit = (hist: ScreenFilter["hist"]) => rows2.filter((r) => matches(r, f({ hist }), d2.built)).map((r) => r.id);
+  assert.deepEqual(hit("first"), [501]);
+  assert.deepEqual(hit("run"), [503]);
+  assert.equal(hit("").length, 6);
+  assert.equal(toHash(view({}, { hist: "first" })), "#hist=first");
+  assert.equal(parseHash("#hist=run").f.hist, "run");
+  assert.equal(parseHash("#hist=streak").f.hist, "");
+  assert.ok(isViewHash("#hist=first")); assert.ok(!isDefaultFilter(f({ hist: "run" })));
+  const out = parseCsv(viewCsv(rows2, view({ sort: "trade", dir: "asc" }), d2.built));
+  const head = out[0], col = (k: string) => head.indexOf(k);
+  assert.ok(col("first_in_ticker_on_record") > 0 && col("same_side_run") > 0);
+  const byTrade = new Map(out.slice(1).map((r) => [r[col("trade_id")], [r[col("first_in_ticker_on_record")], r[col("same_side_run")]]]));
+  assert.deepEqual(byTrade.get("501"), ["true", "1"]); assert.deepEqual(byTrade.get("503"), ["false", "3"]); assert.deepEqual(byTrade.get("506"), ["", ""]);
+  assert.match(viewCsvName(view({}, { hist: "run" }), TODAY), /hist-run-filtered/);
+  // A data file from before the two fields were added still unpacks: no flags.
+  const old = unpack({ ...d2, rows: d2.rows.map((r) => r.slice(0, 12)) as any });
+  assert.ok(old.every((r) => !r.first && r.run === 0));
 });

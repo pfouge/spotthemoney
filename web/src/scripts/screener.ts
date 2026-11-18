@@ -4,7 +4,7 @@
 // goes in as text nodes (scripts/dom.ts): names come from filings. Nothing is sent anywhere.
 import { h } from "./dom";
 import {
-  unpack, screen, summaryLine, memberSlug, viewCsv, viewCsvName, parseHash, toHash, isViewHash, isDefaultFilter, firstDir, isLateRow, rangeLabel, assetLabel, shortDate, seatTag, tickerPath,
+  unpack, screen, summaryLine, memberSlug, viewCsv, viewCsvName, parseHash, toHash, isViewHash, isDefaultFilter, firstDir, isLateRow, rangeLabel, assetLabel, shortDate, seatTag, tickerPath, rowRunFlag,
   NO_FILTER, DEFAULT_VIEW, DEFAULT_PER, SIDE_LABEL, OWNER_LABEL, type ScreenData, type ScreenRow, type ScreenView, type ScreenFilter, type SortKey,
 } from "../lib/screener";
 
@@ -36,7 +36,9 @@ async function start(root: HTMLElement): Promise<void> {
   }
   delete root.dataset.loading;
   const all = unpack(data);
-  const lateHref = root.dataset.lateHref;
+  const lateHref = root.dataset.lateHref, histHref = root.dataset.histHref;
+  // "first on record" and "3rd buy in a row" (lib/tickerhistory.ts), linked to the guide section that explains them.
+  const histTag = (text: string, cls: string): (Node | string)[] => [" ", histHref ? h("a", { class: `flag ${cls}`, href: histHref, title: "What this flag means" }, text) : h("span", { class: `flag ${cls}` }, text)];
   let view: ScreenView = { ...DEFAULT_VIEW };
 
   const has = (s: HTMLSelectElement | null, v: string) => !!s && Array.from(s.options).some((o) => o.value === v);
@@ -50,13 +52,14 @@ async function start(root: HTMLElement): Promise<void> {
     state: sel("state")?.value ?? "", committee: sel("committee")?.value ?? "", side: (sel("side")?.value ?? "") as ScreenFilter["side"],
     min: Number(sel("min")?.value ?? 0), max: Number(sel("max")?.value ?? 0), tw: Number(sel("tw")?.value ?? 0) as ScreenFilter["tw"], owner: (sel("owner")?.value ?? "") as ScreenFilter["owner"], asset: (sel("asset")?.value ?? "") as ScreenFilter["asset"],
     w: Number(sel("w")?.value ?? 0) as ScreenFilter["w"], late: (sel("late")?.value ?? "") as ScreenFilter["late"],
+    hist: (sel("hist")?.value ?? "") as ScreenFilter["hist"],
   });
   const writeControls = (v: ScreenView): void => {
     const f = v.f;
     if (q) q.value = f.q;
     pick(sel("chamber"), f.chamber); pick(sel("party"), f.party); pick(sel("state"), f.state); pick(sel("committee"), f.committee);
     pick(sel("side"), f.side); pick(sel("min"), String(f.min), "0"); pick(sel("max"), String(f.max), "0"); pick(sel("tw"), String(f.tw), "0"); pick(sel("owner"), f.owner); pick(sel("asset"), f.asset);
-    pick(sel("w"), String(f.w), "0"); pick(sel("late"), f.late); pick(per, String(v.per), String(DEFAULT_PER));
+    pick(sel("w"), String(f.w), "0"); pick(sel("late"), f.late); pick(sel("hist"), f.hist); pick(per, String(v.per), String(DEFAULT_PER));
   };
 
   const rowEl = (r: ScreenRow): HTMLTableRowElement => {
@@ -64,7 +67,7 @@ async function start(root: HTMLElement): Promise<void> {
     return h("tr", { "data-id": String(r.id) },
       h("td", {}, r.m.p ? h("a", { href: r.m.p }, r.m.n) : r.m.n, seatTag(r.m) ? h("span", { class: "soft small" }, ` ${seatTag(r.m)}`) : null, r.m.f === 1 ? h("span", { class: "soft small" }, " · left office") : null),
       h("td", { class: "mono" }, r.ticker ? h("a", { href: tickerPath(r.ticker) }, r.ticker) : h("span", { class: "soft" }, assetLabel(r.asset))),
-      h("td", { class: `side ${r.side}` }, SIDE_LABEL[r.side] ?? "Other"),
+      h("td", { class: `side ${r.side}` }, SIDE_LABEL[r.side] ?? "Other", ...(r.first ? histTag("first on record", "hist first") : []), ...(rowRunFlag(r) ? histTag(rowRunFlag(r), "hist run") : [])),
       h("td", {}, OWNER_LABEL[r.owner] ?? ""),
       h("td", { class: "mono" }, shortDate(r.txn)),
       h("td", { class: "mono" }, shortDate(r.disc)),
