@@ -2795,3 +2795,28 @@ terms and the guide read as before. One thing is live: the unsubscribe address. 
   entity pages, not `/alerts/`; a guessed token is 244 random bits, so this is about load, not
   access. No `List-Unsubscribe` headers yet (they belong to the sender, stage 4). The watchlist
   "new" badge still has no 30-day rule.
+
+### Watchlist: a trade is "new" only when disclosed in the last 30 days (2026-11-18, scheduled parity run) — queue item (g1)
+
+- **Fault.** `watch_feed_rows` (0017) marked a row new when its filing was LOADED after the
+  visitor's last visit. A backfill loads old filings as new, so the header badge and "New since
+  your last visit" filled with trades disclosed months ago (on production one account had 83
+  rows marked new, 40 of them disclosed more than 30 days before).
+- **Migration 0026** (`db/migrations/0026_watch_feed_new_age.sql`): `is_new` = loaded after the
+  last visit AND `disclosed_at >= current_date - 30`, the digest builder's rule (`MAX_AGE_DAYS`).
+  Nothing else changes: the feed still lists every trade disclosed in the last 365 days, so an
+  old filing loaded late is under "Earlier trades". Same name, arguments and return type, so the
+  grants of 0017 and 0022 stand. **`create or replace function` drops a function's settings**:
+  the `set search_path` that 0022 added by `alter function` is written into the definition
+  again. Any later migration that replaces a function listed in 0022 section 5 must do the same.
+  Next free migration number: 0027.
+- **One number, three places:** the SQL, `FEED_NEW_MAX_AGE_DAYS` in `web/src/lib/account.ts`
+  (the guide reads it through `ctx.feedNewMaxAgeDays`), and a unit test in
+  `scripts/unsubscribe.test.ts` that reads the migration file and compares, and requires it to
+  equal the digest's `ALERT_MAX_AGE_DAYS`.
+- **Verifier.** `verify-accounts-db` (42 checks, was 35): the count equals the rows marked new,
+  every new row was disclosed within 30 days, older rows are listed and not new, a filing loaded
+  now but disclosed 60 days ago is listed, not new and does not raise the count, the function
+  keeps its search_path and is still for signed-in visitors only.
+- Guide `how-to-follow-members-insiders-and-stocks`: one paragraph in `#watchlist`; covers 0026.
+- No page file changed: the watchlist script already splits rows by `is_new`.

@@ -117,6 +117,27 @@ try {
   await sql`update accounts set last_seen_feed_at = '2000-01-01' where id = ${A}`;
   s = await rpc(A, "my_state");
   ok(s.new_count > 0, "trades loaded since the last visit count as new");
+  // 7b. new = loaded since the last visit AND disclosed in the last 30 days (0026); recounted here
+  //     from the feed's own rows and from the tables, so a backfill of old filings raises nothing
+  feed = await rpc(A, "watch_feed", { p_limit: 500 });
+  const cut = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const fresh = feed.filter((r) => r.is_new), stale = feed.filter((r) => !r.is_new);
+  ok(fresh.length === s.new_count, `the count is the number of rows marked new (${fresh.length})`);
+  ok(fresh.every((r) => r.disclosed_at >= cut), "every new row was disclosed in the last 30 days");
+  ok(stale.length > 0 && stale.every((r) => r.disclosed_at < cut), `rows disclosed longer ago are listed but not new (${stale.length})`);
+  // a filing loaded just now but disclosed 60 days ago (a backfill) is in the feed and is not new
+  const [bf] = await sql`select t.id, t.disclosed_at::text as d from transactions t where t.id = ${fresh[0].txn_id}`;
+  await sql`update transactions set disclosed_at = current_date - 60 where id = ${bf.id}`;
+  try {
+    const after = await rpc(A, "watch_feed", { p_limit: 500 });
+    const row = after.find((r) => Number(r.txn_id) === Number(bf.id));
+    ok(row && row.is_new === false, "an old filing loaded after the last visit is listed, not new");
+    ok((await rpc(A, "my_state")).new_count === s.new_count - 1, "and it does not raise the count");
+  } finally { await sql`update transactions set disclosed_at = ${bf.d}::date where id = ${bf.id}`; }
+  const [cfg] = await sql`select proconfig from pg_proc where proname = 'watch_feed_rows'`;
+  ok((cfg.proconfig ?? []).some((c) => /^search_path=public, ?pg_temp$/.test(c)), "watch_feed_rows keeps its fixed search_path");
+  const [acl] = await sql`select has_function_privilege('anon', 'watch_feed_rows(int)', 'execute') as anon, has_function_privilege('authenticated', 'watch_feed_rows(int)', 'execute') as auth`;
+  ok(acl.anon === false && acl.auth === true, "watch_feed_rows: signed-in visitors only, as before");
   s = await rpc(A, "mark_feed_seen");
   ok(s.new_count === 0, "marking the feed seen clears the count");
   ok((await rpc(B, "watch_feed", { p_limit: 50 })).every((r) => true), "B's feed is B's own");
