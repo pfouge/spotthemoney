@@ -192,7 +192,17 @@ insert into seed_ptr values
   ('20031002', 'elena-marsh',      current_date - 4,  current_date - 68, 'purchase', 'PLTR', 1001, 15000, 'joint', 'stock', 0.9, false),
   ('20031003', 'samuel-okafor',    current_date - 15, current_date - 30, 'sale_partial', 'LMT', 15001, 50000, 'self', 'stock', 0.9, false),
   ('20031004', 'samuel-okafor',    current_date - 40, current_date - 44, 'purchase', 'SPY', 1001, 15000, 'self', 'etf', 0.9, false),
-  ('20031005', 'elena-marsh',      current_date - 8,  null, null, null, null, null, null, null, 0.3, false); -- needs_ocr
+  ('20031005', 'elena-marsh',      current_date - 8,  null, null, null, null, null, null, null, 0.3, false), -- needs_ocr
+  -- Ticker history flags (web/src/lib/tickerhistory.ts): AMD bought on four trade dates running (two
+  -- lots on the third), then sold; and a day with a purchase and a sale both, which carries no run.
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 41, 'purchase', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 34, 'purchase', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 27, 'purchase', 'AMD', 15001, 50000, 'self', 'stock', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 27, 'purchase', 'AMD', 1001, 15000, 'spouse', 'stock', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 21, 'purchase', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 12, 'sale_partial', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 9,  'purchase', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 9,  'sale',     'AMD', 1001, 15000, 'spouse', 'stock', 0.9, false);
 -- Generated rows for the Congress trade screener (/congress-trades/): enough rows to page through,
 -- with every side, owner and amount step, late reports, an open-topped range and assets with no ticker.
 insert into seed_ptr

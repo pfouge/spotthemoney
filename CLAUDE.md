@@ -2584,3 +2584,38 @@ first, rotate the database password, a read-only role for builds, Claude merges 
   off; Cloudflare rate-limiting rule on `/api/`, `/auth/` and the on-demand entity paths.
 - Still open: `citext` in public; supabase_admin's default privileges; `p_floor` on the `od_*`
   functions is not clamped (published public filings only).
+
+### Ticker history flags on congressional rows: "first on record" and runs (2026-11-18, scheduled parity run) — queue item 6, first-time and streak flags
+
+- **What.** Congressional rows can carry two flags: "first on record" (the member's earliest trade
+  in that ticker among the reports on record) and "3rd buy in a row" / "4th sale in a row" and so
+  on (a purchase, or a sale, on the third or a later one-sided trade date running). They show in
+  the Flags cell of every `TxnTable` (member, stock, committee pages, `/congress/`), in the Side
+  cell of the screener, as the screener filter "Ticker history" (hash key `hist=first|run`), and
+  in the screener's download as `first_in_ticker_on_record` and `same_side_run`. Each flag links
+  to guide `how-to-read-a-congressional-trade-report#ticker-history`; its `title` states the fact
+  in full. Form 4 rows never carry them.
+- **Rules** (`web/src/lib/tickerhistory.ts`, pure; tests `scripts/tickerhistory.test.ts`): rows
+  are grouped by member and ticker (upper case) and ordered by TRADE date; several rows on one
+  date are one date. `RECORD_START` = "2025-10-01" (the site holds reports FILED since then: the
+  House backfill and the Senate export), so "first" is given only to trades made
+  `FIRST_MIN_DAYS` (90) or more after it (2025-12-30 on). A date with purchases and sales both
+  is mixed: no run, and it ends the count. An exchange never carries a run and does not end one,
+  but an exchange-only date can be the first date. `RUN_MIN` = 3. Rows with no ticker or no
+  usable trade date, rows under review and Form 4 rows take no part. **If the House backfill or
+  the Senate export is ever extended further back, change `RECORD_START`.**
+- **One map for tables and screener:** `historyFor(model)` in `web/src/lib/screener.ts`
+  (memoised per build, over `screenerTxns`). `PackedRow` gained two fields at the end
+  (first 0/1, run number); `unpack` tolerates a file without them.
+- **Build log** prints `[web] ticker history: N of M rows have a ticker and a trade date, P member
+  and ticker pairs; first on record F rows (...); in a run of 3 or more: B purchase rows, S sale
+  rows; longest run L` and `[web] congress screener history: ...` for comparison with SQL.
+- **Verifier.** `verify-screener` recomputes both flags from `congress-trades.csv` with its own
+  copy of the rule and compares: every option of the `hist` filter, the flags in the Side cell of
+  the rows on screen, the address and a reload, Reset, a junk value, the two download columns,
+  and the Flags cell of sampled rows on member pages. `hist` is in `SCREEN_KEYS`
+  (`verify-links`). The seed gained a report with AMD bought on four dates running, a sale, and
+  a mixed day.
+- Not done: the two columns are not in `congress-trades.csv` (all trade files share one header);
+  no flag for Form 4 rows (waits for the market-wide work); no "first" count on member pages or
+  in the feeds; sorting by run length.

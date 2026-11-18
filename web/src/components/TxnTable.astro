@@ -12,6 +12,8 @@ import { flagHref } from "../lib/links";
 import { dayKey, numKey } from "../lib/tablesort";
 import { changeLabel, changeSortKey } from "../lib/holdings";
 import { tableFootnotes, notesLabel, notesAnchor } from "../lib/footnotes";
+import { historyFor } from "../lib/screener";
+import { histFlags, histTitle, isHistFlag } from "../lib/tickerhistory";
 
 interface Props {
   model: Flagship;
@@ -31,6 +33,8 @@ const here = Astro.url.pathname;
 const short = (iso: string | null) => (iso ? formatDate(iso).replace(/, (\d{4})$/, ", $1") : "—");
 const sourceLabel = (t: Txn) => (t.source === "sec_form4" ? "Form 4" : t.source === "house_ptr" ? "House PTR" : "Senate PTR");
 const sourceHref = (t: Txn) => (t.source === "sec_form4" ? edgarFilingUrl(t.sourceUrl) : t.sourceUrl);
+// Worked out once per build, and only when the table holds a congressional row.
+const history = rows.some((t) => t.source !== "sec_form4") ? historyFor(model) : new Map();
 const flags = (t: Txn) => {
   const f: string[] = [];
   if (isLate(t)) f.push("late");
@@ -39,8 +43,11 @@ const flags = (t: Txn) => {
   if (t.isDerivative) f.push("derivative");
   if (t.jointOf != null) f.push("also in another filing");
   if (!t.isPublished) f.push("under review");
+  // Ticker history (lib/tickerhistory.ts): congressional rows only, from the rows on record.
+  if (t.source !== "sec_form4") f.push(...histFlags(history.get(t.id), t.side));
   return f;
 };
+const flagTitle = (f: string, t: Txn) => (isHistFlag(f) ? histTitle(f, (t.securityId != null ? model.securities.get(t.securityId)?.ticker : "") ?? "") : "What this flag means");
 // Column sorting (scripts/tablesort.ts): sortable headers carry a button, and each body cell in a
 // sortable column carries its machine-sortable value in `data-v` (lib/tablesort.ts).
 // "Held after" / "Change" (lib/holdings.ts): shown only when some row in this table has the data
@@ -110,7 +117,7 @@ const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
               {showHoldings && <td class="num" data-v={numKey(t.ownedAfter)}>{t.ownedAfter != null ? num(t.ownedAfter) : "—"}</td>}
               {showHoldings && <td class={`num ${changeClass(t.holdingsChange)}`} data-v={numKey(changeSortKey(t.holdingsChange ?? null))}>{changeLabel(t.holdingsChange ?? null)}</td>}
               <td class="num strong" data-v={valueKey(t)}>{amountLabel(t)}</td>
-              <td class="flags">{flags(t).map((f) => { const to = flagHref(f, t.source); const cls = `flag ${f.replace(/\W+/g, "-")}`; return to ? <a class={cls} href={to} title="What this flag means">{f}</a> : <span class={cls}>{f}</span>; })}{noteCount(t) > 0 && <a class="flag notes" href={`#${notesAnchor(t.filingId)}`} data-notes title="Footnotes in this filing">{notesLabel(noteCount(t))}</a>}</td>
+              <td class="flags">{flags(t).map((f) => { const to = flagHref(f, t.source); const cls = isHistFlag(f) ? `flag hist ${f === "first on record" ? "first" : "run"}` : `flag ${f.replace(/\W+/g, "-")}`; return to ? <a class={cls} href={to} title={flagTitle(f, t)}>{f}</a> : <span class={cls}>{f}</span>; })}{noteCount(t) > 0 && <a class="flag notes" href={`#${notesAnchor(t.filingId)}`} data-notes title="Footnotes in this filing">{notesLabel(noteCount(t))}</a>}</td>
               <td>{href ? <a href={href} rel="noopener nofollow" target="_blank">{sourceLabel(t)} ↗</a> : sourceLabel(t)}</td>
               <td class="rs">{line && <button type="button" class="row-share" data-share="trade" data-share-text={line} data-share-path={home !== here ? home : undefined} data-share-id={`t${t.id}`} data-share-date={(t.disclosedAt ?? "").slice(0, 10) || undefined} aria-label="Share or cite this trade"></button>}</td>
             </tr>

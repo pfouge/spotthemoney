@@ -11,6 +11,7 @@ import type { Flagship, Person, Txn } from "./flagship";
 import { CONGRESS_DEADLINE_DAYS, money } from "./flagship-core";
 import { toCsv, type Column } from "./csv";
 import { partyKey, seatCode, topCommittee, daysBetween, sortName, type PartyKey } from "./directory";
+import { tickerHistory, runFlag, NO_HIST, RUN_MIN, RECORD_START, firstEligibleFrom, type Hist } from "./tickerhistory";
 
 // ── data ─────────────────────────────────────────────────────────────────────────────────
 export interface ScreenMember {
@@ -25,8 +26,10 @@ export interface ScreenMember {
   f?: 1;
 }
 /** One row, packed: [id, member index, ticker or "", asset type, side, owner, trade date or "",
- *  disclosure date, lag in days or -1, low end or -1, high end or -1, filing index]. */
-export type PackedRow = [number, number, string, string, string, string, string, string, number, number, number, number];
+ *  disclosure date, lag in days or -1, low end or -1, high end or -1, filing index,
+ *  1 when the row is the member's first trade in the ticker on record, the row's place in a run
+ *  of one-sided trade dates or 0 (lib/tickerhistory.ts)]. */
+export type PackedRow = [number, number, string, string, string, string, string, string, number, number, number, number, number, number];
 export interface ScreenData {
   /** The day the file was built (YYYY-MM-DD): date windows count back from it. */
   built: string;
@@ -38,6 +41,10 @@ export interface ScreenData {
 export interface ScreenRow {
   id: number; m: ScreenMember; ticker: string; asset: string; side: string; owner: string;
   txn: string | null; disc: string; lag: number | null; low: number | null; high: number | null; url: string;
+  /** The member's first trade in the ticker on record (lib/tickerhistory.ts). */
+  first: boolean;
+  /** Which one-sided trade date running this is for the member and ticker; 0 when the row carries no run. */
+  run: number;
 }
 
 /** The rows the screener holds: published rows of congressional reports that carry a disclosure date. */
@@ -45,10 +52,30 @@ export function screenerTxns(m: Flagship): Txn[] {
   return m.txns.filter((t) => t.source !== "sec_form4" && t.isPublished && !!t.disclosedAt && t.personId != null);
 }
 
+const histCache = new WeakMap<object, Map<number, Hist>>();
+/** Ticker history facts (first on record, runs) for the screener's rows, by row id; worked out
+ *  once per build. The trade tables and the screener read the same map, so they cannot disagree. */
+export function historyFor(m: Flagship): Map<number, Hist> {
+  let h = histCache.get(m);
+  if (!h) {
+    const rows = screenerTxns(m).map((t) => ({ id: t.id, who: t.personId!, ticker: t.securityId != null ? m.securities.get(t.securityId)?.ticker : null, side: t.side, txn: t.txnDate }));
+    h = tickerHistory(rows);
+    histCache.set(m, h);
+    // Build log: the figures to compare with a direct count on the database.
+    const side = new Map(rows.map((r) => [r.id, r.side]));
+    let first = 0, buyRun = 0, sellRun = 0, longest = 0;
+    for (const [id, x] of h) { if (x.first) first++; if (x.run >= RUN_MIN) { if (side.get(id) === "buy") buyRun++; else sellRun++; } if (x.run > longest) longest = x.run; }
+    const pairs = new Set(rows.filter((r) => h!.has(r.id)).map((r) => `${r.who}|${(r.ticker ?? "").toUpperCase()}`)).size;
+    console.log(`[web] ticker history: ${h.size} of ${rows.length} rows have a ticker and a trade date, ${pairs} member and ticker pairs; first on record ${first} rows (trades from ${firstEligibleFrom()}, record from ${RECORD_START}); in a run of ${RUN_MIN} or more: ${buyRun} purchase rows, ${sellRun} sale rows; longest run ${longest}`);
+  }
+  return h;
+}
+
 export function screenerData(m: Flagship, today: string, path: (p: Person) => string | null): ScreenData {
   const members: ScreenMember[] = [], memberIdx = new Map<number, number>();
   const filings: string[] = [], filingIdx = new Map<number, number>();
   const rows: PackedRow[] = [];
+  const hist = historyFor(m);
   for (const t of screenerTxns(m)) {
     const p = m.people.get(t.personId!);
     if (!p) continue;
@@ -71,6 +98,7 @@ export function screenerData(m: Flagship, today: string, path: (p: Person) => st
     rows.push([
       t.id, mi, s?.ticker ?? "", t.assetType ?? "", t.side, t.ownerType ?? "",
       t.txnDate?.slice(0, 10) ?? "", t.disclosedAt!.slice(0, 10), t.lagDays ?? -1, t.amountLow ?? -1, t.amountHigh ?? -1, fi,
+      hist.get(t.id)?.first ? 1 : 0, hist.get(t.id)?.run ?? 0,
     ]);
   }
   return { built: today, members, filings, rows };
@@ -80,7 +108,7 @@ export function unpack(d: ScreenData): ScreenRow[] {
   return d.rows.map((r) => ({
     id: r[0], m: d.members[r[1]], ticker: r[2], asset: r[3], side: r[4], owner: r[5],
     txn: r[6] || null, disc: r[7], lag: r[8] < 0 ? null : r[8], low: r[9] < 0 ? null : r[9], high: r[10] < 0 ? null : r[10],
-    url: d.filings[r[11]] ?? "",
+    url: d.filings[r[11]] ?? "", first: r[12] === 1, run: r[13] ?? 0,
   }));
 }
 
@@ -98,6 +126,12 @@ export const WINDOWS = [30, 90, 365] as const;
 export const WINDOW_LABEL: Record<number, string> = { 30: "Disclosed in the last 30 days", 90: "Disclosed in the last 90 days", 365: "Disclosed in the last 12 months" };
 /** The same windows, by trade date. */
 export const TRADE_WINDOW_LABEL: Record<number, string> = { 30: "Traded in the last 30 days", 90: "Traded in the last 90 days", 365: "Traded in the last 12 months" };
+/** Ticker history (lib/tickerhistory.ts): the member's first trade in the ticker on record, or a
+ *  purchase or sale on the third or a later one-sided trade date running. */
+export const HISTS = ["first", "run"] as const;
+export const HIST_OPTION: Record<string, string> = { first: "First trade in the ticker on record", run: `${RUN_MIN}rd or later buy or sale in a row` };
+/** The run flag of a row ("3rd buy in a row"), or "". */
+export function rowRunFlag(r: Pick<ScreenRow, "run" | "side">): string { return runFlag({ ...NO_HIST, run: r.run }, r.side); }
 export const PER_PAGE = [25, 50, 100] as const;
 export const DEFAULT_PER = 50;
 export const SORT_KEYS = ["disclosed", "trade", "member", "ticker", "lag", "amount"] as const;
@@ -117,13 +151,15 @@ export interface ScreenFilter {
   tw: 0 | 30 | 90 | 365;
   /** "late": reported after the deadline; "ontime": within it. */
   late: "" | "late" | "ontime";
+  /** "first": the member's first trade in the ticker on record; "run": a row flagged as part of a run. */
+  hist: "" | (typeof HISTS)[number];
   /** Exactly one member, by the slug of the member's page ("kevin-hern"); "" = any. Set by a link
    *  from a member page, shown on the screener as a removable line, not a control. */
   member: string;
   /** Exactly one ticker symbol, upper case ("NVDA"); "" = any. Set by a link from a stock page. */
   ticker: string;
 }
-export const NO_FILTER: ScreenFilter = { q: "", chamber: "", party: "", state: "", committee: "", side: "", min: 0, max: 0, owner: "", asset: "", w: 0, tw: 0, late: "", member: "", ticker: "" };
+export const NO_FILTER: ScreenFilter = { q: "", chamber: "", party: "", state: "", committee: "", side: "", min: 0, max: 0, owner: "", asset: "", w: 0, tw: 0, late: "", hist: "", member: "", ticker: "" };
 export interface ScreenView { f: ScreenFilter; sort: SortKey; dir: "asc" | "desc"; page: number; per: number }
 export const DEFAULT_VIEW: ScreenView = { f: NO_FILTER, sort: "disclosed", dir: "desc", page: 1, per: DEFAULT_PER };
 
@@ -148,6 +184,8 @@ export function matches(r: ScreenRow, f: ScreenFilter, built: string): boolean {
   if (f.asset === "other" && r.ticker) return false;
   if (f.late === "late" && !isLateRow(r)) return false;
   if (f.late === "ontime" && (r.lag == null || isLateRow(r))) return false;
+  if (f.hist === "first" && !r.first) return false;
+  if (f.hist === "run" && !rowRunFlag(r)) return false;
   if (f.w > 0) { const age = daysBetween(r.disc, built); if (age < 0 || age > f.w) return false; }
   if (f.tw > 0) { if (!r.txn) return false; const age = daysBetween(r.txn, built); if (age < 0 || age > f.tw) return false; }
   const q = f.q.trim().toLowerCase();
@@ -235,9 +273,9 @@ export function tickerPath(ticker: string): string { return `/stocks/${ticker.to
 
 // ── the address ──────────────────────────────────────────────────────────────────────────
 export function isDefaultFilter(f: ScreenFilter): boolean {
-  return !f.q.trim() && !f.chamber && !f.party && !f.state && !f.committee && !f.side && !f.min && !f.max && !f.owner && !f.asset && !f.w && !f.tw && !f.late && !f.member && !f.ticker;
+  return !f.q.trim() && !f.chamber && !f.party && !f.state && !f.committee && !f.side && !f.min && !f.max && !f.owner && !f.asset && !f.w && !f.tw && !f.late && !f.hist && !f.member && !f.ticker;
 }
-const KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "max", "owner", "asset", "w", "tw", "late", "member", "ticker", "sort", "dir", "page", "per"];
+const KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "max", "owner", "asset", "w", "tw", "late", "hist", "member", "ticker", "sort", "dir", "page", "per"];
 /** True when a hash is a saved view (carries one of the screener's keys), not a jump link. */
 export function isViewHash(hash: string): boolean {
   if (!hash.includes("=")) return false;
@@ -260,6 +298,7 @@ export function parseHash(hash: string): ScreenView {
   const w = Number(p.get("w")); if ((WINDOWS as readonly number[]).includes(w)) f.w = w as ScreenFilter["w"];
   const tw = Number(p.get("tw")); if ((WINDOWS as readonly number[]).includes(tw)) f.tw = tw as ScreenFilter["tw"];
   const la = p.get("late"); if (la === "late" || la === "ontime") f.late = la;
+  const hi = p.get("hist"); if (hi === "first" || hi === "run") f.hist = hi;
   const me = (p.get("member") ?? "").toLowerCase(); if (/^[a-z0-9]+(-[a-z0-9]+)*$/.test(me) && me.length <= 80) f.member = me;
   const ti = (p.get("ticker") ?? "").toUpperCase(); if (/^[A-Z0-9][A-Z0-9.\-]{0,9}$/.test(ti)) f.ticker = ti;
   f.q = (p.get("q") ?? "").slice(0, 60);
@@ -284,6 +323,7 @@ export function toHash(v: ScreenView): string {
   if (f.w) p.set("w", String(f.w));
   if (f.tw) p.set("tw", String(f.tw));
   if (f.late) p.set("late", f.late);
+  if (f.hist) p.set("hist", f.hist);
   if (f.member) p.set("member", f.member);
   if (f.ticker) p.set("ticker", f.ticker);
   if (f.q.trim()) p.set("q", f.q.trim());
@@ -355,6 +395,8 @@ const CSV_COLUMNS: Column<ScreenRow>[] = [
   { key: "late", about: "Reported after the deadline", get: (r) => (r.lag == null ? null : isLateRow(r)) },
   { key: "amount_low", about: "Low end of the reported range", get: (r) => r.low },
   { key: "amount_high", about: "High end of the reported range", get: (r) => r.high },
+  { key: "first_in_ticker_on_record", about: "The member's first trade in the ticker in the reports on record", get: (r) => (r.ticker && r.txn ? r.first : null) },
+  { key: "same_side_run", about: "Which trade date running with only purchases, or only sales, of the ticker by the member; blank when the row carries no run", get: (r) => (r.run > 0 ? r.run : null) },
   { key: "filing_url", about: "The original report", get: (r) => r.url },
 ];
 /** Every row a view matches, in the view's order (all pages), as CSV text. Made in the browser. */
@@ -364,7 +406,7 @@ export function viewCsv(all: ScreenRow[], v: ScreenView, built: string): string 
 /** A file name that says what was filtered: "congress-trades-senate-buy-2026-11-17.csv". */
 export function viewCsvName(v: ScreenView, built: string): string {
   const f = v.f;
-  const bits = [f.member, f.ticker, f.committee, f.chamber, f.party, f.state, f.side, f.owner, f.min ? `min${f.min}` : "", f.max ? `max${f.max}` : "", f.asset, f.w ? `${f.w}d` : "", f.tw ? `traded${f.tw}d` : "", f.late]
+  const bits = [f.member, f.ticker, f.committee, f.chamber, f.party, f.state, f.side, f.owner, f.min ? `min${f.min}` : "", f.max ? `max${f.max}` : "", f.asset, f.w ? `${f.w}d` : "", f.tw ? `traded${f.tw}d` : "", f.late, f.hist ? `hist-${f.hist}` : ""]
     .filter(Boolean).map((b) => String(b).toLowerCase().replace(/[^a-z0-9]+/g, "-"));
   return `congress-trades-${bits.length || f.q.trim() ? [...bits, "filtered"].join("-") : "all"}-${built}.csv`;
 }
