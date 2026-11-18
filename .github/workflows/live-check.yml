@@ -1,0 +1,58 @@
+# live check — reads the public website after a deploy.
+#
+# Split out of deploy.yml on 2026-11-18. A deploy is proven inside the deploy job by Cloudflare's
+# API (the uploaded version serves 100% of traffic). Whether the public site then answers as it
+# should is a different question, and a runner that cannot reach the edge, or a page that
+# regressed, used to turn a good deploy red ("Run failed: deploy"). Now it turns THIS workflow
+# red, so the notification says what actually failed.
+#
+# Starts when any workflow that deploys has finished (deploy itself, and the ones that call it),
+# or by hand. A Cloudflare challenge or a request with no answer is inconclusive (a warning);
+# anything that does come back must pass.
+name: live check
+
+on:
+  workflow_run:
+    workflows: ["deploy", "ingest", "backfill", "publish", "Ingest — Congressional PTR (Python)"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Only the newest check matters: a second deploy replaces the build the first check was reading.
+concurrency:
+  group: live-check
+  cancel-in-progress: true
+
+jobs:
+  live:
+    # A cancelled run deployed nothing new (it was replaced by a newer deploy, which is checked).
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLIC_SITE_URL: https://spotthemoney.com
+      BUSTER: ${{ github.event.workflow_run.head_sha || github.sha }}-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # Passes on HTTP 200 + expected text, fails on 5xx / 404 / wrong content (scripts/probe-live.mjs).
+      - name: The live site answers
+        run: node scripts/probe-live.mjs "${PUBLIC_SITE_URL}/rates/i-bonds/?v=${BUSTER}" "I-Bond Rate Today"
+
+      - name: Sitemaps, robots, llms.txt and JSON-LD
+        run: |
+          set -o pipefail
+          sleep 120   # prerendered HTML carries s-maxage=120; wait one edge TTL so the new build is read
+          node scripts/verify-live.mjs "$PUBLIC_SITE_URL" --sample 5
+
+      # One on-demand page of each kind, taken from the live sitemap index, must come back 200 with an h1.
+      - name: On-demand pages
+        if: always()
+        run: node scripts/probe-od-live.mjs "$PUBLIC_SITE_URL" /nonexistent-build-dir

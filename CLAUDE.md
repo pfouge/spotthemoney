@@ -2581,7 +2581,8 @@ first, rotate the database password, a read-only role for builds, Claude merges 
   ads on and the watchlist, fix what it reports, rename the header, and drop `frame-ancestors`
   for `/embed/*`.
 - **Dashboard settings changed** (not in the repo): Supabase Auth "Allow new users to sign up"
-  off; Cloudflare rate-limiting rule on `/api/`, `/auth/` and the on-demand entity paths.
+  off. **Correction (2026-11-18): no Cloudflare rate-limiting rule was set.** The zone's one
+  free rate-limiting rule is taken by "Leaked credential check"; replacing it waits for Peter's answer.
 - Still open: `citext` in public; supabase_admin's default privileges; `p_floor` on the `od_*`
   functions is not clamped (published public filings only).
 
@@ -2828,3 +2829,21 @@ terms and the guide read as before. One thing is live: the unsubscribe address. 
   `--fail-on-challenge`, which the pre-deploy check of the build on the runner uses). Any answer,
   5xx included, is still checked. `verify-od.mjs` has the same bare `fetch` calls and was left
   alone (the market-wide thread's file).
+
+### A good deploy is a green deploy: live checks moved to their own workflow (2026-11-18, interactive session)
+
+Peter, after "Run failed: deploy" for a deploy that had gone out (run 44392224095: the runner timed
+out reaching the edge during the live check): the public-site checks must not make a deploy look failed.
+
+- `deploy.yml` ends at "Verify the deployed version" (Cloudflare's API: the uploaded version serves
+  100% of traffic) and the IndexNow ping. It no longer reads the public website, and is about three
+  minutes shorter.
+- New `.github/workflows/live-check.yml` ("live check"): starts when `deploy`, `ingest`, `backfill`,
+  `publish` or the Congress PTR workflow finishes (`workflow_run`; a cancelled run is skipped), or by
+  hand. Runs `probe-live`, `verify-live --sample 5` (after one edge TTL) and `probe-od-live`. A
+  failure here arrives as "Run failed: live check", which means the public site needs a look, not
+  that a deploy failed. Challenges and unanswered requests stay inconclusive (warnings).
+- `scripts/probe-od-live.mjs` reads the market sitemaps from the live sitemap index when no build
+  directory is on disk.
+- **A workflow that calls `deploy.yml` must be added to the `workflows:` list in `live-check.yml`**
+  (by its `name:`), or its deploys go unchecked.

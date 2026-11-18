@@ -142,25 +142,11 @@ jobs:
           npx wrangler deployments status --config "$cfg" --json > ../deploy-status.json
           node ../scripts/check-deployed-version.mjs ../deploy.log ../deploy-status.json
 
-      # Is the new build serving on the public domain? Passes on HTTP 200 + expected text, fails
-      # on 5xx / 404 / wrong content, and reports a Cloudflare challenge as INCONCLUSIVE (a
-      # warning, not a failure) — scripts/probe-live.mjs.
-      - name: Verify the live site
-        run: node scripts/probe-live.mjs "${PUBLIC_SITE_URL}/rates/i-bonds/?v=${GITHUB_SHA}" "I-Bond Rate Today"
-
-      # The same discovery checks against the public domain, after one edge TTL. Challenged
-      # requests are inconclusive (warning); anything that does come back must pass.
-      - name: Verify sitemaps, robots, llms.txt and JSON-LD (live)
-        run: |
-          set -o pipefail
-          sleep 120   # prerendered HTML carries s-maxage=120; wait one edge TTL so we test the new build
-          node scripts/verify-live.mjs "$PUBLIC_SITE_URL" --sample 5
-
-      # The Worker renders companies, tickers and insiders outside the tracked set on request
-      # (stage 3a). One page of each kind, chosen from this build's market sitemaps, must come back
-      # 200 with an h1 on the live site. A Cloudflare challenge is inconclusive, never a failure.
-      - name: Verify on-demand pages (live)
-        run: node scripts/probe-od-live.mjs "$PUBLIC_SITE_URL" web/dist/client/sitemaps
+      # The checks that read the public website (is the new build serving, sitemaps, robots,
+      # llms.txt, JSON-LD, the on-demand pages) run in their own workflow, "live check"
+      # (live-check.yml), which starts when this one finishes. A deploy that went out is a green
+      # deploy: the step above is the proof. A problem on the public site then shows as a failed
+      # "live check", not as a failed deploy (2026-11-18).
 
       # Tell IndexNow engines which pages changed (lastmod within 2 days). Best-effort.
       - name: IndexNow ping
