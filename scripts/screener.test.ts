@@ -148,6 +148,8 @@ test("labels", () => {
   assert.equal(rangeLabel(1001, 15000), "$1,001–$15K");
   assert.equal(rangeLabel(1000001, 5000000), "$1.0M–$5.0M");
   assert.equal(rangeLabel(5000001, null), "over $5.0M");
+  assert.equal(rangeLabel(319, 319), "$319"); // an exact amount on the report: one figure, not "$319–$319"
+  assert.equal(rangeLabel(1000000, null), "over $1.0M"); // the spouse / dependent-child box
   assert.equal(rangeLabel(null, 15000), "up to $15K");
   assert.equal(rangeLabel(null, null), "");
   assert.equal(minLabel(15001), "$15,001 or more"); assert.equal(minLabel(1000000), "$1,000,000 or more");

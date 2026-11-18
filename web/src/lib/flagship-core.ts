@@ -184,7 +184,8 @@ export function assetLabel(assetType: string | null | undefined): string {
 export function amountLabel(t: Txn): string {
   if (t.value != null && t.shares != null && t.price != null && t.price > 0) return money(t.value);
   if (t.amountLow != null || t.amountHigh != null) {
-    if (t.amountLow != null && t.amountHigh != null) return `${money(t.amountLow)}–${money(t.amountHigh)}`;
+    // A few House reports state one exact figure in place of a range (stored as low = high).
+    if (t.amountLow != null && t.amountHigh != null) return t.amountLow === t.amountHigh ? money(t.amountLow) : `${money(t.amountLow)}–${money(t.amountHigh)}`;
     if (t.amountHigh != null) return `up to ${money(t.amountHigh)}`;
     return `over ${money(t.amountLow!)}`;
   }

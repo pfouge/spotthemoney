@@ -131,7 +131,7 @@ ${table(["Column", "What it tells you"], [
 <p>The Lag column on this site is the number of days between the two. When it is more than ${c.congressDeadlineDays}, the row carries a "late" flag. See ${`<a href="/guides/late-congressional-trade-disclosures/">late disclosures</a>`}.</p>
 <p>The trade map counts a trade in the period when it was <em>disclosed</em>, not when it happened, so the 30-day view shows what became public in the last 30 days.</p>` },
       { id: "amounts", h: "Why is the amount a range?", html: `
-<p>Because the law asks for a range. The form offers ten brackets, from $1,001–$15,000 up to over $50,000,000, and the member ticks one. A row marked $15,001–$50,000 could be a $16,000 trade or a $49,000 trade; nothing in the filing says which.</p>
+<p>Because the law asks for a range. The form offers ten brackets, from $1,001–$15,000 up to over $50,000,000, and the member ticks one. A row marked $15,001–$50,000 could be a $16,000 trade or a $49,000 trade; nothing in the filing says which. Now and then a House report gives an exact dollar amount where the range would be; such a row shows that one figure here, rounded to the dollar.</p>
 <p>That has consequences for any total you see, here or elsewhere. Our guide to ${`<a href="/guides/congress-trade-amount-ranges/">amount ranges</a>`} explains how this site adds them up.</p>` },
       { id: "missing", h: "What is not in the report?", html: `
 <p>The report does not give the share count, the price, the profit or loss, or the reason for the trade. It does not say whether the member chose the trade personally or whether an adviser did. It does not show what the member still holds; that is in the annual disclosure.</p>
@@ -165,7 +165,7 @@ ${table(["Column", "What it tells you"], [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "congress-trade-amount-ranges", group: "congress", updated: U,
+    slug: "congress-trade-amount-ranges", group: "congress", updated: "2026-11-18",
     title: "Why congressional trade amounts are ranges",
     seoTitle: ["Why Congressional Trade Amounts Are Ranges, Not Dollars", "Why Congressional Trade Amounts Are Ranges"],
     description: ["Members of Congress report each trade in one of ten dollar ranges, from $1,001–$15,000 to over $50 million. How to read the ranges and how totals are built.", "Congress reports trades in ten dollar ranges, not exact amounts. How to read them and how totals are built from them."],
@@ -183,7 +183,8 @@ ${table(["Range on the form", "Top of range used in totals here"], [
   ["$250,001 – $500,000", "$500,000"], ["$500,001 – $1,000,000", "$1,000,000"], ["$1,000,001 – $5,000,000", "$5,000,000"],
   ["$5,000,001 – $25,000,000", "$25,000,000"], ["$25,000,001 – $50,000,000", "$50,000,000"], ["Over $50,000,000", "No top is stated"],
 ])}
-<p>There is one more box, used only for an asset owned solely by a spouse or dependent child: "over $1,000,000", with no upper brackets.</p>` },
+<p>There is one more box, used only for an asset owned solely by a spouse or dependent child: "over $1,000,000", with no upper brackets. This site shows such a row as "over $1.0M", with no top.</p>
+<p>Now and then a House report gives an exact dollar amount, such as $318.74, where the range would be. Those rows show that one figure here, rounded to the dollar, and nothing is guessed about a range.</p>` },
       { id: "why", h: "Why not exact amounts?", html: `
 <p>Because the disclosure law asks for a category of value, not a figure. Financial disclosure for federal officials has worked this way since long before the STOCK Act: the forms show the scale of a holding or a trade, not a household's exact finances. The STOCK Act added speed (reports within ${c.congressDeadlineDays} days) and kept the ranges.</p>` },
       { id: "totals", h: "How does this site turn ranges into totals?", html: `

@@ -202,7 +202,10 @@ insert into seed_ptr values
   ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 21, 'purchase', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
   ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 12, 'sale_partial', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
   ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 9,  'purchase', 'AMD', 1001, 15000, 'self', 'stock', 0.9, false),
-  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 9,  'sale',     'AMD', 1001, 15000, 'spouse', 'stock', 0.9, false);
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 9,  'sale',     'AMD', 1001, 15000, 'spouse', 'stock', 0.9, false),
+  -- an exact amount on the report (stored low = high) and the open-topped spouse / dependent-child box
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 8,  'purchase', null, 319, 319, 'self', 'fund', 0.9, false),
+  ('20031006', 'samuel-okafor',    current_date - 2,  current_date - 8,  'purchase', null, 1000000, null, 'spouse', 'bond', 0.9, false);
 -- Generated rows for the Congress trade screener (/congress-trades/): enough rows to page through,
 -- with every side, owner and amount step, late reports, an open-topped range and assets with no ticker.
 insert into seed_ptr

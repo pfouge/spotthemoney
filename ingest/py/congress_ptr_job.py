@@ -263,6 +263,41 @@ def guard_future_txn_date(txn: Optional[str], disclosed: Optional[str]) -> bool:
         return False
 
 
+# The vendored parser (never edited here) reads "any two dollar figures" out of the amount cell.
+# Two shapes it gets wrong, both seen on production (2026-11-17/18), are put right in this layer
+# from the cell's own text, which the parser keeps as `amount_range_text`:
+#   "$2,761.57"                  an exact amount with cents: parsed as 2761 to 57 (split at the point)
+#   "Spouse/DC Over $1,000,000"  the form's open-topped box for an asset held only by a spouse or
+#                                dependent child: parsed as 1,000,000 to 1,000,000 ("over" is not first)
+_EXACT_AMOUNT = re.compile(r"^\$\s*([\d,]*\d)\.(\d{1,2})$")
+_OVER_AMOUNT = re.compile(r"\bover\s+\$\s*([\d,]*\d)\s*$", re.IGNORECASE)
+
+
+def fix_amounts(record: dict[str, Any]) -> tuple[Optional[int], Optional[int], Optional[str]]:
+    """(amount_low, amount_high, what was put right) for one parsed record.
+
+    exact      → low = high = the figure rounded to the dollar (half up)
+    over       → low = the figure, high = None (no top is stated)
+    unreadable → a high end below the low end that neither rule explains: both None, so the row
+                 shows no amount instead of a wrong one
+    None       → the parser's values, untouched
+    """
+    low, high = record.get("amount_min"), record.get("amount_max")
+    text = " ".join(str(record.get("amount_range_text") or "").split())
+    m = _EXACT_AMOUNT.match(text)
+    if m:
+        cents = int(m.group(2).ljust(2, "0"))
+        value = int(m.group(1).replace(",", "")) + (1 if cents >= 50 else 0)
+        return value, value, "exact"
+    m = _OVER_AMOUNT.search(text)
+    if m and "-" not in text:
+        value = int(m.group(1).replace(",", ""))
+        return value, None, (None if (low, high) == (value, None) else "over")
+    if low is not None and high is not None and high < low:
+        return None, None, "unreadable"
+    return low, high, None
+
+
 def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Optional[int],
                            security_id: Optional[int], conf: dict[str, Any],
                            filed_at: Optional[str] = None,
@@ -283,6 +318,9 @@ def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Op
         txn_date = None
         if ctx is not None:
             ctx.bump("future_dates_nulled")
+    amount_low, amount_high, fixed = fix_amounts(record)
+    if fixed and ctx is not None:
+        ctx.bump(f"amounts_{fixed}")
     return {
         "filing_id": filing_id,
         "person_id": person_id,
@@ -292,8 +330,8 @@ def map_transaction_record(record: dict[str, Any], filing_id: int, person_id: Op
         "is_derivative": (record.get("asset_type") == "option") or None,
         "txn_date": txn_date,
         "disclosed_at": disclosed,
-        "amount_low": record.get("amount_min"),
-        "amount_high": record.get("amount_max"),
+        "amount_low": amount_low,
+        "amount_high": amount_high,
         "disclosure_lag_days": lag_days(disclosed, txn_date),
         "confidence": conf["confidence"],
         "review": conf["review"],
