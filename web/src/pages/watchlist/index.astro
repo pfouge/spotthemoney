@@ -4,11 +4,12 @@
 // shows nothing to a search engine.
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import { ALERTS_ENABLED } from "../../lib/account";
 ---
 <BaseLayout title="Your watchlist | Spot the Money" description="Follow members of Congress, corporate insiders, stocks and companies, and see their newly disclosed trades in one place." noindex={true} ads={false} section="Watchlist">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Watchlist", path: "/watchlist/" }]} />
   <h1>Your watchlist</h1>
-  <div data-watchlist>
+  <div data-watchlist data-alerts={ALERTS_ENABLED ? "on" : "off"}>
     <div data-wl-msg></div>
     <div data-wl-signed-out hidden>
       <p class="lede">Follow a member of Congress, a corporate insider, a stock or a company, and every trade they disclose shows up here, with the ones that are new since your last visit at the top.</p>

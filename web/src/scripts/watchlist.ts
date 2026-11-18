@@ -3,7 +3,7 @@
 // never innerHTML, because names and labels come from filings and from visitors.
 
 import { api, loadMe, signInUrl, toast, type Me } from "./account";
-import { KIND_LABEL, feedAmount, feedVerb, itemPath, type FeedRow, type Kind } from "../lib/account";
+import { ALERTS_ENABLED, DIGESTS, DIGEST_LABEL, KIND_LABEL, feedAmount, feedVerb, itemPath, type AlertState, type Digest, type FeedRow, type Kind } from "../lib/account";
 
 import { h, fmtDate } from "./dom";
 import { loadCards, cardParts, cardSub, cardsNote, type Cards } from "./watchcards";
@@ -99,7 +99,11 @@ async function render(out: HTMLElement, me: Me): Promise<void> {
     h("p", {}, "Your account holds your email address, your lists and when you last opened this page. ", h("a", { href: "/privacy/#accounts" }, "What we keep and why"), "."),
     h("div", { class: "wl-actions" }, signOutForm(), deleteButton()));
 
-  out.replaceChildren(head, feedSec, h("h2", { id: "wl-lists" }, "Your lists"), ...(total ? [cardsNote(cards)] : []), ...listSecs, newList, acct);
+  // Email digests: asked for only when the site switch is on, shown only when the database's is too.
+  const alerts = ALERTS_ENABLED ? await api<AlertState>("alerts").catch(() => null) : null;
+  const digest = alerts && alerts.available ? digestSection(alerts) : null;
+
+  out.replaceChildren(head, feedSec, h("h2", { id: "wl-lists" }, "Your lists"), ...(total ? [cardsNote(cards)] : []), ...listSecs, newList, ...(digest ? [digest] : []), acct);
   if (fresh.length || (me.new_count ?? 0) > 0) {
     api("seen", {}).then(() => { const b = document.querySelector<HTMLElement>("#acctBtn .acct-badge"); if (b) b.hidden = true; }).catch(() => {});
   }
@@ -146,6 +150,42 @@ function listSection(l: NonNullable<Me["lists"]>[number], all: NonNullable<Me["l
     h("div", { class: "wl-list-head" }, h("h3", {}, l.name, l.is_public ? h("span", { class: "tag" }, "Shared") : null), h("span", { class: "wl-item-actions" }, rename, share, del)),
     link,
     rows.length ? h("ul", { class: "wl-items" }, ...rows) : h("p", { class: "empty-reason" }, "Nothing here yet."));
+}
+
+/**
+ * The email digest setting: off, daily or weekly. Off unless the visitor picks another; a pick
+ * is saved at once and a failed save puts the buttons back where they were.
+ */
+function digestSection(state: AlertState): HTMLElement {
+  let current: Digest = state.digest;
+  const status = h("p", { class: "soft", "data-wl-digest-status": "", role: "status" }, digestStatus(current, state.email));
+  const radios = DIGESTS.map((d) => {
+    const input = h("input", { type: "radio", name: "wl-digest", value: d, id: `wl-digest-${d}` }) as HTMLInputElement;
+    input.checked = d === current;
+    input.addEventListener("change", async () => {
+      if (!input.checked || d === current) return;
+      const all = radios.map((r) => r.input);
+      all.forEach((i) => { i.disabled = true; });
+      try {
+        const next = await api<AlertState>("alerts-save", { digest: d });
+        current = next.digest;
+        toast(current === "off" ? "Email digests are off." : `${current === "daily" ? "Daily" : "Weekly"} digest turned on.`);
+      } catch (x) { toast((x as Error).message); }
+      all.forEach((i) => { i.disabled = false; i.checked = i.value === current; });
+      status.textContent = digestStatus(current, state.email);
+    });
+    return { input, label: h("label", { for: `wl-digest-${d}` }, input, DIGEST_LABEL[d]) };
+  });
+  return h("section", { "aria-labelledby": "wl-digest", class: "wl-digest", "data-wl-digest": "" },
+    h("h2", { id: "wl-digest" }, "Email digest"),
+    h("p", {}, "Get an email listing the trades newly published for the pages you follow, on every list. It is off unless you turn it on here."),
+    h("fieldset", {}, h("legend", { class: "sr-only" }, "How often to email a digest"), ...radios.map((r) => r.label)),
+    status,
+    h("p", { class: "soft" }, "A digest is put together after the site's daily update, and only when there is something new. Every email has an unsubscribe link that works with one click. ", h("a", { href: "/privacy/#email-alerts" }, "What we keep for this"), "."));
+}
+function digestStatus(d: Digest, email: string | null): string {
+  const to = email ? ` to ${email}` : " to your account's email address";
+  return d === "off" ? `No digest is being sent. If you turn one on, it goes${to}.` : `A ${d} digest is sent${to}.`;
 }
 
 function signOutForm(): HTMLElement {

@@ -19,6 +19,53 @@
  */
 export const ACCOUNTS_ENABLED = true;
 
+/**
+ * Email digests (parity queue item 7). TWO switches, both off:
+ *   this one    shows the digest control on /watchlist/, opens /api/alerts and /api/alerts-save,
+ *               and swaps the wording on the privacy page, the terms and the follow guide;
+ *   the database's (app_settings 'alerts_enabled', migration 0025) decides whether anyone can
+ *               actually turn a digest on. The control stays hidden while that one is false.
+ * ALERTS_LIVE is the production value. A local build with PUBLIC_ALERTS_PREVIEW=1 turns the
+ * site switch on so the verifiers can exercise the "on" state; no workflow sets that variable.
+ *
+ * Before ALERTS_LIVE becomes true (stage 4, with Peter): name the delivery provider in
+ * ALERTS_PROVIDER and set ALERTS_SINCE to that day; alertsLaunchProblem() makes the build fail
+ * otherwise. The privacy page promises that opens and clicks are not tracked: switch the
+ * provider's open and click tracking off. /alerts/unsubscribe/ works whatever these say.
+ */
+const ALERTS_LIVE = false;
+export const ALERTS_ENABLED: boolean = ALERTS_LIVE || import.meta.env?.PUBLIC_ALERTS_PREVIEW === "1";
+/** The company that delivers the emails, as the privacy page names it. */
+export const ALERTS_PROVIDER: { name: string; url: string } = { name: "", url: "" };
+/** The day digests were first offered (YYYY-MM-DD); the privacy page and terms take it as their date. */
+export const ALERTS_SINCE = "";
+/** Days an unsent digest is kept, and days the text of a sent one is kept (ingest/src/jobs/alerts_digest.ts). */
+export const ALERT_PENDING_DAYS = 3;
+export const ALERT_BODY_DAYS = 30;
+/** A digest lists trades disclosed within this many days (MAX_AGE_DAYS in the same job). */
+export const ALERT_MAX_AGE_DAYS = 30;
+
+/** Why the live switch may not be on yet, or null. Called by the privacy page at build time. */
+export function alertsLaunchProblem(live = ALERTS_LIVE, provider = ALERTS_PROVIDER, since = ALERTS_SINCE): string | null {
+  if (!live) return null;
+  if (!provider.name.trim() || !/^https:\/\//.test(provider.url)) return "ALERTS_LIVE is on but ALERTS_PROVIDER does not name the email delivery company and its privacy page.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(since)) return "ALERTS_LIVE is on but ALERTS_SINCE is not a date (YYYY-MM-DD).";
+  return null;
+}
+
+export type Digest = "off" | "daily" | "weekly";
+export const DIGESTS: readonly Digest[] = ["off", "daily", "weekly"];
+export const DIGEST_LABEL: Record<Digest, string> = { off: "Off", daily: "Daily", weekly: "Weekly, on Mondays" };
+export const isDigest = (v: unknown): v is Digest => typeof v === "string" && (DIGESTS as readonly string[]).includes(v);
+/** The code in an unsubscribe link: 64 lower-case hex characters (alert_prefs.unsub_token). */
+export const isUnsubToken = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+
+/** What alert_state() returns for the signed-in visitor. `available` is the database switch. */
+export interface AlertState {
+  available: boolean; email: string | null; digest: Digest;
+  opted_in_at: string | null; unsubscribed_at: string | null; last_digest_at: string | null;
+}
+
 export const COOKIE = "stm_session";
 export const SIGNED_IN = "stm_signed_in";
 export const STATE_COOKIE = "stm_oauth_state";
@@ -84,11 +131,32 @@ export function sameOrigin(origin: string | null, own: string): boolean {
 }
 
 /**
+ * The site-wide cross-site check, run by src/middleware.ts for every on-demand route in place of
+ * Astro's own (security.checkOrigin is off in astro.config.mjs because it cannot exempt a route).
+ * Every POST, PUT, PATCH and DELETE must carry this site's Origin, whatever its content type.
+ * One address is exempt: the unsubscribe link of an email digest, which mail programs POST to
+ * with no Origin (RFC 8058) and whose 64-character token is its whole authority.
+ */
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const ORIGIN_EXEMPT = /^\/alerts\/unsubscribe\/?$/;
+export const crossSiteRefused = (method: string, pathname: string, origin: string | null, own: string): boolean =>
+  UNSAFE_METHODS.has(method.toUpperCase()) && !ORIGIN_EXEMPT.test(pathname) && !sameOrigin(origin, own);
+
+/**
  * The API actions the site's scripts may call, each mapped to one database function and the
  * only arguments it may pass. Anything not listed is a 404; any argument that fails its check
  * is a 400 before the database is asked.
  */
-export type Action = { method: "GET" | "POST"; fn: string; args: (body: Record<string, unknown>) => Record<string, unknown> | string };
+export type Action = { method: "GET" | "POST"; fn: string; args: (body: Record<string, unknown>) => Record<string, unknown> | string; alerts?: true };
+
+/**
+ * Whether an email-digest action may run. While the site switch is off both are a 404, with one
+ * exception: turning a digest OFF is always allowed (a way out never depends on a switch).
+ */
+export function alertActionAllowed(action: string, args: Record<string, unknown>, enabled: boolean = ALERTS_ENABLED): boolean {
+  if (enabled) return true;
+  return action === "alerts-save" && args.p_digest === "off";
+}
 const str = (v: unknown, max: number): string | null => (typeof v === "string" ? v.trim().slice(0, max) : null);
 export const ACTIONS: Record<string, Action> = {
   me: { method: "GET", fn: "my_state", args: () => ({}) },
@@ -118,6 +186,12 @@ export const ACTIONS: Record<string, Action> = {
   },
   copy: { method: "POST", fn: "list_copy", args: (b) => (isSlug(b.slug) ? { p_slug: b.slug } : "Bad link.") },
   seen: { method: "POST", fn: "mark_feed_seen", args: () => ({}) },
+  // email digests (migration 0025); see alertActionAllowed
+  alerts: { method: "GET", fn: "alert_state", args: () => ({}), alerts: true },
+  "alerts-save": {
+    method: "POST", fn: "alert_save", alerts: true,
+    args: (b) => (isDigest(b.digest) ? { p_digest: b.digest } : "Choose off, daily or weekly."),
+  },
 };
 
 /** One row of the watchlist feed, as watch_feed() returns it. */

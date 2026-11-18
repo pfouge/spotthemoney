@@ -7,6 +7,11 @@
 // Ingest jobs purge affected URLs (cache-purge works on the free plan) when data changes.
 
 import { defineMiddleware } from "astro:middleware";
+import { crossSiteRefused } from "./lib/account";
+
+// Cross-site request check, in place of Astro's (security.checkOrigin is off in astro.config.mjs):
+// crossSiteRefused in src/lib/account.ts. A request that changes something must carry this
+// site's own Origin; the unsubscribe link of an email digest is the one exemption.
 
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
@@ -30,6 +35,9 @@ const FOUR_OH_FOUR_TTL = "public, max-age=60, s-maxage=300";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url } = context;
+  if (crossSiteRefused(request.method, url.pathname, request.headers.get("origin"), url.origin)) {
+    return new Response("Cross-site requests are forbidden.", { status: 403, headers: { "Cache-Control": "private, no-store", "Content-Type": "text/plain; charset=utf-8" } });
+  }
   // The build (Node) renders prerendered pages through this middleware too; only the Worker has
   // a Cache API, and only the Worker may load cloudflare:workers.
   const workerCache = (globalThis as unknown as { caches?: { default?: Cache } }).caches?.default ?? null;
