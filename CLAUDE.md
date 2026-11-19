@@ -2929,3 +2929,9 @@ out reaching the edge during the live check): the public-site checks must not ma
 - **Wording:** `/contracts/`, guide `federal-contracts-usaspending` (now also covers the new file) and
   the CSV dictionary say a dash means USAspending lists none or the daily job has not reached the
   award yet. The sentence on `/contracts/` disappears by itself once every award carries a description.
+- **First live run (ingest run 44458703744, 2026-11-19 04:30 UTC): the request shape is proven.**
+  `partial` on its 40-minute budget as designed: 1,581 awards asked, 1,579 filled with all three
+  details, 2 answered 404, 0 failures, 0 odd answers, 8,719 left. The 180-day window went from 3,415
+  to 4,994 of 5,921 awards with details (build log = SQL). The sub-agency names that come by id are
+  the names the search stores. About 1,580 awards a run, so the window completes on the second run
+  and the whole table after about six.
