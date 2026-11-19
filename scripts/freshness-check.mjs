@@ -53,6 +53,10 @@ const CHECKS = [
   // several daily runs, so the newest notice is old until it ends. Add
   // `dataDays: 6, newest: select max(filed_at) from form144_notices` once stats.through is current.
   { code: "sec_form144", label: "SEC Form 144 notices (daily index)", runDays: 2 },
+  // Schedules 13D and 13G (table schedule13_filings; stored, not shown yet). Same shape as the
+  // Form 144 entry: a partial run counts as alive, and no data date until the first catch-up from
+  // 2025-10-01 has reached today (then add `dataDays: 6, newest: select max(filed_at) from schedule13_filings`).
+  { code: "sec_schedule13", label: "SEC Schedules 13D and 13G (daily index)", runDays: 2 },
   // Industry codes from the SEC's submissions data (table company_sic). No data date: a company's
   // code rarely changes; the run itself is what must stay alive.
   { code: "sec_company_sic", label: "SEC industry codes (SIC)", runDays: 2 },

@@ -94,6 +94,8 @@ jobs:
             sources: sec_form4
           - name: insiders-market
             sources: sec_form4_index sec_form144
+          - name: holders
+            sources: sec_schedule13
           - name: company-facts
             sources: sec_company_sic alerts_digest usaspending_details
           - name: lobbying-contracts
@@ -150,6 +152,8 @@ jobs:
             sources: sec_form4
           - name: insiders-market
             sources: sec_form4_index sec_form144
+          - name: holders
+            sources: sec_schedule13
           - name: company-facts
             sources: sec_company_sic alerts_digest usaspending_details
           - name: lobbying-contracts
