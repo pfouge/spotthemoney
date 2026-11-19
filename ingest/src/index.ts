@@ -14,6 +14,7 @@ import { ingestIBonds } from "./sources/ibonds.js";
 import { ingestTreasuryYieldCurve } from "./sources/treasury_yield_curve.js";
 import { ingestSenateLda, ingestSenateLdaHistory } from "./sources/senate_lda.js";
 import { ingestUsaspending } from "./sources/usaspending.js";
+import { ingestUsaspendingDetails } from "./sources/usaspending_details.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
 import { ingestFecScheduleAHistory } from "./sources/fec_schedule_a_history.js";
 import { ingestSecForm4, ingestSecForm4History } from "./sources/sec_form4.js";
@@ -47,6 +48,8 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   senate_lda: { label: "Senate LDA Lobbying Filings", cadence: "daily", daily: true, run: ingestSenateLda },
   senate_lda_history: { label: "Senate LDA history pass (every filing posted since 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSenateLdaHistory },
   usaspending: { label: "USAspending Contract Awards", cadence: "daily", daily: true, run: ingestUsaspending },
+  // Fills description, sub-agency and end date for awards the searches no longer return, by award id.
+  usaspending_details: { label: "USAspending award details by award id (fills blanks)", cadence: "daily", daily: true, run: ingestUsaspendingDetails },
   fec_committees: { label: "FEC committee universe (members + top PACs)", cadence: "weekly", daily: true, run: ingestFecCommittees },
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
   sec_company_size: { label: "SEC company size (shares outstanding, public float)", cadence: "daily", daily: true, run: ingestSecCompanySize },

@@ -2901,3 +2901,31 @@ out reaching the edge during the live check): the public-site checks must not ma
   reads them again. The page, the guide and the CSV dictionary say so. **Closing the gap needs a
   fetch by award id** (USAspending `/api/v2/awards/<generated_internal_id>/`; shape unverified):
   about 2,500 requests for the window, a job with a time budget of its own. Not built.
+
+### Contract details for awards the searches no longer return, by award id (2026-11-19, scheduled parity run) — queue item (g2a)
+
+- **Source `usaspending_details`** (`ingest/src/sources/usaspending_details.ts`; tests beside it): for
+  every award with a blank description, sub-agency or end date that was never asked for by id, one
+  `GET /api/v2/awards/<generated_internal_id>/` (the id is `contracts.source_ref`). It reads
+  `description`, `awarding_agency.subtier_agency.name` and `period_of_performance.end_date`, cleans
+  them with the search job's `cleanText` and `dateOnly`, and **fills blanks only** (a value the search
+  stored is kept). Newest start date first, so the site's 180-day window is filled first.
+- **Migration 0028** `contracts.details_checked_at` (NULL = never asked by id). Every award answered
+  gets it, also on a 404 or when the answer adds nothing, so it is not asked for again. A failed
+  request leaves it NULL. Next free migration number: 0029.
+- **Guards.** `USASPENDING_DETAILS_MAX_MINUTES` (40) ends a run as `partial` with `remaining`; 5
+  failures in a row end it as `failed`; if the first 20 answers carry none of the keys
+  `description`, `awarding_agency`, `period_of_performance` it ends as `failed` and marks nothing
+  (answers are held, not written, until one has the shape). An odd answer among good ones is counted
+  (`odd_answers`) and left for another run. One retry per request, 1.5 s apart (about 1,500 awards a
+  run). Stats: `to_check`, `checked`, `filled_description`, `filled_sub_agency`, `filled_end_date`,
+  `nothing_to_add`, `not_found`, `remaining`, `window_180_with_description` of `window_180_rows`.
+- **Where it runs:** daily, last in the `company-facts` group of `ingest.yml` (both matrix lists);
+  listed in `scripts/freshness-check.mjs`. With no backlog it is a success in seconds. Backlog on
+  2026-11-19: 10,300 awards (2,506 in the 180-day window), about seven runs.
+- **Test fake:** `scripts/fake-usaspending.mjs` also answers `GET /api/v2/awards/<id>/`
+  (`FAKE_DETAILS=noshape|down`; an id holding GONE answers 404, ODD `{}`, BARE the keys with nothing
+  in them). Through `USASPENDING_API_BASE`, tests only.
+- **Wording:** `/contracts/`, guide `federal-contracts-usaspending` (now also covers the new file) and
+  the CSV dictionary say a dash means USAspending lists none or the daily job has not reached the
+  award yet. The sentence on `/contracts/` disappears by itself once every award carries a description.
