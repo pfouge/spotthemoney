@@ -57,6 +57,9 @@ const CHECKS = [
   // <= current_date guard the newest date is always "fresh" and a frozen feed never trips.
   { code: "usaspending", label: "USAspending contracts", runDays: 2, dataDays: 10,
     newest: `select max(action_date) from contracts where action_date <= current_date` },
+  // Fills contract details by award id for awards the searches no longer return. "partial" while
+  // a backlog is being worked through counts as alive; with nothing left it is a quick success.
+  { code: "usaspending_details", label: "USAspending award details (by id)", runDays: 2 },
   { code: "fec_committees", label: "FEC committees", runDays: 8 },
   // Receipts appear only after a committee files (monthly or quarterly), hence the long allowance.
   { code: "fec_schedule_a", label: "FEC donations", runDays: 2, dataDays: 75,

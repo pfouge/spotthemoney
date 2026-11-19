@@ -1,6 +1,9 @@
 // A local stand-in for the USAspending award search, for tests of ingest/src/sources/usaspending.ts
 // only (through USASPENDING_API_BASE). Never used in production.
 //   node scripts/fake-usaspending.mjs [port]        FAKE_BLANK=1 answers with the details blank
+// GET /api/v2/awards/<id>/ answers one award's details for usaspending_details.ts:
+//   FAKE_DETAILS=noshape answers {"unexpected": true} for every id; FAKE_DETAILS=down answers 503;
+//   an id holding GONE answers 404, ODD answers {}, BARE answers the keys with nothing in them.
 // Every search answers one page: three awards that started 10 days ago, keyed by the fields
 // the job asks for. A recipient search answers only awards whose recipient holds the text.
 import { createServer } from "node:http";
@@ -16,7 +19,28 @@ const awards = () => [
     "Awarding Sub Agency": null, "Start Date": day(10), "End Date": null, "Description": null, NAICS: null },
 ];
 let requests = 0;
+const detailsMode = process.env.FAKE_DETAILS ?? "ok";
+function details(id) {
+  if (detailsMode === "down") return [503, { detail: "down" }];
+  if (detailsMode === "noshape") return [200, { unexpected: true }];
+  if (id.includes("GONE")) return [404, { detail: "No Award matches the given query." }];
+  if (id.includes("ODD")) return [200, {}];
+  if (id.includes("BARE")) return [200, { description: null, awarding_agency: null, period_of_performance: {} }];
+  return [200, {
+    generated_unique_award_id: id, description: `  DETAILS FOR\n ${id}  `,
+    awarding_agency: { toptier_agency: { name: "Department of Defense" }, subtier_agency: { name: "Department of the Air  Force", code: "5700" } },
+    period_of_performance: { start_date: "2026-01-01", end_date: "2031-03-31", potential_end_date: "2033-03-31" },
+  }];
+}
 createServer((req, res) => {
+  const m = req.method === "GET" && /^\/api\/v2\/awards\/([^/]+)\/$/.exec(req.url ?? "");
+  if (m) {
+    requests++;
+    const [status, json] = details(decodeURIComponent(m[1]));
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(JSON.stringify(json));
+    return;
+  }
   let body = "";
   req.on("data", (c) => (body += c));
   req.on("end", () => {

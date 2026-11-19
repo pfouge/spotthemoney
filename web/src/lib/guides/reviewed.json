@@ -23,7 +23,8 @@
     "reviewed": "2026-11-19",
     "covers": {
       "ingest/src/sources/usaspending.ts": "d16468c7a6977833",
-      "web/src/pages/contracts/index.astro": "fd8a4d5bf7a587d7",
+      "ingest/src/sources/usaspending_details.ts": "07829dbe76ba5f00",
+      "web/src/pages/contracts/index.astro": "242d60524f72d6d5",
       "web/src/lib/contracts.ts": "c37352d0a3425c41"
     }
   },
@@ -57,7 +58,7 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "519ae382ba349935",
+      "web/src/lib/downloads.ts": "0f9c16dcb76e3125",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "197b28bafc2af8c4",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"

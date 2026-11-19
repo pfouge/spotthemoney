@@ -166,7 +166,7 @@ ${table(["Term", "Meaning"], [
         { id: "details", h: "What do the description, sub-agency and end date tell you?", html: `
 <p>Three more facts come with each award, and this site shows them as USAspending reports them.</p>
 <p>The <strong>description</strong> is a line the contracting office typed when it recorded the award. It is often short, in capitals and full of abbreviations, and it can describe the latest change to a contract instead of the whole job. Tables here show its first ${c.contractDescriptionShown} characters; the full text is on the award's USAspending page and in the <a href="/downloads/">CSV file</a>. This site does not sort, label or total awards by what a description says.</p>
-<p>The <strong>awarding sub-agency</strong> is the part of a department that made the award: the Navy or the Army inside the Department of Defense, the Coast Guard inside Homeland Security. The <a href="/contracts/#sub-agencies">contracts page</a> counts awards by sub-agency. Awards stored before these details were kept do not carry them unless the daily job has read the award again, and the table says how many do.</p>
+<p>The <strong>awarding sub-agency</strong> is the part of a department that made the award: the Navy or the Army inside the Department of Defense, the Coast Guard inside Homeland Security. The <a href="/contracts/#sub-agencies">contracts page</a> counts awards by sub-agency. Awards stored before these details were kept get them from a daily job that asks USAspending for each such award by its id, newest first; until it has reached an award, or when USAspending lists no description for it, the cell shows a dash, and the table says how many awards carry one.</p>
 <p>The <strong>end date</strong> is the day the work is currently due to end. It is not a fixed term: it moves when a contract is extended or cut short, and options not yet taken up can push it later.</p>` },
         { id: "lag", h: "How current is the data?", html: `
 <p>Civilian agencies must report a contract action within ${k.reportWithinBusinessDays} business days of the award (${ext(k.source, "federal acquisition rules")}), and it reaches USAspending shortly after. Department of Defense records are released after a ${k.defenseDelayDays}-day delay, so the newest three months of defence contracting are always missing.</p>
@@ -193,7 +193,7 @@ ${table(["Term", "Meaning"], [
       ],
       related: ["lobbying-disclosure-reports", "campaign-donations-fec-data", "what-disclosure-data-cannot-tell-you"],
       seeLive: [{ label: "Federal contracts", href: "/contracts/" }, { label: "Companies", href: "/companies/" }],
-      covers: ["ingest/src/sources/usaspending.ts", "web/src/pages/contracts/index.astro", "web/src/lib/contracts.ts"],
+      covers: ["ingest/src/sources/usaspending.ts", "ingest/src/sources/usaspending_details.ts", "web/src/pages/contracts/index.astro", "web/src/lib/contracts.ts"],
       ui: [{ text: "Description, as reported", on: "/contracts/" }, { text: "Awarding sub-agencies", on: "/contracts/" }],
       facts: ["contractLag"],
     };
