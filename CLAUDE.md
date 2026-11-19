@@ -3093,6 +3093,14 @@ on the site, in the guides or on the privacy page changed.
   Checked end to end on copies of the local database: first run, second run, rewrite of
   older-version rows, one schedule's shape unknown (failed, the other schedule's rows kept),
   source down, a failed submission recovered from the retry list, budget stop and resume.
+- **First live run (ingest run 44566941172, 2026-11-19 16:51 UTC): both layouts are proven.**
+  `partial` on its 40-minute budget as designed: 3,482 statements stored through index day
+  2025-11-10 (660 13D-family, 2,822 13G-family; 2,442 amendments; 2,178 issuers; 473 rows for
+  tracked companies). Every row carries issuer CIK, CUSIP, class, event date, filer CIK and a
+  reporting person; 6 have no amount and 15 no percent; 1,708 name several reporting persons;
+  728 state less than 5% (a holder reporting it fell under the threshold). 7 submissions went on
+  the retry list (SEC 502/504), 1 answered 404. About 3,500 statements a run, so about ten runs
+  to reach today.
 - **For stage 2 (showing them):** a "Holders of more than 5%" section on stock and company pages
   from the newest statement per filer and issuer; say that a statement is the filer's own figure
   on its event date and can be out of date; an amendment does not say which statement it
