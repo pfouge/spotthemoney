@@ -34,6 +34,13 @@
 //   Either way rows are filtered here by Start Date, so what is stored always means the
 //   same thing; the stats say how many rows each path kept.
 //
+// DETAILS (2026-11-19, migration 0027): "Awarding Sub Agency", "End Date" and "Description"
+// were always requested and are now stored (awarding_sub_agency, end_date, description), as
+// reported: white space collapsed, the description cut at DESCRIPTION_MAX characters. An
+// update never blanks a value already stored. A full sweep counts as complete for the
+// weekly rule only if it ran with this code (stats.details_stored), so the first run after
+// the change re-reads the whole window and fills the columns for awards already held.
+//
 // PAGINATION: no total count is returned — page while page_metadata.hasNext, capped per
 // slice. Every request repeats an explicit sort+order (stable ORDER BY lesson — see
 // lib/run.ts header).
@@ -120,6 +127,25 @@ export function recipientSearchText(companyName: string): string {
   return normalizeOrgName(companyName).replace(/\s+-\s+.*$/, "").trim();
 }
 
+export const DESCRIPTION_MAX = 1000;
+
+/** Free text as reported: white space collapsed, trimmed, cut at `max`; null when empty or not text. */
+export function cleanText(v: unknown, max = DESCRIPTION_MAX): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  return t.length > max ? t.slice(0, max).trimEnd() : t;
+}
+
+/** A calendar date from an API value ("2027-09-30", "2027-09-30T00:00:00"); null when it is not one. */
+export function dateOnly(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const d = v.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const t = Date.parse(`${d}T00:00:00Z`);
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === d ? d : null;
+}
+
 function isShapeRejection(err: unknown): boolean {
   const m = err instanceof Error ? err.message : String(err);
   return m.includes("HTTP 400") || m.includes("HTTP 422");
@@ -147,6 +173,7 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   const [lastFull] = await sql<{ finished_at: Date | null }[]>`
     select r.finished_at from ingest_runs r join sources s on s.id = r.source_id
      where s.code = ${SOURCE} and r.stats->>'full_sweep_complete' = 'true'
+       and r.stats->>'details_stored' = 'true'
      order by r.id desc limit 1`;
   const lastFullAt = lastFull?.finished_at ? new Date(lastFull.finished_at) : null;
   const fullDue = !lastFullAt || Date.now() - lastFullAt.getTime() > fullEveryDays * 86_400_000;
@@ -169,6 +196,9 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   let requests = 0;
   let outsideWindow = 0;
   let futureStartDates = 0;
+  let withDescription = 0;
+  let withSubAgency = 0;
+  let withEndDate = 0;
 
   async function search(slice: Slice, page: number, recipientText?: string): Promise<SearchResponse> {
     for (;;) {
@@ -230,16 +260,27 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
     const amount = parseAmount(clean["Award Amount"]);
     const naics = naicsCode(clean["NAICS"]);
     const cleanSourceRef = clean.generated_internal_id as string;
+    const subAgency = cleanText(clean["Awarding Sub Agency"], 200);
+    const endDate = dateOnly(clean["End Date"]);
+    const description = cleanText(clean["Description"]);
+    if (description) withDescription++;
+    if (subAgency) withSubAgency++;
+    if (endDate) withEndDate++;
 
     const result = await sql`
-      insert into contracts (recipient, awarding_agency, amount, action_date, naics, source_ref)
-      values (${recipient}, ${awardingAgency}, ${amount}, ${startDate}, ${naics}, ${cleanSourceRef})
+      insert into contracts (recipient, awarding_agency, amount, action_date, naics, source_ref,
+                             awarding_sub_agency, end_date, description)
+      values (${recipient}, ${awardingAgency}, ${amount}, ${startDate}, ${naics}, ${cleanSourceRef},
+              ${subAgency}, ${endDate}, ${description})
       on conflict (source_ref) where source_ref is not null do update
         set recipient = excluded.recipient,
             awarding_agency = excluded.awarding_agency,
             amount = excluded.amount,
             action_date = excluded.action_date,
-            naics = coalesce(excluded.naics, contracts.naics)
+            naics = coalesce(excluded.naics, contracts.naics),
+            awarding_sub_agency = coalesce(excluded.awarding_sub_agency, contracts.awarding_sub_agency),
+            end_date = coalesce(excluded.end_date, contracts.end_date),
+            description = coalesce(excluded.description, contracts.description)
     `;
     ctx.rowsChanged += result.count ?? 0;
     return true;
@@ -330,6 +371,10 @@ export async function ingestUsaspending(): Promise<IngestRunResult> {
   ctx.extra["company_rows_kept"] = companyKept;
   ctx.extra["company_search_failures"] = companyFailures;
   ctx.extra["interim_start_date"] = true;
+  ctx.extra["details_stored"] = true;
+  ctx.extra["rows_with_description"] = withDescription;
+  ctx.extra["rows_with_sub_agency"] = withSubAgency;
+  ctx.extra["rows_with_end_date"] = withEndDate;
 
   return {
     source: SOURCE,

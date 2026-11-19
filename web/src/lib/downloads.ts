@@ -20,6 +20,7 @@ import { SITE_URL, edgarFilingUrl } from "./seo";
 import { toCsv, type Column } from "./csv";
 import { changeCsv } from "./holdings";
 import { rowIssues } from "./lobbyissues";
+import { cleanDescription } from "./contracts";
 
 export const MAX_ROWS = 50_000;
 export type Group = "congress" | "insiders" | "washington" | "rates";
@@ -237,7 +238,10 @@ async function build(): Promise<Downloads> {
     { key: "start_date", about: "Award start date.", get: (c) => c.actionDate },
     { key: "recipient", about: "Company or organisation that received the award.", get: (c) => c.recipient },
     { key: "awarding_agency", about: "Federal agency that made the award.", get: (c) => c.agency },
+    { key: "awarding_sub_agency", about: "The part of the agency that made the award, as USAspending names it. Empty until the award has been re-read.", get: (c) => cleanDescription(c.subAgency) },
     { key: "award_value", about: "Award value in dollars as USAspending reports it.", get: (c) => c.amount },
+    { key: "end_date", about: "Date the work is currently due to end, as USAspending reports it; it moves when a contract is extended or cut short.", get: (c) => c.endDate },
+    { key: "description", about: "The award's description as the agency entered it (white space collapsed, at most 1,000 characters).", get: (c) => cleanDescription(c.description) },
     { key: "naics", about: "Industry code (NAICS) of the award.", get: (c) => c.naics },
     { key: "award_id", about: "USAspending award id.", get: (c) => c.sourceRef },
     { key: "award_url", about: "Link to the award on USAspending.gov.", get: (c) => (c.sourceRef ? `https://www.usaspending.gov/award/${c.sourceRef}` : null) },

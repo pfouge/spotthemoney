@@ -137,7 +137,7 @@ ${table(["Type", "What it is"], [
   (c) => {
     const k = c.facts.contractLag;
     return {
-      slug: "federal-contracts-usaspending", group: "washington", updated: "2026-11-15",
+      slug: "federal-contracts-usaspending", group: "washington", updated: "2026-11-19",
       title: "Federal contracts: how to read USAspending data",
       seoTitle: ["Federal Contracts Explained: How to Read USAspending", "How to Read USAspending Contract Data"],
       description: ["USAspending.gov publishes every federal contract award. What award value, obligation and outlay mean, why Defense data runs 90 days behind, and what is shown here.", "What USAspending contract records show: award value, obligations, outlays, and why Defense data runs behind."],
@@ -163,6 +163,11 @@ ${table(["Term", "Meaning"], [
         { id: "types", h: "What kinds of award are there?", html: `
 <p>A <strong>contract</strong> buys goods or services. An <strong>indefinite delivery vehicle</strong> is an umbrella agreement under which separate orders are placed later, which is how much of government buying is done; the umbrella's value and its orders can both appear, so adding them double counts. A <strong>prime award</strong> goes directly from the government to a company; a <strong>sub-award</strong> is what that company passes on to a subcontractor and must not be added to the prime's total.</p>
 <p>Each contract carries a NAICS code for the industry and a product or service code for what was bought.</p>` },
+        { id: "details", h: "What do the description, sub-agency and end date tell you?", html: `
+<p>Three more facts come with each award, and this site shows them as USAspending reports them.</p>
+<p>The <strong>description</strong> is a line the contracting office typed when it recorded the award. It is often short, in capitals and full of abbreviations, and it can describe the latest change to a contract instead of the whole job. Tables here show its first ${c.contractDescriptionShown} characters; the full text is on the award's USAspending page and in the <a href="/downloads/">CSV file</a>. This site does not sort, label or total awards by what a description says.</p>
+<p>The <strong>awarding sub-agency</strong> is the part of a department that made the award: the Navy or the Army inside the Department of Defense, the Coast Guard inside Homeland Security. The <a href="/contracts/#sub-agencies">contracts page</a> counts awards by sub-agency. Some awards on record do not carry one yet, and the table says how many do.</p>
+<p>The <strong>end date</strong> is the day the work is currently due to end. It is not a fixed term: it moves when a contract is extended or cut short, and options not yet taken up can push it later.</p>` },
         { id: "lag", h: "How current is the data?", html: `
 <p>Civilian agencies must report a contract action within ${k.reportWithinBusinessDays} business days of the award (${ext(k.source, "federal acquisition rules")}), and it reaches USAspending shortly after. Department of Defense records are released after a ${k.defenseDelayDays}-day delay, so the newest three months of defence contracting are always missing.</p>
 <p>Records are also revised. An award's value changes as options are exercised or work is cancelled, so the same contract can show different figures on different days.</p>` },
@@ -177,6 +182,7 @@ ${table(["Term", "Meaning"], [
         { q: "What is the difference between an obligation and an outlay?", a: "An obligation is money the government has committed to pay, for example by signing a contract. An outlay is money that has actually been paid.", on: ["washington"] },
         { q: "Why are Department of Defense contracts missing from recent data?", a: `Because Defense contract records are released to the public after a ${k.defenseDelayDays}-day delay.` },
         { q: "Does Spot the Money list every federal contract?", a: "No. It shows the largest awards that started in each of the last six months and awards to companies it tracks, matched by exact name.", on: ["washington"] },
+        { q: "Who writes the description of a federal contract award?", a: "The contracting office that records the award. It is free text, often abbreviated, and this site shows it as entered without drawing anything from it." },
         { q: "Is a contract's award value the amount paid?", a: "No. The current award value is what has been committed so far, and the potential value is a ceiling. The amount actually paid is the outlay, which is often lower." },
       ],
       sources: [
@@ -187,8 +193,8 @@ ${table(["Term", "Meaning"], [
       ],
       related: ["lobbying-disclosure-reports", "campaign-donations-fec-data", "what-disclosure-data-cannot-tell-you"],
       seeLive: [{ label: "Federal contracts", href: "/contracts/" }, { label: "Companies", href: "/companies/" }],
-      covers: ["ingest/src/sources/usaspending.ts", "web/src/pages/contracts/index.astro"],
-      ui: [],
+      covers: ["ingest/src/sources/usaspending.ts", "web/src/pages/contracts/index.astro", "web/src/lib/contracts.ts"],
+      ui: [{ text: "Description, as reported", on: "/contracts/" }, { text: "Awarding sub-agencies", on: "/contracts/" }],
       facts: ["contractLag"],
     };
   },

@@ -2847,3 +2847,48 @@ out reaching the edge during the live check): the public-site checks must not ma
   directory is on disk.
 - **A workflow that calls `deploy.yml` must be added to the `workflows:` list in `live-check.yml`**
   (by its `name:`), or its deploys go unchecked.
+
+### Contract awards: sub-agency, end date and description (2026-11-19, scheduled parity run) — queue item 8, extra contract fields
+
+- **Finding first.** Neither `contracts` nor `lobbying` has a payload column, so there were no
+  "extra fields already stored". But the contracts job has always ASKED USAspending for
+  "Awarding Sub Agency", "End Date" and "Description" (`BASE_FIELDS`) and thrown the answers away.
+  They are now stored. Lobbying has nothing comparable: lobbyist names, government entities and
+  the specific-issue text would need a new pull of every filing (lda.gov), which is its own piece.
+- **Migration 0027** (`db/migrations/0027_contract_details.sql`): `contracts.awarding_sub_agency`,
+  `end_date`, `description`, all nullable. The table keeps its public read policy; no grant
+  changes. Next free migration number: 0028.
+- **Ingest** (`ingest/src/sources/usaspending.ts`; tests beside it): `cleanText` (white space
+  collapsed, description cut at `DESCRIPTION_MAX` 1,000, sub-agency at 200), `dateOnly` (a real
+  calendar date or NULL). An update never blanks a stored value (`coalesce`). **A full sweep
+  counts for the weekly rule only if it ran with this code (`stats.details_stored`)**, so the
+  first run after the change re-reads all 400 days and fills awards already held. New stats:
+  `rows_with_description`, `rows_with_sub_agency`, `rows_with_end_date`. Test fake:
+  `scripts/fake-usaspending.mjs` through `USASPENDING_API_BASE` (tests only; `FAKE_BLANK=1`
+  answers with the details blank).
+- **Web** (`web/src/lib/contracts.ts`, pure; tests `scripts/contracts.test.ts`): the largest-awards
+  table on `/contracts/` and the contracts table on company pages gained "Description, as
+  reported" (first `DESCRIPTION_SHOWN` = 140 characters, cut at a word, then an ellipsis; the
+  full text is in the CSV and on USAspending) and "End date"; the sub-agency prints under the
+  agency when it differs from it (`subAgencyLabel`). New section on `/contracts/`,
+  `#sub-agencies` (`section[data-sub-agencies]`): awards and award value per sub-agency, the 25
+  largest (`SUB_AGENCY_ROWS`), sortable, with a sentence saying how many awards carry a
+  sub-agency. `federal-contracts.csv` gained `awarding_sub_agency`, `end_date`, `description`.
+  Nothing is derived from a description (no label, category, flag or total). The on-demand
+  company pages (`server/od.ts`) do not show contracts and were not touched.
+- **Build log** prints `[web] contract details: N awards in the window; with a description D, a
+  sub-agency S, an end date E; K sub-agencies; longest description L; awards/value: <top five>`
+  for comparison with SQL.
+- **Verifier:** `node scripts/verify-contracts.mjs <base-url> [--sample N]` (no browser; the
+  nineteenth). Oracle: `federal-contracts.csv`. Every row of the awards table and of sampled
+  company pages against its CSV row (description whole or a true prefix, sub-agency only when
+  different, end date), the sub-agency table recounted with the script's own grouping, the
+  sentence above it, column names, wording.
+- Guides: `federal-contracts-usaspending` has a new section `#details`, one FAQ, two labels and
+  covers `contracts.ts` (`ctx.contractDescriptionShown` is the live value for "140");
+  `how-to-cite-and-reuse` names the new CSV columns; `what-is-form-4` re-read, unchanged.
+  Methodology `#contract-details`.
+- The seed's contracts carry the details: a long description, one with quotes and angle
+  brackets, a sub-agency equal to its agency, and one award with none.
+- Not done: no filter or search by description, no NAICS names, no place of performance, no
+  product or service code, no award type, no extra lobbying fields.

@@ -15,6 +15,7 @@ import { formatDate } from "../../lib/format";
 import Viz from "../../components/Viz.astro";
 import { flowDiagramSvg } from "../../lib/viz";
 import { contractFlows } from "../../lib/vizdata";
+import { shortDescription, subAgencyLabel, subAgencyRows, contractDetailStats, SUB_AGENCY_ROWS, DESCRIPTION_SHOWN } from "../../lib/contracts";
 
 const model = await getFlagship();
 const rows = model.contracts;
@@ -23,6 +24,8 @@ for (const r of rows) { const k = normalizeOrgName(r.recipient); if (!k) continu
 const topRecipients = [...byRecipient.values()].sort((a, b) => b.total - a.total).slice(0, 50);
 const byName = new Map([...model.companies.values()].map((c) => [normalizeOrgName(c.name), c]));
 const total = sum(rows.map((r) => r.amount));
+const details = contractDetailStats(rows);
+const subRows = subAgencyRows(rows);
 const answer = rows.length === 0
   ? "No contract awards are on record yet; the daily USAspending job loads the largest awards that started in each of the last six months."
   : `This page tracks ${plural(rows.length, "federal contract award")} that started in the last 180 days, with a combined award value of ${money(total)}: the largest awards of each month, plus awards to companies followed here. It is not every federal contract. The largest is ${money(rows[0]?.amount)} to ${rows[0]?.recipient ?? "—"} from ${rows[0]?.agency ?? "—"}; the biggest recipient overall is ${topRecipients[0]?.name ?? "—"} at ${money(topRecipients[0]?.total ?? 0)}.`;
@@ -33,7 +36,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Contracts", path: "/contracts/" }]} />
   <p class="eyebrow">Washington <span class="x">/</span> Contracts</p>
   <h1>Federal contracts</h1>
-  <p class="lede">The largest contract awards as published by USAspending (recipient, agency, award value, industry code), updated daily.</p>
+  <p class="lede">The largest contract awards as published by USAspending (recipient, agency and sub-agency, award value, description, end date, industry code), updated daily.</p>
   <Answer text={answer} updated={rows[0]?.createdAt ?? model.builtAt} sourceNote="Source: USAspending.gov" />
   {(() => { const flows = contractFlows(model); const big = [...flows].filter((f) => f.left !== "Other agencies" && f.right !== "All other recipients").sort((a, b) => b.value - a.value)[0]; return (
     <div class="viz-grid">
@@ -54,9 +57,22 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <h2>Largest awards (started in the last 180 days)</h2>
   <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "federal-contracts.csv")} note="every award held, not only the 100 shown" />
   {rows.length === 0 ? <p class="empty-reason">No awards on record yet.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Start date</th><th>Recipient</th><th>Awarding agency</th><th class="num">Award value</th><th>NAICS</th><th>Source</th></tr></thead><tbody>
-      {rows.slice(0, 100).map((r) => <tr><td class="mono">{formatDate(r.actionDate)}</td><td>{orgPath(model, r.recipient) ? <a href={orgPath(model, r.recipient)!}>{r.recipient}</a> : (r.recipient ?? "—")}</td><td>{r.agency ?? "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>)}
+    <div class="tablewrap"><table class="data" data-awards><thead><tr><th>Start date</th><th>Recipient</th><th>Awarding agency</th><th class="num">Award value</th><th>Description, as reported</th><th>End date</th><th>NAICS</th><th>Source</th></tr></thead><tbody>
+      {rows.slice(0, 100).map((r) => { const sub = subAgencyLabel(r.agency, r.subAgency); const desc = shortDescription(r.description); return <tr data-award={r.sourceRef}><td class="mono">{formatDate(r.actionDate)}</td><td>{orgPath(model, r.recipient) ? <a href={orgPath(model, r.recipient)!}>{r.recipient}</a> : (r.recipient ?? "—")}</td><td class="agency">{r.agency ?? "—"}{sub && <span class="sub" data-sub>{sub}</span>}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="wrap desc" data-desc>{desc ?? "—"}</td><td class="mono" data-end>{r.endDate ? formatDate(r.endDate) : "—"}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>; })}
     </tbody></table></div>
+  )}
+  {rows.length > 0 && <p class="section-note" data-detail-note>The description is the agency's own wording, shown as entered and cut at {DESCRIPTION_SHOWN} characters; the full text is on the award's USAspending page and in the CSV file. The end date is when the work is currently due to end. {details.withDescription < details.awards ? `${num(details.withDescription)} of ${num(details.awards)} awards on record carry a description so far; the rest fill in as the daily job re-reads them.` : ""}</p>}
+
+  {subRows.length > 0 && (
+    <section data-sub-agencies data-with={details.withSubAgency} data-awards-total={details.awards}>
+    <h2 id="sub-agencies">Awarding sub-agencies (awards started in the last 180 days)</h2>
+    <p>A large department awards contracts through its parts: the Navy and the Army inside the Department of Defense, for example. This table counts the awards on this page by the sub-agency USAspending names. {num(details.withSubAgency)} of {num(details.awards)} awards carry one{subRows.length > SUB_AGENCY_ROWS ? `; the ${SUB_AGENCY_ROWS} with the largest award value of ${num(subRows.length)} are shown` : ""}. Click a column title to sort.</p>
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {[{ label: "Sub-agency", type: "text", cls: "" }, { label: "Agency", type: "text", cls: "" }, { label: "Award value", type: "num", cls: "num" }, { label: "Awards", type: "num", cls: "num" }].map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+    </tr></thead><tbody>
+      {subRows.slice(0, SUB_AGENCY_ROWS).map((r) => <tr data-sub-row><td data-v={r.subAgency.toLowerCase()}>{r.subAgency}</td><td data-v={(r.agency ?? "").toLowerCase()}>{r.agency ?? "—"}</td><td class="num strong" data-v={Math.round(r.total)}>{money(r.total)}</td><td class="num" data-v={r.awards}>{num(r.awards)}</td></tr>)}
+    </tbody></table></div>
+    </section>
   )}
 
   <div class="prose">
@@ -67,7 +83,11 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <p>The awards come from USAspending.gov, the government's official record of federal spending, which the Treasury Department runs from data the agencies report. This site reads it once a day and links each award to its USAspending page.</p>
   </div>
   <h2>How to read this</h2>
-  <p>Each row is one contract award. The date is the award's start date and the amount is its total award value to date as USAspending reports it, which is an obligation, not a payment, and can change as the contract is modified. The list is a defined slice, not every federal contract: the largest awards starting in each 30-day period (up to 300 each), plus awards to companies followed on this site whose recipient name matches exactly. See <a href="/methodology/">methodology</a>.</p>
+  <p>Each row is one contract award. The date is the award's start date and the amount is its total award value to date as USAspending reports it, which is an obligation, not a payment, and can change as the contract is modified. The description says what was bought in the awarding agency's words; nothing on this site is worked out from it. The list is a defined slice, not every federal contract: the largest awards starting in each 30-day period (up to 300 each), plus awards to companies followed on this site whose recipient name matches exactly. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />
 </BaseLayout>
+<style>
+  td.agency .sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  td.desc { min-width: 260px; max-width: 380px; font-size: 13px; line-height: 1.35; padding-top: 6px; padding-bottom: 6px; }
+</style>

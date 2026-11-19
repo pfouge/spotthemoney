@@ -84,6 +84,8 @@ export interface LobbyingRow {
 export interface ContractRow {
   id: number; recipient: string | null; agency: string | null; amount: number | null; actionDate: string | null;
   naics: string | null; sourceRef: string | null; createdAt: string;
+  /** As USAspending reports them (migration 0027; lib/contracts.ts): the part of the agency that made the award, the date the work is currently due to end, the award's description. Null until the contracts job has re-read the award. */
+  subAgency: string | null; endDate: string | null; description: string | null;
 }
 export interface CommitteeRow { id: number; fecId: string | null; name: string; party: string | null; type: string | null; total: number; count: number; latest: string | null }
 export interface DonationAgg { key: string; total: number; count: number }

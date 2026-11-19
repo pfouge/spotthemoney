@@ -256,12 +256,16 @@ insert into lobbying (registrant, client, issue_area, amount, period_year, perio
   -- one issue only, and a registration with no amount and no issue (lib/lobbyissues.ts)
   ('Invariant LLC', 'NVIDIA Corp', 'TAX', 90000, 2026, 2, 'seed-l6', 'Q2', '[{"code":"TAX","display":"Taxation/Internal Revenue Code"}]', 'https://lda.senate.gov/filings/public/filing/seed-l6/'),
   ('Invariant LLC', 'Lockheed Martin Corp', null, null, 2026, 3, 'seed-l7', 'RR', '[]', 'https://lda.senate.gov/filings/public/filing/seed-l7/');
-insert into contracts (recipient, awarding_agency, amount, action_date, naics, source_ref) values
-  ('LOCKHEED MARTIN CORP', 'Department of Defense', 1250000000, current_date - 12, '336411', 'CONT_AWD_SEED1'),
-  ('LOCKHEED MARTIN CORP', 'Department of Defense', 84000000, current_date - 40, '336414', 'CONT_AWD_SEED2'),
-  ('PALANTIR TECHNOLOGIES INC.', 'Department of the Army', 480000000, current_date - 5, '541511', 'CONT_AWD_SEED3'),
-  ('MICROSOFT CORP', 'General Services Administration', 21000000, current_date - 70, '511210', 'CONT_AWD_SEED4'),
-  ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 3200000, current_date - 2, '484121', 'CONT_AWD_SEED5');
+-- details (migration 0027; lib/contracts.ts): a long description (cut in the table), a
+-- sub-agency equal to its agency (not shown twice), one award with no details at all (not yet
+-- re-read by the job), and two awards under one sub-agency.
+insert into contracts (recipient, awarding_agency, amount, action_date, naics, source_ref, awarding_sub_agency, end_date, description) values
+  ('LOCKHEED MARTIN CORP', 'Department of Defense', 1250000000, current_date - 12, '336411', 'CONT_AWD_SEED1', 'Department of the Navy', current_date + 900,
+   'PROCUREMENT OF SPARE PARTS AND SUSTAINMENT ENGINEERING SERVICES FOR THE F-35 LIGHTNING II AIRFRAME, PROPULSION SYSTEM AND SUPPORT EQUIPMENT AT ALL OPERATING LOCATIONS WORLDWIDE, INCLUDING DEPOT ACTIVATION'),
+  ('LOCKHEED MARTIN CORP', 'Department of Defense', 84000000, current_date - 40, '336414', 'CONT_AWD_SEED2', 'Department of the Navy', current_date + 300, 'TRIDENT II D5 MISSILE PRODUCTION & DEPLOYED SYSTEMS SUPPORT'),
+  ('PALANTIR TECHNOLOGIES INC.', 'Department of Defense', 480000000, current_date - 5, '541511', 'CONT_AWD_SEED3', 'Department of the Army', current_date + 1400, 'ARMY DATA PLATFORM SOFTWARE LICENSES'),
+  ('MICROSOFT CORP', 'General Services Administration', 21000000, current_date - 70, '511210', 'CONT_AWD_SEED4', 'GENERAL SERVICES ADMINISTRATION', null, 'ENTERPRISE SOFTWARE "E5" LICENSES <RENEWAL>'),
+  ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 3200000, current_date - 2, '484121', 'CONT_AWD_SEED5', null, null, null);
 insert into committees (fec_id, name, party, committee_type) values
   ('C00SEED001', 'Whitfield for Congress', 'REP', 'H'), ('C00SEED002', 'Marsh for California', 'DEM', 'H'), ('C00SEED003', 'Freedom Forward PAC', null, 'PAC');
 insert into donations (committee_id, donor_name, donor_employer, donor_state, amount, donated_at, source_ref)

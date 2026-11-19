@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/usaspending.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { startDateVerdict, windowSlices, naicsCode, recipientSearchText } from "./usaspending.js";
+import { startDateVerdict, windowSlices, naicsCode, recipientSearchText, cleanText, dateOnly, DESCRIPTION_MAX } from "./usaspending.js";
 
 test("windowSlices: six 30-day slices cover 180 days with no gap or overlap", () => {
   const s = windowSlices(new Date("2026-10-05T15:00:00Z"), 180);
@@ -43,4 +43,26 @@ test("startDateVerdict: a start date after today is 'future', not stored as vali
   assert.equal(startDateVerdict("2027-03-01", "2026-04-09", "2026-10-05"), "future");
   assert.equal(startDateVerdict("2026-04-08", "2026-04-09", "2026-10-05"), "before");
   assert.equal(startDateVerdict(null, "2026-04-09", "2026-10-05"), "missing");
+});
+
+test("cleanText: white space collapsed, empties and non-text are null, long text is cut", () => {
+  assert.equal(cleanText("  F-35  LOT 18\n AIRFRAME\tSUSTAINMENT "), "F-35 LOT 18 AIRFRAME SUSTAINMENT");
+  assert.equal(cleanText(""), null);
+  assert.equal(cleanText("   "), null);
+  assert.equal(cleanText(null), null);
+  assert.equal(cleanText(42), null);
+  assert.equal(cleanText({ text: "x" }), null);
+  const long = "A".repeat(DESCRIPTION_MAX + 50);
+  assert.equal(cleanText(long)!.length, DESCRIPTION_MAX);
+  assert.equal(cleanText("DEPARTMENT OF THE NAVY", 200), "DEPARTMENT OF THE NAVY");
+});
+
+test("dateOnly: a calendar date or null, never a guess", () => {
+  assert.equal(dateOnly("2027-09-30"), "2027-09-30");
+  assert.equal(dateOnly("2027-09-30T00:00:00"), "2027-09-30");
+  assert.equal(dateOnly("2027-02-30"), null);
+  assert.equal(dateOnly("09/30/2027"), null);
+  assert.equal(dateOnly(""), null);
+  assert.equal(dateOnly(null), null);
+  assert.equal(dateOnly(20270930), null);
 });
