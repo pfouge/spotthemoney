@@ -238,7 +238,7 @@ async function build(): Promise<Downloads> {
     { key: "start_date", about: "Award start date.", get: (c) => c.actionDate },
     { key: "recipient", about: "Company or organisation that received the award.", get: (c) => c.recipient },
     { key: "awarding_agency", about: "Federal agency that made the award.", get: (c) => c.agency },
-    { key: "awarding_sub_agency", about: "The part of the agency that made the award, as USAspending names it. Empty until the award has been re-read.", get: (c) => cleanDescription(c.subAgency) },
+    { key: "awarding_sub_agency", about: "The part of the agency that made the award, as USAspending names it. Empty for an award stored before this was kept and not read again since.", get: (c) => cleanDescription(c.subAgency) },
     { key: "award_value", about: "Award value in dollars as USAspending reports it.", get: (c) => c.amount },
     { key: "end_date", about: "Date the work is currently due to end, as USAspending reports it; it moves when a contract is extended or cut short.", get: (c) => c.endDate },
     { key: "description", about: "The award's description as the agency entered it (white space collapsed, at most 1,000 characters).", get: (c) => cleanDescription(c.description) },
