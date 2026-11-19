@@ -2972,6 +2972,21 @@ so nothing on the site, in the guides or on the privacy page changed.
   `FAKE_144=noshape`, `FAKE_FAIL_500=1`, `FAKE_SLOW_MS`). Checked end to end on copies of the
   local database: first run, second run (nothing fetched again), rewrite of older-version rows,
   unknown shape (failed, 0 rows), source down, budget stop and resume.
+- **First live run (ingest run 44487281192, 2026-11-19 08:24 UTC): the XML shape is proven.**
+  `partial` on its 30-minute budget as designed: 3,428 notices stored through index day
+  2025-11-12, and every one carries issuer CIK, filer CIK, seller, relationship, units, market
+  value, sale date and broker (1,652 a plan adoption date, 2,261 past-3-month sales, 35 are
+  amendments, 0 without a data file). 1,317 are for tracked companies. About 110 notices a
+  minute, so the catch-up to today takes about eight runs.
+- **Retry list (follow-up the same day).** On that run the SEC answered 502 or 504 for 5
+  submissions after four attempts each; their days were marked done, so the walk would never
+  have asked again. Now a submission that could not be fetched goes into `stats.retry`
+  (`{a, f, t, d, n}`), and the next run asks for those first (form type and date are read from
+  the submission's own SEC-HEADER; given up after 10 runs or on a 404; `retry_tried`,
+  `retry_stored`, `retry_given_up`). A run from before the list existed is read from its
+  quarantine sample, which recovers the 5. Rows of the current parser version in the table
+  count as the shape proof, so a retried submission or a quiet day is not held back by the guard.
+  Fake: `FAKE_FAIL_ONCE=<accession>` (`FAKE_FAIL_ONCE_TIMES`).
 - **For stage 2 (showing them):** a section on stock and company pages (and insider pages where
   the filer CIK or name matches a person) with the notice's own figures; say on the page that a
   notice is a plan, not a sale, and never add its value to any buy or sell total; 144/A rows

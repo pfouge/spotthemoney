@@ -18,6 +18,10 @@ const port = Number(process.argv[2] ?? 4372);
 const SLOW = Number(process.env.FAKE_SLOW_MS ?? 0);
 const FAIL = process.env.FAKE_FAIL_500 === "1";
 const NOSHAPE = process.env.FAKE_144 === "noshape";
+// FAKE_FAIL_ONCE=<accession,...>: those submissions answer 502 for the first FAKE_FAIL_ONCE_TIMES
+// requests (default 1), then normally: the source's retry list must pick them up on a later run.
+const FAIL_ONCE = new Set((process.env.FAKE_FAIL_ONCE ?? "").split(",").filter(Boolean));
+const FAIL_ONCE_TIMES = Number(process.env.FAKE_FAIL_ONCE_TIMES ?? 1);
 
 function xml(n) {
   if (NOSHAPE) {
@@ -81,8 +85,8 @@ function xml(n) {
 </edgarSubmission>`;
 }
 
-const submission = (acc, form, body) =>
-  `<SEC-DOCUMENT>${acc}.txt : 20261001\n<SEC-HEADER>ACCESSION NUMBER:\t\t${acc}\nCONFORMED SUBMISSION TYPE:\t${form}\n</SEC-HEADER>\n<DOCUMENT>\n<TYPE>${form}\n<SEQUENCE>1\n<FILENAME>primary_doc.xml\n<TEXT>\n${body}\n</TEXT>\n</DOCUMENT>\n</SEC-DOCUMENT>\n`;
+const submission = (acc, form, body, day) =>
+  `<SEC-DOCUMENT>${acc}.txt : 20261001\n<SEC-HEADER>ACCESSION NUMBER:\t\t${acc}\nCONFORMED SUBMISSION TYPE:\t${form}\nFILED AS OF DATE:\t\t${day}\n</SEC-HEADER>\n<DOCUMENT>\n<TYPE>${form}\n<SEQUENCE>1\n<FILENAME>primary_doc.xml\n<TEXT>\n${body}\n</TEXT>\n</DOCUMENT>\n</SEC-DOCUMENT>\n`;
 
 const NV = { issuerCik: "1045810", issuerName: "NVIDIA CORP" };
 const ACME = { issuerCik: "0009100001", issuerName: "ACME ROBOTICS INC" };
@@ -152,10 +156,11 @@ http
     if (m) {
       if (SLOW) await sleep(SLOW);
       if (FAIL) return send(500, "server error");
+      if (FAIL_ONCE.has(m[2]) && (counts.get(path) ?? 0) <= FAIL_ONCE_TIMES) return send(502, "bad gateway");
       const f = NOTICES.find((f) => f.acc === m[2]);
       if (!f) return send(404, "not found");
-      if (!f.n) return send(200, submission(f.acc, f.form, "<PDF>\nbegin 644 form144.pdf\nend\n</PDF>"));
-      return send(200, submission(f.acc, f.form, `<XML>\n${xml({ ...f.n, form: f.form })}\n</XML>`));
+      if (!f.n) return send(200, submission(f.acc, f.form, "<PDF>\nbegin 644 form144.pdf\nend\n</PDF>", f.day));
+      return send(200, submission(f.acc, f.form, `<XML>\n${xml({ ...f.n, form: f.form })}\n</XML>`, f.day));
     }
     return send(404, "not found");
   })
