@@ -34,6 +34,14 @@
 // later day. STOPPING. SEC_144_MAX_MINUTES (default 30) ends the run inside a day: that day is
 // not marked processed, status "partial". Five request failures in a row end it "failed".
 //
+// RETRY LIST. A submission the SEC would not serve (502, 504 after the http layer's retries) is
+// quarantined for the run AND remembered in ingest_runs.stats.retry; the next run asks for those
+// first, before the walk, and keeps the ones that still fail (dropped after RETRY_MAX_TRIES).
+// Without it a failed submission on a day that then completes would be lost once the walk has
+// moved more than REREAD_DAYS past it (5 of 3,433 on the first live run, 2026-11-19; they are
+// picked up from that run's quarantine sample). Form type and filing date of a retried
+// submission are read from its own SEC-HEADER.
+//
 // Env: SEC_EDGAR_BASE (tests only, shared with sec_form4), SEC_144_SINCE (default the Form 4
 // floor), SEC_144_MAX_MINUTES, SEC_144_MAX_CONSECUTIVE_FAILURES, SEC_144_RETRIES (tests).
 
@@ -157,6 +165,58 @@ function yes(s: string | null): boolean | null {
   if (/^(y|yes|true|1)$/i.test(s)) return true;
   if (/^(n|no|false|0)$/i.test(s)) return false;
   return null;
+}
+
+export interface RetryEntry {
+  /** accession */ a: string;
+  /** file name under /Archives/, e.g. edgar/data/1243040/0001950047-25-007661.txt */ f: string;
+  /** form type, when known */ t?: "144" | "144/A";
+  /** filing date, when known */ d?: string;
+  /** failed attempts so far (runs) */ n?: number;
+}
+export const RETRY_MAX_TRIES = 10;
+export const RETRY_LIST_MAX = 200;
+
+/** Form type and filing date from a full submission's SEC-HEADER; null fields when absent. */
+export function parseSubmissionHeader(text: string): { form: "144" | "144/A" | null; filedAt: string | null } {
+  const head = text.slice(0, 6000);
+  const t = /CONFORMED SUBMISSION TYPE:\s*(\S+)/.exec(head)?.[1] ?? null;
+  const d = /FILED AS OF DATE:\s*(\d{8})/.exec(head)?.[1] ?? null;
+  return { form: t === "144" || t === "144/A" ? t : null, filedAt: d ? compactToIso(d) : null };
+}
+
+/** A clean retry list from whatever an earlier run stored: well-formed entries only, one per accession. */
+export function readRetryList(value: unknown): RetryEntry[] {
+  if (!Array.isArray(value)) return [];
+  const out: RetryEntry[] = [];
+  const seen = new Set<string>();
+  for (const v of value) {
+    const e = v as Partial<RetryEntry> | null;
+    if (!e || typeof e.a !== "string" || typeof e.f !== "string") continue;
+    if (!/^\d{10}-\d{2}-\d{6}$/.test(e.a) || !/^edgar\/data\/\d+\/[\d-]+\.txt$/.test(e.f) || !e.f.endsWith(`/${e.a}.txt`)) continue;
+    if (seen.has(e.a)) continue;
+    seen.add(e.a);
+    out.push({
+      a: e.a, f: e.f,
+      ...(e.t === "144" || e.t === "144/A" ? { t: e.t } : {}),
+      ...(typeof e.d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.d) ? { d: e.d } : {}),
+      n: Number.isFinite(Number(e.n)) ? Number(e.n) : 0,
+    });
+  }
+  return out.slice(0, RETRY_LIST_MAX);
+}
+
+/** Retry entries from a run's quarantine sample (runs made before the retry list existed). */
+export function retryFromQuarantine(sample: unknown): RetryEntry[] {
+  if (!Array.isArray(sample)) return [];
+  const raw: unknown[] = [];
+  for (const q of sample) {
+    const reason = String((q as { reason?: unknown })?.reason ?? "");
+    if (!reason.startsWith("submission not fetched")) continue;
+    const m = /Archives\/(edgar\/data\/\d+\/(\d{10}-\d{2}-\d{6})\.txt)/.exec(reason);
+    if (m) raw.push({ a: m[2], f: m[1] });
+  }
+  return readRetryList(raw);
 }
 
 /** The Form 144 XML inside a full submission text, or null when the submission has none. */
@@ -350,6 +410,7 @@ export async function ingestSecForm144(): Promise<IngestRunResult> {
   const c = {
     days_listed: 0, days_processed: 0, notices_listed: 0, notices_skipped_existing: 0, notices_stored: 0,
     notices_rewritten: 0, amendments: 0, no_xml: 0, requests: 0, dates_unreadable: 0,
+    retry_tried: 0, retry_stored: 0, retry_given_up: 0,
     with_issuer_cik: 0, with_filer_cik: 0, with_seller: 0, with_relationship: 0, with_shares: 0, with_value: 0,
     with_sale_date: 0, with_broker: 0, with_plan_date: 0, with_acquired_lines: 0, with_sold_lines: 0,
   };
@@ -361,6 +422,7 @@ export async function ingestSecForm144(): Promise<IngestRunResult> {
   let fatal: string | null = null;
   let lastFailure = "";
   const pending: { row: Index144Row; parsed: ParsedForm144 }[] = [];
+  let retry: RetryEntry[] = [];
 
   // The resume point only moves past days whose notices are actually written.
   const through = () => (shapeSeen || pending.length === 0 ? completedThrough ?? prevThrough : prevThrough);
@@ -371,6 +433,7 @@ export async function ingestSecForm144(): Promise<IngestRunResult> {
     ctx.extra["parser_version"] = PARSER_VERSION;
     ctx.extra["shape_seen"] = shapeSeen;
     ctx.extra["sample_tags"] = sampleTags;
+    ctx.extra["retry"] = retry.slice(0, RETRY_LIST_MAX);
     ctx.extra["stopped_on_budget"] = stoppedOnBudget;
     ctx.extra["minutes"] = Math.round((Date.now() - startedAt) / 6000) / 10;
   };
@@ -443,6 +506,62 @@ export async function ingestSecForm144(): Promise<IngestRunResult> {
   `;
   prevThrough = prev?.through && /^\d{4}-\d{2}-\d{2}$/.test(prev.through) ? prev.through : null;
 
+  // Submissions earlier runs could not fetch. The newest run of this parser version carries the
+  // list; a run from before the list existed is read from its quarantine sample instead.
+  const earlier = await sql<{ retry: unknown; sample: unknown }[]>`
+    select r.stats->'retry' as retry, r.stats->'quarantined_sample' as sample
+      from ingest_runs r join sources s on s.id = r.source_id
+     where s.code = ${SOURCE} and r.stats is not null
+       and coalesce((r.stats->>'parser_version')::int, 0) = ${PARSER_VERSION}
+     order by r.id desc limit 30
+  `;
+  const newestWithList = earlier.find((r) => Array.isArray(r.retry));
+  let toRetry: RetryEntry[] = newestWithList ? readRetryList(newestWithList.retry) : [];
+  for (const r of earlier) {
+    if (Array.isArray(r.retry)) continue;
+    for (const e of retryFromQuarantine(r.sample)) if (!toRetry.some((x) => x.a === e.a)) toRetry.push(e);
+  }
+  toRetry = toRetry.slice(0, RETRY_LIST_MAX);
+  // Rows of this parser version already in the table prove the shape: the retried
+  // submissions (and a quiet day's handful of notices) need not wait for the guard.
+  if ((await sql`select 1 from form144_notices where parser_version >= ${PARSER_VERSION} limit 1`).length > 0) shapeSeen = true;
+
+  if (toRetry.length > 0) {
+    const have = new Set<string>(
+      (await sql`select accession from form144_notices where accession = any(${toRetry.map((e) => e.a)}) and parser_version >= ${PARSER_VERSION}`)
+        .map((r) => String(r.accession)),
+    );
+    for (const e of toRetry) {
+      if (have.has(e.a)) continue;
+      if (!shapeSeen || outage.tripped || overBudget()) { retry.push(e); continue; }
+      ctx.markSeen(e.a);
+      c.retry_tried++;
+      let submission: string;
+      try {
+        submission = await get(`${SEC_BASE}/Archives/${e.f}`);
+        outage.ok();
+      } catch (err) {
+        lastFailure = err instanceof Error ? err.message : String(err);
+        if (isNotFound(err)) { c.retry_given_up++; continue; }
+        outage.fail();
+        const n = (e.n ?? 0) + 1;
+        if (n >= RETRY_MAX_TRIES) { c.retry_given_up++; ctx.warn(`gave up on ${e.a} after ${n} runs: ${lastFailure.slice(0, 120)}`); }
+        else retry.push({ ...e, n });
+        continue;
+      }
+      const head = parseSubmissionHeader(submission);
+      const form = head.form ?? e.t ?? null;
+      const filedAt = head.filedAt ?? e.d ?? null;
+      const xml = extractForm144Xml(submission);
+      if (!form || !filedAt || !xml) { c.retry_given_up++; if (!xml) c.no_xml++; continue; }
+      const cik = /edgar\/data\/(\d+)\//.exec(e.f)?.[1] ?? "0";
+      const before = c.notices_stored + c.notices_rewritten;
+      await write({ cik, form, filedAt, file: e.f, accession: e.a }, parseForm144Xml(xml));
+      if (c.notices_stored + c.notices_rewritten > before) c.retry_stored++;
+    }
+    sync();
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const allDays: string[] = [];
   for (const q of quarterFolders(listingStart(prevThrough, since), today)) {
@@ -500,7 +619,10 @@ export async function ingestSecForm144(): Promise<IngestRunResult> {
         outage.ok();
       } catch (err) {
         lastFailure = err instanceof Error ? err.message : String(err);
-        if (!isNotFound(err)) outage.fail();
+        if (!isNotFound(err)) {
+          outage.fail();
+          if (!retry.some((x) => x.a === row.accession)) retry.push({ a: row.accession, f: row.file, t: row.form, d: row.filedAt, n: 1 });
+        }
         ctx.quarantine(row.accession, `submission not fetched: ${lastFailure.slice(0, 200)}`);
         sync();
         continue;

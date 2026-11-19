@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   parseMasterIndex144, blocks, leaf, cleanText, parseFormDate, parseAmount, extractForm144Xml, leafTags,
-  parseForm144Xml, hasShape, toPayload, noticeIndexUrl,
+  parseForm144Xml, hasShape, toPayload, noticeIndexUrl, parseSubmissionHeader, readRetryList, retryFromQuarantine,
 } from "./sec_form144.js";
 
 const MASTER = [
@@ -178,4 +178,25 @@ test("a filer CIK that is not a number is left empty; the link uses the bare CIK
   assert.equal(p.filerCik, null);
   assert.equal(noticeIndexUrl("0001045810", "0009900144-26-000001"),
     "https://www.sec.gov/Archives/edgar/data/1045810/000990014426000001/0009900144-26-000001-index.htm");
+});
+
+test("submission header: form type and filing date; anything else is empty", () => {
+  const h = "<SEC-DOCUMENT>x.txt : 20251103\n<SEC-HEADER>\nACCESSION NUMBER:\t\t0001950047-25-007661\nCONFORMED SUBMISSION TYPE:\t144/A\nPUBLIC DOCUMENT COUNT:\t\t1\nFILED AS OF DATE:\t\t20251103\n</SEC-HEADER>";
+  assert.deepEqual(parseSubmissionHeader(h), { form: "144/A", filedAt: "2025-11-03" });
+  assert.deepEqual(parseSubmissionHeader(h.replace("144/A", "4")), { form: null, filedAt: "2025-11-03" });
+  assert.deepEqual(parseSubmissionHeader("no header"), { form: null, filedAt: null });
+});
+
+test("retry list: only well-formed entries, one per accession; the quarantine sample of an older run is read", () => {
+  const good = { a: "0001950047-25-007661", f: "edgar/data/1243040/0001950047-25-007661.txt", t: "144", d: "2025-11-03", n: 2 };
+  assert.deepEqual(readRetryList([good, good, { a: "x", f: "y" }, null, { a: good.a, f: "edgar/data/1/0000000000-25-000001.txt" },
+    { a: "0000000001-25-000002", f: "https://evil.example/edgar/data/1/0000000001-25-000002.txt" }]), [good]);
+  assert.deepEqual(readRetryList({}), []);
+  const sample = [
+    { ref: "0001950047-25-007661", reason: "submission not fetched: Exhausted 4 attempts for www.sec.gov/Archives/edgar/data/1243040/0001950047-25-007661.txt: HTTP 502 from www.sec.gov/Archives/edgar/data/1243040/0001950047-25-007661.txt" },
+    { ref: "0001950047-25-000002", reason: "parsed XML missing issuer identity" },
+    { ref: "0001950047-25-000003", reason: "write failed: Archives/edgar/data/1/0001950047-25-000003.txt" },
+  ];
+  assert.deepEqual(retryFromQuarantine(sample), [{ a: "0001950047-25-007661", f: "edgar/data/1243040/0001950047-25-007661.txt", n: 0 }]);
+  assert.deepEqual(retryFromQuarantine(null), []);
 });
