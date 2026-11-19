@@ -2892,3 +2892,12 @@ out reaching the edge during the live check): the public-site checks must not ma
   brackets, a sub-agency equal to its agency, and one award with none.
 - Not done: no filter or search by description, no NAICS names, no place of performance, no
   product or service code, no award type, no extra lobbying fields.
+- **First live sweep (ingest run 44431795386, 2026-11-19 00:47 UTC): the request shape is proven,
+  and coverage is partial by design of the job.** `success`, mode full, 7,608 rows seen, 7,607 with
+  a description, 7,608 with a sub-agency and an end date, longest description 250 characters. But
+  the table holds 17,907 awards and the 180-day window 5,921, of which 3,415 carry details: the
+  other 2,506 were stored by earlier runs and are no longer among "the 300 largest of each 30-day
+  slice" (the slices move by a day every day) or a tracked company's first 300, so no sweep
+  reads them again. The page, the guide and the CSV dictionary say so. **Closing the gap needs a
+  fetch by award id** (USAspending `/api/v2/awards/<generated_internal_id>/`; shape unverified):
+  about 2,500 requests for the window, a job with a time budget of its own. Not built.
