@@ -3045,3 +3045,57 @@ so nothing on the site, in the guides or on the privacy page changed.
 - Not done: CORS headers for `/downloads/*`, `/feeds/*` and the catalogue (a `_headers` change
   that needs a look at the live response headers, so an interactive session); an OpenAPI file
   (there is nothing to query); JSON versions of the CSV files; an MCP server (queue item 8).
+
+### SEC Schedules 13D and 13G, stage 1: stored, not shown (2026-11-19, scheduled parity run) — queue item (g2e)
+
+A Schedule 13D or 13G is the statement a person or group files after coming to own more than 5%
+of a class of a company's voting shares (13D long form with a stated purpose; 13G short form for
+passive and institutional holders). It states what the filer says it owned on a date; it is not a
+report of trades. Stage 1 stores the statements; no page, file or feed reads them yet, so nothing
+on the site, in the guides or on the privacy page changed.
+
+- **Migration 0030 `schedule13_filings`** (one row per submission, keyed by accession; form types
+  `SCHEDULE 13D`, `SCHEDULE 13D/A`, `SCHEDULE 13G`, `SCHEDULE 13G/A`; columns `schedule`,
+  `is_amendment`). Issuer CIK (10 digits, as `companies.cik`), name and CUSIP, class, event date,
+  the submission's filer CIK, `reporter_name` (first reporting person), `reporter_count`,
+  `rules` (13G: the rule the schedule is filed under), `payload.persons` (every reporting person
+  on the cover pages: name, CIK when given, citizenship, type code, 13D source-of-funds code, the
+  four voting and dispositive figures, amount, percent), `payload.purpose` (13D Item 4, cut at
+  2,000 characters), `source_url`, `parser_version`. **`shares_owned` and `percent_of_class` are
+  the LARGEST figures any one reporting person states, never a sum:** members of a group each
+  report the same combined holding. Not stored: addresses, phone numbers, signatures, the
+  authorized-persons block, the legal-proceedings answers, the other narrative items. Row-level
+  security on, no policy, no API grants; `site_build` may read. Next free number: 0031.
+- **Source `sec_schedule13`** (`ingest/src/sources/sec_schedule13.ts`; tests beside it): the
+  daily index walk of `sec_form144.ts` (it imports helpers from that file and from
+  `sec_form4_index.ts` and edits neither). Old-style `SC 13D` / `SC 13G` rows (before December
+  2024, no XML) are ignored. Start `SEC_13DG_SINCE` (default the Form 4 floor, 2025-10-01);
+  resume `ingest_runs.stats.through`; `SEC_13DG_MAX_MINUTES` (40) ends a run `partial`; 5 request
+  failures in a row end it `failed`; a submission the SEC would not serve goes on `stats.retry`.
+- **The XML element names come from one real filing of each schedule** (read through the web
+  fetch tool on 2026-11-19: 13D accession 0001493152-26-007602, 13G 0001897612-25-000555). The
+  two schedules name the same things differently (13D `issuerCIK`, `reportingPersonInfo`,
+  `aggregateAmountOwned`, `percentOfClass`, `dateOfEvent`; 13G `issuerCik`,
+  `coverPageHeaderReportingPersonDetails`,
+  `reportingPersonBeneficiallyOwnedAggregateNumberOfShares`, `classPercent`,
+  `eventDateRequiresFilingThisStatement`). Two files are a thin sample, so there is **one shape
+  guard per schedule**: nothing of a schedule is written until one statement of it has an issuer,
+  a named reporting person and an amount or percent; 20 without end the run `failed` with the
+  resume point unmoved; `stats.sample_tags_13d` / `_13g` list the element names met, `stats.with_*`
+  count the filled fields. **A parser fix = bump `PARSER_VERSION`** (older rows are rewritten in
+  place and the walk restarts).
+- **Where it runs:** daily, in a matrix group of its own, `holders`, in `ingest.yml` (both matrix
+  lists), so it does not share a 55-minute job with `sec_form4_index` and `sec_form144`.
+  `scripts/freshness-check.mjs` lists it by run only; add the data date once the catch-up has
+  reached today.
+- **Test fake:** `scripts/fake-edgar-13.mjs` through `SEC_EDGAR_BASE` (tests only;
+  `FAKE_13=noshape-g|noshape`, `FAKE_FAIL_500=1`, `FAKE_FAIL_ONCE=<accession>`, `FAKE_SLOW_MS`).
+  Checked end to end on copies of the local database: first run, second run, rewrite of
+  older-version rows, one schedule's shape unknown (failed, the other schedule's rows kept),
+  source down, a failed submission recovered from the retry list, budget stop and resume.
+- **For stage 2 (showing them):** a "Holders of more than 5%" section on stock and company pages
+  from the newest statement per filer and issuer; say that a statement is the filer's own figure
+  on its event date and can be out of date; an amendment does not say which statement it
+  replaces (match by `filer_cik` + `issuer_cik`, newest `filed_at`); never add reporting persons'
+  amounts together; a 13D's purpose text shown as filed, cut, with the SEC link; nothing derived
+  from it. `percent_of_class` above 100 is stored as NULL (not a percentage).
