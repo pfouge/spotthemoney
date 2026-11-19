@@ -48,6 +48,11 @@ const CHECKS = [
   // alive: the rule treats success and partial alike.
   { code: "sec_form4_index", label: "SEC Form 4, market-wide (daily index)", runDays: 2, dataDays: 6,
     newest: `select max(filed_at)::date from filings where source = 'sec_form4' and scope = 'market'` },
+  // Form 144 notices of proposed sales (table form144_notices; stored, not shown yet). A partial
+  // run counts as alive. No data date yet: the first catch-up walks forward from 2025-10-01 over
+  // several daily runs, so the newest notice is old until it ends. Add
+  // `dataDays: 6, newest: select max(filed_at) from form144_notices` once stats.through is current.
+  { code: "sec_form144", label: "SEC Form 144 notices (daily index)", runDays: 2 },
   // Industry codes from the SEC's submissions data (table company_sic). No data date: a company's
   // code rarely changes; the run itself is what must stay alive.
   { code: "sec_company_sic", label: "SEC industry codes (SIC)", runDays: 2 },

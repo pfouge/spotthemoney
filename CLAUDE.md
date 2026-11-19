@@ -2935,3 +2935,45 @@ out reaching the edge during the live check): the public-site checks must not ma
   to 4,994 of 5,921 awards with details (build log = SQL). The sub-agency names that come by id are
   the names the search stores. About 1,580 awards a run, so the window completes on the second run
   and the whole table after about six.
+
+### SEC Form 144 notices, stage 1: stored, not shown (2026-11-19, scheduled parity run) — queue item (g2b)
+
+A Form 144 is a notice that a holder PROPOSES to sell restricted or control securities under Rule
+144. It is not a report of a sale. Stage 1 stores the notices; no page, file or feed reads them yet,
+so nothing on the site, in the guides or on the privacy page changed.
+
+- **Migration 0029 `form144_notices`** (one row per submission, keyed by accession; 144 and 144/A).
+  Columns hold the figures as filed: issuer CIK (10 digits, as `companies.cik`) and name, the
+  submission's filer CIK, the seller ("person for whose account"), stated relationships, class,
+  `shares` and `market_value` (sums over the form's securities lines), units outstanding, earliest
+  approximate sale date, exchange, broker name, earliest Rule 10b5-1 plan adoption date, notice
+  date, the past-3-months sales (summed), `payload` (the lines as parsed), `source_url`,
+  `parser_version`. Addresses, phone numbers and signatures are not stored. A table of its own,
+  not `filings` (`filings.source` is an enum under the `site_*` views and the `od_*` functions).
+  Row-level security on, no policy, no API grants; `site_build` may read. Next free number: 0030.
+- **Source `sec_form144`** (`ingest/src/sources/sec_form144.ts`; tests beside it): the EDGAR daily
+  index walk of `sec_form4_index.ts` (it imports that file's helpers and does not change it), form
+  type exactly `144` or `144/A`, every issuer, one request per submission. Start
+  `SEC_144_SINCE` (default the Form 4 floor, 2025-10-01); resume `ingest_runs.stats.through`;
+  the 2 newest processed days are re-read; `SEC_144_MAX_MINUTES` (30) ends a run `partial`; 5
+  request failures in a row end it `failed`. A submission with no data file is counted
+  (`no_xml`), not stored.
+- **The XML element names were written from memory** (sec.gov is not reachable from the cloud
+  sandbox). Guards: nothing is written until one parsed notice has an issuer, a seller and a
+  number of units; 20 notices without that shape end the run `failed` with nothing stored and
+  the resume point unmoved; `stats.sample_tags` lists the first notice's element names (names
+  only); `stats.with_*` count the filled fields. **A parser fix = bump `PARSER_VERSION`**: rows
+  written by an older version are fetched and rewritten in place, and the walk restarts from
+  the start date (the resume point is per parser version).
+- **Where it runs:** daily, after `sec_form4_index` in the `insiders-market` group of
+  `ingest.yml` (both matrix lists). `scripts/freshness-check.mjs` lists it by run only; add the
+  data date (`dataDays: 6`, newest `filed_at`) once the first catch-up has reached today.
+- **Test fake:** `scripts/fake-edgar-144.mjs` through `SEC_EDGAR_BASE` (tests only;
+  `FAKE_144=noshape`, `FAKE_FAIL_500=1`, `FAKE_SLOW_MS`). Checked end to end on copies of the
+  local database: first run, second run (nothing fetched again), rewrite of older-version rows,
+  unknown shape (failed, 0 rows), source down, budget stop and resume.
+- **For stage 2 (showing them):** a section on stock and company pages (and insider pages where
+  the filer CIK or name matches a person) with the notice's own figures; say on the page that a
+  notice is a plan, not a sale, and never add its value to any buy or sell total; 144/A rows
+  are amendments and the form does not say which notice they replace; a CSV; a guide; the
+  methodology. Market-only issuers need the `od_*` functions (the market-wide thread's files).
