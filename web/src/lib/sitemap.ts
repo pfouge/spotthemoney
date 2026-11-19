@@ -12,6 +12,7 @@ import { buildCommittees, COMMITTEES_PATH } from "./committees";
 import { buildIssues, ISSUES_PATH } from "./lobbyissues";
 import { siteIndustries } from "./industries-build";
 import { INDUSTRIES_PATH } from "./industries";
+import { MARKETS_PATH, WFE } from "./worldmarkets";
 import { getMarketIndexable, SITEMAP_URL_LIMIT } from "./market";
 import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
 
@@ -53,6 +54,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/rates/i-bonds/", lastmod: built, changefreq: "daily", priority: 0.9 },
     { loc: "/rates/treasury-yields/", lastmod: built, changefreq: "daily", priority: 0.9 },
     { loc: "/rates/tips/", lastmod: built, changefreq: "daily", priority: 0.8 },
+    { loc: MARKETS_PATH, lastmod: WFE.retrieved, changefreq: "monthly", priority: 0.7 },
     { loc: "/insiders/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     { loc: "/congress/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     ...(congressMembers ? [{ loc: "/congress-members/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.7 }] : []),

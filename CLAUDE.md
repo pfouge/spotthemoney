@@ -3151,3 +3151,24 @@ on the site, in the guides or on the privacy page changed.
 - Not done: a page per code or a filter by code; the product or service code (not stored);
   storing USAspending's own NAICS description (the search answer sometimes carries one; the
   fixed table gives every stored award a title at once and the same wording for the same code).
+
+### World stock markets page (2026-11-19) — Peter's brief, on branch `feat/world-stock-markets`, NOT merged or deployed
+
+- **Page:** `/markets/largest-stock-exchanges/` (`web/src/pages/markets/largest-stock-exchanges.astro`). Peter
+  chose a new Markets section with no header link yet; `/markets/` is a static redirect to the page until
+  a second markets page exists and it becomes a hub. Linked from the footer ("World markets"), the search
+  index, the `pages` sitemap, `llms.txt` (`## Markets`), `/downloads/` and a fourth card on `/rates/`.
+- **Data:** `web/src/lib/worldmarkets.ts`, typed in from one World Federation of Exchanges table (USD
+  millions, as published; source URL, as-of month and retrieval date beside the figures). Not in the
+  database. Totals, the multiple and the gap are derived. Monthly update = replace the figures and `WFE`.
+- **Charts:** `rankBarsSvg` in `lib/viz.ts` now takes `RankRow` (optional `flag`, `short`, `cls`,
+  `segments`); old callers are unchanged. Flags are vendored SVGs in `web/src/assets/flags/` (flag-icons
+  7.6.0, MIT; `es.svg` is a hand-drawn civil flag because the flag-icons file is 81 KB), inlined per build
+  with prefixed ids. New tokens `--chart-2-soft` / `--chart-2-soft-on` (both themes) and classes `.v-c1`,
+  `.v-c2`, `.v-c2s`, `.v-flag-edge`. `Viz.astro` has a `mid` prop: swap to the narrow build at ≤1023px.
+- **CSV:** `world-stock-markets.csv`, a new "markets" group in `lib/downloads.ts` (37 rows: 18 + 2 + 17).
+- **Not done:** no `/embed/` pages (embeds exist only for member and stock charts, not standalone ones);
+  the Open Graph image is the site default; no guide page; `verify-live` not run (nothing is deployed).
+- Verified locally only: `astro check` 0 errors; build passes (its `Astro.request.headers` warnings are on
+  every page on `main` too); every figure, table row and CSV row checked against the brief by script;
+  both charts viewed at 390, 820 and 1280px in light and dark.

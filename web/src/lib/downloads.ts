@@ -22,10 +22,11 @@ import { changeCsv } from "./holdings";
 import { rowIssues } from "./lobbyissues";
 import { cleanDescription } from "./contracts";
 import { naicsTitle } from "./naics";
+import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
-export type Group = "congress" | "insiders" | "washington" | "rates";
-export const GROUP_LABEL: Record<Group, string> = { congress: "Congress", insiders: "Corporate insiders", washington: "Washington money", rates: "Rates" };
+export type Group = "congress" | "insiders" | "washington" | "rates" | "markets";
+export const GROUP_LABEL: Record<Group, string> = { congress: "Congress", insiders: "Corporate insiders", washington: "Washington money", rates: "Rates", markets: "Markets" };
 
 export interface DownloadFile {
   path: string;            // "/downloads/congress-trades.csv"
@@ -35,7 +36,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "lobbying" | "contracts" | "rates";
+  kind: "trades" | "members" | "seats" | "companies" | "lobbying" | "contracts" | "rates" | "markets";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -253,6 +254,7 @@ async function build(): Promise<Downloads> {
 
   // Rates
   for (const f of await rateFiles()) add(f);
+  add(marketFile());
 
   // One file per member and per ticker.
   const member = new Map<string, DownloadFile>();
@@ -318,6 +320,24 @@ async function rateFiles(): Promise<DownloadFile[]> {
     console.warn("[web] rate downloads skipped:", (err as Error).message);
     return [];
   }
+}
+
+// ── markets (typed-in WFE figures in lib/worldmarkets.ts; no database read) ──────────────
+function marketFile(): DownloadFile {
+  return file<MarketCsvRow>({ name: "world-stock-markets.csv", group: "markets", kind: "markets", title: `World stock markets by size, ${WFE.asOfLabel}`,
+    about: `Domestic market capitalization by exchange, and the United States against the European Union. Source: ${WFE.name}.`, updated: `${WFE.asOf}-01` }, [
+    { key: "section", about: "largest_stock_markets (the ranking), united_states_vs_european_union (the two totals) or eu_exchanges_summed (what the EU total adds up).", get: (r) => r.section },
+    { key: "rank", about: "Position within the section, largest first.", get: (r) => r.rank },
+    { key: "market", about: "Exchange or exchange group. The United States row combines Nasdaq and NYSE.", get: (r) => r.market },
+    { key: "components", about: "What a combined row adds up. Empty for a single exchange.", get: (r) => r.components },
+    { key: "flag", about: "ISO code of the flag shown beside the row. An exchange group can span several countries.", get: (r) => r.flag },
+    { key: "usd_millions", about: "Domestic market capitalization in millions of U.S. dollars, as the source published it.", get: (r) => r.usdMillions.toFixed(2) },
+    { key: "usd_trillions", about: "The same figure in trillions of U.S. dollars, to two decimals.", get: (r) => (r.usdMillions / 1e6).toFixed(2) },
+    { key: "as_of", about: "The month the figure is for (YYYY-MM).", get: () => WFE.asOf },
+    { key: "retrieved", about: "The day the figure was read from the source.", get: () => WFE.retrieved },
+    { key: "source", about: "Publication and table the figure comes from.", get: () => `${WFE.name}, ${WFE.publication}, ${WFE.issue}, ${WFE.table}` },
+    { key: "source_url", about: "Address of the source table.", get: () => WFE.url },
+  ], marketCsvRows());
 }
 
 let _downloads: Promise<Downloads> | null = null;
