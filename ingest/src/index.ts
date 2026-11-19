@@ -20,6 +20,7 @@ import { ingestFecScheduleAHistory } from "./sources/fec_schedule_a_history.js";
 import { ingestSecForm4, ingestSecForm4History } from "./sources/sec_form4.js";
 import { ingestSecForm4Bulk } from "./sources/sec_form4_bulk.js";
 import { ingestSecForm4Index } from "./sources/sec_form4_index.js";
+import { ingestSecForm144 } from "./sources/sec_form144.js";
 import { ingestSecCompanySize } from "./sources/sec_company_size.js";
 import { ingestSecCompanySic } from "./sources/sec_company_sic.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
@@ -58,6 +59,8 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: () => ingestSecForm4() },
   sec_form4_bulk: { label: "SEC Insider Transactions Data Sets, market-wide Form 4 (kept off the site)", cadence: "on_demand", daily: false, run: ingestSecForm4Bulk },
   sec_form4_index: { label: "SEC EDGAR daily index, market-wide Form 4 (kept off the site)", cadence: "daily", daily: true, run: ingestSecForm4Index },
+  // Form 144 notices of proposed sales, every issuer. Stored in form144_notices; no page reads it yet.
+  sec_form144: { label: "SEC Form 144 notices of proposed sales (daily index; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecForm144 },
   sec_form4_history: { label: "SEC EDGAR Form 4 history pass (back to 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSecForm4History },
   twelvedata_eod: { label: "Twelve Data EOD Prices", cadence: "daily", daily: true, run: ingestTwelvedataEod },
   // Builds email digests into alert_outbox and sends nothing; a skip while the database switch
