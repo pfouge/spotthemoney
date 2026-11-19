@@ -6,6 +6,7 @@ import LearnMore from "../../components/LearnMore.astro";
 import { insiderRows, memberRows, relatedCompanies, sizeOf, industryOf, tickerPages } from "../../lib/entity";
 import { industryHref } from "../../lib/industries";
 import { orgPath } from "../../lib/links";
+import { shortDescription, subAgencyLabel } from "../../lib/contracts";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -139,10 +140,10 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   {c.contracts.length === 0 ? <p class="empty-reason">No contract award starting in the last 180 days was found for a recipient named exactly "{c.name}". Subsidiaries and differently-spelled recipients are not matched. Search <a href="/contracts/">contracts</a>.</p> : (
     <div class="tablewrap">
       <table class="data">
-        <thead><tr><th>Start date</th><th>Awarding agency</th><th class="num">Award value</th><th>NAICS</th><th>Source</th></tr></thead>
+        <thead><tr><th>Start date</th><th>Awarding agency</th><th class="num">Award value</th><th>Description, as reported</th><th>End date</th><th>NAICS</th><th>Source</th></tr></thead>
         <tbody>
           {c.contracts.slice(0, 50).map((r) => (
-            <tr><td class="mono">{formatDate(r.actionDate)}</td><td>{r.agency ?? "—"}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>
+            <tr data-award={r.sourceRef}><td class="mono">{formatDate(r.actionDate)}</td><td>{r.agency ?? "—"}{subAgencyLabel(r.agency, r.subAgency) && <span class="con-sub" data-sub>{subAgencyLabel(r.agency, r.subAgency)}</span>}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="wrap con-desc" data-desc>{shortDescription(r.description) ?? "—"}</td><td class="mono" data-end>{r.endDate ? formatDate(r.endDate) : "—"}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>
           ))}
         </tbody>
       </table>
@@ -182,3 +183,7 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>
+<style>
+  .con-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  td.con-desc { min-width: 240px; max-width: 360px; font-size: 13px; line-height: 1.35; padding-top: 6px; padding-bottom: 6px; }
+</style>

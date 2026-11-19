@@ -13,6 +13,7 @@
 // pages render their empty-state reason lines instead of blank tables.
 
 import { cleanFootnotes } from "./footnotes";
+import { contractDetailLog } from "./contracts";
 import postgres from "postgres";
 import { normalizeOrgName, FORM4_FLOOR, cleanSicCode, sicDivision } from "@stm/shared";
 import { refPriceMap, buildTxn, jointMap } from "./txnbuild";
@@ -126,8 +127,9 @@ async function load(): Promise<Flagship> {
           ) l
          order by period_year desc nulls last, period_quarter desc nulls last, amount desc nulls last
          limit 400000`,
-      sql<{ id: number; recipient: string | null; awarding_agency: string | null; amount: number | null; action_date: string | null; naics: string | null; source_ref: string | null; created_at: string }[]>`
-        select id, recipient, awarding_agency, amount::float8 as amount, action_date::text as action_date, naics, source_ref, created_at::text as created_at
+      sql<{ id: number; recipient: string | null; awarding_agency: string | null; amount: number | null; action_date: string | null; naics: string | null; source_ref: string | null; created_at: string; awarding_sub_agency: string | null; end_date: string | null; description: string | null }[]>`
+        select id, recipient, awarding_agency, amount::float8 as amount, action_date::text as action_date, naics, source_ref, created_at::text as created_at,
+               awarding_sub_agency, end_date::text as end_date, description
           from contracts
          -- action_date holds the award start date; some are in the future (planned starts, typos); a
          -- "last 180 days" window ends today, or the newest-first pages lead with December.
@@ -229,7 +231,9 @@ async function load(): Promise<Flagship> {
       year: l.period_year, quarter: l.period_quarter, filingType: l.filing_type, sourceRef: l.source_ref, createdAt: l.created_at,
       issues: l.issue_codes ? [...new Set(l.issue_codes.split(",").filter(Boolean))] : (l.issue_area ? [l.issue_area] : []) }));
     model.contracts = contractRows.map((c) => ({ id: c.id, recipient: c.recipient, agency: c.awarding_agency, amount: c.amount, actionDate: c.action_date,
-      naics: c.naics, sourceRef: c.source_ref, createdAt: c.created_at }));
+      naics: c.naics, sourceRef: c.source_ref, createdAt: c.created_at,
+      subAgency: c.awarding_sub_agency, endDate: c.end_date, description: c.description }));
+    console.log(contractDetailLog(model.contracts));
     model.committees = committeeRows.map((c) => ({ id: c.id, fecId: c.fec_id, name: c.name, party: c.party, type: c.committee_type, total: c.total, count: c.count, latest: c.latest }));
     model.donationsByEmployer = donorEmployerRows;
     model.donationsByState = donorStateRows;

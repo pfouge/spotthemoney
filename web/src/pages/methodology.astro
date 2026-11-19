@@ -1,6 +1,7 @@
 ---
 // /methodology/ — how every figure on the site is produced. Linked from every entity page,
 // the flags, the X thread and llms.txt. Sections are stable anchors (#sources, #lag, …).
+import { DESCRIPTION_SHOWN } from "../lib/contracts";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
@@ -46,7 +47,7 @@ import { MAX_NOTES_PER_FILING } from "../lib/footnotes";
     <li><a href={SOURCES.senate.url}>U.S. Senate eFD</a>: periodic transaction reports. The Senate's site refuses automated readers, and this site does not disguise its crawler as a browser. Senate reports are instead read in an ordinary browser session by a person, saved, and loaded from those saved copies, so they arrive in batches rather than daily{senate.length ? "" : "; none has been loaded yet"}. Reports filed on paper are scans and are held for transcription like the House ones.</li>
     <li><a href={SOURCES.fec.url}>FEC (OpenFEC)</a>: itemized contributions (Schedule A) to the principal campaign committee of every current member of Congress and the 200 largest PACs by receipts in the current cycle, last 90 days.</li>
     <li><a href={SOURCES.lda.url}>Senate Lobbying Disclosure Act filings</a>: quarterly registrations and reports, every filing posted since October 1, 2025; an amended report replaces the one it amends.</li>
-    <li><a href={SOURCES.usaspending.url}>USAspending</a>: the largest contract awards that started in each of the last six months, plus awards to followed companies (exact recipient-name match); dated by award start date, valued at total award amount.</li>
+    <li><a href={SOURCES.usaspending.url}>USAspending</a>: the largest contract awards that started in each of the last six months, plus awards to followed companies (exact recipient-name match); dated by award start date, valued at total award amount. <span id="contract-details">Each award also shows the awarding sub-agency, the date the work is currently due to end and the description the agency entered, all as USAspending reports them; a description is cut at {DESCRIPTION_SHOWN} characters in tables and given in full in the CSV file, and nothing is worked out from it. The sub-agency table on the contracts page counts only awards that carry a sub-agency and says how many do.</span></li>
     <li><a href={SOURCES.treasury.url}>U.S. Treasury</a>: the daily par yield curve and the daily real (TIPS) yield curve; <a href={SOURCES.fiscaldata.url}>Treasury Fiscal Data</a>: I-Bond rates; <a href={SOURCES.bls.url}>BLS</a>: CPI-U, the input to the I-Bond variable rate.</li>
   </ul>
 

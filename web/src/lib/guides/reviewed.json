@@ -20,10 +20,11 @@
     }
   },
   "federal-contracts-usaspending": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-19",
     "covers": {
-      "ingest/src/sources/usaspending.ts": "daaccb07f23055b9",
-      "web/src/pages/contracts/index.astro": "b53d29e8d7b68d34"
+      "ingest/src/sources/usaspending.ts": "d16468c7a6977833",
+      "web/src/pages/contracts/index.astro": "76627a228d814d52",
+      "web/src/lib/contracts.ts": "c37352d0a3425c41"
     }
   },
   "form-4-transaction-codes": {
@@ -50,13 +51,13 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-18",
+    "reviewed": "2026-11-19",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "39fde97597925661",
+      "web/src/lib/downloads.ts": "1a7ab7d1ec3c05dd",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "197b28bafc2af8c4",
       "web/src/components/DownloadCsv.astro": "73f952882951a423"
@@ -188,7 +189,7 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-18",
+    "reviewed": "2026-11-19",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
@@ -202,7 +203,7 @@
       "web/src/lib/market.ts": "5efe96a0e16473e4",
       "web/src/pages/stocks/[ticker].astro": "b8610db325fd1b64",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
-      "web/src/pages/companies/[slug].astro": "ed620af1936a7f1f"
+      "web/src/pages/companies/[slug].astro": "41dacf3897239a66"
     }
   }
 }
