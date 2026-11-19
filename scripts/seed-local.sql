@@ -265,7 +265,11 @@ insert into contracts (recipient, awarding_agency, amount, action_date, naics, s
   ('LOCKHEED MARTIN CORP', 'Department of Defense', 84000000, current_date - 40, '336414', 'CONT_AWD_SEED2', 'Department of the Navy', current_date + 300, 'TRIDENT II D5 MISSILE PRODUCTION & DEPLOYED SYSTEMS SUPPORT'),
   ('PALANTIR TECHNOLOGIES INC.', 'Department of Defense', 480000000, current_date - 5, '541511', 'CONT_AWD_SEED3', 'Department of the Army', current_date + 1400, 'ARMY DATA PLATFORM SOFTWARE LICENSES'),
   ('MICROSOFT CORP', 'General Services Administration', 21000000, current_date - 70, '511210', 'CONT_AWD_SEED4', 'GENERAL SERVICES ADMINISTRATION', null, 'ENTERPRISE SOFTWARE "E5" LICENSES <RENEWAL>'),
-  ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 3200000, current_date - 2, '484121', 'CONT_AWD_SEED5', null, null, null);
+  ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 3200000, current_date - 2, '484121', 'CONT_AWD_SEED5', null, null, null),
+  -- industry codes (lib/naics.ts): SEED4 above carries a code the 2022 edition retired (511210),
+  -- SEED6 a code in no edition (shown without a title), SEED7 no code at all.
+  ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 150000, current_date - 20, '999999', 'CONT_AWD_SEED6', null, null, null),
+  ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 90000, current_date - 25, null, 'CONT_AWD_SEED7', null, null, null);
 insert into committees (fec_id, name, party, committee_type) values
   ('C00SEED001', 'Whitfield for Congress', 'REP', 'H'), ('C00SEED002', 'Marsh for California', 'DEM', 'H'), ('C00SEED003', 'Freedom Forward PAC', null, 'PAC');
 insert into donations (committee_id, donor_name, donor_employer, donor_state, amount, donated_at, source_ref)

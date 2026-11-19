@@ -5,11 +5,23 @@
 // an ellipsis), a sub-agency is shown only when it differs from the agency, an end date is shown
 // when the CSV has one, and the sub-agency table is recounted from the CSV rows with this
 // script's own grouping. Also the wording rule: nothing is said to be worked out from a description.
+// Industry codes (web/src/lib/naics.ts): the title under a code is read here straight from
+// web/src/lib/naics-titles.json with this script's own edition order, compared with the CSV's
+// naics_title and naics_edition and with the page; the table of codes is recounted from the CSV.
+import { readFileSync } from "node:fs";
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:/.test(a)) || "http://127.0.0.1:4321").replace(/\/$/, "");
 const sampleAt = args.indexOf("--sample");
 const sample = sampleAt >= 0 ? Number(args[sampleAt + 1]) : 5;
-const SHOWN = 140, AWARD_ROWS = 100, SUB_ROWS = 25, STORED_MAX = 1000;
+const SHOWN = 140, AWARD_ROWS = 100, SUB_ROWS = 25, STORED_MAX = 1000, CODE_ROWS = 25;
+const TITLES = JSON.parse(readFileSync(new URL("../web/src/lib/naics-titles.json", import.meta.url), "utf8"));
+/** { title, edition } for a six-digit code, newest edition first; null when no edition has it. */
+const titleOf = (code) => {
+  if (!/^\d{6}$/.test(code ?? "")) return null;
+  for (const y of ["2022", "2017", "2012", "2007"]) if (TITLES[y]?.[code]) return { title: TITLES[y][code], edition: y };
+  return null;
+};
+const labelOf = (code) => { const t = titleOf(code); return t ? (t.edition === "2022" ? t.title : `${t.title} (${t.edition} edition)`) : ""; };
 let failures = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { failures++; console.log(`✗ ${msg}`); } };
 const get = async (p) => {
@@ -69,6 +81,13 @@ function checkAwardRow(row, byId, where) {
   ok(sub === wantSub, `${where}: ${id} sub-agency shown "${sub}" should be "${wantSub}"`);
   const end = unescape(cellBy(row, "data-end")?.html ?? "");
   ok(c.end_date ? end !== "—" && end.includes(c.end_date.slice(0, 4)) : end === "—", `${where}: ${id} end date shown "${end}" for "${c.end_date}"`);
+  const ind = cellBy(row, "data-naics");
+  ok(!!ind, `${where}: ${id} has an industry-code cell`);
+  if (!ind) return;
+  const code = unescape((ind.html.match(/<span class="mono"[^>]*>([\s\S]*?)<\/span>/) ?? [])[1] ?? "");
+  const title = unescape((ind.html.match(/<span[^>]*data-naics-title[^>]*>([\s\S]*?)<\/span>/) ?? [])[1] ?? "");
+  ok(code === (c.naics || "—"), `${where}: ${id} industry code shown "${code}" should be "${c.naics || "—"}"`);
+  ok(title === labelOf(c.naics), `${where}: ${id} industry title shown "${title}" should be "${labelOf(c.naics)}"`);
 }
 
 const page = await get("/contracts/");
@@ -89,6 +108,13 @@ ok(csv.every((r) => (r.description ?? "").length <= STORED_MAX + 1), `no descrip
 ok(csv.every((r) => !r.end_date || /^\d{4}-\d{2}-\d{2}$/.test(r.end_date)), "every end_date is a date");
 ok(csv.every((r) => !/\s{2,}|[\r\n\t]/.test(r.description ?? "")), "descriptions have their white space collapsed");
 const byId = new Map(csv.map((r) => [r.award_id, r]));
+// Industry codes in the CSV against the titles file.
+for (const col of ["naics", "naics_title", "naics_edition"]) ok(head.includes(col), `federal-contracts.csv has the column ${col}`);
+ok(head.indexOf("naics_title") === head.indexOf("naics") + 1 && head.indexOf("naics_edition") === head.indexOf("naics") + 2, "naics_title and naics_edition follow naics");
+let csvTitleBad = 0;
+for (const r of csv) { const t = titleOf(r.naics); if ((r.naics_title ?? "") !== (t?.title ?? "") || (r.naics_edition ?? "") !== (t?.edition ?? "")) csvTitleBad++; }
+ok(csvTitleBad === 0, `every naics_title and naics_edition in the CSV is the titles file's for that code (${csvTitleBad} differ)`);
+ok(Object.keys(TITLES["2022"] ?? {}).length === 1012, "the titles file holds the 1,012 codes of the 2022 edition");
 
 // The largest-awards table.
 ok(!!awardRows && awardRows.length === Math.min(AWARD_ROWS, csv.length), `the awards table has ${Math.min(AWARD_ROWS, csv.length)} rows (has ${awardRows?.length})`);
@@ -136,6 +162,45 @@ if (groups.size === 0) {
   ok(!!said && int(said[1]) === withSub && int(said[2]) === csv.length, "the sentence above the table states how many awards carry a sub-agency");
 }
 
+// The table of industry codes, recounted.
+const codes = new Map();
+let withCode = 0;
+for (const r of csv) {
+  if (!/^\d{6}$/.test(r.naics ?? "")) continue;
+  withCode++;
+  const g = codes.get(r.naics) ?? { awards: 0, total: 0 };
+  g.awards++; g.total += Number(r.award_value || 0); codes.set(r.naics, g);
+}
+const codeAt = page.text.indexOf("data-naics-codes");
+if (codes.size === 0) {
+  ok(codeAt < 0, "with no industry code on record there is no table of codes");
+} else {
+  ok(codeAt >= 0, "the page has the table of industry codes");
+  const secTag = page.text.slice(page.text.lastIndexOf("<section", codeAt), page.text.indexOf(">", codeAt) + 1);
+  ok(int(attr(secTag, "data-with")) === withCode, `awards with an industry code: page ${attr(secTag, "data-with")}, CSV ${withCode}`);
+  ok(int(attr(secTag, "data-awards-total")) === csv.length, `awards on record (codes section): page ${attr(secTag, "data-awards-total")}, CSV ${csv.length}`);
+  ok(int(attr(secTag, "data-codes")) === codes.size, `different codes: page ${attr(secTag, "data-codes")}, CSV ${codes.size}`);
+  const codeRows = tableRows(page.text.slice(codeAt), "<table") ?? [];
+  ok(codeRows.length === Math.min(CODE_ROWS, codes.size), `the table of codes has ${Math.min(CODE_ROWS, codes.size)} rows (has ${codeRows.length})`);
+  let prev = Infinity;
+  for (const r of codeRows) {
+    const code = unescape(r.cells[0].html), title = unescape(r.cells[1].html);
+    const g = codes.get(code);
+    ok(!!g, `code row ${code} exists in the CSV`);
+    if (!g) continue;
+    ok(title === (labelOf(code) || "—"), `${code}: title shown "${title}" should be "${labelOf(code) || "—"}"`);
+    ok(int(unescape(r.cells[3].html)) === g.awards, `${code}: awards page ${unescape(r.cells[3].html)}, CSV ${g.awards}`);
+    ok(unescape(r.cells[2].html) === money(g.total), `${code}: award value page ${unescape(r.cells[2].html)}, CSV ${money(g.total)}`);
+    ok(g.total <= prev + 0.5, `${code}: rows are in order of award value`); prev = g.total;
+  }
+  const want = [...codes.values()].sort((a, b) => b.total - a.total).slice(0, CODE_ROWS);
+  ok(codeRows.length === 0 || Math.abs((want[want.length - 1]?.total ?? 0) - prev) < 1, "the codes shown are the largest by award value");
+  const said = page.text.slice(codeAt).match(/([\d,]+) of ([\d,]+) awards carry a code, ([\d,]+) different codes/);
+  ok(!!said && int(said[1]) === withCode && int(said[2]) === csv.length && int(said[3]) === codes.size, "the sentence above the table of codes states how many awards carry a code and how many codes there are");
+  ok(/describes the purchase, not the company/.test(page.text.slice(codeAt, codeAt + 3000)), "the page says a code describes the purchase, not the company");
+}
+ok(/<th[^>]*>Industry code \(NAICS\)<\/th>/.test(page.text), "the awards table has the Industry code (NAICS) column");
+
 // Wording: a description is the agency's text; nothing is derived from it.
 const text = unescape(page.text.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " "));
 ok(/agency's (own )?word/i.test(text), "the page says the description is the agency's wording");
@@ -152,9 +217,10 @@ for (const href of companyLinks) {
   ok(!!rows && rows.length > 0, `${href} has a contracts table`);
   for (const r of rows ?? []) { checkAwardRow(r, byId, href); companyRows++; }
   ok(/<th[^>]*>Description, as reported<\/th>/.test(res.text), `${href} has the Description column`);
+  ok(/<th[^>]*>Industry code \(NAICS\)<\/th>/.test(res.text), `${href} has the Industry code (NAICS) column`);
 }
 
 const withDesc = csv.filter((r) => r.description).length, withEnd = csv.filter((r) => r.end_date).length;
-console.log(`verify-contracts: ${csv.length} awards in the CSV (${withDesc} with a description, ${withSub} with a sub-agency, ${withEnd} with an end date), ${awardRows?.length ?? 0} rows on /contracts/, ${groups.size} sub-agencies, ${companyLinks.length} company pages (${companyRows} rows)`);
+console.log(`verify-contracts: ${csv.length} awards in the CSV (${withDesc} with a description, ${withSub} with a sub-agency, ${withEnd} with an end date), ${awardRows?.length ?? 0} rows on /contracts/, ${groups.size} sub-agencies, ${codes.size} industry codes on ${withCode} awards (${[...codes.keys()].filter((c) => !titleOf(c)).length} with no title), ${companyLinks.length} company pages (${companyRows} rows)`);
 console.log(failures ? `verify-contracts: ${failures} problem(s) in ${checks} checks` : `verify-contracts: ${checks} checks pass`);
 process.exit(failures ? 1 : 0);

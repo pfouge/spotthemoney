@@ -16,6 +16,7 @@ import Viz from "../../components/Viz.astro";
 import { flowDiagramSvg } from "../../lib/viz";
 import { contractFlows } from "../../lib/vizdata";
 import { shortDescription, subAgencyLabel, subAgencyRows, contractDetailStats, SUB_AGENCY_ROWS, DESCRIPTION_SHOWN } from "../../lib/contracts";
+import { naicsLabel, naicsRows, naicsStats, NAICS_ROWS } from "../../lib/naics";
 
 const model = await getFlagship();
 const rows = model.contracts;
@@ -26,6 +27,8 @@ const byName = new Map([...model.companies.values()].map((c) => [normalizeOrgNam
 const total = sum(rows.map((r) => r.amount));
 const details = contractDetailStats(rows);
 const subRows = subAgencyRows(rows);
+const codeRows = naicsRows(rows);
+const codeStats = naicsStats(rows);
 const answer = rows.length === 0
   ? "No contract awards are on record yet; the daily USAspending job loads the largest awards that started in each of the last six months."
   : `This page tracks ${plural(rows.length, "federal contract award")} that started in the last 180 days, with a combined award value of ${money(total)}: the largest awards of each month, plus awards to companies followed here. It is not every federal contract. The largest is ${money(rows[0]?.amount)} to ${rows[0]?.recipient ?? "—"} from ${rows[0]?.agency ?? "—"}; the biggest recipient overall is ${topRecipients[0]?.name ?? "—"} at ${money(topRecipients[0]?.total ?? 0)}.`;
@@ -57,11 +60,11 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <h2>Largest awards (started in the last 180 days)</h2>
   <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "federal-contracts.csv")} note="every award held, not only the 100 shown" />
   {rows.length === 0 ? <p class="empty-reason">No awards on record yet.</p> : (
-    <div class="tablewrap"><table class="data" data-awards><thead><tr><th>Start date</th><th>Recipient</th><th>Awarding agency</th><th class="num">Award value</th><th>Description, as reported</th><th>End date</th><th>NAICS</th><th>Source</th></tr></thead><tbody>
-      {rows.slice(0, 100).map((r) => { const sub = subAgencyLabel(r.agency, r.subAgency); const desc = shortDescription(r.description); return <tr data-award={r.sourceRef}><td class="mono">{formatDate(r.actionDate)}</td><td>{orgPath(model, r.recipient) ? <a href={orgPath(model, r.recipient)!}>{r.recipient}</a> : (r.recipient ?? "—")}</td><td class="agency">{r.agency ?? "—"}{sub && <span class="sub" data-sub>{sub}</span>}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="wrap desc" data-desc>{desc ?? "—"}</td><td class="mono" data-end>{r.endDate ? formatDate(r.endDate) : "—"}</td><td class="mono">{r.naics ?? "—"}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>; })}
+    <div class="tablewrap"><table class="data" data-awards><thead><tr><th>Start date</th><th>Recipient</th><th>Awarding agency</th><th class="num">Award value</th><th>Description, as reported</th><th>End date</th><th>Industry code (NAICS)</th><th>Source</th></tr></thead><tbody>
+      {rows.slice(0, 100).map((r) => { const sub = subAgencyLabel(r.agency, r.subAgency); const desc = shortDescription(r.description); const industry = naicsLabel(r.naics); return <tr data-award={r.sourceRef}><td class="mono">{formatDate(r.actionDate)}</td><td>{orgPath(model, r.recipient) ? <a href={orgPath(model, r.recipient)!}>{r.recipient}</a> : (r.recipient ?? "—")}</td><td class="agency">{r.agency ?? "—"}{sub && <span class="sub" data-sub>{sub}</span>}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="wrap desc" data-desc>{desc ?? "—"}</td><td class="mono" data-end>{r.endDate ? formatDate(r.endDate) : "—"}</td><td class="wrap naics" data-naics><span class="mono">{r.naics ?? "—"}</span>{industry && <span class="sub" data-naics-title>{industry}</span>}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>; })}
     </tbody></table></div>
   )}
-  {rows.length > 0 && <p class="section-note" data-detail-note>The description is the agency's own wording, shown as entered and cut at {DESCRIPTION_SHOWN} characters; the full text is on the award's USAspending page and in the CSV file. The end date is when the work is currently due to end. {details.withDescription < details.awards ? `${num(details.withDescription)} of ${num(details.awards)} awards on record carry a description. The others show a dash: USAspending lists no description for the award, or the award was stored before descriptions were kept and the daily job, which asks for such awards one at a time, has not reached it yet.` : ""}</p>}
+  {rows.length > 0 && <p class="section-note" data-detail-note>The description is the agency's own wording, shown as entered and cut at {DESCRIPTION_SHOWN} characters; the full text is on the award's USAspending page and in the CSV file. The end date is when the work is currently due to end. {details.withDescription < details.awards ? `${num(details.withDescription)} of ${num(details.awards)} awards on record carry a description. The others show a dash: USAspending lists no description for the award, or the award was stored before descriptions were kept and the daily job, which asks for such awards one at a time, has not reached it yet.` : ""} The industry code is the NAICS code on the award, with the code's official title under it; it describes the work bought, not the company.</p>}
 
   {subRows.length > 0 && (
     <section data-sub-agencies data-with={details.withSubAgency} data-awards-total={details.awards}>
@@ -75,6 +78,18 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
     </section>
   )}
 
+  {codeRows.length > 0 && (
+    <section data-naics-codes data-with={codeStats.withCode} data-awards-total={codeStats.awards} data-codes={codeStats.codes}>
+    <h2 id="naics">Awards by industry code (awards started in the last 180 days)</h2>
+    <p>Every contract award carries a six-digit NAICS code, picked by the contracting office for the kind of work being bought. It describes the purchase, not the company: a software firm that wins a building contract appears under construction. This table adds up the awards on this page by code and gives each code its official title. {num(codeStats.withCode)} of {num(codeStats.awards)} awards carry a code, {num(codeStats.codes)} different codes in all{codeRows.length > NAICS_ROWS ? `; the ${NAICS_ROWS} with the largest award value are shown` : ""}. {codeStats.retiredCodes > 0 ? `A title followed by an edition year belongs to a code that the 2022 edition of the classification no longer uses (${plural(codeStats.retiredCodes, "such code")} on ${plural(codeStats.awardsRetired, "award")}).` : ""} Click a column title to sort.</p>
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {[{ label: "Code", type: "text", cls: "" }, { label: "Industry, by NAICS title", type: "text", cls: "" }, { label: "Award value", type: "num", cls: "num" }, { label: "Awards", type: "num", cls: "num" }].map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+    </tr></thead><tbody>
+      {codeRows.slice(0, NAICS_ROWS).map((r) => <tr data-naics-row={r.code}><td class="mono" data-v={r.code}>{r.code}</td><td class="wrap ind" data-v={(r.label ?? "").toLowerCase()}>{r.label ?? "—"}</td><td class="num strong" data-v={Math.round(r.total)}>{money(r.total)}</td><td class="num" data-v={r.awards}>{num(r.awards)}</td></tr>)}
+    </tbody></table></div>
+    </section>
+  )}
+
   <div class="prose">
   <h2 id="about-this-page">What this page shows</h2>
   <p>When a federal agency signs a contract with a company, the award is published. This page lists large contract awards that started in the last 180 days: which companies received the most, and the biggest single awards, with the agency that made each one.</p>
@@ -83,11 +98,14 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <p>The awards come from USAspending.gov, the government's official record of federal spending, which the Treasury Department runs from data the agencies report. This site reads it once a day and links each award to its USAspending page.</p>
   </div>
   <h2>How to read this</h2>
-  <p>Each row is one contract award. The date is the award's start date and the amount is its total award value to date as USAspending reports it, which is an obligation, not a payment, and can change as the contract is modified. The description says what was bought in the awarding agency's words; nothing on this site is worked out from it. The list is a defined slice, not every federal contract: the largest awards starting in each 30-day period (up to 300 each), plus awards to companies followed on this site whose recipient name matches exactly. See <a href="/methodology/">methodology</a>.</p>
+  <p>Each row is one contract award. The date is the award's start date and the amount is its total award value to date as USAspending reports it, which is an obligation, not a payment, and can change as the contract is modified. The description says what was bought in the awarding agency's words; nothing on this site is worked out from it. The industry code is the award's NAICS code with its official title. The list is a defined slice, not every federal contract: the largest awards starting in each 30-day period (up to 300 each), plus awards to companies followed on this site whose recipient name matches exactly. See <a href="/methodology/">methodology</a>.</p>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />
 </BaseLayout>
 <style>
   td.agency .sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  td.naics { min-width: 150px; max-width: 230px; padding-top: 6px; padding-bottom: 6px; }
+  td.naics .sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.25; margin-top: 1px; }
+  td.ind { min-width: 200px; }
   td.desc { min-width: 260px; max-width: 380px; font-size: 13px; line-height: 1.35; padding-top: 6px; padding-bottom: 6px; }
 </style>

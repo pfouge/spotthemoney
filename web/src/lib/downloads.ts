@@ -21,6 +21,7 @@ import { toCsv, type Column } from "./csv";
 import { changeCsv } from "./holdings";
 import { rowIssues } from "./lobbyissues";
 import { cleanDescription } from "./contracts";
+import { naicsTitle } from "./naics";
 
 export const MAX_ROWS = 50_000;
 export type Group = "congress" | "insiders" | "washington" | "rates";
@@ -242,7 +243,9 @@ async function build(): Promise<Downloads> {
     { key: "award_value", about: "Award value in dollars as USAspending reports it.", get: (c) => c.amount },
     { key: "end_date", about: "Date the work is currently due to end, as USAspending reports it; it moves when a contract is extended or cut short.", get: (c) => c.endDate },
     { key: "description", about: "The award's description as the agency entered it (white space collapsed, at most 1,000 characters).", get: (c) => cleanDescription(c.description) },
-    { key: "naics", about: "Industry code (NAICS) of the award.", get: (c) => c.naics },
+    { key: "naics", about: "Industry code (NAICS) of the award: the code the contracting office gave the work bought, not the recipient's own industry.", get: (c) => c.naics },
+    { key: "naics_title", about: "The Census Bureau's title for that code. Empty when the award has no code or the code is in none of the editions held (2022, 2017, 2012, 2007).", get: (c) => naicsTitle(c.naics)?.title ?? null },
+    { key: "naics_edition", about: "The NAICS edition the title is from: 2022, or an earlier year for a code the 2022 edition no longer uses.", get: (c) => naicsTitle(c.naics)?.edition ?? null },
     { key: "award_id", about: "USAspending award id.", get: (c) => c.sourceRef },
     { key: "award_url", about: "Link to the award on USAspending.gov.", get: (c) => (c.sourceRef ? `https://www.usaspending.gov/award/${c.sourceRef}` : null) },
   ];

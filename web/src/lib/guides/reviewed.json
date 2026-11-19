@@ -24,8 +24,9 @@
     "covers": {
       "ingest/src/sources/usaspending.ts": "d16468c7a6977833",
       "ingest/src/sources/usaspending_details.ts": "07829dbe76ba5f00",
-      "web/src/pages/contracts/index.astro": "242d60524f72d6d5",
-      "web/src/lib/contracts.ts": "c37352d0a3425c41"
+      "web/src/pages/contracts/index.astro": "93066c3c6ad5b591",
+      "web/src/lib/contracts.ts": "c37352d0a3425c41",
+      "web/src/lib/naics.ts": "e383c21b014850a8"
     }
   },
   "form-4-transaction-codes": {
@@ -58,7 +59,7 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "0f9c16dcb76e3125",
+      "web/src/lib/downloads.ts": "b330f1e2fe8e84b2",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "bab33284c2bec8be",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
@@ -206,7 +207,7 @@
       "web/src/lib/market.ts": "5efe96a0e16473e4",
       "web/src/pages/stocks/[ticker].astro": "b8610db325fd1b64",
       "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
-      "web/src/pages/companies/[slug].astro": "41dacf3897239a66"
+      "web/src/pages/companies/[slug].astro": "31a304f956ac2143"
     }
   }
 }
