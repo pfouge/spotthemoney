@@ -1,0 +1,160 @@
+---
+// /markets/largest-stock-exchanges/ — the dollar size of the world's major stock markets, as two
+// bar charts: the 18 largest by exchange, and the United States against the European Union.
+// Every figure comes from lib/worldmarkets.ts (typed in from one World Federation of Exchanges
+// table); nothing on this page is a typed-in total. The site's first page that is not U.S.
+// disclosure or Treasury data, hence the caveats block: exchanges are not countries.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import Answer from "../../components/Answer.astro";
+import Viz from "../../components/Viz.astro";
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getDownloads } from "../../lib/downloads";
+import { datasetLd } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+import { flagSrc } from "../../lib/flags";
+import { rankBarsSvg, PHONE_W, WIDE_W, type RankRow } from "../../lib/viz";
+import {
+  WFE, MARKETS_PATH, LARGEST_MARKETS, EU_EXCHANGES, BSE_INDIA, US_MILLIONS, EU_MILLIONS, US_EU_MULTIPLE, US_EU_GAP_MILLIONS,
+  barMillions, trillions, millions,
+} from "../../lib/worldmarkets";
+
+const asOf = WFE.asOfLabel;
+const top = LARGEST_MARKETS[0], second = LARGEST_MARKETS[1], last = LARGEST_MARKETS[LARGEST_MARKETS.length - 1];
+const multiple = `${US_EU_MULTIPLE.toFixed(1)}x`;
+
+// Chart 1: one bar per market, the United States stacked from its two exchanges.
+const SEGMENT = [{ cls: "v-c2", on: "v-on" }, { cls: "v-c2s", on: "v-on2" }];
+const rankRows: RankRow[] = LARGEST_MARKETS.map((b) => ({
+  label: b.label, short: b.short, value: barMillions(b), valueLabel: trillions(barMillions(b)), flag: flagSrc(b.flag), cls: "v-c2",
+  segments: b.parts.length > 1 ? b.parts.map((p, i) => ({ label: p.label, value: p.usdMillions, valueLabel: trillions(p.usdMillions), ...SEGMENT[i % SEGMENT.length] })) : undefined,
+}));
+const rankLabel = `Domestic market capitalization of the ${LARGEST_MARKETS.length} largest stock markets by exchange, US$ trillions, ${asOf}`;
+const rankLegend = top.parts.map((p, i): [string, string] => [SEGMENT[i % SEGMENT.length].cls, `${p.label} ${trillions(p.usdMillions)}`]);
+
+// Chart 2: two bars, to one decimal.
+const pairRows: RankRow[] = [
+  { label: "United States", value: US_MILLIONS, valueLabel: trillions(US_MILLIONS, 1), flag: flagSrc("us"), cls: "v-c2" },
+  { label: "European Union", value: EU_MILLIONS, valueLabel: trillions(EU_MILLIONS, 1), flag: flagSrc("eu"), cls: "v-c1" },
+];
+const pairLabel = `Stock market size, United States against the European Union, US$ trillions, ${asOf}`;
+
+const tiles = [
+  { k: "U.S. multiple of the EU", v: multiple, d: `${trillions(US_MILLIONS, 1)} against ${trillions(EU_MILLIONS, 1)}, ${asOf}` },
+  { k: "Gap", v: trillions(US_EU_GAP_MILLIONS, 1), d: `United States minus European Union, ${asOf}` },
+  { k: "EU exchanges summed", v: String(EU_EXCHANGES.length), d: `Every EU-based exchange in the source table, ${asOf}` },
+];
+
+const csv = (await getDownloads()).files.find((f) => f.name === "world-stock-markets.csv");
+const answer = `In ${asOf} the two main U.S. stock exchanges, ${top.parts.map((p) => p.label).join(" and ")}, held ${trillions(US_MILLIONS)} of listed company value between them, more than the next ${LARGEST_MARKETS.length - 1} largest stock markets on this list combined. That is ${multiple} the ${trillions(EU_MILLIONS, 1)} listed on the ${EU_EXCHANGES.length} exchanges based in the European Union, a gap of ${trillions(US_EU_GAP_MILLIONS, 1)}.`;
+const nextCombined = LARGEST_MARKETS.slice(1).reduce((a, b) => a + barMillions(b), 0);
+if (nextCombined >= US_MILLIONS) throw new Error("[markets] the answer block says the U.S. exceeds the rest of the list combined; the data no longer supports it");
+const description = [
+  `The world's largest stock markets by market cap, ${asOf}: Nasdaq and NYSE hold ${trillions(US_MILLIONS)}, ${multiple} the European Union's exchanges. Chart, table, CSV.`,
+  `The world's largest stock markets by market cap in ${asOf}, and the United States against the European Union. Chart, table and CSV.`,
+];
+---
+<BaseLayout section="Markets" title={["Largest Stock Exchanges in the World by Market Cap", "Largest Stock Exchanges by Market Cap"]} description={description} modified={WFE.retrieved}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Largest stock exchanges", path: MARKETS_PATH }]} />
+  <p class="eyebrow">Markets</p>
+  <h1>The world's largest stock markets</h1>
+  <p class="lede">The dollar value of the companies listed on each major stock exchange in {asOf}, and how the United States compares with the European Union.</p>
+  <Answer text={answer} updated={WFE.retrieved} sourceNote={`Source: ${WFE.name}, figures for ${asOf}`} />
+
+  <div class="viz-grid">
+    <Viz wide mid id="largest-stock-markets" title={`The world's largest stock markets, ${asOf}`}
+      question="How big is each major stock market, in U.S. dollars?"
+      svg={rankBarsSvg(rankRows, rankLabel, WIDE_W)} svgNarrow={rankBarsSvg(rankRows, rankLabel, 640)} svgPhone={rankBarsSvg(rankRows, rankLabel, PHONE_W)}
+      legend={rankLegend}
+      summary={`Domestic market capitalization by exchange in US$ trillions, ${asOf}: the United States (Nasdaq plus NYSE) is first at ${trillions(barMillions(top))}, the ${second.label} second at ${trillions(barMillions(second))}, and ${last.label} is the smallest of the ${LARGEST_MARKETS.length} shown at ${trillions(barMillions(last))}.`}>
+      <p class="mk-credit">Analysis: Investing Intelligence Foundation. Data: World Federation of Exchanges.</p>
+    </Viz>
+  </div>
+
+  <h2 id="us-vs-eu">United States vs European Union</h2>
+  <div class="viz-tiles mk-tiles">
+    {tiles.map((t) => <div class="viz-tile"><div class="k">{t.k}</div><div class="v">{t.v}</div><div class="d">{t.d}</div></div>)}
+  </div>
+  <div class="viz-grid">
+    <Viz wide mid id="united-states-vs-european-union" title={`United States vs European Union, ${asOf}`}
+      question="How much larger is the U.S. stock market than the European Union's?"
+      svg={rankBarsSvg(pairRows, pairLabel, WIDE_W)} svgNarrow={rankBarsSvg(pairRows, pairLabel, 640)} svgPhone={rankBarsSvg(pairRows, pairLabel, PHONE_W)}
+      summary={`In ${asOf} companies listed on Nasdaq and NYSE were worth ${trillions(US_MILLIONS, 1)}, which is ${multiple} the ${trillions(EU_MILLIONS, 1)} listed on the ${EU_EXCHANGES.length} exchanges based in the European Union.`}>
+      <p class="mk-credit">Analysis: Investing Intelligence Foundation. Data: World Federation of Exchanges.</p>
+    </Viz>
+  </div>
+
+  <AdSlot label="Advertisement" />
+
+  <h2 id="data">The numbers</h2>
+  <p>All figures are domestic market capitalization for {asOf}, as the World Federation of Exchanges published them in millions of U.S. dollars.</p>
+  <DownloadCsv file={csv} note={`both charts and the EU exchanges, ${asOf}`} />
+  <div class="tablewrap">
+    <table class="data" id="table-largest">
+      <caption>The world's largest stock markets by exchange, {asOf}</caption>
+      <thead><tr><th scope="col" class="num">Rank</th><th scope="col">Market</th><th scope="col" class="num">US$ trillions</th><th scope="col" class="num">US$ millions</th></tr></thead>
+      <tbody>
+        {LARGEST_MARKETS.map((b, i) => (
+          <tr>
+            <td class="num">{i + 1}</td>
+            <th scope="row">{b.label}{b.parts.length > 1 && <span class="mk-parts"> {b.parts.map((p) => `${p.label} ${trillions(p.usdMillions)}`).join(", ")}</span>}</th>
+            <td class="num strong">{trillions(barMillions(b))}</td>
+            <td class="num">{millions(barMillions(b))}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <div class="tablewrap">
+    <table class="data" id="table-us-eu">
+      <caption>United States vs European Union, {asOf}</caption>
+      <thead><tr><th scope="col">Market</th><th scope="col">What is summed</th><th scope="col" class="num">US$ trillions</th><th scope="col" class="num">US$ millions</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">United States</th><td>{top.parts.map((p) => p.label).join(" + ")}</td><td class="num strong">{trillions(US_MILLIONS, 1)}</td><td class="num">{millions(US_MILLIONS)}</td></tr>
+        <tr><th scope="row">European Union</th><td>{EU_EXCHANGES.length} EU-based exchanges</td><td class="num strong">{trillions(EU_MILLIONS, 1)}</td><td class="num">{millions(EU_MILLIONS)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tablewrap">
+    <table class="data" id="table-eu">
+      <caption>The {EU_EXCHANGES.length} EU-based exchanges summed into the European Union figure, {asOf}</caption>
+      <thead><tr><th scope="col" class="num">Rank</th><th scope="col">Exchange</th><th scope="col" class="num">US$ millions</th></tr></thead>
+      <tbody>
+        {EU_EXCHANGES.map((e, i) => <tr><td class="num">{i + 1}</td><th scope="row">{e.label}</th><td class="num">{millions(e.usdMillions)}</td></tr>)}
+        <tr><td></td><th scope="row">Total</th><td class="num strong">{millions(EU_MILLIONS)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose">
+  <h2 id="how-to-read">How to read this</h2>
+  <ul>
+    <li><strong>These are exchanges, not countries.</strong> Each bar is the value of the domestic companies listed on one exchange or exchange group. The United States bar adds together its two main exchanges, Nasdaq ({trillions(top.parts[0].usdMillions)}) and NYSE ({trillions(top.parts[1].usdMillions)}), in {asOf}.</li>
+    <li><strong>London is absent, not zero.</strong> The London Stock Exchange is not in the World Federation of Exchanges table, so it has no bar here.</li>
+    <li><strong>India is shown once.</strong> NSE India is on the chart. BSE India ({trillions(BSE_INDIA.usdMillions)} in {asOf}) lists largely the same companies, so it is left out to avoid counting them twice.</li>
+    <li><strong>The European Union total is slightly too high.</strong> Euronext includes the Oslo exchange and Nasdaq Nordic and Baltics includes Iceland. Norway and Iceland are outside the EU, and the source does not report them separately. Nasdaq Nordic and Baltics carries Sweden's flag because it is based in Stockholm, and Euronext carries the EU flag because it runs exchanges in several countries.</li>
+    <li><strong>The figures are about two months old when published.</strong> The World Federation of Exchanges releases each month's table roughly two months later. Everything on this page is for {asOf} and was read from the source on {formatDate(WFE.retrieved)}. Market values move every trading day.</li>
+  </ul>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>Every figure is from the <a href={WFE.url} rel="noopener">{WFE.name}, {WFE.publication}, {WFE.issue} issue</a>, table "{WFE.table}", {asOf} column. The figures are shown as published. The totals, the multiple and the gap are worked out from them on this page, and the <a href="/methodology/">methodology page</a> covers how the rest of this site handles its sources.</p>
+  </div>
+  <p class="disclaimer"><strong>Not investment advice.</strong> World Federation of Exchanges statistics for {asOf}, shown as published.</p>
+
+  <JsonLd data={datasetLd({
+    downloads: [csv?.path], name: `Largest stock exchanges in the world by domestic market capitalization, ${asOf}`, path: MARKETS_PATH,
+    description: `Domestic market capitalization of the world's ${LARGEST_MARKETS.length} largest stock markets by exchange in U.S. dollars for ${asOf}, and the United States total against the ${EU_EXCHANGES.length} exchanges based in the European Union.`,
+    dateModified: WFE.retrieved, temporalCoverage: WFE.asOf,
+    keywords: ["stock exchanges", "market capitalization", "world stock markets", "Nasdaq", "NYSE", "European Union"],
+    sources: [{ name: `${WFE.name}: ${WFE.publication}, ${WFE.issue}`, url: WFE.url }],
+  })} />
+</BaseLayout>
+
+<style>
+  .mk-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 560px) { .mk-tiles { grid-template-columns: 1fr; } }
+  .mk-credit { margin: 0.7rem 0 0; color: var(--ink-soft); font-size: 12.5px; }
+  .mk-parts { display: block; font-weight: 400; color: var(--ink-soft); font-size: 13px; }
+  .tablewrap + .tablewrap { margin-top: 1.75rem; }
+</style>

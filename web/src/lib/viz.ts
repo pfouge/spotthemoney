@@ -244,15 +244,54 @@ export function scatterSvg(points: { label: string; x: number; y: number; size: 
 }
 
 // ── 11 leaderboards · 15 agencies ───────────────────────────────────────────────────────
-export function rankBarsSvg(rows: { label: string; value: number; valueLabel: string; href?: string | null }[], label = "Ranked bars", W = 560): string {
+/** One row of rankBarsSvg. `flag` is a full 4x3 flag SVG source (lib/flags.ts), drawn between the label and the bar.
+ *  `short` replaces `label` where the label column is too narrow (phones). `cls` colours a plain bar (default v-one).
+ *  `segments` stacks the bar from parts, in order: each has its own fill class, and `on` is the text class that
+ *  reads on that fill. Segment names and values are written inside the bar only when every one of them fits;
+ *  otherwise none is, so the chart needs a legend that carries them (Viz `legend`). */
+export interface RankRow {
+  label: string; short?: string; value: number; valueLabel: string; href?: string | null; flag?: string; cls?: string;
+  segments?: { label: string; value: number; valueLabel: string; cls: string; on?: string }[];
+}
+/** A flag nested at (x, y), `h` tall and 4:3 wide, with a hairline edge so white fields show on a white card.
+ *  The flag's ids are prefixed with `uid`: one page holds several builds of a chart, and a clip path that
+ *  resolves into a hidden build does not paint. Hidden from screen readers; the row label names the market. */
+function flagAt(src: string, x: number, y: number, h: number, uid: string): string {
+  const m = src.match(/<svg\b[^>]*\bviewBox="([^"]+)"[^>]*>([\s\S]*)<\/svg>/);
+  if (!m) return "";
+  const w = (h * 4) / 3;
+  const inner = m[2].replace(/\s*\n\s*/g, " ").replace(/xlink:href=/g, "href=").replace(/\bid="([^"]+)"/g, `id="${uid}-$1"`)
+    .replace(/href="#([^"]+)"/g, `href="#${uid}-$1"`).replace(/url\(#([^)]+)\)/g, `url(#${uid}-$1)`).trim();
+  return `<g aria-hidden="true"><svg x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" viewBox="${m[1]}" preserveAspectRatio="none">${inner}</svg>`
+    + `<rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" class="v-flag-edge"/></g>`;
+}
+export function rankBarsSvg(rows: RankRow[], label = "Ranked bars", W = 560): string {
   const live = rows.filter((r) => r.value > 0);
   if (live.length === 0) return "";
-  const lw = Math.min(W * 0.41, Math.max(...live.map((r) => tw(r.label))) + 12), H = live.length * 28 + 4, mx = Math.max(...live.map((r) => r.value));
-  const room = W - lw - Math.max(...live.map((r) => tw(r.valueLabel))) - 10;
+  const cap = W * 0.41, name = (r: RankRow) => (r.short && tw(r.label) > cap - 8 ? r.short : r.label);
+  const lw = Math.min(cap, Math.max(...live.map((r) => tw(name(r)))) + 12), H = live.length * 28 + 4, mx = Math.max(...live.map((r) => r.value));
+  const fw = live.some((r) => r.flag) ? 26 : 0, x0 = lw + fw;
+  const room = W - x0 - Math.max(...live.map((r) => tw(r.valueLabel))) - 10;
   let o = open(W, H, label);
   live.forEach((r, i) => {
-    const y = i * 28 + 4, w = Math.max(4, (r.value / mx) * room), lab = text(0, y + 15, fit(r.label, lw - 8), "vi");
-    o += (r.href ? `<a href="${esc(r.href)}">${lab}</a>` : lab) + `<rect x="${lw}" y="${y + 2}" width="${f1(w)}" height="16" rx="3" class="v-one"${tip(`${r.label}|${r.valueLabel}`)}/>` + text(lw + w + 6, y + 15, r.valueLabel);
+    const y = i * 28 + 4, w = Math.max(4, (r.value / mx) * room), lab = text(0, y + 15, fit(name(r), lw - 8), "vi");
+    o += r.href ? `<a href="${esc(r.href)}">${lab}</a>` : lab;
+    if (r.flag) o += flagAt(r.flag, lw, y + 3, 14, `f${W}-${i}`);
+    const segs = (r.segments ?? []).filter((s) => s.value > 0);
+    if (segs.length > 1) {
+      // Segment widths share the bar's own length, so the stack ends where a plain bar of the total would.
+      const ws = segs.map((s) => (s.value / r.value) * w), inside = segs.every((s, k) => tw(`${s.label} ${s.valueLabel}`) + 14 <= ws[k]);
+      let x = x0;
+      segs.forEach((s, k) => {
+        const sw = Math.max(2, ws[k] - (k < segs.length - 1 ? 2 : 0));
+        o += `<rect x="${f1(x)}" y="${y + 2}" width="${f1(sw)}" height="16" rx="3" class="${s.cls}"${tip(`${r.label}|${s.label} ${s.valueLabel}`)}/>`;
+        if (inside) o += text(x + 7, y + 14.5, `${s.label} ${s.valueLabel}`, `vt ${s.on ?? "v-on"}`, "start", ' pointer-events="none"');
+        x += ws[k];
+      });
+    } else {
+      o += `<rect x="${f1(x0)}" y="${y + 2}" width="${f1(w)}" height="16" rx="3" class="${r.cls ?? "v-one"}"${tip(`${r.label}|${r.valueLabel}`)}/>`;
+    }
+    o += text(x0 + w + 6, y + 15, r.valueLabel);
   });
   return linked(o + "</svg>");
 }

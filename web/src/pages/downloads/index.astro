@@ -13,7 +13,7 @@ import { formatDate } from "../../lib/format";
 
 const d = await getDownloads();
 const model = await getFlagship();
-const groups = (["congress", "insiders", "washington", "rates"] as Group[]).map((g) => ({ g, files: d.files.filter((f) => f.group === g) })).filter((x) => x.files.length);
+const groups = (["congress", "insiders", "washington", "rates", "markets"] as Group[]).map((g) => ({ g, files: d.files.filter((f) => f.group === g) })).filter((x) => x.files.length);
 const updated = d.files.reduce<string | null>((a, f) => (f.updated && (!a || f.updated > a) ? f.updated : a), null) ?? model.builtAt.slice(0, 10);
 const exampleMember = [...d.member.values()].sort((a, b) => b.rows - a.rows)[0];
 const exampleStock = [...d.stock.values()].sort((a, b) => b.rows - a.rows)[0];
@@ -59,6 +59,7 @@ const ld = {
       </ul>
       {x.g === "insiders" && <p class="section-note">Insider transactions are cut by the quarter in which they were disclosed so that each file opens in a spreadsheet. The "last 90 days" file overlaps the newest quarters. Old quarters that hold only a few rows are combined into one "before" file. A row marked <code>also_in_another_filing</code> repeats a transaction another filer already reported; count it once.</p>}
       {x.g === "washington" && <p class="section-note">Campaign donations are not offered as a file. This site holds a recent sample of receipts, not totals, and federal law restricts copying donor details from FEC reports. The <a href="/donations/">donations page</a> shows the aggregates.</p>}
+      {x.g === "markets" && <p class="section-note">Figures are the World Federation of Exchanges' published monthly statistics, shown on the <a href="/markets/largest-stock-exchanges/">largest stock exchanges page</a> with what they leave out.</p>}
       {x.g === "rates" && <p class="section-note">Rates are U.S. Treasury and Bureau of Labor Statistics figures, which are in the public domain.</p>}
     </section>
   ))}

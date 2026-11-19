@@ -1,0 +1,6 @@
+---
+// /markets/ has one page so far. Until a second markets page exists and this becomes a hub,
+// it sends visitors to that page (a static redirect page; it is not in the sitemap).
+import { MARKETS_PATH } from "../../lib/worldmarkets";
+return Astro.redirect(MARKETS_PATH, 302);
+---

@@ -18,6 +18,8 @@
   --green-ink: #11733F; --red-ink: #B03226;
   --glow-signal: none; --chip: rgba(12,13,14,.06); --chip-hover: rgba(12,13,14,.10); --shadow: 0 8px 28px rgba(12,13,14,.14);
   --chart-1: #15824B; --chart-2: #0E75B0; /* data marks — validated for the light surface */
+  /* A lighter step of --chart-2 for the second segment of a stacked bar, and the text that reads on it (validated with --chart-2: OKLab ΔE 18.1). */
+  --chart-2-soft: #55AEE8; --chart-2-soft-on: #0C0D0E;
   /* lib/viz.ts charts. Buy/sell pair validated colorblind-safe on this surface (the brand
      --green/--red pair is not: deutan ΔE 5.7). --viz-late is a caution tone, never a series. */
   --viz-buy: #12876A; --viz-sell: #D4472F; --viz-one: #0E75B0; --viz-late: #8A5A00; --viz-muted: #A9ADB1; --viz-none: #E7E7E2; --viz-on: #FFFFFF;
@@ -37,6 +39,7 @@ html.dark {
   --green-ink: #4ADE80; --red-ink: #F0655F;
   --glow-signal: 0 0 10px rgba(47,200,234,.55); --chip: rgba(244,244,242,.09); --chip-hover: rgba(244,244,242,.15); --shadow: 0 8px 28px rgba(0,0,0,.6);
   --chart-1: #2FAE5E; --chart-2: #2098BB; /* data marks — validated for the dark surface */
+  --chart-2-soft: #62D0EE; --chart-2-soft-on: #04141B;
   --viz-buy: #23AA8A; --viz-sell: #E25B46; --viz-one: #2098BB; --viz-late: #B87D14; --viz-muted: #6B7278; --viz-none: #1C2024; --viz-on: #04141B;
   --r-sm: 8px; --r-md: 16px; --r-pill: 999px;
   --max: 1360px;
@@ -429,6 +432,8 @@ main :is(p, li, dd) a:not([class]), main :is(p, li, dd) a.mono { text-decoration
 /* One chart, up to three builds (Viz.astro): .vz-a default, .vz-b for a full-row chart once the page is one column, .vz-c for phones. */
 .vz-b, .vz-c { display: none; }
 @media (max-width: 760px) { .viz-body:has(.vz-b) .vz-a { display: none; } .vz-b { display: block; } }
+/* .viz-mid (Viz `mid`): a label-heavy full-row chart swaps to its narrow build from tablet width down, so its text is not shrunk with the card. */
+@media (max-width: 1023px) { .viz-mid .viz-body:has(.vz-b) .vz-a { display: none; } .viz-mid .vz-b { display: block; } }
 @media (max-width: 560px) { .viz-body:has(.vz-c) .vz-a, .viz-body:has(.vz-c) .vz-b { display: none; } .vz-c { display: block; } }
 /* Phones: time-series charts scroll sideways inside their card (scripts/viz.ts starts them at the newest end) so their
    text stays legible; every other chart shrinks to fit so the whole picture stays in view. */
@@ -444,6 +449,11 @@ svg.vz .v-plot { fill: var(--surface-alt); } svg.vz .v-band { fill: var(--viz-on
 svg.vz .v-line { stroke: var(--viz-one); } svg.vz .v-line2 { stroke: var(--viz-muted); }
 svg.vz .v-grid { stroke: var(--line); } svg.vz .v-axis { stroke: var(--line-strong); } svg.vz .v-rule { stroke: var(--ink); stroke-width: 1.5; }
 svg.vz .ring { stroke: var(--surface); }
+/* World-market bars (rankBarsSvg with flags): the two site chart colours, the soft step for a stacked second segment, the flag edge. */
+svg.vz .v-c1 { fill: var(--chart-1); } svg.vz .v-c2 { fill: var(--chart-2); } svg.vz .v-c2s { fill: var(--chart-2-soft); }
+svg.vz text.v-on2 { fill: var(--chart-2-soft-on); }
+svg.vz .v-flag-edge { fill: none; stroke: var(--line-strong); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.viz-legend i.v-c1 { background: var(--chart-1); } .viz-legend i.v-c2 { background: var(--chart-2); } .viz-legend i.v-c2s { background: var(--chart-2-soft); }
 svg.vz [data-tip] { cursor: default; } svg.vz a [data-tip], svg.vz a { cursor: pointer; }
 .viz-tip { position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; line-height: 1.4; padding: 6px 9px; border-radius: var(--r-md); max-width: 260px; opacity: 0; transition: opacity 0.08s; }
 .viz-tip b, .viz-tip span { display: block; } .viz-tip b { font-weight: 600; }

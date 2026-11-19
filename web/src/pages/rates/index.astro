@@ -11,6 +11,7 @@ import Answer from "../../components/Answer.astro";
 import { dataCatalogLd } from "../../lib/seo";
 import { getLatestIBondRate, getYieldCurve } from "../../lib/db";
 import { formatDate } from "../../lib/format";
+import { MARKETS_PATH, WFE, US_MILLIONS, trillions } from "../../lib/worldmarkets";
 
 const ibond = await getLatestIBondRate();
 const nominal = await getYieldCurve("UST_PAR");
@@ -49,6 +50,10 @@ const description = hasData
     <a class="card" href="/rates/tips/">
       <h3>TIPS → 10-year real {pct(r10)}</h3>
       <p>Real yields for every TIPS maturity and the breakeven inflation rate the bond market is pricing in.</p>
+    </a>
+    <a class="card" href={MARKETS_PATH}>
+      <h3>World stock markets → U.S. {trillions(US_MILLIONS)}</h3>
+      <p>Not a rate: the dollar size of the world's 18 largest stock markets in {WFE.asOfLabel}, and the United States against the European Union.</p>
     </a>
   </div>
 
