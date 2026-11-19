@@ -2992,3 +2992,56 @@ so nothing on the site, in the guides or on the privacy page changed.
   notice is a plan, not a sale, and never add its value to any buy or sell total; 144/A rows
   are amendments and the form does not say which notice they replace; a CSV; a guide; the
   methodology. Market-only issuers need the `od_*` functions (the market-wide thread's files).
+
+### Developers page and a catalogue of the public data files (2026-11-19, scheduled parity run) — queue item (g2c), "API docs"
+
+- **What.** New page `/developers/` (`web/src/pages/developers.astro`) and new file
+  `/data/catalog.json` (`web/src/pages/data/catalog.json.ts`). The site has no query API and no
+  key, and the page says so: the "API" is the files. The page lists the site-wide CSV files
+  (rows, columns, newest date), the one-member and one-ticker address patterns with the number
+  of files that exist, the three RSS feeds, what stays the same between builds, the JSON files
+  the site's own pages load, how to fetch, what is not offered, and the reuse limit. The
+  catalogue holds the same in a form a program can read: `version`, `built`, `csv.files`
+  (with every column's name and meaning), `csv.perMember` and `csv.perTicker` (pattern, count
+  and the list of files that exist), `feeds`, `other`, `workingFiles`, `terms`, `credit`.
+  Footer link "Developers"; in the `pages` sitemap, the search index and `llms.txt`;
+  `/downloads/`, `/feeds/` and methodology `#downloads` link to it. Two new files in the deploy.
+- **Rules** (`web/src/lib/datafiles.ts`, pure; tests `scripts/datafiles.test.ts`;
+  `getCatalog()` in `datafiles-build.ts` builds it once per build from `getDownloads()` and
+  `getFeeds()`, so nothing is counted a second time):
+  - **Kept stable** (the page promises it): the CSV files, the feeds and the catalogue. An
+    address stays; a column keeps its name and meaning; columns can be added anywhere, so a
+    reader goes by name. Period files (insider and lobbying quarters, the "before" file) come
+    and go by design, so the list is to be read from the catalogue. **A change that breaks any
+    of this must raise `CATALOG_VERSION` and be written on the page.**
+  - **Working files** (`WORKING_FILES`): eight `/data/*.json` files the pages load (coverage,
+    screener, three trade-map files, trade-cross, notable, search). Listed with what they hold
+    and their top-level layout, marked `"stable": false`, and the page says the layout can
+    change without notice. **When a change adds, removes or renames a top-level key of one of
+    them, update its `top` list in `datafiles.ts`** (the verifier fails otherwise). Not listed:
+    `guides.json`, `od-guides.json`, `od-index.json` and the watchlist shards (plumbing).
+  - A working file's "stable alternative" is shown only when that CSV file exists in the build.
+- **Said plainly on the page, because it is true today:** automated requests from data-center
+  addresses and some countries can get Cloudflare's challenge page (Bot Fight Mode; see
+  "Daily import failures fixed", 2026-10-12), and the files carry no CORS headers, so a script
+  in another site's web page cannot read them. If either changes, change the page.
+- **Build log** prints `[web] data catalogue: N site-wide CSV files, R rows, B bytes; M member
+  files, T ticker files; 3 feeds, I items; 8 working files; rows: congress-trades …,
+  congress-members …, committee assignments …, companies …, federal-contracts …` for comparison
+  with SQL.
+- **Verifier:** `node scripts/verify-developers.mjs <base-url> [--sample N]` (no browser; the
+  twentieth). Oracle: the served files. Every CSV file's header line, row count and byte size
+  against the catalogue; the member files against `congress-members.csv` (`trades_csv`,
+  `trades_on_record`); sampled member and ticker files; made-up names answer 404; feed item
+  counts; every working file's top-level layout against the page; the page against the
+  catalogue; `/downloads/` lists the same files; sitemap, `llms.txt`, footer, search; wording
+  (main content only: the footer says "no buy/sell recommendations"). `verify-a11y` includes
+  the page (a scrolling `pre` needs `tabindex="0"`).
+- Guide `how-to-cite-and-reuse`: one paragraph in `#bulk`, one FAQ ("Does Spot the Money have
+  an API?"), two new covered files, two labels (re-read, accepted);
+  `how-to-follow-members-insiders-and-stocks` re-read, unchanged.
+- A wide table does not suit a phone here either (file names broke letter by letter): the file
+  lists use the downloads page's `ul.files`, and the catalogue's key table stacks under 640 px.
+- Not done: CORS headers for `/downloads/*`, `/feeds/*` and the catalogue (a `_headers` change
+  that needs a look at the live response headers, so an interactive session); an OpenAPI file
+  (there is nothing to query); JSON versions of the CSV files; an MCP server (queue item 8).

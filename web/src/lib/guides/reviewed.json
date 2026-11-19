@@ -60,12 +60,14 @@
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
       "web/src/lib/downloads.ts": "0f9c16dcb76e3125",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "197b28bafc2af8c4",
-      "web/src/components/DownloadCsv.astro": "73f952882951a423"
+      "web/src/pages/downloads/index.astro": "bab33284c2bec8be",
+      "web/src/components/DownloadCsv.astro": "73f952882951a423",
+      "web/src/lib/datafiles.ts": "eebfde535aa8d498",
+      "web/src/pages/developers.astro": "ad02755c67844e81"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
-    "reviewed": "2026-11-18",
+    "reviewed": "2026-11-19",
     "covers": {
       "db/migrations/0017_accounts_watchlists.sql": "4a5e6b6c524d3c41",
       "db/migrations/0026_watch_feed_new_age.sql": "bcb89a59da716eba",
@@ -77,7 +79,7 @@
       "web/src/lib/watchcards-build.ts": "646d3aeb7f64b6d2",
       "web/src/scripts/watchcards.ts": "73e5abc9c1535b1c",
       "web/src/lib/feeds.ts": "ee8aabc55d188199",
-      "web/src/pages/feeds/index.astro": "58283f00b36c93f3",
+      "web/src/pages/feeds/index.astro": "a27f6d607a58fba6",
       "db/migrations/0025_email_alerts_stage1.sql": "20f18614f837af9a",
       "ingest/src/lib/digest.ts": "0d80de65efc76bf5",
       "ingest/src/jobs/alerts_digest.ts": "290ac0a3893c1e11",

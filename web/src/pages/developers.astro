@@ -1,0 +1,187 @@
+---
+// /developers/ — the public data files in one place: the CSV downloads, the RSS feeds, the
+// machine-readable catalogue (/data/catalog.json) and the JSON files the site's own pages load.
+// Everything listed comes from lib/datafiles.ts (which reads lib/downloads.ts and lib/feeds.ts),
+// so this page cannot name a file, a count or a column the site does not serve.
+// scripts/verify-developers.mjs checks the page and the catalogue against the served files.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { num, plural } from "../lib/flagship";
+import { sizeLabel } from "../lib/downloads";
+import { SITE_URL, SITE_NAME, PUBLISHER, CONTACT_EMAIL, fitDescription } from "../lib/seo";
+import { formatDate } from "../lib/format";
+import { getCatalog } from "../lib/datafiles-build";
+import { CATALOG_PATH, DEVELOPERS_PATH, WORKING_FILES, catalogTotals, topLabel } from "../lib/datafiles";
+
+const cat = await getCatalog();
+const t = catalogTotals(cat);
+const updated = cat.built.slice(0, 10);
+const insteadOf = new Map(cat.workingFiles.map((w) => [w.path, w.instead]));
+const exMember = [...cat.csv.perMember.files].sort((a, b) => b.rows - a.rows)[0];
+const exTicker = [...cat.csv.perTicker.files].sort((a, b) => b.rows - a.rows)[0];
+const description = fitDescription([
+  "Every public data file on Spot the Money: free CSV downloads, RSS feeds and a JSON catalogue of them. No API key, no account, rebuilt daily.",
+  "Spot the Money's public data files: free CSV downloads, RSS feeds and a JSON catalogue. No API key.",
+]);
+const answer = `Spot the Money has no query API and needs no API key: its data is published as plain files that a script can fetch. There are ${plural(t.csvFiles, "site-wide CSV file")}, one CSV file for each of ${num(t.memberFiles)} members of Congress and ${num(t.tickerFiles)} tickers with trades on record, and ${plural(t.feeds, "RSS feed")}; one JSON file, the catalogue, lists them all with their row counts and columns and is rebuilt with the site each day.`;
+const ld = {
+  "@context": "https://schema.org", "@type": "TechArticle", "@id": `${SITE_URL}${DEVELOPERS_PATH}#page`, headline: "Data files for developers", name: `${SITE_NAME}: data files for developers`,
+  url: `${SITE_URL}${DEVELOPERS_PATH}`, description, dateModified: updated, publisher: PUBLISHER, isAccessibleForFree: true, license: `${SITE_URL}/terms/#reuse`,
+  about: { "@type": "DataCatalog", "@id": `${SITE_URL}/downloads/#catalog`, name: `${SITE_NAME} CSV downloads`, url: `${SITE_URL}/downloads/` },
+  hasPart: [{ "@type": "DataDownload", name: "Catalogue of data files", encodingFormat: "application/json", contentUrl: `${SITE_URL}${CATALOG_PATH}` }],
+};
+const py = `import json, urllib.request
+import pandas as pd
+
+BASE = "${SITE_URL}"
+catalog = json.load(urllib.request.urlopen(BASE + "${CATALOG_PATH}"))
+
+# every site-wide CSV file, with its row count
+for f in catalog["csv"]["files"]:
+    print(f["name"], f["rows"], f["updated"])
+
+trades = pd.read_csv(BASE + "/downloads/congress-trades.csv")
+print(trades[["filer", "ticker", "side", "amount_low", "amount_high", "disclosed_date"]].head())`;
+---
+<BaseLayout title={["Data Files for Developers: CSV, RSS, JSON Catalogue", "Data Files for Developers | Spot the Money"]} description={description} section="Developers" modified={updated}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Developers", path: DEVELOPERS_PATH }]} />
+  <h1>Data files for developers</h1>
+  <p class="lede">The data behind the pages as files a script can read. No API key, no account, no charge.</p>
+  <Answer text={answer} updated={updated} sourceNote="Rebuilt with every site update" />
+
+  <nav class="jump" aria-label="On this page">
+    <span>On this page</span>
+    <a href="#catalog">Catalogue</a><a href="#csv">CSV files</a><a href="#feeds">RSS feeds</a><a href="#stable">What stays the same</a><a href="#working">The site's own JSON files</a><a href="#fetching">Fetching</a><a href="#not-offered">Not offered</a><a href="#reuse">Reuse</a>
+  </nav>
+
+  <section aria-labelledby="catalog">
+    <h2 id="catalog">Start with the catalogue</h2>
+    <p>One file lists everything on this page in a form a program can read: <a href={CATALOG_PATH} data-catalog-link><code>{SITE_URL}{CATALOG_PATH}</code></a>. It is rebuilt with the site, usually once a day.</p>
+    <div class="tablewrap">
+      <table class="data wrap keys">
+        <thead><tr><th>Key</th><th>What it holds</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><code>version</code>, <code>built</code></th><td>The catalogue's layout version (now {cat.version}) and the time the site was built.</td></tr>
+          <tr><th scope="row"><code>csv.files</code></th><td>Each site-wide CSV file: <code>path</code>, <code>url</code>, <code>title</code>, <code>about</code>, <code>rows</code>, <code>bytes</code>, <code>updated</code> (the newest date in the file) and <code>columns</code>, each column with its name and meaning.</td></tr>
+          <tr><th scope="row"><code>csv.perMember</code>, <code>csv.perTicker</code></th><td>The address pattern and the list of files that exist: one per member of Congress with trades and one per ticker with trades, each with <code>key</code>, <code>path</code>, <code>rows</code> and <code>updated</code>. Their columns are those of <code>congress-trades.csv</code>.</td></tr>
+          <tr><th scope="row"><code>feeds</code></th><td>Each RSS feed: address, title, what it carries, how many items it holds now and the newest item's date.</td></tr>
+          <tr><th scope="row"><code>other</code></th><td>The sitemap index, <code>llms.txt</code> and <code>robots.txt</code>.</td></tr>
+          <tr><th scope="row"><code>workingFiles</code></th><td>The JSON files the site's own pages load, marked <code>"stable": false</code> (see below).</td></tr>
+          <tr><th scope="row"><code>terms</code>, <code>credit</code></th><td>Where the reuse terms are and the credit line to use.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>A short example in Python:</p>
+    <pre class="code" tabindex="0" role="region" aria-label="Python example"><code>{py}</code></pre>
+  </section>
+
+  <section aria-labelledby="csv">
+    <h2 id="csv">CSV files</h2>
+    <p class="section-note" data-csv-totals data-files={t.csvFiles} data-rows={t.csvRows}>{plural(t.csvFiles, "site-wide file")} holding {num(t.csvRows)} rows in all ({sizeLabel(t.csvBytes)}). Each holds the same rows the matching pages show. What every column means is on the <a href="/downloads/#columns">downloads page</a> and in the catalogue.</p>
+    <ul class="files" data-csv-files>
+      {cat.csv.files.map((f) => (
+        <li data-file={f.path} data-rows={f.rows} data-cols={f.columns.length}>
+          <a class="dl-name" href={f.path}>{f.path}</a>
+          <span class="file-what">{f.about}</span>
+          <span class="file-meta">{num(f.rows)} {f.rows === 1 ? "row" : "rows"} · {f.columns.length} columns{f.updated ? ` · newest ${formatDate(f.updated)}` : ""}</span>
+        </li>
+      ))}
+    </ul>
+    <h3 id="one-file">One member or one ticker</h3>
+    <ul>
+      <li data-per="member" data-count={t.memberFiles}><code>{SITE_URL}/downloads/congress/<em>member-page-name</em>.csv</code>: every trade on record for one member of Congress. {num(t.memberFiles)} such files exist{exMember && <>; for example <a href={exMember.path}>{exMember.path}</a> ({plural(exMember.rows, "row")})</>}. The page name is the last part of the member's page address and is the <code>key</code> in the catalogue.</li>
+      <li data-per="ticker" data-count={t.tickerFiles}><code>{SITE_URL}/downloads/stocks/<em>ticker</em>.csv</code>, ticker in lower case: every insider and congressional trade on record in one ticker. {num(t.tickerFiles)} such files exist{exTicker && <>; for example <a href={exTicker.path}>{exTicker.path}</a> ({plural(exTicker.rows, "row")})</>}.</li>
+    </ul>
+    <p>A member or ticker with no trades on record has no file, and its address answers "not found". Read the list in the catalogue to know which exist. Corporate insiders have no file each: an insider's rows are in the file of the ticker they report for and in the quarterly insider files.</p>
+    <h3 id="csv-format">Format</h3>
+    <p>Comma-separated, UTF-8 with a byte-order mark, one header line, lines ending CR LF, quoting as in RFC 4180. Dates are <code>YYYY-MM-DD</code>, numbers are plain, yes/no columns hold <code>true</code> or <code>false</code>, and an empty cell means the report gave no value. A text cell that begins with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> carries a leading apostrophe so a spreadsheet cannot run it as a formula; strip it if you need the raw text. Congressional reports give a dollar range, so those rows have <code>amount_low</code> and <code>amount_high</code> and no exact value.</p>
+  </section>
+
+  <section aria-labelledby="feeds">
+    <h2 id="feeds">RSS feeds</h2>
+    <p class="section-note">RSS 2.0, newest first, dated by the day the filing became public. Each item is one sentence stating what the filing shows, links to the row on this site and ends with the address of the original filing. The <a href="/feeds/">feeds page</a> says what each feed leaves out.</p>
+    <ul class="files" data-feed-files>
+      {cat.feeds.map((f) => (
+        <li data-feed={f.path} data-items={f.items}>
+          <a class="dl-name" href={f.path}>{f.path}</a>
+          <span class="file-what">{f.description}</span>
+          <span class="file-meta">{plural(f.items, "item")} now · at most {num(f.limit)}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section aria-labelledby="stable">
+    <h2 id="stable">What stays the same</h2>
+    <p>For the CSV files, the feeds and the catalogue:</p>
+    <ul>
+      <li><strong>Addresses are kept.</strong> A file that exists today is at the same address tomorrow, with newer rows.</li>
+      <li><strong>A column keeps its name and its meaning.</strong> New columns are added from time to time, and not always at the end, so read columns by name, never by position.</li>
+      <li><strong>Files that cover a period come and go by design.</strong> Insider transactions and lobbying filings are cut by quarter (<code>insider-trades-2026-q3.csv</code>), a new file appears each quarter, a very large quarter is cut by month, and old quarters with few rows are combined into one "before" file. Take the list from the catalogue instead of building these names yourself.</li>
+      <li><strong>Row ids.</strong> <code>trade_id</code> is stable between downloads. The exception is a congressional report that is read again after a correction: its rows then get new ids. <code>filing_id</code> is the source's own id and does not change.</li>
+      <li><strong>If something here has to break,</strong> the catalogue's <code>version</code> goes up and this page says what changed.</li>
+    </ul>
+    <p>The rows themselves do change. Filings are amended, late reports arrive, and this site corrects its own mistakes (see <a href="/corrections/">corrections</a>). Treat each download as the record on the day you fetched it, and check a row against its <code>filing_url</code> before relying on it.</p>
+  </section>
+
+  <section aria-labelledby="working">
+    <h2 id="working">The site's own JSON files</h2>
+    <p>These are the files this site's pages load to draw the trade map, the screener and the search box. They are public and you may read them, but they are built for those pages: values are packed, keys are short, and <strong>their layout can change without notice</strong>. For anything you mean to keep running, use the CSV file named beside each one.</p>
+    <ul class="wfiles" data-working-files>
+      {WORKING_FILES.map((w) => (
+        <li data-working={w.path} data-top={w.top === "array" ? "array" : w.top.join(",")}>
+          <a class="dl-name" href={w.path}>{w.path}</a>
+          <span><strong>{w.title}.</strong> {w.about} Top level today: {topLabel(w.top)}. Loaded by <a href={w.usedBy}>{w.usedBy}</a>.{insteadOf.get(w.path) && <> Stable alternative: <a href={insteadOf.get(w.path)}>{insteadOf.get(w.path)}</a>.</>}</span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section aria-labelledby="fetching">
+    <h2 id="fetching">Fetching the files</h2>
+    <ul>
+      <li><strong>Once a day is enough.</strong> The files are static and are rebuilt when the site is, usually once a day after the daily data run (most often in the afternoon or evening, UTC; no hour is promised) and again after any site change. Compare <code>built</code> in the catalogue with the last one you saw and skip the rest when it has not moved.</li>
+      <li><strong>Fetch files, not pages.</strong> Everything in the tables on the pages is in a file here. Please do not crawl the pages for it.</li>
+      <li><strong>Say who you are.</strong> Send a <code>User-Agent</code> that names your project and a way to reach you.</li>
+      <li><strong>Automated requests can be challenged.</strong> The site is behind Cloudflare's bot protection, which we do not control file by file. Requests from data-center addresses (cloud servers, hosted notebooks, CI runners) and from some countries can be answered with a challenge page in place of the file. If your script receives HTML titled "Just a moment..." where a CSV should be, that is what happened: run it from an ordinary connection, or write to us.</li>
+      <li><strong>From a server or a notebook, not from another site's web page.</strong> The files are served without cross-origin (CORS) headers, so JavaScript running in a page on another site cannot read them directly.</li>
+      <li><strong>No rate limit is published and none is promised.</strong> A file a day needs none.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="not-offered">
+    <h2 id="not-offered">What is not offered</h2>
+    <ul>
+      <li><strong>A query API.</strong> There is no endpoint that takes a question and returns matching rows, and no API key to ask for. To filter, download the file and filter it; the <a href="/congress-trades/">Congress trade screener</a> does the same in the browser and can save its result as a CSV file.</li>
+      <li><strong>Market prices.</strong> The site holds no price data it may republish, so no file has prices other than the price an insider reported on a Form 4.</li>
+      <li><strong>Individual campaign donors.</strong> Federal law restricts copying donor details from FEC reports, and this site lists none. There is no donations file.</li>
+      <li><strong>Insider filings for companies outside the tracked set, as files.</strong> The CSV files and feeds cover the companies with a page built by this site. For every other company the SEC's own <a href="https://www.sec.gov/data-research/sec-markets-data/insider-transactions-data-sets" rel="noopener">Insider Transactions Data Sets</a> are the bulk source.</li>
+      <li><strong>Push delivery.</strong> No webhooks. The RSS feeds are the way to hear about new trades without asking for a whole file.</li>
+    </ul>
+    <p>If a file you need is missing, write to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> and say what you would use it for.</p>
+  </section>
+
+  <section aria-labelledby="reuse">
+    <h2 id="reuse">Credit and limits on reuse</h2>
+    <p>You may use the files with a credit to Spot the Money (spotthemoney.com) and a link. The records are public government documents and we claim no rights in them. One legal limit travels with the data and applies to you as it does to us: federal law (5 U.S.C. § 13107(c)) bars the use of congressional financial disclosure reports for a commercial purpose other than by news and communications media for dissemination to the general public, to establish anyone's credit rating, or to solicit money. It covers <code>congress-trades.csv</code>, the per-member files, the congressional rows of the per-ticker files and the congressional feed.</p>
+    <p>The full terms are in <a href="/terms/#reuse">Reusing the data</a>, and <a href="/guides/how-to-cite-and-reuse/">how to cite and reuse</a> has citation examples. The <a href="/methodology/">methodology</a> gives the rules behind every figure. Nothing here is investment advice.</p>
+  </section>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  pre.code { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.5; }
+  .wfiles { list-style: none; margin: 0.6rem 0 0; padding: 0; max-width: 100ch; }
+  .wfiles li { display: grid; gap: 4px; padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
+  .wfiles span { font-size: 14.5px; }
+  h3 { margin-top: 1.4rem; }
+  .keys th code { white-space: nowrap; }
+  @media (max-width: 640px) {
+    .keys thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .keys tr { display: block; padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+    .keys th, .keys td { display: block; border: 0 !important; box-shadow: none !important; padding: 2px 0; height: auto; position: static; background: none; width: auto; max-width: none; }
+    .keys th::after, .keys th::before { display: none !important; }
+  }
+</style>

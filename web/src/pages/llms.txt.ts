@@ -56,6 +56,10 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [All feeds](${SITE_URL}/feeds/): what each feed carries and what it leaves out.
 - Congress trades: ${SITE_URL}/feeds/congress-trades.xml · Insider open-market purchases: ${SITE_URL}/feeds/insider-purchases.xml · Insider open-market purchases and sales: ${SITE_URL}/feeds/insider-trades.xml
 
+## Data files for scripts (no API key, no account; there is no query API)
+- [Developers](${SITE_URL}/developers/): every public data file, what stays the same between builds, and how to fetch politely.
+- Catalogue (JSON; every CSV file with its row count and columns, the per-member and per-ticker files that exist, the feeds): ${SITE_URL}/data/catalog.json
+
 ## Entity pages
 - Insider: ${SITE_URL}/insiders/<slug>/: Person; Form 4 transactions with shares, price, value, lag, 10b5-1 flag, EDGAR link.
 - Member of Congress: ${SITE_URL}/congress/<slug>/: Person; PTR trades with ranges, owner, days-to-report, late flag, filing link.
