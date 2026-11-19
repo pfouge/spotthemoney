@@ -162,12 +162,16 @@ ${table(["Term", "Meaning"], [
 <p>The gap between these can be huge. A ten-year agreement with a $5 billion ceiling may have $40 million committed in its first year. News reports usually quote the ceiling. This site shows the award value as USAspending reports it and labels it "award value".</p>` },
         { id: "types", h: "What kinds of award are there?", html: `
 <p>A <strong>contract</strong> buys goods or services. An <strong>indefinite delivery vehicle</strong> is an umbrella agreement under which separate orders are placed later, which is how much of government buying is done; the umbrella's value and its orders can both appear, so adding them double counts. A <strong>prime award</strong> goes directly from the government to a company; a <strong>sub-award</strong> is what that company passes on to a subcontractor and must not be added to the prime's total.</p>
-<p>Each contract carries a NAICS code for the industry and a product or service code for what was bought.</p>` },
+<p>Each contract carries a NAICS code for the industry and a product or service code for what was bought. The <a href="#naics">NAICS code</a> is shown on this site; the product or service code is not.</p>` },
         { id: "details", h: "What do the description, sub-agency and end date tell you?", html: `
 <p>Three more facts come with each award, and this site shows them as USAspending reports them.</p>
 <p>The <strong>description</strong> is a line the contracting office typed when it recorded the award. It is often short, in capitals and full of abbreviations, and it can describe the latest change to a contract instead of the whole job. Tables here show its first ${c.contractDescriptionShown} characters; the full text is on the award's USAspending page and in the <a href="/downloads/">CSV file</a>. This site does not sort, label or total awards by what a description says.</p>
 <p>The <strong>awarding sub-agency</strong> is the part of a department that made the award: the Navy or the Army inside the Department of Defense, the Coast Guard inside Homeland Security. The <a href="/contracts/#sub-agencies">contracts page</a> counts awards by sub-agency. Awards stored before these details were kept get them from a daily job that asks USAspending for each such award by its id, newest first; until it has reached an award, or when USAspending lists no description for it, the cell shows a dash, and the table says how many awards carry one.</p>
 <p>The <strong>end date</strong> is the day the work is currently due to end. It is not a fixed term: it moves when a contract is extended or cut short, and options not yet taken up can push it later.</p>` },
+        { id: "naics", h: "What is the industry code on an award?", html: `
+<p>It is a six-digit code from the North American Industry Classification System (${ext("https://www.census.gov/naics/", "NAICS")}), the scheme federal statistics use to sort businesses by what they do. The contracting office picks the code that best fits the work being bought, and it also decides which size limit counts as a small business for that contract.</p>
+<p>The code describes the purchase, not the company. A large contractor wins awards under many codes, and the code on an award can differ from the industry the SEC lists for the same company on its <a href="/companies/">company page</a>, which comes from an older scheme with its own codes.</p>
+<p>This site prints the code as USAspending reports it and adds the Census Bureau's title for it, so 336411 reads "Aircraft Manufacturing". The classification is revised every five years and some codes are retired. Titles here come from the 2022 edition; when an award carries a code that edition no longer uses, the title is from the last edition that had it and the year follows in brackets. The <a href="/contracts/#naics">contracts page</a> adds up award values by code. Nothing else is worked out from a code.</p>` },
         { id: "lag", h: "How current is the data?", html: `
 <p>Civilian agencies must report a contract action within ${k.reportWithinBusinessDays} business days of the award (${ext(k.source, "federal acquisition rules")}), and it reaches USAspending shortly after. Department of Defense records are released after a ${k.defenseDelayDays}-day delay, so the newest three months of defence contracting are always missing.</p>
 <p>Records are also revised. An award's value changes as options are exercised or work is cancelled, so the same contract can show different figures on different days.</p>` },
@@ -183,18 +187,20 @@ ${table(["Term", "Meaning"], [
         { q: "Why are Department of Defense contracts missing from recent data?", a: `Because Defense contract records are released to the public after a ${k.defenseDelayDays}-day delay.` },
         { q: "Does Spot the Money list every federal contract?", a: "No. It shows the largest awards that started in each of the last six months and awards to companies it tracks, matched by exact name.", on: ["washington"] },
         { q: "Who writes the description of a federal contract award?", a: "The contracting office that records the award. It is free text, often abbreviated, and this site shows it as entered without drawing anything from it." },
+        { q: "What does the NAICS code on a federal contract mean?", a: "It is the industry code the contracting office gave the work being bought. It describes the purchase, not the company that won the award, and one company can hold awards under many codes." },
         { q: "Is a contract's award value the amount paid?", a: "No. The current award value is what has been committed so far, and the potential value is a ceiling. The amount actually paid is the outlay, which is often lower." },
       ],
       sources: [
         { name: "USAspending.gov", url: "https://www.usaspending.gov/" },
         { name: "Treasury: about the data transparency program", url: "https://tfx.treasury.gov/data-transparency/about" },
         { name: "Federal Acquisition Regulation, subpart 4.6 (contract reporting)", url: k.source },
+        { name: "U.S. Census Bureau: North American Industry Classification System", url: "https://www.census.gov/naics/" },
         { name: "Federal Funding Accountability and Transparency Act of 2006", url: "https://www.govinfo.gov/content/pkg/PLAW-109publ282/html/PLAW-109publ282.htm" },
       ],
       related: ["lobbying-disclosure-reports", "campaign-donations-fec-data", "what-disclosure-data-cannot-tell-you"],
       seeLive: [{ label: "Federal contracts", href: "/contracts/" }, { label: "Companies", href: "/companies/" }],
-      covers: ["ingest/src/sources/usaspending.ts", "ingest/src/sources/usaspending_details.ts", "web/src/pages/contracts/index.astro", "web/src/lib/contracts.ts"],
-      ui: [{ text: "Description, as reported", on: "/contracts/" }, { text: "Awarding sub-agencies", on: "/contracts/" }],
+      covers: ["ingest/src/sources/usaspending.ts", "ingest/src/sources/usaspending_details.ts", "web/src/pages/contracts/index.astro", "web/src/lib/contracts.ts", "web/src/lib/naics.ts"],
+      ui: [{ text: "Description, as reported", on: "/contracts/" }, { text: "Awarding sub-agencies", on: "/contracts/" }, { text: "Industry code (NAICS)", on: "/contracts/" }, { text: "Awards by industry code", on: "/contracts/" }],
       facts: ["contractLag"],
     };
   },

@@ -14,6 +14,7 @@
 
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
+import { naicsLog } from "./naics";
 import postgres from "postgres";
 import { normalizeOrgName, FORM4_FLOOR, cleanSicCode, sicDivision } from "@stm/shared";
 import { refPriceMap, buildTxn, jointMap } from "./txnbuild";
@@ -234,6 +235,7 @@ async function load(): Promise<Flagship> {
       naics: c.naics, sourceRef: c.source_ref, createdAt: c.created_at,
       subAgency: c.awarding_sub_agency, endDate: c.end_date, description: c.description }));
     console.log(contractDetailLog(model.contracts));
+    console.log(naicsLog(model.contracts));
     model.committees = committeeRows.map((c) => ({ id: c.id, fecId: c.fec_id, name: c.name, party: c.party, type: c.committee_type, total: c.total, count: c.count, latest: c.latest }));
     model.donationsByEmployer = donorEmployerRows;
     model.donationsByState = donorStateRows;

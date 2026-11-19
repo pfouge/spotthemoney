@@ -3107,3 +3107,47 @@ on the site, in the guides or on the privacy page changed.
   replaces (match by `filer_cik` + `issuer_cik`, newest `filed_at`); never add reporting persons'
   amounts together; a 13D's purpose text shown as filed, cut, with the SEC link; nothing derived
   from it. `percent_of_class` above 100 is stored as NULL (not a percentage).
+
+### Names for the industry codes on contract awards (2026-11-19, scheduled parity run) — queue item 8, NAICS titles
+
+- **What.** The "NAICS" column of the awards table on `/contracts/` and of the contracts table on
+  company pages is now "Industry code (NAICS)": the code as USAspending reports it, with the
+  code's official title under it (`td[data-naics]`, `span[data-naics-title]`). New section on
+  `/contracts/`, `#naics` (`section[data-naics-codes]`): award value and awards per code, the 25
+  largest (`NAICS_ROWS`), sortable, with a sentence saying how many awards carry a code and how
+  many codes there are. `federal-contracts.csv` gained `naics_title` and `naics_edition`, right
+  after `naics`. No migration, no ingest change, no new file in the deploy.
+- **The titles are a fixed table, `web/src/lib/naics-titles.json`** (68 KB, build time only: no
+  on-demand route imports it): every six-digit code of the 2022 edition (1,012), plus the 2017,
+  2012 and 2007 titles of codes no newer edition has (139, 28, 186). Awards carry retired codes:
+  on production 17 such codes on 675 of the 5,947 awards in the window (336111 "Automobile
+  Manufacturing" alone is on 910 stored awards), so a 2022-only table would have left one award in
+  nine without a title. A retired code's title is followed by its edition, "Software Publishers
+  (2017 edition)". All 434 codes stored on production have a title; a code in no edition is shown
+  alone. The table was put together from the title lists of four public npm data packages
+  (`naicsjs` for 2022, `naics` for 2017, `naics-2012`, `naics-2007`; read as data, not installed);
+  the 2022 list has the official count of 1,012 and was compared with a second 2022 list (nine
+  differences, each settled for the official 2022 wording). census.gov is not reachable from the
+  cloud sandbox, so the table was NOT compared with the Census Bureau's own file. **When the 2027
+  edition is in use on awards, add a "2027" block and move 2022-only codes down; `NAICS_EDITIONS`
+  and `NAICS_CURRENT` in `naics.ts` and the edition list in `verify-contracts.mjs` change with it.**
+- **Rules** (`web/src/lib/naics.ts`, pure; tests `scripts/naics.test.ts`): `naicsTitle`,
+  `naicsLabel`, `naicsRows`, `naicsStats`, `naicsLog`. Only a six-digit code gets a title. The
+  code is the contracting office's code for the work bought, not the recipient's industry and not
+  the SEC's SIC code on company pages; the page, methodology `#contract-naics` and the guide say
+  so. Nothing is worked out from a code beyond the per-code sums (no flag, ranking of companies
+  or link to the `/industries/` pages, which are SIC divisions, a different scheme).
+- **Build log** prints `[web] contract industry codes: N awards in the window; with a NAICS code
+  C, with a title T; K codes, J with a title, R from an older edition (A awards); awards/value:
+  <top five>` for comparison with SQL.
+- **Verifier.** `verify-contracts` reads the titles file from disk with its own edition order
+  and compares: `naics_title` and `naics_edition` on every CSV row, the code and title in every
+  awards-table row and sampled company-page rows, the table of codes recounted from the CSV, its
+  sentence, the column header, the "describes the purchase, not the company" wording. The seed
+  gained an award with a code in no edition (999999) and one with no code.
+- Guides: `federal-contracts-usaspending` has a new section `#naics`, one FAQ, one source, two
+  labels and covers `naics.ts`; `how-to-cite-and-reuse` names the new CSV columns;
+  `what-is-form-4` re-read, unchanged.
+- Not done: a page per code or a filter by code; the product or service code (not stored);
+  storing USAspending's own NAICS description (the search answer sometimes carries one; the
+  fixed table gives every stored award a title at once and the same wording for the same code).
