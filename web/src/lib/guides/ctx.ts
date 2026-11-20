@@ -7,6 +7,7 @@ import { ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS
 import { WATCH_WINDOW_DAYS } from "../watchcards";
 import { COMMITTEE_TRADE_ROWS } from "../committees";
 import { DEFAULT_PER as SCREENER_ROWS } from "../screener";
+import { MAX_SAVED as SAVED_SCREENS_MAX } from "../savedscreens";
 import { RECORD_START, FIRST_MIN_DAYS, RUN_MIN } from "../tickerhistory";
 import { getFlagship, senateShown, CONGRESS_DEADLINE_DAYS, FORM4_DEADLINE_DAYS, num } from "../flagship";
 import { CAP_BANDS } from "../capband";
@@ -35,6 +36,8 @@ export interface GuideCtx {
   committeeTradeRows: number;
   /** Rows per page the Congress trade screener opens on (lib/screener.ts). */
   screenerRows: number;
+  /** Most saved screens the Congress trade screener keeps in a browser (lib/savedscreens.ts). */
+  savedScreensMax: number;
   /** Ticker history flags (lib/tickerhistory.ts): the day the record of congressional reports starts, as text
    *  ("October 1, 2025"), the days after it before a trade can be "first on record", and the shortest run flagged. */
   congressRecordStart: string; firstMinDays: number; runMin: number;
@@ -80,7 +83,7 @@ async function build(): Promise<GuideCtx> {
     alertsEnabled: ALERTS_ENABLED, alertPendingDays: ALERT_PENDING_DAYS, alertBodyDays: ALERT_BODY_DAYS, alertMaxAgeDays: ALERT_MAX_AGE_DAYS,
     feedCongressItems: feedDef("congress-trades").limit, feedPurchaseItems: feedDef("insider-purchases").limit, feedInsiderItems: feedDef("insider-trades").limit,
     committeeTradeRows: COMMITTEE_TRADE_ROWS,
-    screenerRows: SCREENER_ROWS,
+    screenerRows: SCREENER_ROWS, savedScreensMax: SAVED_SCREENS_MAX,
     congressRecordStart: new Date(RECORD_START + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }), firstMinDays: FIRST_MIN_DAYS, runMin: RUN_MIN,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     contractDescriptionShown: DESCRIPTION_SHOWN,

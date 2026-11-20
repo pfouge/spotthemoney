@@ -53,15 +53,15 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-19",
+    "reviewed": "2026-11-20",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "b330f1e2fe8e84b2",
+      "web/src/lib/downloads.ts": "b47a688ada033501",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "bab33284c2bec8be",
+      "web/src/pages/downloads/index.astro": "f9b34eec30806605",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
       "web/src/lib/datafiles.ts": "eebfde535aa8d498",
       "web/src/pages/developers.astro": "ad02755c67844e81"
@@ -88,7 +88,7 @@
     }
   },
   "how-to-read-a-congressional-trade-report": {
-    "reviewed": "2026-11-18",
+    "reviewed": "2026-11-20",
     "covers": {
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
@@ -100,9 +100,10 @@
       "web/src/pages/congress-committees/index.astro": "5b2137a71662a90d",
       "web/src/pages/congress-committees/[slug].astro": "9775526e21f68d84",
       "web/src/lib/screener.ts": "528bda637853c2d1",
-      "web/src/pages/congress-trades.astro": "2bff842301f593c9",
+      "web/src/pages/congress-trades.astro": "2d2a19e710e9db31",
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5",
-      "web/src/lib/tickerhistory.ts": "50fdeba2cb1f0a66"
+      "web/src/lib/tickerhistory.ts": "50fdeba2cb1f0a66",
+      "web/src/lib/savedscreens.ts": "971608586608dc5f"
     }
   },
   "how-to-use-the-trade-map": {

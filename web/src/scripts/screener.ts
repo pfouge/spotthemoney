@@ -7,6 +7,7 @@ import {
   unpack, screen, summaryLine, memberSlug, viewCsv, viewCsvName, parseHash, toHash, isViewHash, isDefaultFilter, firstDir, isLateRow, rangeLabel, assetLabel, shortDate, seatTag, tickerPath, rowRunFlag,
   NO_FILTER, DEFAULT_VIEW, DEFAULT_PER, SIDE_LABEL, OWNER_LABEL, type ScreenData, type ScreenRow, type ScreenView, type ScreenFilter, type SortKey,
 } from "../lib/screener";
+import { parseSaved, serializeSaved, addSaved, removeSaved, hashToSave, suggestName, SAVED_KEY, SAVE_PROBLEM, type SavedScreen } from "../lib/savedscreens";
 
 const root = document.querySelector<HTMLElement>("[data-screener]");
 if (root) void start(root);
@@ -78,6 +79,73 @@ async function start(root: HTMLElement): Promise<void> {
     );
   };
 
+  // ── saved screens: names and addresses in this browser's localStorage, nothing sent anywhere ──
+  // (lib/savedscreens.ts; the privacy page names the key). If the browser refuses storage, the
+  // whole block stays hidden and the screener works as before.
+  const savedBox = ctl<HTMLElement>("saved"), saveOpen = ctl<HTMLButtonElement>("save-open"), saveForm = ctl<HTMLFormElement>("save-form"),
+    saveName = ctl<HTMLInputElement>("save-name"), saveCancel = ctl<HTMLButtonElement>("save-cancel"), saveMsg = ctl<HTMLElement>("save-msg"),
+    savedList = ctl<HTMLElement>("saved-list"), savedItems = ctl<HTMLElement>("saved-items");
+  const readSaved = (): SavedScreen[] | null => { try { return parseSaved(localStorage.getItem(SAVED_KEY)); } catch { return null; } };
+  const writeSaved = (list: SavedScreen[]): boolean => {
+    try { if (list.length) localStorage.setItem(SAVED_KEY, serializeSaved(list)); else localStorage.removeItem(SAVED_KEY); return true; } catch { return false; }
+  };
+  let saved: SavedScreen[] = [];
+  const say = (text: string): void => { if (saveMsg) saveMsg.textContent = text; };
+  const closeSave = (): void => { if (saveForm) saveForm.hidden = true; saveOpen?.setAttribute("aria-expanded", "false"); };
+  const renderSaved = (): void => {
+    if (!savedItems || !savedList) return;
+    const here = hashToSave(view);
+    savedItems.replaceChildren(...saved.map((s) => {
+      const a = h("a", { href: s.h }, s.n);
+      if (s.h === here) a.setAttribute("aria-current", "true");
+      const b = h("button", { type: "button", "aria-label": `Remove saved screen: ${s.n}` }, "Remove");
+      b.addEventListener("click", () => {
+        const next = removeSaved(saved, s.n);
+        if (!writeSaved(next)) { say("This browser would not let the site change its saved screens."); return; }
+        saved = next; say(`Removed "${s.n}".`); renderSaved(); saveOpen?.focus();
+      });
+      return h("li", {}, a, b);
+    }));
+    savedList.hidden = saved.length === 0;
+    root.dataset.saved = String(saved.length);
+  };
+  // The labels of the filters that are set, for the name offered in the box.
+  const nameParts = (): string[] => {
+    const parts: string[] = [];
+    if (view.f.member) parts.push(memberNames.get(view.f.member) ?? view.f.member);
+    if (view.f.ticker) parts.push(view.f.ticker);
+    if (view.f.q.trim()) parts.push(view.f.q.trim());
+    root.querySelectorAll<HTMLSelectElement>(".scr-controls select").forEach((s) => { if (s.selectedIndex > 0) parts.push(s.options[s.selectedIndex]?.textContent ?? ""); });
+    if (view.sort !== DEFAULT_VIEW.sort || view.dir !== firstDir(view.sort)) parts.push(`by ${view.sort}`);
+    return parts;
+  };
+  const initSaved = (): void => {
+    const first = readSaved();
+    if (!savedBox || first === null) return;
+    saved = first;
+    savedBox.hidden = false;
+    saveOpen?.addEventListener("click", () => {
+      if (!saveForm || !saveName) return;
+      if (!saveForm.hidden) { closeSave(); return; }
+      if (!hashToSave(view)) { say(SAVE_PROBLEM.view); return; }
+      say(""); saveForm.hidden = false; saveOpen.setAttribute("aria-expanded", "true");
+      saveName.value = suggestName(nameParts()); saveName.focus(); saveName.select();
+    });
+    saveCancel?.addEventListener("click", () => { closeSave(); saveOpen?.focus(); });
+    saveForm?.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeSave(); saveOpen?.focus(); } });
+    saveForm?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      // Read the stored list again first, so a screen saved in another tab is not lost.
+      const res = addSaved(readSaved() ?? saved, saveName?.value ?? "", hashToSave(view));
+      if (res.problem) { say(SAVE_PROBLEM[res.problem]); return; }
+      if (!writeSaved(res.list)) { say("This browser would not let the site save the screen."); return; }
+      saved = res.list; closeSave(); renderSaved();
+      say(`${res.replaced ? "Replaced" : "Saved"} "${saved[0]?.n ?? ""}". It is kept in this browser only.`);
+      saveOpen?.focus();
+    });
+    window.addEventListener("storage", (e) => { if (e.key === SAVED_KEY || e.key === null) { saved = readSaved() ?? saved; renderSaved(); } });
+  };
+
   const render = (updateHash: boolean): void => {
     const res = screen(all, view, data.built);
     view = { ...view, page: res.page };
@@ -112,6 +180,7 @@ async function start(root: HTMLElement): Promise<void> {
     root.dataset.members = String(res.members);
     root.dataset.page = String(res.page);
     root.dataset.pages = String(res.pages);
+    renderSaved();
     root.dataset.ready = "1";
     if (updateHash) history.replaceState(null, "", toHash(view) || location.pathname + location.search);
   };
@@ -147,6 +216,7 @@ async function start(root: HTMLElement): Promise<void> {
     view = known(parseHash(location.hash)); writeControls(view); view = { ...view, f: readFilter() }; render(false);
   });
 
+  initSaved();
   if (isViewHash(location.hash)) view = known(parseHash(location.hash));
   writeControls(view);
   // A value the controls do not offer (a state with no trades, say) falls back to "any": read it back.
