@@ -3241,3 +3241,27 @@ on the site, in the guides or on the privacy page changed.
   is unchanged. CSV section `united_states_vs_european_union` is now `united_states_eu_china` (3 rows).
 - Guide `how-to-cite-and-reuse` re-read and accepted (it covers `downloads.ts`; its wording still holds).
 
+### World stock markets page moved to October 2026, with the UK and a Commonwealth bar (2026-11-19, night) — Peter
+
+- Peter asked for the UK on the top chart, a Commonwealth group on the comparison chart, and newer figures.
+- **Month:** WFE's December 2026 issue (October column) replaced the November issue. The 81 October rows
+  were checked against the table's three regional totals (exact match). **B3 (Brazil) has no October row**,
+  so it has no bar; the page says so (`NOT_IN_TABLE`). An exchange missing from a month is taken off, not zeroed.
+- **UK (Peter's choice: LSE's own figures):** the London Stock Exchange is not in the WFE table. Its bar is
+  "Market Value (£m), UK" from the LSE Main Market factsheet for October 2026 (£3,092,744.89m, 741 companies),
+  times the Bank of England spot rate for 30 October 2026 ($1.3396 per £1), about $4.14T, 10th. AIM is not
+  added (the factsheet does not split its value by country). Everything is in `LSE` in `lib/worldmarkets.ts`;
+  the bar is labelled "(LSE data)" and the caveats say it is a different publisher. The factsheet page is
+  script-rendered and the files are .xlsx: read them in Peter's Chrome from
+  londonstockexchange.com/en/reports/primary-markets (only the latest month is linked).
+- **Commonwealth:** 21 exchanges in member countries with an October figure (`COMMONWEALTH_EXCHANGES`),
+  London included, India once. Cyprus and Malta are also in the EU sum; the page says so. Nairobi and
+  Dar es Salaam had September rows and have none for October.
+- Chart 2 is four bars, largest first: United States, Commonwealth, China, European Union. The Commonwealth
+  bar has no flag. Tokens `--chart-4` (light `#A63D7C`, dark `#D0609C`), class `.v-c4`. Chart id
+  `united-states-and-blocs`; CSV sections `blocs_compared` and `commonwealth_exchanges_summed`; the CSV
+  `source` column is now per row. The answer block no longer claims the U.S. exceeds the rest of the list
+  combined (in October the margin is about 0.3%).
+- Monthly update: next WFE issue + the same month's LSE factsheet and month-end rate. Check the row sums
+  against WFE's regional totals, and re-check which exchanges are missing that month.
+

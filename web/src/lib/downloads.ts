@@ -325,18 +325,18 @@ async function rateFiles(): Promise<DownloadFile[]> {
 // ── markets (typed-in WFE figures in lib/worldmarkets.ts; no database read) ──────────────
 function marketFile(): DownloadFile {
   return file<MarketCsvRow>({ name: "world-stock-markets.csv", group: "markets", kind: "markets", title: `World stock markets by size, ${WFE.asOfLabel}`,
-    about: `Domestic market capitalization by exchange, and the United States against the European Union and China. Source: ${WFE.name}.`, updated: `${WFE.asOf}-01` }, [
-    { key: "section", about: "largest_stock_markets (the ranking), united_states_eu_china (the three totals) or eu_exchanges_summed (what the EU total adds up).", get: (r) => r.section },
+    about: `Domestic market capitalization by exchange, and the United States against the Commonwealth, China and the European Union. Source: ${WFE.name}; London Stock Exchange for the United Kingdom.`, updated: `${WFE.asOf}-01` }, [
+    { key: "section", about: "largest_stock_markets (the ranking), blocs_compared (the group totals), eu_exchanges_summed or commonwealth_exchanges_summed (what those two totals add up).", get: (r) => r.section },
     { key: "rank", about: "Position within the section, largest first.", get: (r) => r.rank },
-    { key: "market", about: "Exchange or exchange group. The United States row combines Nasdaq and NYSE.", get: (r) => r.market },
+    { key: "market", about: "Exchange, exchange group or group of countries. The United States row combines Nasdaq and NYSE.", get: (r) => r.market },
     { key: "components", about: "What a combined row adds up. Empty for a single exchange.", get: (r) => r.components },
-    { key: "flag", about: "ISO code of the flag shown beside the row. An exchange group can span several countries.", get: (r) => r.flag },
-    { key: "usd_millions", about: "Domestic market capitalization in millions of U.S. dollars, as the source published it.", get: (r) => r.usdMillions.toFixed(2) },
+    { key: "flag", about: "ISO code of the flag for the row, where it has one. An exchange group can span several countries.", get: (r) => r.flag },
+    { key: "usd_millions", about: "Domestic market capitalization in millions of U.S. dollars. World Federation of Exchanges rows are as published; London is converted from pounds.", get: (r) => r.usdMillions.toFixed(2) },
     { key: "usd_trillions", about: "The same figure in trillions of U.S. dollars, to two decimals.", get: (r) => (r.usdMillions / 1e6).toFixed(2) },
     { key: "as_of", about: "The month the figure is for (YYYY-MM).", get: () => WFE.asOf },
     { key: "retrieved", about: "The day the figure was read from the source.", get: () => WFE.retrieved },
-    { key: "source", about: "Publication and table the figure comes from.", get: () => `${WFE.name}, ${WFE.publication}, ${WFE.issue}, ${WFE.table}` },
-    { key: "source_url", about: "Address of the source table.", get: () => WFE.url },
+    { key: "source", about: "Publication the figure comes from. London's row states the pound figure and the exchange rate used.", get: (r) => r.source },
+    { key: "source_url", about: "Address of the source.", get: (r) => r.sourceUrl },
   ], marketCsvRows());
 }
 

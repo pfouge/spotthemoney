@@ -5,7 +5,7 @@ import { getFlagship, num } from "../lib/flagship";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import { getGuides, byGroup, guidePath } from "../lib/guides";
 import { getArticles, articleUrl } from "../lib/articles";
-import { MARKETS_PATH, WFE, US_MILLIONS, EU_MILLIONS, CHINA_MILLIONS, trillions } from "../lib/worldmarkets";
+import { MARKETS_PATH, WFE, US_MILLIONS, EU_MILLIONS, CHINA_MILLIONS, COMMONWEALTH_MILLIONS, trillions } from "../lib/worldmarkets";
 
 export const GET: APIRoute = async () => {
   const m = await getFlagship();
@@ -36,7 +36,7 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [TIPS real yields](${SITE_URL}/rates/tips/): real yield curve and breakeven inflation by maturity.
 
 ## Markets (World Federation of Exchanges)
-- [Largest stock exchanges in the world](${SITE_URL}${MARKETS_PATH}): domestic market capitalization of the 18 largest stock markets in US$ trillions for ${WFE.asOfLabel}, and the United States (${trillions(US_MILLIONS, 1)}) against the European Union (${trillions(EU_MILLIONS, 1)}) and mainland China (${trillions(CHINA_MILLIONS, 1)}, Shanghai plus Shenzhen). Monthly figures, published about two months behind. London is not in the source table.
+- [Largest stock exchanges in the world](${SITE_URL}${MARKETS_PATH}): domestic market capitalization of every stock market above US$1 trillion for ${WFE.asOfLabel}, and the United States (${trillions(US_MILLIONS, 1)}) against the Commonwealth (${trillions(COMMONWEALTH_MILLIONS, 1)}), mainland China (${trillions(CHINA_MILLIONS, 1)}, Shanghai plus Shenzhen) and the European Union (${trillions(EU_MILLIONS, 1)}). Monthly figures from the World Federation of Exchanges; London is from the London Stock Exchange and is labelled as such.
 
 ## Follow the Money (SEC EDGAR, House Clerk, FEC, Senate LDA, USAspending)
 - [Insider trades](${SITE_URL}/insiders/): newest Form 4 filings, cluster buys, CEO/CFO buys, officer sales (${num(c.insiderTxns ?? 0)} transactions on record).
