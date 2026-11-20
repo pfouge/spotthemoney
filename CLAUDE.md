@@ -3225,3 +3225,19 @@ on the site, in the guides or on the privacy page changed.
   (44649109422) was green: version d5bb59cf serves 100% of traffic. **`deploy.yml` now asks for the active
   deployment up to five times, 10 seconds apart**, before failing "Verify the deployed version"; a version
   that never becomes active still fails.
+
+### World stock markets page: China added to the comparison (2026-11-19, evening) — Peter: "Show the U.S., EU, and China"
+
+- The first version (PR #50, `c39c3d2`) was merged and deployed the same day; Peter wants finished work on
+  this site merged, deployed and checked live without being asked, even when a brief says "do not deploy".
+- The second chart is now three bars: United States, China, European Union (largest first; colour follows
+  the market). **China = Shanghai + Shenzhen**, the same figures as the ranking above it (`CHINA_EXCHANGES`
+  in `lib/worldmarkets.ts` reuses those objects). The Beijing Stock Exchange is not in the WFE table. Hong
+  Kong is not included and the page says so, with the figure it would give. Peter: never take China from a
+  different source than the top chart.
+- New token `--chart-3` (light `#A8590B`, dark `#C46F22`; validated as a set of three with `--chart-1`
+  and `--chart-2`) and class `.v-c3`. Tiles are now four (the U.S. multiple of China joined).
+- Chart id is `united-states-eu-china` (was `united-states-vs-european-union`); the h2 anchor `#us-vs-eu`
+  is unchanged. CSV section `united_states_vs_european_union` is now `united_states_eu_china` (3 rows).
+- Guide `how-to-cite-and-reuse` re-read and accepted (it covers `downloads.ts`; its wording still holds).
+
