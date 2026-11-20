@@ -1,6 +1,7 @@
 // Live values the guides are written against: constants from the code, counts from the model,
 // the current I-Bond rate from the database. A guide that quotes one of these can never
 // disagree with the site, because both read the same thing.
+import { NOTICE_ROWS } from "../form144";
 import { DESCRIPTION_SHOWN } from "../contracts";
 import { feedDef } from "../feeds";
 import { ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS, FEED_NEW_MAX_AGE_DAYS } from "../account";
@@ -45,6 +46,8 @@ export interface GuideCtx {
   issuesInline: number; issueFilingRows: number; issueTopRows: number;
   /** Characters of a contract description shown in a table cell (lib/contracts.ts). */
   contractDescriptionShown: number;
+  /** True once Form 144 notices are shown on pages (lib/form144.ts), and the rows a page's table prints. */
+  form144Shown: boolean; form144Rows: number;
   /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
   form4Floor: string;
   /** Calendar days after which the site flags a Form 4 as late. */
@@ -87,6 +90,7 @@ async function build(): Promise<GuideCtx> {
     congressRecordStart: new Date(RECORD_START + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }), firstMinDays: FIRST_MIN_DAYS, runMin: RUN_MIN,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     contractDescriptionShown: DESCRIPTION_SHOWN,
+    form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
     capBands: CAP_BANDS.map((b) => ({ label: b.label, range: b.range })),

@@ -1,0 +1,65 @@
+---
+// "Planned sales: Form 144 notices" on stock and company pages (lib/form144.ts has the rules).
+// Renders nothing unless the Form 144 load has reached today (model.form144.shown) and the
+// company has a notice filed in the last 12 months. A notice is a plan to sell, never a sale:
+// nothing here feeds a total, a chart or the trade map.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import { money, num } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { noticesInWindow, noticeSummary, summarySentence, relationshipLabel, cleanText, stated, isAmendment, NOTICE_CAVEAT, NOTICE_ROWS } from "../lib/form144";
+import { sellerPath } from "../lib/form144-build";
+import DownloadCsv from "./DownloadCsv.astro";
+
+interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
+const { model, cik, name, file } = Astro.props;
+const all = cik && model.form144.shown ? model.form144.byCik.get(cik.padStart(10, "0")) ?? [] : [];
+const rows = noticesInWindow(all, model.builtAt);
+const s = noticeSummary(rows);
+const shown = rows.slice(0, NOTICE_ROWS);
+const heads = [
+  { label: "Filed", type: "num", cls: "" }, { label: "Seller, as filed", type: "text", cls: "" }, { label: "Class", type: "text", cls: "" },
+  { label: "Shares to be sold", type: "num", cls: "num" }, { label: "Stated market value", type: "num", cls: "num" },
+  { label: "Approximate sale date", type: "num", cls: "" }, { label: "10b5-1 plan adopted", type: "num", cls: "" },
+];
+const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
+---
+{rows.length > 0 && (
+  <section aria-labelledby="planned-sales" data-planned-sales data-notices={rows.length} data-sellers={s.sellers} data-amendments={s.amendments}>
+    <h2 id="planned-sales">Planned sales: Form 144 notices</h2>
+    <p data-ps-summary>{summarySentence(name, s)}</p>
+    <p class="ps-note" data-ps-caveat>{NOTICE_CAVEAT} <a href="/guides/what-is-form-4/#form-144">What a Form 144 is</a>.</p>
+    <DownloadCsv file={file} label="Download all notices (CSV)" note="every tracked company" />
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      <th>Source</th>
+    </tr></thead><tbody>
+      {shown.map((n) => {
+        const seller = cleanText(n.sellerName) ?? "Not stated";
+        const href = sellerPath(model, n);
+        const rel = relationshipLabel(n.relationships);
+        const cls = cleanText(n.securityClass, 60);
+        return (
+          <tr data-notice={n.accession}>
+            <td class="mono" data-v={dayNum(n.filedAt)}>{formatDate(n.filedAt)}</td>
+            <td class="wrap ps-seller" data-v={seller.toLowerCase().replace(/[<>"]/g, "")} data-ps-seller>{href ? <a href={href}>{seller}</a> : seller}{rel && <span class="ps-sub" data-ps-rel>{rel}</span>}</td>
+            <td class="wrap ps-class" data-v={(cls ?? "").toLowerCase().replace(/[<>"]/g, "")}>{cls ?? "—"}</td>
+            <td class="num" data-v={stated(n.shares) ?? ""} data-ps-shares>{stated(n.shares) != null ? num(n.shares) : "—"}</td>
+            <td class="num" data-v={stated(n.marketValue) != null ? Math.round(n.marketValue!) : ""} data-ps-value>{stated(n.marketValue) != null ? money(n.marketValue, { compact: false }) : "—"}</td>
+            <td class="mono" data-v={dayNum(n.approxSaleDate)} data-ps-sale>{n.approxSaleDate ? formatDate(n.approxSaleDate) : "—"}</td>
+            <td class="mono" data-v={dayNum(n.planAdoptionDate)} data-ps-plan>{n.planAdoptionDate ? formatDate(n.planAdoptionDate) : "—"}</td>
+            <td>{n.sourceUrl ? <a href={n.sourceUrl} rel="noopener nofollow" target="_blank">{isAmendment(n) ? "Form 144/A (amendment) ↗" : "Form 144 ↗"}</a> : (isAmendment(n) ? "Form 144/A (amendment)" : "Form 144")}</td>
+          </tr>
+        );
+      })}
+    </tbody></table></div>
+    {rows.length > NOTICE_ROWS && <p class="ps-note" data-ps-more>The {NOTICE_ROWS} newest of {num(rows.length)} notices are shown. The rest are in the CSV file.</p>}
+  </section>
+)}
+<style>
+  .ps-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .ps-seller { min-width: 13rem; }
+  .ps-class { min-width: 8rem; }
+  @media (max-width: 640px) { .ps-seller { min-width: 10rem; } .ps-class { min-width: 7rem; } }
+  .ps-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+</style>

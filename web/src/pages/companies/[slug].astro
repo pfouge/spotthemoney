@@ -18,6 +18,8 @@ import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
+import PlannedSales from "../../components/PlannedSales.astro";
+import { noticesInWindow } from "../../lib/form144";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, companyPath, personPath, securityPath, withinDays, num, plural, money, sum, roleLabel } from "../../lib/flagship";
 import { organizationLd, fitDescription, SOURCES } from "../../lib/seo";
@@ -53,11 +55,13 @@ const size = sizeOf(model, c.primaryTicker);
 const industry = industryOf(model, c);
 const industryLink = industry ? industryHref(industry.code) : null;
 const primarySec = c.primaryTicker ? tickerPages(model).get(c.primaryTicker.toLowerCase()) : undefined;
+// Form 144 notices about the company, last 12 months (empty until that load has reached today).
+const plannedN = c.cik ? noticesInWindow(model.form144.byCik.get(c.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const jump: [string, string][] = [
   ...(c.insiders.length ? [["#insiders", "Insiders"] as [string, string]] : []),
   ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
-  ["#insider-transactions", "Transactions"], ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
+  ["#insider-transactions", "Transactions"], ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []), ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
   ...(relatedCos.length ? [["#related", "Related companies"] as [string, string]] : []),
   ["#sources", "Sources"],
 ];
@@ -134,6 +138,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <h2 id="insider-transactions">Insider transactions</h2>
   <DownloadCsv file={c.primaryTicker ? (await getDownloads()).stock.get(c.primaryTicker.toLowerCase()) : undefined} note="insider and congressional rows for this ticker" />
   <TxnTable model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
+
+  <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
 
   <AdSlot label="Advertisement" />
 

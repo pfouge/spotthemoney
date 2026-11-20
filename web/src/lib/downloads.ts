@@ -22,6 +22,7 @@ import { changeCsv } from "./holdings";
 import { rowIssues } from "./lobbyissues";
 import { cleanDescription } from "./contracts";
 import { naicsTitle } from "./naics";
+import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, type Notice } from "./form144";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -36,7 +37,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "lobbying" | "contracts" | "rates" | "markets";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -251,6 +252,40 @@ async function build(): Promise<Downloads> {
     { key: "award_url", about: "Link to the award on USAspending.gov.", get: (c) => (c.sourceRef ? `https://www.usaspending.gov/award/${c.sourceRef}` : null) },
   ];
   add(file({ name: "federal-contracts.csv", group: "washington", kind: "contracts", title: "Federal contract awards", about: "The largest awards that started in the last 180 days, plus awards to tracked companies. Not every federal contract.", updated: newest(m.contracts.map((c) => c.actionDate)) }, conCols, m.contracts));
+
+  // Planned sales: SEC Form 144 notices about companies on the site. The model holds none until
+  // the Form 144 load has reached today (lib/form144-build.ts), and a file with no rows is not
+  // built, so the file appears in the same build as the page sections.
+  const byCik = new Map<string, Company>();
+  for (const c of m.companies.values()) if (c.cik) byCik.set(c.cik.padStart(10, "0"), c);
+  const notices = sortNotices([...m.form144.byCik.entries()].flatMap(([cik, xs]) => (byCik.get(cik)?.slug ? xs : [])));
+  const co = (n: Notice) => byCik.get(n.issuerCik);
+  const noticeCols: Column<Notice>[] = [
+    { key: "filed_date", about: "The day the notice was filed with the SEC (YYYY-MM-DD).", get: (n) => n.filedAt },
+    { key: "form_type", about: "144 for a notice, 144/A for an amended notice.", get: (n) => n.formType },
+    { key: "amendment", about: "true for an amended notice (144/A). An amendment repeats the notice it corrects and the form does not say which one, so do not add rows together.", get: (n) => isAmendment(n) },
+    { key: "company", about: "The company whose shares the notice is about, as this site names it.", get: (n) => co(n)?.name },
+    { key: "ticker", about: "The company's main ticker on this site.", get: (n) => co(n)?.primaryTicker },
+    { key: "issuer_cik", about: "The company's SEC number (CIK), ten digits.", get: (n) => n.issuerCik },
+    { key: "seller", about: "The person or entity for whose account the shares are to be sold, as filed.", get: (n) => cleanText(n.sellerName, 200) },
+    { key: "seller_sec_number", about: "SEC number (CIK) of the filer of the notice, ten digits, when the submission gives one.", get: (n) => n.filerCik },
+    { key: "relationship", about: "The seller's relationship to the company in the filer's own words (Officer, Director and so on), separated by commas.", get: (n) => relationshipLabel(n.relationships) },
+    { key: "security_class", about: "Class of the securities, as filed.", get: (n) => cleanText(n.securityClass, 120) },
+    { key: "shares_to_be_sold", about: "Number of shares or units the notice says are to be sold. A plan, not a sale. Empty when the form states none.", get: (n) => stated(n.shares) },
+    { key: "stated_market_value", about: "Aggregate market value of those shares as the filer states it, in dollars. Not a sale price or proceeds.", get: (n) => stated(n.marketValue) },
+    { key: "shares_outstanding", about: "Shares of the class outstanding, as the filer states it.", get: (n) => stated(n.sharesOutstanding) },
+    { key: "approximate_sale_date", about: "The approximate date of sale stated on the notice (the earliest, when it gives several).", get: (n) => n.approxSaleDate },
+    { key: "broker", about: "Name of the broker or market maker named on the notice.", get: (n) => cleanText(n.broker, 160) },
+    { key: "plan_adoption_date", about: "Date a Rule 10b5-1 trading plan was adopted, when the notice states one.", get: (n) => n.planAdoptionDate },
+    { key: "notice_date", about: "The date of notice stated on the form.", get: (n) => n.noticeDate },
+    { key: "sold_past_3_months_shares", about: "Shares the notice lists as sold by the seller in the past three months, added up. Empty when it lists none.", get: (n) => stated(n.sold3mShares) },
+    { key: "sold_past_3_months_proceeds", about: "Gross proceeds the notice lists for those sales, in dollars, added up.", get: (n) => { const v = stated(n.sold3mProceeds); return v == null ? null : Math.round(v * 100) / 100; } },
+    { key: "nothing_sold_past_3_months", about: "true when the notice says nothing was sold in the past three months.", get: (n) => n.nothingSold3m },
+    { key: "accession", about: "The SEC's accession number of the notice.", get: (n) => n.accession },
+    { key: "sec_url", about: "Link to the notice on the SEC's EDGAR system.", get: (n) => n.sourceUrl },
+    { key: "page_url", about: "The company's page on this site.", get: (n) => { const c = co(n); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
+  ];
+  add(file({ name: "planned-sales-form144.csv", group: "insiders", kind: "notices", title: "Planned sales: SEC Form 144 notices", about: "One row per notice of a proposed sale of restricted or control shares, for the companies this site tracks. A notice is a plan to sell, not a sale.", updated: newest(notices.map((n) => n.filedAt)) }, noticeCols, notices));
 
   // Rates
   for (const f of await rateFiles()) add(f);

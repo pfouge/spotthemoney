@@ -215,7 +215,10 @@ for (const id of ["catalog", "csv", "feeds", "stable", "working", "fetching", "n
     const line = text((meth.slice(meth.indexOf(li)).match(/^[\s\S]*?<\/li>/) ?? [""])[0]);
     ok(line.includes(s.rows.toLocaleString("en-US")) && line.includes(s.issuers.toLocaleString("en-US")) && line.includes(s.amendments.toLocaleString("en-US")), `${key}: the line does not state ${s.rows} rows, ${s.issuers} companies and ${s.amendments} amendments`);
     ok(line.includes(long(s.firstFiled)) && line.includes(long(s.lastFiled)), `${key}: the line does not state the filing dates ${s.firstFiled} and ${s.lastFiled}`);
-    ok(/not shown on any page yet/.test(line), `${key}: the line does not say the filings are not shown`);
+    // Form 144 notices go onto stock and company pages in the build in which their load is current
+    // (scripts/verify-form144.mjs checks the pages); Schedules 13D and 13G are on no page yet.
+    if (key === "form144" && !behind) ok(/are shown on the stock and company pages/.test(line) && !/not shown on any page yet/.test(line) && line.includes(`${s.trackedRows.toLocaleString("en-US")} notice`), `${key}: the load is current and the line does not say the ${s.trackedRows} tracked notices are shown`);
+    else ok(/not shown on any page yet/.test(line), `${key}: the line does not say the filings are not shown`);
     ok(behind === /still working forward/.test(line), `${key}: the catching-up sentence is ${behind ? "missing" : "present on a current load"}`);
     ok(!/—/.test(line) && !/should|signal|bullish|bearish/i.test(line), `${key}: em-dash or verdict wording in the line`);
     if (key === "form144") ok(/a plan to sell, not a sale/.test(line), "form144: the line does not say a notice is a plan, not a sale");

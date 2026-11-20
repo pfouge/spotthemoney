@@ -29,6 +29,10 @@ test("stored sources: the sentences state the counts, the dates and that nothing
   assert.match(b, /not shown on any page yet\.$/, "a current load has no catching-up clause");
   assert.equal(form144Sentence(emptyStored(), built), "");
   assert.equal(schedule13Sentence(emptyStored(), built), "");
+  // Once the Form 144 load is current the notices are on pages, and the sentence says so.
+  const c = form144Sentence({ ...f144, lastFiled: "2026-11-18" }, built);
+  assert.match(c, /Notices about companies this site tracks \(8,249 notices\) are shown on the stock and company pages, as filed, and are in no buy or sell total; the others are stored and not shown\.$/);
+  assert.doesNotMatch(c, /not shown on any page yet|still working forward/);
   assert.match(form144Sentence({ ...f144, firstFiled: "2026-05-18" }, built), /, filed May 18, 2026,/);
 });
 
