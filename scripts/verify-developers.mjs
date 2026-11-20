@@ -11,6 +11,8 @@
 //   - every working JSON file is served and its top-level layout is the one the page states;
 //   - the page lists the same files, counts and layouts as the catalogue, the /downloads/ page
 //     lists the same site-wide files, and the page is in the sitemap, llms.txt and the footer;
+//   - the stored-not-shown counts in /data/coverage.json (Form 144, Schedules 13D and 13G) add
+//     up and are the ones the methodology's coverage list states;
 //   - wording: no advice, no promise of an API key or a query API.
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:/.test(a)) || "http://127.0.0.1:4321").replace(/\/$/, "");
@@ -176,6 +178,50 @@ ok(!/—/.test(words), "an em-dash in the page copy");
 ok(!/should (buy|sell)|recommend|bullish|bearish|smart money|outperform|beat the market/i.test(words), "advice or verdict wording on the page");
 ok(!/real[- ]time|guarantee|unlimited/i.test(words), "the page promises something the files do not give");
 for (const id of ["catalog", "csv", "feeds", "stable", "working", "fetching", "not-offered", "reuse"]) ok(html.includes(`id="${id}"`), `the page has no section #${id}`);
+
+// ── stored, not shown: coverage.json against the methodology's coverage list ───────────────
+// Form 144 notices and Schedules 13D/13G are collected and shown on no page. The coverage file
+// carries their counts (key storedNotShown); the methodology states them. The two must agree,
+// the counts must add up, and no page may link or name a notice or statement yet.
+{
+  const cov = JSON.parse((await get("/data/coverage.json")).text || "{}");
+  const st = cov.storedNotShown;
+  ok(!!st && !!st.form144 && !!st.schedule13, "coverage.json has no storedNotShown.form144 and .schedule13");
+  const meth = (await get("/methodology/")).text;
+  const built = Date.parse(String(cov.builtAt ?? "").slice(0, 10) + "T00:00:00Z");
+  const long = (iso) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  for (const [key, kinds] of [["form144", ["144", "144/A"]], ["schedule13", ["13D", "13G"]]]) {
+    const s = st?.[key];
+    if (!s) continue;
+    const monthSum = (s.months ?? []).reduce((n, m) => n + m.rows, 0);
+    const kindSum = Object.values(s.kinds ?? {}).reduce((n, v) => n + v, 0);
+    ok(Number.isInteger(s.rows) && s.rows >= 0, `${key}: rows is ${s.rows}`);
+    ok(monthSum === s.rows, `${key}: the months add up to ${monthSum}, rows is ${s.rows}`);
+    ok(!s.rows || kindSum === s.rows, `${key}: the kinds add up to ${kindSum}, rows is ${s.rows}`);
+    ok(Object.keys(s.kinds ?? {}).every((k) => kinds.includes(k)), `${key}: an unknown kind in ${Object.keys(s.kinds ?? {}).join(", ")}`);
+    ok(s.amendments <= s.rows && s.trackedRows <= s.rows && s.issuers <= s.rows, `${key}: a part is larger than the whole`);
+    ok((s.months ?? []).every((m, i, a) => /^\d{4}-\d{2}$/.test(m.month) && (i === 0 || a[i - 1].month < m.month)), `${key}: months are not in order`);
+    ok(!s.rows || (/^\d{4}-\d{2}-\d{2}$/.test(s.firstFiled ?? "") && /^\d{4}-\d{2}-\d{2}$/.test(s.lastFiled ?? "") && s.firstFiled <= s.lastFiled), `${key}: filing dates ${s.firstFiled} to ${s.lastFiled}`);
+    ok(!s.rows || (s.months[0].month === s.firstFiled.slice(0, 7) && s.months.at(-1).month === s.lastFiled.slice(0, 7)), `${key}: the months do not span the filing dates`);
+    ok(!s.rows || Date.parse(s.lastFiled + "T00:00:00Z") <= built + 86400000, `${key}: a filing dated after the build (${s.lastFiled})`);
+    for (const bad of ["seller", "name", "payload", "accession", "cik"]) ok(!JSON.stringify(s).toLowerCase().includes(`"${bad}`), `${key}: the coverage file carries a "${bad}" field`);
+    const li = tags(meth, new RegExp(`<li [^>]*data-stored="${key}"[^>]*>`, "g"))[0];
+    if (!s.rows) { ok(!li, `${key}: nothing on file, yet the methodology has a line for it`); continue; }
+    ok(!!li, `${key}: ${s.rows} rows on file and no line in the methodology's coverage list`);
+    if (!li) continue;
+    ok(Number(attr(li, "data-rows")) === s.rows && attr(li, "data-last") === s.lastFiled, `${key}: the methodology states ${attr(li, "data-rows")} rows to ${attr(li, "data-last")}, the file ${s.rows} to ${s.lastFiled}`);
+    const behind = built - Date.parse(s.lastFiled + "T00:00:00Z") > 10 * 86400000;
+    ok(attr(li, "data-catching-up") === (behind ? "yes" : "no"), `${key}: newest filing ${s.lastFiled}, built ${String(cov.builtAt).slice(0, 10)}, yet catching-up is "${attr(li, "data-catching-up")}"`);
+    const line = text((meth.slice(meth.indexOf(li)).match(/^[\s\S]*?<\/li>/) ?? [""])[0]);
+    ok(line.includes(s.rows.toLocaleString("en-US")) && line.includes(s.issuers.toLocaleString("en-US")) && line.includes(s.amendments.toLocaleString("en-US")), `${key}: the line does not state ${s.rows} rows, ${s.issuers} companies and ${s.amendments} amendments`);
+    ok(line.includes(long(s.firstFiled)) && line.includes(long(s.lastFiled)), `${key}: the line does not state the filing dates ${s.firstFiled} and ${s.lastFiled}`);
+    ok(/not shown on any page yet/.test(line), `${key}: the line does not say the filings are not shown`);
+    ok(behind === /still working forward/.test(line), `${key}: the catching-up sentence is ${behind ? "missing" : "present on a current load"}`);
+    ok(!/—/.test(line) && !/should|signal|bullish|bearish/i.test(line), `${key}: em-dash or verdict wording in the line`);
+    if (key === "form144") ok(/a plan to sell, not a sale/.test(line), "form144: the line does not say a notice is a plan, not a sale");
+    if (key === "schedule13") ok(line.includes(`${(s.kinds["13D"] ?? 0).toLocaleString("en-US")} on Schedule 13D`) && line.includes(`${(s.kinds["13G"] ?? 0).toLocaleString("en-US")} on Schedule 13G`) && /not a trade/.test(line), "schedule13: the line does not split 13D and 13G or say a statement is not a trade");
+  }
+}
 
 // ── the downloads page lists the same site-wide files ──────────────────────────────────────
 const dl = await get("/downloads/");

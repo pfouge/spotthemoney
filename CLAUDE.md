@@ -3285,3 +3285,43 @@ on the site, in the guides or on the privacy page changed.
 - **Auto ads** are a setting in AdSense (Ads > By site > spotthemoney.com), not code. See the project state doc for
   which formats are on.
 - `/privacy/` (dated 2026-11-20) and `/about/` say advertising is on. Change them with any change to the above.
+
+### Coverage report: the two filing types that are stored and not shown (2026-11-20, scheduled parity run) — queue item (s2)
+
+- **What.** `/data/coverage.json` has a new top-level key, `storedNotShown`, with `form144` (table
+  `form144_notices`) and `schedule13` (table `schedule13_filings`): rows, amendments, distinct issuers,
+  rows about tracked companies, first and newest filing date, rows per month filed, rows per kind
+  (`144`, `144/A`; `13D`, `13G`). Counts and dates only: no names, amounts or accession numbers. The
+  methodology's coverage list (`/methodology/#coverage`) gained two lines, `#coverage-form144` and
+  `#coverage-schedule13` (`li[data-stored]`, with `data-rows`, `data-last`, `data-catching-up`). Each says
+  the filings are stored and not shown on any page yet, and, while the newest filing on file is more than
+  10 days before the build (`CAUGHT_UP_DAYS`), that the load is still working forward to today. A line is
+  left out when its table is empty or cannot be read. No new file in the deploy, no migration, no job change.
+- **Why.** The two catch-ups (from 2025-10-01, about 3,400 filings a run) could only be followed by SQL.
+  Now the coverage file and the build log show how far each has got. **A session without SQL reads
+  `storedNotShown.<key>.lastFiled` in the live coverage file to decide whether stage 2 can start.**
+- **Code.** `web/src/lib/coverage-stored.ts` (pure: types, `catchingUp`, `form144Sentence`,
+  `schedule13Sentence`, `storedProblems`, `storedLog`; tests `scripts/coverage-stored.test.ts`);
+  `web/src/lib/coverage.ts` reads each table in its own step, so a missing table leaves the other's
+  counts in place, and refuses counts that do not add up; `datafiles.ts` (`top` list and description of
+  the coverage file); `methodology.astro`.
+- **Build log** prints `[web] stored, not shown: Form 144 N rows (144 n, 144/A n; A amendments, I issuers,
+  T for tracked companies), filed D to D, M months, catching up|current; Schedule 13 N rows (13D n, 13G n;
+  ...)` for comparison with SQL.
+- **Verifier.** `verify-developers` (it already checks the coverage file's top-level layout against the
+  developers page) now also checks that months and kinds add up to rows, that the coverage file carries no
+  name, payload, accession or SEC-number field for these two, and that each methodology line states the
+  file's rows, issuers, amendments and filing dates, says "not shown on any page yet", and carries the
+  catching-up sentence exactly when the newest filing is more than 10 days old. The seed holds four
+  notices (current) and three statements (40 days old, so catching up).
+- **When stage 2 of either source ships** (the filings get a page): reword that source's sentence in
+  `coverage-stored.ts` ("not shown on any page yet" becomes false), decide whether the key stays under
+  `storedNotShown` (renaming it is a change to a working file's layout: update `top` in `datafiles.ts`),
+  and update the verifier's wording check.
+- Guides `house-and-senate-disclosure-differences` and `what-disclosure-data-cannot-tell-you` (they cover
+  `coverage.ts`) and `how-to-cite-and-reuse` (`datafiles.ts`) were re-read and accepted without a wording
+  change: they speak of trades and of the public files, and neither filing type is a trade or is shown.
+- The Schedule 13 line says "ownership statements", not "holders of more than 5%": a statement can report
+  a holding that has fallen below 5%.
+- Earliest Schedule 13 filing date on file is 2025-09-03, before the walk's start of 2025-10-01: the
+  date is the submission's own filing date, and a few submissions first appear in a later daily index.

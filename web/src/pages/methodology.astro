@@ -14,6 +14,7 @@ import { RECORD_START, FIRST_MIN_DAYS, RUN_MIN, firstEligibleFrom } from "../lib
 import Answer from "../components/Answer.astro";
 import { FEED_CAPS, CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT } from "../lib/notable";
 import { getCoverage, filingMonths, latestStat } from "../lib/coverage";
+import { form144Sentence, schedule13Sentence, catchingUp } from "../lib/coverage-stored";
 
 const model = await getFlagship();
 const cov = await getCoverage();
@@ -27,6 +28,9 @@ const houseIndex = latestStat(cov, "house_ptr", `index_ptrs_${thisYear}`);
 const form4 = cov.filings.filter((f) => f.source === "sec_form4" && (f.month === "none" || f.month >= FORM4_FLOOR.slice(0, 7)));
 const form4FloorText = new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 const senate = cov.filings.filter((f) => f.source === "senate_ptr");
+const stored = cov.storedNotShown;
+const planned = form144Sentence(stored.form144, cov.builtAt);
+const holders = schedule13Sentence(stored.schedule13, cov.builtAt);
 const span = (rows: { month: string; rows: number }[] | undefined) => { const r = (rows ?? []).filter((x) => x.month !== "none"); return r.length ? `${num(sum(r.map((x) => x.rows)))} rows, ${r[0]!.month} to ${r[r.length - 1]!.month}` : "none on file"; };
 const monthLabel = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 const description = "How Spot the Money collects, filters and presents public disclosures: sources, update cadence, the publishing bar, late-filer rules and flag definitions.";
@@ -120,6 +124,8 @@ import { MAX_NOTES_PER_FILING } from "../lib/footnotes";
     <li><strong>Lobbying.</strong> {span(cov.tables.lobbying)} (by reporting quarter).</li>
     <li><strong>Contracts.</strong> {span(cov.tables.contracts)}: the largest awards each month plus awards to followed companies, not every federal contract.</li>
     <li><strong>Donations.</strong> {span(cov.tables.donations)}: itemized receipts of tracked committees only.</li>
+    {planned && <li id="coverage-form144" data-stored="form144" data-rows={stored.form144.rows} data-last={stored.form144.lastFiled ?? ""} data-catching-up={catchingUp(stored.form144, cov.builtAt) ? "yes" : "no"}><strong>Planned sales (SEC Form 144).</strong> {planned}</li>}
+    {holders && <li id="coverage-schedule13" data-stored="schedule13" data-rows={stored.schedule13.rows} data-last={stored.schedule13.lastFiled ?? ""} data-catching-up={catchingUp(stored.schedule13, cov.builtAt) ? "yes" : "no"}><strong>Large holders (SEC Schedules 13D and 13G).</strong> {holders}</li>}
   </ul>
   {house.length > 0 && (
     <div class="table-wrap">
