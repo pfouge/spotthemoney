@@ -133,7 +133,8 @@ test("the watchlist's rule for a new trade is the one the guide states, and the 
 test("with the switch off the privacy page, terms and guide keep their wording", () => {
   const privacy = read("../web/src/pages/privacy.astro");
   assert.match(privacy, /Not yet offered: new trades appear on your watchlist page only\./);
-  assert.match(privacy, /const BASE_UPDATED = "2026-11-15";/);
+  // The date a change other than email alerts last moved (2026-11-20: saved screens in the browser).
+  assert.match(privacy, /const BASE_UPDATED = "2026-11-20";/);
   assert.match(privacy, /alertsLaunchProblem\(\)/);
   assert.match(privacy, /We do not record whether you open an email/);
   assert.match(read("../web/src/pages/terms.astro"), /const BASE_UPDATED = "2026-10-10";/);

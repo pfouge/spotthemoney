@@ -9,7 +9,9 @@
 // combined filters it pages through the whole result and compares the row ids one by one. It also
 // checks sorting, paging, rows per page, the address written for a view and its reload, Reset, a
 // jump link, the search box, the empty state, that the rows printed without JavaScript are the
-// first page with JavaScript, a sample of the links, the wording, and 390 px.
+// first page with JavaScript, a sample of the links, the wording, and 390 px. Saved screens: what
+// is stored (a name and an address under one localStorage key), that saving sends no request,
+// opening, replacing, removing, the limit, junk in storage, storage refused, the privacy page.
 import { chromium } from "playwright";
 
 const base = (process.argv[2] || "http://127.0.0.1:4321").replace(/\/$/, "");
@@ -385,6 +387,126 @@ if (someSlugs.length && someTickers.length) {
   await page.fill('[data-scr="q"]', "zzzz-no-such-member");
   ok(await page.locator('[data-scr="download"]').isDisabled(), "the download button is off when nothing matches");
   await page.goto(base + PATH, { waitUntil: "load" }); await ready();
+}
+
+// ── saved screens: names and addresses in this browser's localStorage, nothing sent ──────
+{
+  const KEY = "stm.screens.congress", MAX = 20;
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const sp = await ctx.newPage();
+  const reqs = [], serr = [];
+  sp.on("request", (r) => reqs.push(r.url()));
+  sp.on("pageerror", (e) => serr.push(String(e)));
+  await sp.goto(base + PATH, { waitUntil: "load" }); await ready(sp);
+  const stored = () => sp.evaluate((k) => localStorage.getItem(k), KEY);
+  const names = () => sp.locator('[data-scr="saved-items"] li a').allTextContents();
+  const msg = async () => (await sp.textContent('[data-scr="save-msg"]')) ?? "";
+  const shown = () => sp.evaluate(() => Number(document.querySelector("[data-screener]").dataset.shown));
+  const setS = async (k, v) => { await sp.selectOption(`[data-scr="${k}"]`, String(v)); };
+  const save = async (name) => { if (!(await sp.locator('[data-scr="save-form"]').isVisible())) await sp.click('[data-scr="save-open"]'); await sp.fill('[data-scr="save-name"]', name); await sp.press('[data-scr="save-name"]', "Enter"); };
+  ok(await sp.locator('[data-scr="save-open"]').isVisible(), '"Save this screen" is offered');
+  ok((await stored()) === null && !(await sp.locator('[data-scr="saved-list"]').isVisible()), "nothing is stored and no list is shown before a screen is saved");
+  await sp.click('[data-scr="save-open"]');
+  ok(!(await sp.locator('[data-scr="save-form"]').isVisible()) && /nothing to save/.test(await msg()), "the view the page opens on cannot be saved, and the page says why");
+  ok((await stored()) === null, "a refused save stores nothing");
+
+  // Save a filtered view from its second page: the page number is not kept.
+  const c1 = { chamber: chambers[0], side: sides[0] };
+  for (const [k, v] of Object.entries(c1)) await setS(k, v);
+  await setS("per", 25);
+  if (!(await sp.locator('[data-scr="next"]').isDisabled())) await sp.click('[data-scr="next"]');
+  const h1 = (await sp.evaluate(() => location.hash)).replace(/&page=\d+/, "");
+  await sp.click('[data-scr="save-open"]');
+  ok(await sp.locator('[data-scr="save-form"]').isVisible() && (await sp.inputValue('[data-scr="save-name"]')).length > 0, "the name box opens with a suggested name");
+  ok((await sp.getAttribute('[data-scr="save-open"]', "aria-expanded")) === "true", "the button says the form is open");
+  const n1 = '<b>Big</b> & "buys" <img src=x onerror="window.__stmx=1">';
+  const before = reqs.length;
+  await sp.fill('[data-scr="save-name"]', `  ${n1}  `); await sp.press('[data-scr="save-name"]', "Enter");
+  const first = JSON.parse((await stored()) ?? "[]");
+  ok(first.length === 1 && first[0].n === n1 && first[0].h === h1, `one screen is stored: its name as typed and the view's address without a page number (${first[0]?.h})`);
+  ok(Object.keys(first[0] ?? {}).sort().join() === "h,n", "only a name and an address are stored");
+  ok(reqs.length === before, `saving a screen sends no request (${reqs.slice(before).join(", ")})`);
+  ok((await names()).join("|") === n1 && (await sp.locator('[data-scr="saved-items"] li :is(b, img)').count()) === 0 && (await sp.evaluate(() => window.__stmx)) === undefined, "the name is shown as text, never as markup");
+  ok(/Saved/.test(await msg()) && /this browser only/.test(await msg()), "the page confirms the save and says where it is kept");
+  ok(!(await sp.locator('[data-scr="save-form"]').isVisible()), "the name box closes after a save");
+  ok((await sp.evaluate(() => Object.keys(localStorage))).every((k) => k === KEY || k === "theme"), "the site's only local storage keys are the saved screens and the theme");
+
+  // A second screen goes first; clicking the older one brings its view back.
+  await sp.click('[data-scr="reset"]'); await setS("per", 50);
+  await setS("min", 100001);
+  await save("Second");
+  ok((await names()).join("|") === `Second|${n1}`, "the newest saved screen is listed first");
+  ok(await sp.locator('[data-scr="saved-list"]').isVisible() && await sp.locator('[data-scr="saved-items"] li a').first().isVisible(), "the list of saved screens is shown once there is one");
+  await sp.locator('[data-scr="saved-items"] li a').nth(1).click();
+  await sp.waitForFunction((h) => location.hash === h && document.querySelector('[data-scr="per"]').value === "25" && document.querySelector('[data-scr="min"]').value === "0", h1);
+  ok((await shown()) === want(c1).length && (await sp.inputValue('[data-scr="chamber"]')) === c1.chamber && (await sp.inputValue('[data-scr="side"]')) === c1.side && (await sp.inputValue('[data-scr="min"]')) === "0" && (await sp.inputValue('[data-scr="per"]')) === "25",
+    `opening a saved screen shows its view: ${await shown()} trades on screen, ${want(c1).length} in the CSV, controls set`);
+  ok((await sp.getAttribute('[data-scr="saved-items"] li:nth-child(2) a', "aria-current")) === "true" && (await sp.getAttribute('[data-scr="saved-items"] li:nth-child(1) a', "aria-current")) === null, "the saved screen that is on screen is marked");
+  await sp.goto(base + PATH, { waitUntil: "load" }); await ready(sp);
+  ok((await names()).join("|") === `Second|${n1}` && (await shown()) === total, "saved screens are still listed after leaving and coming back, and the page opens on every trade");
+  await sp.locator('[data-scr="saved-items"] li a').first().click();
+  await sp.waitForFunction(() => location.hash.includes("min=100001") && document.querySelector('[data-scr="min"]').value === "100001");
+  ok((await shown()) === want({ min: 100001 }).length, "a saved screen opens from a fresh page load too");
+
+  // The same name, whatever its capitals, replaces; Remove removes; the last removal leaves nothing stored.
+  await setS("side", sides[0]);
+  await save("SECOND");
+  const rep = JSON.parse((await stored()) ?? "[]");
+  ok(rep.length === 2 && rep[0].n === "SECOND" && rep[0].h.includes("min=100001") && rep[0].h.includes(`side=${sides[0]}`) && /Replaced/.test(await msg()), "saving under a name already in use replaces that screen");
+  await sp.click('[data-scr="save-open"]'); await sp.fill('[data-scr="save-name"]', "   "); await sp.press('[data-scr="save-name"]', "Enter");
+  ok(/name/.test(await msg()) && JSON.parse(await stored()).length === 2, "a screen cannot be saved without a name");
+  await sp.keyboard.press("Escape");
+  ok(!(await sp.locator('[data-scr="save-form"]').isVisible()), "Escape closes the name box");
+  await sp.getByRole("button", { name: "Remove saved screen: SECOND" }).click();
+  ok((await names()).join("|") === n1 && JSON.parse(await stored()).length === 1 && /Removed/.test(await msg()), "Remove takes one screen off the list and out of storage");
+  await sp.locator('[data-scr="saved-items"] li button').first().click();
+  ok((await stored()) === null && !(await sp.locator('[data-scr="saved-list"]').isVisible()), "removing the last screen leaves nothing stored");
+
+  // What is read back is untrusted: junk is dropped, an address can only be one of the screener's views.
+  await sp.evaluate(([k, side]) => localStorage.setItem(k, JSON.stringify([{ n: "kept", h: `#side=${side}&page=9&nonsense=1` }, { n: "script", h: "javascript:alert(1)" }, { n: "elsewhere", h: "https://example.com/#side=buy" }, { n: "jump", h: "#about" }, 5, null, { n: "", h: `#side=${side}` }])), [KEY, sides[0]]);
+  await sp.goto(base + PATH, { waitUntil: "load" }); await ready(sp);
+  const hrefs = await sp.locator('[data-scr="saved-items"] li a').evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  ok((await names()).join("|") === "kept" && hrefs.join("|") === `#side=${sides[0]}`, `stored text that is not a saved screen is ignored and an address is rewritten by the screener (${hrefs.join(" ")})`);
+  await sp.evaluate((k) => localStorage.setItem(k, "{broken"), KEY);
+  await sp.goto(base + PATH, { waitUntil: "load" }); await ready(sp);
+  ok((await names()).length === 0 && (await shown()) === total && await sp.locator('[data-scr="save-open"]').isVisible(), "unreadable stored text is treated as no saved screens");
+
+  // The limit: a save past it is refused and nothing is dropped.
+  await sp.evaluate(([k, n, side]) => localStorage.setItem(k, JSON.stringify(Array.from({ length: n + 5 }, (_, i) => ({ n: `S${i}`, h: `#side=${side}` })))), [KEY, MAX, sides[0]]);
+  await sp.goto(base + PATH, { waitUntil: "load" }); await ready(sp);
+  ok((await names()).length === MAX, `at most ${MAX} saved screens are listed`);
+  await setS("min", 15001); await save("One too many");
+  ok(new RegExp(`\\b${MAX}\\b`).test(await msg()) && !(await names()).includes("One too many"), "a save past the limit is refused with the reason");
+  await sp.getByRole("button", { name: "Remove saved screen: S0", exact: true }).click();
+  await save("Now it fits");
+  ok((await names())[0] === "Now it fits" && (await names()).length === MAX, "after removing one, a new screen can be saved");
+
+  // A long name at phone width does not push the page sideways.
+  await sp.evaluate(([k, side]) => localStorage.setItem(k, JSON.stringify([{ n: "W".repeat(60), h: `#side=${side}` }, { n: "Senate purchases of $100,001 or more, newest first, 2026", h: `#side=${side}&min=100001` }])), [KEY, sides[0]]);
+  await sp.setViewportSize({ width: 390, height: 844 });
+  await sp.goto(base + PATH, { waitUntil: "load" }); await ready(sp);
+  await sp.click('[data-scr="save-open"]');
+  const overS = await sp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  ok(overS <= 1, `saved screens and the name box cause no sideways page scroll at 390 px (${overS}px over)`);
+  ok(serr.length === 0, `no page errors while saving screens (${serr.join("; ")})`);
+  await ctx.close();
+
+  // A browser that refuses storage: no save button, and the screener works as before.
+  const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await ctx2.addInitScript(() => { Object.defineProperty(window, "localStorage", { configurable: true, get() { throw new DOMException("blocked", "SecurityError"); } }); });
+  const bp = await ctx2.newPage();
+  await bp.goto(base + PATH, { waitUntil: "load" }); await ready(bp);
+  ok(!(await bp.locator('[data-scr="save-open"]').isVisible()), "with storage refused by the browser, saving is not offered");
+  await bp.selectOption('[data-scr="side"]', sides[0]);
+  ok(Number(await bp.evaluate(() => document.querySelector("[data-screener]").dataset.shown)) === want({ side: sides[0] }).length, "with storage refused, the filters still work");
+  await ctx2.close();
+
+  // The privacy page names what is stored, and the page itself says where a screen is kept.
+  const priv = (await (await page.request.get(base + "/privacy/")).text()).replace(/<[^>]+>/g, " ");
+  ok(priv.includes(KEY) && /Save this screen/.test(priv) && /saved screens are not sent to us/.test(priv), "the privacy page names the saved-screens storage key and says it is not sent to the site");
+  ok(!/and one setting:/.test(priv), "the privacy page no longer says the theme is the only thing stored");
+  const here = (await (await page.request.get(base + PATH)).text()).replace(/<[^>]+>/g, " ");
+  ok(/in this browser only/.test(here) && new RegExp(`Up to ${MAX} screens`).test(here), "the screener says saved screens stay in this browser and how many are kept");
 }
 
 // ── a sample of the links, late flags, wording ───────────────────────────────────────────

@@ -3172,3 +3172,49 @@ on the site, in the guides or on the privacy page changed.
 - Verified locally only: `astro check` 0 errors; build passes (its `Astro.request.headers` warnings are on
   every page on `main` too); every figure, table row and CSV row checked against the brief by script;
   both charts viewed at 390, 820 and 1280px in light and dark.
+- **Update 2026-11-20:** merged and deployed as PR #50 (`c39c3d2`) at 23:17 UTC on 2026-11-19. It changed
+  `downloads.ts` and `downloads/index.astro` without accepting guide `how-to-cite-and-reuse`, so
+  `verify-guides` was red on main; the saved-screens change below re-read the guide, added the markets file
+  to its list and accepted it.
+
+### Saved screens on the Congress trade screener (2026-11-20, scheduled parity run) — queue item 6, small item (s1)
+
+- **What.** `/congress-trades/` has "Save this screen" under "Download these rows": it keeps the view on
+  screen (filters, sort order, rows per page; never the page number, never rows) under a name the visitor
+  types, and lists it under "Saved screens" as a link with a Remove button. Opening one is a click on its
+  address, the same hash a shared link carries. Hidden without JavaScript, and hidden when the browser
+  refuses storage.
+- **Where it is kept: one localStorage key, `stm.screens.congress`** (`SAVED_KEY`), a JSON list of
+  `{ n, h }`. Nothing is sent to the site, no account is involved, no API or database change. The key is
+  removed again when the last screen is removed.
+- **The privacy page changed first, in the same pull request** (`BASE_UPDATED` 2026-11-20): "What is stored
+  in your browser" now names two things the visitor chooses (the theme, and saved screens with the key and
+  the limit, both printed from `lib/savedscreens.ts`), and "Your choices" says clearing site data removes
+  saved screens. **The site's localStorage keys are now `theme` and `stm.screens.congress`; a third key
+  needs the privacy page changed first.** `verify-screener` fails if any other key appears.
+- **Rules** (`web/src/lib/savedscreens.ts`, pure; tests `scripts/savedscreens.test.ts`): at most
+  `MAX_SAVED` (20) screens, names up to `NAME_MAX` (60) characters; newest first; a name already in use
+  (whatever its capitals) is replaced; a save past the limit is refused with the reason, never swapped for
+  an old one; the view the page opens on cannot be saved. **Whatever is read back from storage is
+  untrusted:** a name is cleaned (control and direction characters out) and only ever written as a text
+  node; an address is taken apart and written again by the screener's own `parseHash` and `toHash`
+  (`cleanHash`), so it can hold only the screener's keys and values, never another address. A bad entry is
+  dropped without costing the good ones. The list is read again from storage just before a save, and a
+  `storage` event refreshes it, so two tabs do not lose each other's screens.
+- A saved screen is a set of filters, not a copy of rows: the windows count back from the build day, so it
+  shows what matches now. The page (`#saved`), the methodology and the guide say so.
+- **A new screener hash key needs nothing here**: saved screens go through `parseHash`/`toHash`. A key
+  that is REMOVED or renamed later silently drops out of old saved screens (the rest of the view is kept).
+- **Verifier.** `verify-screener` (370 checks on the seed, up from 334): what is stored after a save (name
+  as typed, address without the page number, two fields only), that saving sends no request, markup in a
+  name shown as text, newest first, opening a saved screen against the CSV oracle, the mark on the screen
+  that is open, a fresh load, replace, no name, Escape, Remove, nothing stored after the last removal,
+  junk and hostile entries in storage, unreadable storage, the limit, a 60-character name at 390 px,
+  storage refused by the browser, and the wording on the privacy page and the screener.
+- Guide `how-to-read-a-congressional-trade-report`: a paragraph in `#screener`, a clause in one FAQ, two
+  labels, covers `savedscreens.ts`; `ctx.savedScreensMax` is the live value for "20". Methodology
+  `#congress-screener` gained two sentences.
+- Not done: no sync between devices or with an account (on purpose: it would make a saved screen personal
+  data on the server); no export or import of the list (the page address does that for one view); no
+  renaming in place (save again under the new name and remove the old one); the insider screener does not
+  exist yet and will need its own key.
