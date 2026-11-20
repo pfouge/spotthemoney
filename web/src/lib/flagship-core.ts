@@ -3,6 +3,7 @@
 // the pages and components it renders) can import them without pulling in flagship.ts, which reads
 // Postgres with Node-only code. flagship.ts re-exports everything here, so existing imports keep
 // working unchanged.
+import type { Form144Data } from "./form144";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -124,6 +125,8 @@ export interface Flagship {
   seats: Map<number, Seat[]>;
   /** Form 4 filing id → the filing's footnotes as clean text (lib/footnotes.ts). Only filings that have any. */
   footnotes: Map<number, string[]>;
+  /** SEC Form 144 notices about companies on the site (lib/form144.ts). Empty, with shown false, until the load has reached today. */
+  form144: Form144Data;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

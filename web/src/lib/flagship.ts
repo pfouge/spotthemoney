@@ -12,6 +12,8 @@
 // Everything is null-safe: with no DATABASE_URL, or empty tables, the model is empty and the
 // pages render their empty-state reason lines instead of blank tables.
 
+import { emptyForm144, form144Log } from "./form144";
+import { loadForm144, siteCompanyCiks } from "./form144-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -64,7 +66,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -150,7 +152,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -326,6 +328,17 @@ async function load(): Promise<Flagship> {
       console.log(`[web] industry codes: ${withCode} of ${withCik} companies on the site have a SIC code (${model.companySic.size} codes on file)${parts.length ? "; " + parts.join(", ") : ""}`);
     } catch (err) {
       console.warn("[web] industry codes skipped:", (err as Error).message);
+    }
+
+    // SEC Form 144 notices (planned sales) for the stock and company pages. Optional like the
+    // others, and read only once the load has reached today: until then form144.shown is false
+    // and no page, file or count shows a partial record (lib/form144.ts, lib/form144-build.ts).
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.form144 = await loadForm144(sql, builtAt, ciks);
+      console.log(`[web] ${form144Log(model.form144, builtAt, ciks)}`);
+    } catch (err) {
+      console.warn("[web] Form 144 notices skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

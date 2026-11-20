@@ -3325,3 +3325,60 @@ on the site, in the guides or on the privacy page changed.
   a holding that has fallen below 5%.
 - Earliest Schedule 13 filing date on file is 2025-09-03, before the walk's start of 2025-10-01: the
   date is the submission's own filing date, and a few submissions first appear in a later daily index.
+
+### Form 144 notices, stage 2: "Planned sales" on stock and company pages, behind a date test (2026-11-20, scheduled parity run) — queue item (g2d)
+
+- **What.** Stock pages and company pages of the tracked set get a section "Planned sales: Form 144
+  notices" (`web/src/components/PlannedSales.astro`, `section[data-planned-sales]`, anchor
+  `#planned-sales`, jump link): a summary sentence (notices and sellers in the last 12 months,
+  amendments, how many state a 10b5-1 plan date), one fixed caveat (`NOTICE_CAVEAT`), a link to the
+  CSV, and a sortable table of the 25 newest notices (`NOTICE_ROWS`) filed in the last 365 days
+  (`NOTICE_WINDOW_DAYS`, back from the build day): filed, seller and relationship as filed, class,
+  shares to be sold, stated market value, approximate sale date, plan adoption date, link to the
+  notice at the SEC. New download `planned-sales-form144.csv` (kind `notices`, group insiders: every
+  notice on record about a company with a page, not only the last 12 months). Methodology
+  `#form-144`; guide `what-is-form-4` section `#form-144`, one FAQ, two sources; a clause in
+  `how-to-cite-and-reuse`. No migration, no data job change.
+- **Shown only when the load is current, and that is one test.** `caughtUp(lastFiled, builtAt)` in
+  `web/src/lib/coverage-stored.ts` (newest `filed_at` in the whole table at most `CAUGHT_UP_DAYS` = 10
+  days before the build). `loadForm144` (`web/src/lib/form144-build.ts`, called from `flagship.ts` in
+  its own try/catch) reads the notices only when it is true; otherwise `model.form144.shown` is false
+  and `byCik` is empty, so the sections, the jump links, the CSV file (a file with no rows is not
+  built), the methodology paragraph, the guide section and FAQ (`ctx.form144Shown`) all stay out, and
+  the methodology's coverage line keeps "stored and not shown on any page yet". When the catch-up
+  reaches today everything appears in the same build and the coverage line changes to "Notices about
+  companies this site tracks (N notices) are shown on the stock and company pages". **It also
+  means the sections disappear again if the daily `sec_form144` job brings nothing new for more
+  than 10 days** (stated in the methodology); read the freshness table if that happens.
+  On production at the time of the merge the load was at mid-June 2026, so nothing is visible yet.
+- **Rules** (`web/src/lib/form144.ts`, pure; tests `scripts/form144.test.ts`): a notice is a plan,
+  never added to any buy or sell total, chart, feed, cluster or trade map (nothing but the component
+  and the CSV reads `model.form144`). No shares or dollars are added across notices: a 144/A repeats
+  the notice it corrects and the form does not say which, so the summary counts notices and sellers
+  only (one seller = one filer SEC number, or one name when there is none). A figure of zero or less
+  is a blank (`stated`). Text is cleaned (`cleanText`: control and direction characters out, white
+  space collapsed) and printed as text. Relationships are the filer's words, repeats dropped. A
+  seller's name links to an insider page only when the submission's filer number is the SEC number of
+  exactly one person with a static page (`sellerPath`). The broker is in the CSV, not in the table.
+- **Build log** prints `[web] planned sales (Form 144): not shown (newest filing on file D; ...)` or
+  `... shown; N notices for C companies on the site (A amendments), newest D; W filed in the last 365
+  days for K companies; M companies with more than 25; largest stated value V` for comparison with SQL.
+- **Verifier:** `node scripts/verify-form144.mjs <base-url> [--sample N]` (no browser; the
+  twenty-first). It reads the state from `/data/coverage.json` with its own copy of the 10-day rule.
+  Not shown: no file in the catalogue or on disk, no section on sampled pages, no `#form-144` in the
+  methodology or the guide. Shown: the CSV is the oracle; for sampled companies (busiest, quietest,
+  a spread) the section's counts, row order and every cell on the company page and on its ticker's
+  stock page; a company with no notice in the window has no section; wording. `verify-developers`
+  accepts either wording of the coverage line according to the same state. To exercise the hidden
+  state locally: copy the database, `update form144_notices set filed_at = filed_at - 30`, build.
+- **Seed:** 36 more notices: NVIDIA (a seller with a page, an amendment, a plan date, a zero value,
+  markup in a name, one older than the window), Palantir (30, so the 25-row cap shows), Lockheed (one
+  old notice: in the file, no section), Microsoft (a notice with almost nothing filled in).
+- `flagship-core.ts` `Flagship` gained `form144`; `server/od.ts` sets it empty (one line; the
+  on-demand pages show no notices).
+- `storedNotShown.form144` in the coverage file keeps its key (renaming it would change a working
+  file's layout); its description on the developers page says notices are shown once current.
+- Not done: no section on insider pages (join `filer_cik` to `people.cik`: about 95% of tracked
+  notices match a person); nothing on the on-demand pages (needs the `od_*` functions); no
+  per-company file; the past-3-months sales lines are in the CSV as sums only; no search or sitemap
+  entry (no new page).

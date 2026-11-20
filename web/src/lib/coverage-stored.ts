@@ -1,6 +1,7 @@
-// Two SEC filing types the database collects and no page shows yet: Form 144 notices of proposed
-// sales (form144_notices, source sec_form144) and Schedules 13D and 13G (schedule13_filings,
-// source sec_schedule13). Their counts go into /data/coverage.json (key storedNotShown) and the
+// Two SEC filing types the database collects: Form 144 notices of proposed sales
+// (form144_notices, source sec_form144), shown on stock and company pages once their load has
+// reached today (lib/form144.ts), and Schedules 13D and 13G (schedule13_filings, source
+// sec_schedule13), which no page shows yet. Their counts go into /data/coverage.json (key storedNotShown) and the
 // methodology's coverage list, so a reader, and a session without SQL, can see how far each
 // load has got. Counts and dates only: no names, no amounts.
 //
@@ -37,10 +38,19 @@ const isDate = (s: string | null | undefined): s is string => !!s && /^\d{4}-\d{
 
 /** True while the newest filing on file is more than CAUGHT_UP_DAYS before the build day (or nothing is on file). */
 export function catchingUp(s: StoredSource, builtAt: string): boolean {
-  if (!s.rows || !isDate(s.lastFiled)) return true;
-  const built = Date.parse(builtAt.slice(0, 10) + "T00:00:00Z");
-  if (Number.isNaN(built)) return true;
-  return built - Date.parse(s.lastFiled + "T00:00:00Z") > CAUGHT_UP_DAYS * DAY;
+  return !s.rows || !caughtUp(s.lastFiled, builtAt);
+}
+
+/**
+ * True when the newest filing on file is at most CAUGHT_UP_DAYS before the build day. This one
+ * test decides both whether Form 144 notices are shown on pages (lib/form144-build.ts) and what
+ * the methodology says about them, so the two cannot disagree.
+ */
+export function caughtUp(lastFiled: string | null | undefined, builtAt: string): boolean {
+  if (!isDate(lastFiled)) return false;
+  const built = Date.parse(String(builtAt).slice(0, 10) + "T00:00:00Z");
+  if (Number.isNaN(built)) return false;
+  return built - Date.parse(lastFiled + "T00:00:00Z") <= CAUGHT_UP_DAYS * DAY;
 }
 
 const n = (x: number) => x.toLocaleString("en-US");
@@ -53,7 +63,11 @@ const tail = (s: StoredSource, builtAt: string) =>
 /** The methodology's sentence for Form 144, or "" with nothing on file. */
 export function form144Sentence(s: StoredSource, builtAt: string): string {
   if (!s.rows) return "";
-  return `${many(s.rows, "notice", "notices")} of a proposed sale on file${filedSpan(s)}, about ${many(s.issuers, "company", "companies")}; ${many(s.amendments, "is an amendment", "are amendments")}. A notice states a plan to sell, not a sale.${tail(s, builtAt)}`;
+  // Shown on pages exactly when the load is current (the same test lib/form144-build.ts applies).
+  const end = catchingUp(s, builtAt)
+    ? tail(s, builtAt)
+    : ` Notices about companies this site tracks (${many(s.trackedRows, "notice", "notices")}) are shown on the stock and company pages, as filed, and are in no buy or sell total; the others are stored and not shown.`;
+  return `${many(s.rows, "notice", "notices")} of a proposed sale on file${filedSpan(s)}, about ${many(s.issuers, "company", "companies")}; ${many(s.amendments, "is an amendment", "are amendments")}. A notice states a plan to sell, not a sale.${end}`;
 }
 
 /** The methodology's sentence for Schedules 13D and 13G, or "" with nothing on file. */

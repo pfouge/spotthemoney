@@ -287,6 +287,26 @@ insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_
   ('seed-144-2', '144',   current_date - 44, '0009990001', 'Seed Issuer Two', 'SEED SELLER B', 2500, 90000),
   ('seed-144-3', '144/A', current_date - 6,  '0009990001', 'Seed Issuer Two', 'SEED SELLER B', 2500, 91000),
   ('seed-144-4', '144',   current_date - 4,  '0009990002', 'Seed Issuer Three', 'SEED SELLER C', 400, 12000);
+-- Planned sales shown on pages (lib/form144.ts; scripts/verify-form144.mjs). The four rows above
+-- stay as they are. These exercise the page section: a seller who is an insider with a page here
+-- (filer_cik = people.cik), an amendment, a notice with a plan date, a figure of zero (a dash),
+-- text with markup and stray white space, a notice older than the 12-month window, a company with
+-- more notices than a page prints (Palantir, 30), and a company with one old notice only
+-- (Lockheed Martin: in the file, no section).
+insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_name, filer_cik, seller_name, relationships, security_class, shares, market_value, shares_outstanding, approx_sale_date, broker, plan_adoption_date, notice_date, sold_3m_shares, sold_3m_proceeds, nothing_sold_3m, source_url) values
+  ('seed-144-10', '144',   current_date - 3,  '0001045810', 'NVIDIA CORP', '0001100000', 'HUANG JEN HSUN', '{Officer,Director}', 'Common', 75000, 10650000, 24400000000, current_date - 3, 'Seed Brokerage LLC', current_date - 200, current_date - 3, 150000, 20400000.5, false, 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026000010/seed-144-10-index.htm'),
+  ('seed-144-11', '144/A', current_date - 2,  '0001045810', 'NVIDIA CORP', '0001100000', 'HUANG JEN HSUN', '{Officer,Director}', 'Common', 75000, 10700000, 24400000000, current_date - 3, 'Seed Brokerage LLC', current_date - 200, current_date - 2, 150000, 20400000.5, false, 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026000011/seed-144-11-index.htm'),
+  ('seed-144-12', '144',   current_date - 30, '0001045810', 'NVIDIA CORP', '0009998801', '  The <b>Seed</b> Family   Trust & Co ', '{"See Remarks",OFFICER,Officer}', 'Class A Common Stock', 1200, 0, null, current_date - 30, 'Other Broker & Sons', null, current_date - 30, null, null, true, 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026000012/seed-144-12-index.htm'),
+  ('seed-144-13', '144',   current_date - 400, '0001045810', 'NVIDIA CORP', '0001100001', 'KRESS COLETTE', '{Officer}', 'Common', 5000, 600000, 24400000000, current_date - 400, 'Seed Brokerage LLC', null, current_date - 400, null, null, true, 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026000013/seed-144-13-index.htm'),
+  ('seed-144-14', '144',   current_date - 380, '0000936468', 'LOCKHEED MARTIN CORP', '0001100004', 'TAICLET JAMES D JR', '{Officer}', 'Common', 3000, 1400000, 235000000, current_date - 380, 'Seed Brokerage LLC', null, current_date - 380, null, null, true, 'https://www.sec.gov/Archives/edgar/data/936468/000000000026000014/seed-144-14-index.htm'),
+  ('seed-144-15', '144',   current_date - 12, '0000789019', 'MICROSOFT CORP', null, 'Seed Holder With No Number', '{}', null, null, 250000, null, null, null, null, null, null, null, null, null);
+insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_name, filer_cik, seller_name, relationships, security_class, shares, market_value, approx_sale_date, broker, notice_date, nothing_sold_3m, source_url)
+select 'seed-144-p' || lpad(g::text, 2, '0'), case when g % 9 = 0 then '144/A' else '144' end, current_date - (g * 5 + 4), '0001321655', 'PALANTIR TECHNOLOGIES INC.',
+       case when g % 3 = 0 then '0001100003' when g % 3 = 1 then '0001100005' else '0001100006' end,
+       case when g % 3 = 0 then 'KARP ALEXANDER C' when g % 3 = 1 then 'ORTIZ MARIA' else 'CHEN WEI' end,
+       case when g % 3 = 0 then '{Officer,Director}'::text[] else '{Director}'::text[] end, 'Class A Common Stock', 1000 * g, 41250.75 * g, current_date - (g * 5 + 4), 'Seed Brokerage LLC', current_date - (g * 5 + 4), true,
+       'https://www.sec.gov/Archives/edgar/data/1321655/0000000000260001' || lpad(g::text, 2, '0') || '/seed-144-p' || lpad(g::text, 2, '0') || '-index.htm'
+  from generate_series(1, 30) g;
 delete from schedule13_filings where accession like 'seed-13-%';
 insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, reporter_name, reporter_count, shares_owned, percent_of_class) values
   ('seed-13-1', 'SCHEDULE 13D',   '13D', false, current_date - 80, (select cik from companies where cik is not null order by id limit 1), 'Seed Issuer One', 'SEED HOLDER A', 1, 5000000, 6.1),
