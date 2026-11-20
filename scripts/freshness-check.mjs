@@ -48,11 +48,13 @@ const CHECKS = [
   // alive: the rule treats success and partial alike.
   { code: "sec_form4_index", label: "SEC Form 4, market-wide (daily index)", runDays: 2, dataDays: 6,
     newest: `select max(filed_at)::date from filings where source = 'sec_form4' and scope = 'market'` },
-  // Form 144 notices of proposed sales (table form144_notices; stored, not shown yet). A partial
-  // run counts as alive. No data date yet: the first catch-up walks forward from 2025-10-01 over
-  // several daily runs, so the newest notice is old until it ends. Add
-  // `dataDays: 6, newest: select max(filed_at) from form144_notices` once stats.through is current.
-  { code: "sec_form144", label: "SEC Form 144 notices (daily index)", runDays: 2 },
+  // Form 144 notices of proposed sales (table form144_notices). The first catch-up from
+  // 2025-10-01 reached today on 2026-11-20, so the newest filing date is checked from then on.
+  // The "Planned sales" sections on stock and company pages hide themselves when the newest
+  // notice on file is more than 10 days before a build (CAUGHT_UP_DAYS in
+  // web/src/lib/coverage-stored.ts), so a stalled job must show here, at 6 days, before that.
+  { code: "sec_form144", label: "SEC Form 144 notices (daily index)", runDays: 2, dataDays: 6,
+    newest: `select max(filed_at)::date from form144_notices` },
   // Schedules 13D and 13G (table schedule13_filings). The first catch-up from 2025-10-01 reached
   // today on 2026-11-20, so the newest filing date is checked from then on. It matters more than
   // for most sources: the "Large holders" sections on stock and company pages hide themselves when

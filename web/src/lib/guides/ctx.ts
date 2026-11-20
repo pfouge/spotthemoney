@@ -1,7 +1,7 @@
 // Live values the guides are written against: constants from the code, counts from the model,
 // the current I-Bond rate from the database. A guide that quotes one of these can never
 // disagree with the site, because both read the same thing.
-import { NOTICE_ROWS } from "../form144";
+import { NOTICE_ROWS, VALUE_MAX_PER_SHARE } from "../form144";
 import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL } from "../schedule13";
 import { DESCRIPTION_SHOWN } from "../contracts";
 import { feedDef } from "../feeds";
@@ -49,6 +49,8 @@ export interface GuideCtx {
   contractDescriptionShown: number;
   /** True once Form 144 notices are shown on pages (lib/form144.ts), and the rows a page's table prints. */
   form144Shown: boolean; form144Rows: number;
+  /** Dollars a share above which a notice's stated market value is not shown, as text ("1,000,000"). */
+  form144ValueMaxPerShare: string;
   /** True once Schedule 13D and 13G statements are shown on pages (lib/schedule13.ts); the rows a page prints, the filing threshold in percent, and the month the record starts. */
   schedule13Shown: boolean; holderRows: number; holderThreshold: number; holderRecordStart: string;
   /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
@@ -93,7 +95,7 @@ async function build(): Promise<GuideCtx> {
     congressRecordStart: new Date(RECORD_START + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }), firstMinDays: FIRST_MIN_DAYS, runMin: RUN_MIN,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     contractDescriptionShown: DESCRIPTION_SHOWN,
-    form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS,
+    form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS, form144ValueMaxPerShare: VALUE_MAX_PER_SHARE.toLocaleString("en-US"),
     schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,

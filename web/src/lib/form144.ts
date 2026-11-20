@@ -80,6 +80,32 @@ export function relationshipLabel(rels: readonly string[] | null | undefined): s
 
 export const isAmendment = (n: Notice) => n.formType === "144/A";
 
+/** A stated market value above this many dollars a share is not shown on a page. No listed
+ *  share has traded above it, so a figure like that is a mistake on the form (on production,
+ *  2026-11-20: $25.24 billion stated for 4,000 shares, $11.7 billion for 860). */
+export const VALUE_MAX_PER_SHARE = 1_000_000;
+
+/** True when the stated market value cannot be right for the number of shares: more than
+ *  VALUE_MAX_PER_SHARE dollars a share. Only that one test, on purpose: a comparison with the
+ *  company's other notices would flag stock splits, warrants and preferred shares, and the
+ *  form's "shares outstanding" box is itself mistyped too often to lean on. A value that is
+ *  too LOW is left as filed. The CSV file keeps the figure as filed and marks the row. */
+export function valueOutOfRange(n: Pick<Notice, "shares" | "marketValue">): boolean {
+  const v = stated(n.marketValue), sh = stated(n.shares);
+  return v != null && sh != null && v / sh > VALUE_MAX_PER_SHARE;
+}
+
+/** The stated market value a page prints: null for a blank and for a figure out of range. */
+export const shownValue = (n: Pick<Notice, "shares" | "marketValue">): number | null => (valueOutOfRange(n) ? null : stated(n.marketValue));
+
+/** The sentence under a table that holds back one or more stated values. */
+export function heldNote(count: number): string {
+  if (count <= 0) return "";
+  return `${count === 1 ? "One stated market value in this table is" : `${count.toLocaleString("en-US")} stated market values in this table are`} not shown: ` +
+    `the figure on the form works out to more than $${VALUE_MAX_PER_SHARE.toLocaleString("en-US")} a share, which cannot be right for the number of shares. ` +
+    "The figure as filed is in the CSV file, marked, and on the notice at the SEC.";
+}
+
 /** Newest filed first; ties by accession, newest first, so the order is the same in every build. */
 export function sortNotices(xs: readonly Notice[]): Notice[] {
   return [...xs].sort((a, b) => b.filedAt.localeCompare(a.filedAt) || b.accession.localeCompare(a.accession));
@@ -129,7 +155,7 @@ export const NOTICE_CAVEAT =
 /** One build-log line to compare with SQL. */
 export function form144Log(d: Form144Data, builtAt: string, companyCiks: ReadonlySet<string>): string {
   if (!d.shown) return `planned sales (Form 144): not shown (newest filing on file ${d.lastFiled ?? "none"}; the load has not reached the build day ${builtAt.slice(0, 10)})`;
-  let rows = 0, amend = 0, inWindow = 0, issuers = 0, issuersInWindow = 0, capped = 0, maxValue = 0, newest = "";
+  let rows = 0, amend = 0, inWindow = 0, issuers = 0, issuersInWindow = 0, capped = 0, maxValue = 0, held = 0, newest = "";
   for (const [cik, xs] of d.byCik) {
     if (!companyCiks.has(cik)) continue;
     rows += xs.length; issuers++;
@@ -138,7 +164,11 @@ export function form144Log(d: Form144Data, builtAt: string, companyCiks: Readonl
     inWindow += w.length;
     if (w.length) issuersInWindow++;
     if (w.length > NOTICE_ROWS) capped++;
-    for (const n of xs) { if ((n.marketValue ?? 0) > maxValue) maxValue = n.marketValue ?? 0; if (n.filedAt > newest) newest = n.filedAt; }
+    for (const n of xs) {
+      if (valueOutOfRange(n)) held++;
+      else if ((n.marketValue ?? 0) > maxValue) maxValue = n.marketValue ?? 0;
+      if (n.filedAt > newest) newest = n.filedAt;
+    }
   }
-  return `planned sales (Form 144): shown; ${rows} notices for ${issuers} companies on the site (${amend} amendments), newest ${newest || "none"}; ${inWindow} filed in the last ${NOTICE_WINDOW_DAYS} days for ${issuersInWindow} companies; ${capped} companies with more than ${NOTICE_ROWS}; largest stated value ${Math.round(maxValue)}`;
+  return `planned sales (Form 144): shown; ${rows} notices for ${issuers} companies on the site (${amend} amendments), newest ${newest || "none"}; ${inWindow} filed in the last ${NOTICE_WINDOW_DAYS} days for ${issuersInWindow} companies; ${capped} companies with more than ${NOTICE_ROWS}; largest stated value ${Math.round(maxValue)}; ${held} stated values not shown (over ${VALUE_MAX_PER_SHARE} dollars a share)`;
 }

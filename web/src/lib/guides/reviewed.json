@@ -59,7 +59,7 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "fd62632abbbe1b58",
+      "web/src/lib/downloads.ts": "28f0747052af5d0b",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "f95c4e84a6c22ac1",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
@@ -211,8 +211,8 @@
       "web/src/pages/stocks/[ticker].astro": "3ebcd073c3342caf",
       "web/src/pages/insiders/[slug].astro": "600c62bab2983271",
       "web/src/pages/companies/[slug].astro": "19fe7c2278f5d772",
-      "web/src/lib/form144.ts": "0f586952d65506a5",
-      "web/src/components/PlannedSales.astro": "39e8d3ff43fec624"
+      "web/src/lib/form144.ts": "f34d7de5096ea3f5",
+      "web/src/components/PlannedSales.astro": "cecc243987af144c"
     }
   }
 }

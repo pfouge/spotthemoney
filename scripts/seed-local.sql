@@ -316,7 +316,13 @@ select 'seed-144-p' || lpad(g::text, 2, '0'), case when g % 9 = 0 then '144/A' e
        'https://www.sec.gov/Archives/edgar/data/1321655/0000000000260001' || lpad(g::text, 2, '0') || '/seed-144-p' || lpad(g::text, 2, '0') || '-index.htm'
   from generate_series(1, 30) g;
 insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_name, filer_cik, seller_name, relationships, security_class, shares, market_value, approx_sale_date, notice_date)
-values ('seed-144-90', '144', current_date - 12, '0009996601', 'SEED SPONSOR CREDIT FUND', '0009996611', 'Seed Fund Seller', '{Director}', 'Common Shares', 4000, 100000, current_date - 12, current_date - 12);
+values ('seed-144-90', '144', current_date - 12, '0009996601', 'SEED SPONSOR CREDIT FUND', '0009996611', 'Seed Fund Seller', '{Director}', 'Common Shares', 4000, 100000, current_date - 12, current_date - 12),
+-- Stated values that cannot be right for the share count (over $1,000,000 a share): the page
+-- prints "not shown", the CSV keeps the figure and marks the row. The third is a real-looking
+-- high price just under the limit and stays shown.
+       ('seed-144-91', '144', current_date - 9, '0001045810', 'NVIDIA CORP', '0001100001', 'KRESS COLETTE', '{Officer}', 'Common', 4000, 25240000000, current_date - 9, current_date - 9),
+       ('seed-144-92', '144', current_date - 8, '0001321655', 'PALANTIR TECHNOLOGIES INC.', '0001100005', 'ORTIZ MARIA', '{Director}', 'Class A Common Stock', 860, 11724238884, current_date - 8, current_date - 8),
+       ('seed-144-93', '144', current_date - 7, '0001045810', 'NVIDIA CORP', '0009998802', 'Seed High Price Holder', '{Director}', 'Class A', 10, 7600000, current_date - 7, current_date - 7);
 delete from schedule13_filings where accession like 'seed-13-%';
 insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, reporter_name, reporter_count, shares_owned, percent_of_class) values
   ('seed-13-1', 'SCHEDULE 13D',   '13D', false, current_date - 80, '0009990003', 'Seed Issuer One', 'SEED HOLDER A', 1, 5000000, 6.1),
