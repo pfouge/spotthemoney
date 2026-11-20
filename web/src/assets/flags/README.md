@@ -5,7 +5,7 @@ No flag is requested from a third party at runtime and no flag emoji is used (Wi
 draw them).
 
 Source: [flag-icons](https://github.com/lipis/flag-icons) 7.6.0, MIT (licence alongside). Only
-the flags a chart uses are vendored: au br ca ch cn de eu hk in jp kr sa se tw us za.
+the flags a chart uses are vendored: au br ca ch cn de eu gb hk in jp kr sa se tw us za.
 
 `es.svg` is not the flag-icons file. That one carries the full coat of arms and is 81 KB, which a
 chart would inline three times (wide, narrow and phone builds) to draw a flag 19 px wide. This

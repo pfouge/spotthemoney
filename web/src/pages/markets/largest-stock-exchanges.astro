@@ -1,9 +1,10 @@
 ---
 // /markets/largest-stock-exchanges/ — the dollar size of the world's major stock markets, as two
-// bar charts: the 18 largest by exchange, and the United States against the European Union and China.
-// Every figure comes from lib/worldmarkets.ts (typed in from one World Federation of Exchanges
-// table); nothing on this page is a typed-in total. The site's first page that is not U.S.
-// disclosure or Treasury data, hence the caveats block: exchanges are not countries.
+// bar charts: every market above US$1 trillion by exchange, and the United States against the
+// Commonwealth, China and the European Union. Every figure comes from lib/worldmarkets.ts (typed
+// in from one World Federation of Exchanges table, plus London from the London Stock Exchange's
+// own factsheet); nothing on this page is a typed-in total. The site's first page that is not
+// U.S. disclosure or Treasury data, hence the caveats block: exchanges are not countries.
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
@@ -17,15 +18,22 @@ import { formatDate } from "../../lib/format";
 import { flagSrc } from "../../lib/flags";
 import { rankBarsSvg, PHONE_W, WIDE_W, type RankRow } from "../../lib/viz";
 import {
-  WFE, MARKETS_PATH, LARGEST_MARKETS, EU_EXCHANGES, CHINA_EXCHANGES, HONG_KONG_EXCHANGE, BSE_INDIA,
-  US_MILLIONS, EU_MILLIONS, CHINA_MILLIONS, US_EU_MULTIPLE, US_CHINA_MULTIPLE, US_EU_GAP_MILLIONS,
-  barMillions, trillions, millions,
+  WFE, LSE, LONDON, MARKETS_PATH, LARGEST_MARKETS, BLOCS, EU_EXCHANGES, CHINA_EXCHANGES, COMMONWEALTH_EXCHANGES,
+  COMMONWEALTH_NOT_IN_TABLE, NOT_IN_TABLE, HONG_KONG_EXCHANGE, CHINA_OTC, BSE_INDIA,
+  US_MILLIONS, EU_MILLIONS, CHINA_MILLIONS, COMMONWEALTH_MILLIONS,
+  US_EU_MULTIPLE, US_CHINA_MULTIPLE, US_COMMONWEALTH_MULTIPLE, US_EU_GAP_MILLIONS,
+  barMillions, barSource, trillions, millions,
 } from "../../lib/worldmarkets";
 
 const asOf = WFE.asOfLabel;
 const top = LARGEST_MARKETS[0], second = LARGEST_MARKETS[1], last = LARGEST_MARKETS[LARGEST_MARKETS.length - 1];
-const multiple = `${US_EU_MULTIPLE.toFixed(1)}x`, chinaMultiple = `${US_CHINA_MULTIPLE.toFixed(1)}x`;
+const x = (n: number) => `${n.toFixed(1)}x`;
+const multiple = x(US_EU_MULTIPLE), chinaMultiple = x(US_CHINA_MULTIPLE), cwMultiple = x(US_COMMONWEALTH_MULTIPLE);
 const chinaNames = CHINA_EXCHANGES.map((e) => e.short ?? e.label).join(" and ");
+const londonRank = LARGEST_MARKETS.findIndex((b) => barSource(b) === "lse") + 1;
+const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+const gbp = (m: number) => `£${(m / 1e6).toFixed(2)} trillion`;
+const CREDIT = "Analysis: Investing Intelligence Foundation. Data: World Federation of Exchanges; London Stock Exchange for the United Kingdom.";
 
 // Chart 1: one bar per market, the United States stacked from its two exchanges.
 const SEGMENT = [{ cls: "v-c2", on: "v-on" }, { cls: "v-c2s", on: "v-on2" }];
@@ -36,66 +44,61 @@ const rankRows: RankRow[] = LARGEST_MARKETS.map((b) => ({
 const rankLabel = `Domestic market capitalization of the ${LARGEST_MARKETS.length} largest stock markets by exchange, US$ trillions, ${asOf}`;
 const rankLegend = top.parts.map((p, i): [string, string] => [SEGMENT[i % SEGMENT.length].cls, `${p.label} ${trillions(p.usdMillions)}`]);
 
-// Chart 2: three bars, largest first, to one decimal. Colour follows the market, not its rank.
-const BLOCS = [
-  { label: "United States", flag: "us", cls: "v-c2", usdMillions: US_MILLIONS, summed: top.parts.map((p) => p.label).join(" + ") },
-  { label: "European Union", flag: "eu", cls: "v-c1", usdMillions: EU_MILLIONS, summed: `${EU_EXCHANGES.length} EU-based exchanges` },
-  { label: "China", flag: "cn", cls: "v-c3", usdMillions: CHINA_MILLIONS, summed: CHINA_EXCHANGES.map((e) => e.label).join(" + ") },
-].sort((a, b) => b.usdMillions - a.usdMillions);
-const pairRows: RankRow[] = BLOCS.map((b) => ({ label: b.label, value: b.usdMillions, valueLabel: trillions(b.usdMillions, 1), flag: flagSrc(b.flag), cls: b.cls }));
-const pairLabel = `Stock market size, United States, European Union and China, US$ trillions, ${asOf}`;
+// Chart 2: the blocs, largest first, to one decimal. Colour follows the market, not its rank.
+const pairRows: RankRow[] = BLOCS.map((b) => ({ label: b.label, value: b.usdMillions, valueLabel: trillions(b.usdMillions, 1), flag: b.flag ? flagSrc(b.flag) : undefined, cls: b.cls }));
+const blocNames = BLOCS.map((b) => b.label);
+const blocList = `${blocNames.slice(0, -1).join(", ")} and ${blocNames[blocNames.length - 1]}`;
+const pairLabel = `Stock market size, ${blocList}, US$ trillions, ${asOf}`;
 
 const tiles = [
   { k: "U.S. multiple of the EU", v: multiple, d: `${trillions(US_MILLIONS, 1)} against ${trillions(EU_MILLIONS, 1)}, ${asOf}` },
   { k: "U.S. multiple of China", v: chinaMultiple, d: `${trillions(US_MILLIONS, 1)} against ${trillions(CHINA_MILLIONS, 1)}, ${asOf}` },
+  { k: "U.S. multiple of the Commonwealth", v: cwMultiple, d: `${trillions(US_MILLIONS, 1)} against ${trillions(COMMONWEALTH_MILLIONS, 1)}, ${asOf}` },
   { k: "U.S. gap to the EU", v: trillions(US_EU_GAP_MILLIONS, 1), d: `United States minus European Union, ${asOf}` },
-  { k: "EU exchanges summed", v: String(EU_EXCHANGES.length), d: `Every EU-based exchange in the source table, ${asOf}` },
 ];
 
 const csv = (await getDownloads()).files.find((f) => f.name === "world-stock-markets.csv");
-const answer = `In ${asOf} the two main U.S. stock exchanges, ${top.parts.map((p) => p.label).join(" and ")}, held ${trillions(US_MILLIONS)} of listed company value between them, more than the next ${LARGEST_MARKETS.length - 1} largest stock markets on this list combined. That is ${multiple} the ${trillions(EU_MILLIONS, 1)} listed on the ${EU_EXCHANGES.length} exchanges based in the European Union, a gap of ${trillions(US_EU_GAP_MILLIONS, 1)}, and ${chinaMultiple} the ${trillions(CHINA_MILLIONS, 1)} listed in mainland China.`;
-const nextCombined = LARGEST_MARKETS.slice(1).reduce((a, b) => a + barMillions(b), 0);
-if (nextCombined >= US_MILLIONS) throw new Error("[markets] the answer block says the U.S. exceeds the rest of the list combined; the data no longer supports it");
+const answer = `In ${asOf} the two main U.S. stock exchanges, ${top.parts.map((p) => p.label).join(" and ")}, held ${trillions(US_MILLIONS)} of listed company value between them. That is ${cwMultiple} the ${trillions(COMMONWEALTH_MILLIONS, 1)} listed in Commonwealth countries, ${chinaMultiple} the ${trillions(CHINA_MILLIONS, 1)} listed in mainland China and ${multiple} the ${trillions(EU_MILLIONS, 1)} listed on the ${EU_EXCHANGES.length} exchanges based in the European Union.`;
 const description = [
   `The world's largest stock markets by market cap, ${asOf}: Nasdaq and NYSE hold ${trillions(US_MILLIONS)}, ${multiple} the European Union's exchanges. Chart, table, CSV.`,
-  `The world's largest stock markets by market cap in ${asOf}, and the United States against the European Union and China. Chart, table and CSV.`,
+  `The world's largest stock markets by market cap in ${asOf}, and the United States against the EU, China and the Commonwealth. Chart, table and CSV.`,
 ];
 ---
 <BaseLayout section="Markets" title={["Largest Stock Exchanges in the World by Market Cap", "Largest Stock Exchanges by Market Cap"]} description={description} modified={WFE.retrieved}>
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Largest stock exchanges", path: MARKETS_PATH }]} />
   <p class="eyebrow">Markets</p>
   <h1>The world's largest stock markets</h1>
-  <p class="lede">The dollar value of the companies listed on each major stock exchange in {asOf}, and how the United States compares with the European Union.</p>
-  <Answer text={answer} updated={WFE.retrieved} sourceNote={`Source: ${WFE.name}, figures for ${asOf}`} />
+  <p class="lede">The dollar value of the companies listed on each major stock exchange in {asOf}, and how the United States compares with the Commonwealth, China and the European Union.</p>
+  <Answer text={answer} updated={WFE.retrieved} sourceNote={`Sources: ${WFE.name}; ${LSE.name} for the United Kingdom. Figures for ${asOf}`} />
 
   <div class="viz-grid">
     <Viz wide mid id="largest-stock-markets" title={`The world's largest stock markets, ${asOf}`}
       question="How big is each major stock market, in U.S. dollars?"
       svg={rankBarsSvg(rankRows, rankLabel, WIDE_W)} svgNarrow={rankBarsSvg(rankRows, rankLabel, 640)} svgPhone={rankBarsSvg(rankRows, rankLabel, PHONE_W)}
       legend={rankLegend}
-      summary={`Domestic market capitalization by exchange in US$ trillions, ${asOf}: the United States (Nasdaq plus NYSE) is first at ${trillions(barMillions(top))}, the ${second.label} second at ${trillions(barMillions(second))}, and ${last.label} is the smallest of the ${LARGEST_MARKETS.length} shown at ${trillions(barMillions(last))}.`}>
-      <p class="mk-credit">Analysis: Investing Intelligence Foundation. Data: World Federation of Exchanges.</p>
+      summary={`Domestic market capitalization by exchange in US$ trillions, ${asOf}: the United States (Nasdaq plus NYSE) is first at ${trillions(barMillions(top))}, the ${second.label} second at ${trillions(barMillions(second))}, London is ${ordinal(londonRank)} at ${trillions(LONDON.usdMillions)} on the London Stock Exchange's own figures, and ${last.label} is the smallest of the ${LARGEST_MARKETS.length} shown at ${trillions(barMillions(last))}.`}>
+      <p class="mk-credit">{CREDIT}</p>
     </Viz>
   </div>
 
-  <h2 id="us-vs-eu">United States, European Union and China</h2>
+  <h2 id="us-vs-eu">United States, Commonwealth, China and European Union</h2>
   <div class="viz-tiles mk-tiles">
     {tiles.map((t) => <div class="viz-tile"><div class="k">{t.k}</div><div class="v">{t.v}</div><div class="d">{t.d}</div></div>)}
   </div>
   <div class="viz-grid">
-    <Viz wide mid id="united-states-eu-china" title={`United States, European Union and China, ${asOf}`}
-      question="How much larger is the U.S. stock market than the European Union's and China's?"
+    <Viz wide mid id="united-states-and-blocs" title={`United States, Commonwealth, China and European Union, ${asOf}`}
+      question="How much larger is the U.S. stock market than the Commonwealth's, China's and the European Union's?"
       svg={rankBarsSvg(pairRows, pairLabel, WIDE_W)} svgNarrow={rankBarsSvg(pairRows, pairLabel, 640)} svgPhone={rankBarsSvg(pairRows, pairLabel, PHONE_W)}
-      summary={`In ${asOf} companies listed on Nasdaq and NYSE were worth ${trillions(US_MILLIONS, 1)}, which is ${multiple} the ${trillions(EU_MILLIONS, 1)} listed on the ${EU_EXCHANGES.length} exchanges based in the European Union and ${chinaMultiple} the ${trillions(CHINA_MILLIONS, 1)} listed in mainland China (${chinaNames}).`}>
-      <p class="mk-credit">Analysis: Investing Intelligence Foundation. Data: World Federation of Exchanges.</p>
+      summary={`In ${asOf} companies listed on Nasdaq and NYSE were worth ${trillions(US_MILLIONS, 1)}: ${cwMultiple} the ${trillions(COMMONWEALTH_MILLIONS, 1)} listed on ${COMMONWEALTH_EXCHANGES.length} exchanges in Commonwealth countries, ${chinaMultiple} the ${trillions(CHINA_MILLIONS, 1)} listed in mainland China (${chinaNames}) and ${multiple} the ${trillions(EU_MILLIONS, 1)} listed on the ${EU_EXCHANGES.length} exchanges based in the European Union.`}>
+      <p class="mk-credit">{CREDIT}</p>
     </Viz>
   </div>
 
   <AdSlot label="Advertisement" />
 
   <h2 id="data">The numbers</h2>
-  <p>All figures are domestic market capitalization for {asOf}, as the World Federation of Exchanges published them in millions of U.S. dollars.</p>
-  <DownloadCsv file={csv} note={`both charts and the EU exchanges, ${asOf}`} />
+  <p>All figures are domestic market capitalization for {asOf}. Every row is as the World Federation of Exchanges published it in millions of U.S. dollars, except London, which is the London Stock Exchange's own figure converted from pounds.</p>
+  <DownloadCsv file={csv} note={`both charts and the exchanges behind each group, ${asOf}`} />
   <div class="tablewrap">
     <table class="data" id="table-largest">
       <caption>The world's largest stock markets by exchange, {asOf}</caption>
@@ -104,7 +107,7 @@ const description = [
         {LARGEST_MARKETS.map((b, i) => (
           <tr>
             <td class="num">{i + 1}</td>
-            <th scope="row">{b.label}{b.parts.length > 1 && <span class="mk-parts"> {b.parts.map((p) => `${p.label} ${trillions(p.usdMillions)}`).join(", ")}</span>}</th>
+            <th scope="row">{b.label}{b.parts.length > 1 && <span class="mk-parts"> {b.parts.map((p) => `${p.label} ${trillions(p.usdMillions)}`).join(", ")}</span>}{barSource(b) === "lse" && <span class="mk-parts"> UK companies on the Main Market, {gbp(LSE.ukMainMarketGbpMillions)} at ${LSE.usdPerGbp} to the pound</span>}</th>
             <td class="num strong">{trillions(barMillions(b))}</td>
             <td class="num">{millions(barMillions(b))}</td>
           </tr>
@@ -114,10 +117,20 @@ const description = [
   </div>
   <div class="tablewrap">
     <table class="data" id="table-us-eu">
-      <caption>United States, European Union and China, {asOf}</caption>
+      <caption>{blocList}, {asOf}</caption>
       <thead><tr><th scope="col">Market</th><th scope="col">What is summed</th><th scope="col" class="num">US$ trillions</th><th scope="col" class="num">US$ millions</th></tr></thead>
       <tbody>
         {BLOCS.map((b) => <tr><th scope="row">{b.label}</th><td>{b.summed}</td><td class="num strong">{trillions(b.usdMillions, 1)}</td><td class="num">{millions(b.usdMillions)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <div class="tablewrap">
+    <table class="data" id="table-commonwealth">
+      <caption>The {COMMONWEALTH_EXCHANGES.length} exchanges summed into the Commonwealth figure, {asOf}</caption>
+      <thead><tr><th scope="col" class="num">Rank</th><th scope="col">Exchange</th><th scope="col" class="num">US$ millions</th></tr></thead>
+      <tbody>
+        {COMMONWEALTH_EXCHANGES.map((e, i) => <tr><td class="num">{i + 1}</td><th scope="row">{e.label}</th><td class="num">{millions(e.usdMillions)}</td></tr>)}
+        <tr><td></td><th scope="row">Total</th><td class="num strong">{millions(COMMONWEALTH_MILLIONS)}</td></tr>
       </tbody>
     </table>
   </div>
@@ -136,23 +149,25 @@ const description = [
   <h2 id="how-to-read">How to read this</h2>
   <ul>
     <li><strong>These are exchanges, not countries.</strong> Each bar is the value of the domestic companies listed on one exchange or exchange group. The United States bar adds together its two main exchanges, Nasdaq ({trillions(top.parts[0].usdMillions)}) and NYSE ({trillions(top.parts[1].usdMillions)}), in {asOf}.</li>
-    <li><strong>London is absent, not zero.</strong> The London Stock Exchange is not in the World Federation of Exchanges table, so it has no bar here.</li>
+    <li><strong>London comes from a different source.</strong> The London Stock Exchange is not in the World Federation of Exchanges table. Its bar is the exchange's own figure for UK companies on its Main Market at the end of {asOf}, {gbp(LSE.ukMainMarketGbpMillions)} for {LSE.ukMainMarketCompanies} companies, converted at ${LSE.usdPerGbp} to the pound (the {LSE.rateSource} for {formatDate(LSE.rateDate)}). That gives {trillions(LONDON.usdMillions)}. It is counted by a different publisher, so treat London's rank as approximate. Companies on AIM, London's market for smaller companies ({gbp(LSE.aimGbpMillions)} in all), are not included because the exchange does not split that figure between UK and foreign companies.</li>
+    {NOT_IN_TABLE.map((m) => <li><strong>Brazil is absent, not zero.</strong> {m.label} has no row in the table for {asOf}, so it has no bar. It was last reported at {trillions(m.last.usdMillions)}, for {m.last.asOfLabel}.</li>)}
     <li><strong>India is shown once.</strong> NSE India is on the chart. BSE India ({trillions(BSE_INDIA.usdMillions)} in {asOf}) lists largely the same companies, so it is left out to avoid counting them twice.</li>
+    <li><strong>China means mainland China.</strong> The China bar adds the Shanghai and Shenzhen exchanges ({trillions(CHINA_MILLIONS, 1)} in {asOf}), the same figures as their bars in the first chart. Hong Kong is a separate market with its own bar ({trillions(HONG_KONG_EXCHANGE.usdMillions)}) and is not included; with it the figure would be {trillions(CHINA_MILLIONS + HONG_KONG_EXCHANGE.usdMillions, 1)}. Many mainland companies are listed in Hong Kong, and some in both places. A small over-the-counter market for mainland companies ({trillions(CHINA_OTC.usdMillions)}) is also left out.</li>
+    <li><strong>The Commonwealth bar is a sum made for this page.</strong> It adds the {COMMONWEALTH_EXCHANGES.length} exchanges based in member countries of the Commonwealth of Nations that have a figure for {asOf}: Canada, India, the United Kingdom, Australia, South Africa, Singapore, Malaysia and {COMMONWEALTH_EXCHANGES.length - 8} smaller markets, listed in the table above. London's part is the London Stock Exchange figure described above; the rest is from the World Federation of Exchanges. Member countries with no exchange in the table are missing, and so are {COMMONWEALTH_NOT_IN_TABLE.join(" and ")}, which have no row for {asOf}. Cyprus and Malta belong to both the Commonwealth and the European Union and are counted in both bars.</li>
     <li><strong>The European Union total is slightly too high.</strong> Euronext includes the Oslo exchange and Nasdaq Nordic and Baltics includes Iceland. Norway and Iceland are outside the EU, and the source does not report them separately. Nasdaq Nordic and Baltics carries Sweden's flag because it is based in Stockholm, and Euronext carries the EU flag because it runs exchanges in several countries.</li>
-    <li><strong>China means mainland China.</strong> The China bar adds the Shanghai and Shenzhen exchanges ({trillions(CHINA_MILLIONS, 1)} in {asOf}). The Beijing Stock Exchange is not in the source table. Hong Kong is a separate market with its own bar in the ranking ({trillions(HONG_KONG_EXCHANGE.usdMillions)}) and is not included; with it the figure would be {trillions(CHINA_MILLIONS + HONG_KONG_EXCHANGE.usdMillions, 1)}. Many mainland companies are listed in Hong Kong, and some in both places.</li>
-    <li><strong>The figures are about two months old when published.</strong> The World Federation of Exchanges releases each month's table roughly two months later. Everything on this page is for {asOf} and was read from the source on {formatDate(WFE.retrieved)}. Market values move every trading day.</li>
+    <li><strong>The figures are several weeks old when published.</strong> The World Federation of Exchanges releases each month's table in the following weeks. Everything on this page is for {asOf} and was read from the sources on {formatDate(WFE.retrieved)}. Market values move every trading day.</li>
   </ul>
   <h2 id="where-from">Where the data comes from</h2>
-  <p>Every figure is from the <a href={WFE.url} rel="noopener">{WFE.name}, {WFE.publication}, {WFE.issue} issue</a>, table "{WFE.table}", {asOf} column. The figures are shown as published. The totals, the multiples and the gap are worked out from them on this page, and the <a href="/methodology/">methodology page</a> covers how the rest of this site handles its sources.</p>
+  <p>Every figure except London's is from the <a href={WFE.url} rel="noopener">{WFE.name}, {WFE.publication}, {WFE.issue} issue</a>, table "{WFE.table}", {asOf} column, shown as published. London's is from the <a href={LSE.url} rel="noopener">{LSE.name}'s {LSE.publication}</a>, converted with the <a href={LSE.rateUrl} rel="noopener">{LSE.rateSource}</a>. The totals, the multiples and the gap are worked out from those figures on this page, and the <a href="/methodology/">methodology page</a> covers how the rest of this site handles its sources.</p>
   </div>
-  <p class="disclaimer"><strong>Not investment advice.</strong> World Federation of Exchanges statistics for {asOf}, shown as published.</p>
+  <p class="disclaimer"><strong>Not investment advice.</strong> World Federation of Exchanges and London Stock Exchange statistics for {asOf}.</p>
 
   <JsonLd data={datasetLd({
     downloads: [csv?.path], name: `Largest stock exchanges in the world by domestic market capitalization, ${asOf}`, path: MARKETS_PATH,
-    description: `Domestic market capitalization of the world's ${LARGEST_MARKETS.length} largest stock markets by exchange in U.S. dollars for ${asOf}, and the United States total against the ${EU_EXCHANGES.length} exchanges based in the European Union and the ${CHINA_EXCHANGES.length} in mainland China.`,
+    description: `Domestic market capitalization of the world's ${LARGEST_MARKETS.length} largest stock markets by exchange in U.S. dollars for ${asOf}, and the United States total against the Commonwealth, mainland China and the ${EU_EXCHANGES.length} exchanges based in the European Union.`,
     dateModified: WFE.retrieved, temporalCoverage: WFE.asOf,
-    keywords: ["stock exchanges", "market capitalization", "world stock markets", "Nasdaq", "NYSE", "European Union", "China"],
-    sources: [{ name: `${WFE.name}: ${WFE.publication}, ${WFE.issue}`, url: WFE.url }],
+    keywords: ["stock exchanges", "market capitalization", "world stock markets", "Nasdaq", "NYSE", "London Stock Exchange", "European Union", "China", "Commonwealth"],
+    sources: [{ name: `${WFE.name}: ${WFE.publication}, ${WFE.issue}`, url: WFE.url }, { name: `${LSE.name}: ${LSE.publication}`, url: LSE.url }],
   })} />
 </BaseLayout>
 

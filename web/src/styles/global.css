@@ -20,6 +20,7 @@
   --chart-1: #15824B; --chart-2: #0E75B0; /* data marks — validated for the light surface */
   /* A lighter step of --chart-2 for the second segment of a stacked bar, and the text that reads on it (validated with --chart-2: OKLab ΔE 18.1). */
   --chart-2-soft: #55AEE8; --chart-2-soft-on: #0C0D0E;
+  --chart-4: #A63D7C; /* a fourth series, validated as a set of four with the three above; always with a direct label */
   --chart-3: #A8590B; /* a third series beside --chart-1 and --chart-2 (validated as a set of three; always with a direct label) */
   /* lib/viz.ts charts. Buy/sell pair validated colorblind-safe on this surface (the brand
      --green/--red pair is not: deutan ΔE 5.7). --viz-late is a caution tone, never a series. */
@@ -41,7 +42,7 @@ html.dark {
   --glow-signal: 0 0 10px rgba(47,200,234,.55); --chip: rgba(244,244,242,.09); --chip-hover: rgba(244,244,242,.15); --shadow: 0 8px 28px rgba(0,0,0,.6);
   --chart-1: #2FAE5E; --chart-2: #2098BB; /* data marks — validated for the dark surface */
   --chart-2-soft: #62D0EE; --chart-2-soft-on: #04141B;
-  --chart-3: #C46F22;
+  --chart-3: #C46F22; --chart-4: #D0609C;
   --viz-buy: #23AA8A; --viz-sell: #E25B46; --viz-one: #2098BB; --viz-late: #B87D14; --viz-muted: #6B7278; --viz-none: #1C2024; --viz-on: #04141B;
   --r-sm: 8px; --r-md: 16px; --r-pill: 999px;
   --max: 1360px;
@@ -452,10 +453,10 @@ svg.vz .v-line { stroke: var(--viz-one); } svg.vz .v-line2 { stroke: var(--viz-m
 svg.vz .v-grid { stroke: var(--line); } svg.vz .v-axis { stroke: var(--line-strong); } svg.vz .v-rule { stroke: var(--ink); stroke-width: 1.5; }
 svg.vz .ring { stroke: var(--surface); }
 /* World-market bars (rankBarsSvg with flags): the two site chart colours, the soft step for a stacked second segment, the flag edge. */
-svg.vz .v-c1 { fill: var(--chart-1); } svg.vz .v-c2 { fill: var(--chart-2); } svg.vz .v-c3 { fill: var(--chart-3); } svg.vz .v-c2s { fill: var(--chart-2-soft); }
+svg.vz .v-c1 { fill: var(--chart-1); } svg.vz .v-c2 { fill: var(--chart-2); } svg.vz .v-c3 { fill: var(--chart-3); } svg.vz .v-c4 { fill: var(--chart-4); } svg.vz .v-c2s { fill: var(--chart-2-soft); }
 svg.vz text.v-on2 { fill: var(--chart-2-soft-on); }
 svg.vz .v-flag-edge { fill: none; stroke: var(--line-strong); stroke-width: 1px; vector-effect: non-scaling-stroke; }
-.viz-legend i.v-c3 { background: var(--chart-3); } .viz-legend i.v-c1 { background: var(--chart-1); } .viz-legend i.v-c2 { background: var(--chart-2); } .viz-legend i.v-c2s { background: var(--chart-2-soft); }
+.viz-legend i.v-c3 { background: var(--chart-3); } .viz-legend i.v-c4 { background: var(--chart-4); } .viz-legend i.v-c1 { background: var(--chart-1); } .viz-legend i.v-c2 { background: var(--chart-2); } .viz-legend i.v-c2s { background: var(--chart-2-soft); }
 svg.vz [data-tip] { cursor: default; } svg.vz a [data-tip], svg.vz a { cursor: pointer; }
 .viz-tip { position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; line-height: 1.4; padding: 6px 9px; border-radius: var(--r-md); max-width: 260px; opacity: 0; transition: opacity 0.08s; }
 .viz-tip b, .viz-tip span { display: block; } .viz-tip b { font-weight: 600; }

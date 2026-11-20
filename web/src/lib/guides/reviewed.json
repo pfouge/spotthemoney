@@ -59,9 +59,9 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "d245b46fc0425cfb",
+      "web/src/lib/downloads.ts": "d94c7c6e67339099",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "f9b34eec30806605",
+      "web/src/pages/downloads/index.astro": "8de8f534ec2456fc",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
       "web/src/lib/datafiles.ts": "eebfde535aa8d498",
       "web/src/pages/developers.astro": "ad02755c67844e81"
