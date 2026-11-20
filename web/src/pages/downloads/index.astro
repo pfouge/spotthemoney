@@ -18,7 +18,7 @@ const updated = d.files.reduce<string | null>((a, f) => (f.updated && (!a || f.u
 const exampleMember = [...d.member.values()].sort((a, b) => b.rows - a.rows)[0];
 const exampleStock = [...d.stock.values()].sort((a, b) => b.rows - a.rows)[0];
 // One column list per kind of file (every trade file shares its columns).
-const kinds: [DownloadFile["kind"], string][] = [["trades", "Trade files"], ["members", "Members of Congress"], ["seats", "Committee assignments"], ["companies", "Companies and industry codes"], ["lobbying", "Lobbying filings"], ["contracts", "Federal contracts"]];
+const kinds: [DownloadFile["kind"], string][] = [["trades", "Trade files"], ["members", "Members of Congress"], ["seats", "Committee assignments"], ["companies", "Companies and industry codes"], ["notices", "Planned sales (Form 144 notices)"], ["holders", "Large holders (Schedules 13D and 13G)"], ["lobbying", "Lobbying filings"], ["contracts", "Federal contracts"]];
 const dict = kinds.map(([kind, label]) => ({ kind, label, file: d.files.find((f) => f.kind === kind) ?? (kind === "trades" ? exampleMember : undefined) })).filter((x) => x.file);
 const rateFiles = d.files.filter((f) => f.kind === "rates");
 const description = fitDescription([

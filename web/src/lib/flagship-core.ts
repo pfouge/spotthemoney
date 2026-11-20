@@ -4,6 +4,7 @@
 // Postgres with Node-only code. flagship.ts re-exports everything here, so existing imports keep
 // working unchanged.
 import type { Form144Data } from "./form144";
+import type { Schedule13Data } from "./schedule13";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -127,6 +128,8 @@ export interface Flagship {
   footnotes: Map<number, string[]>;
   /** SEC Form 144 notices about companies on the site (lib/form144.ts). Empty, with shown false, until the load has reached today. */
   form144: Form144Data;
+  /** SEC Schedules 13D and 13G about companies on the site (lib/schedule13.ts). Empty, with shown false, until the load has reached today. */
+  schedule13: Schedule13Data;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

@@ -30,7 +30,7 @@ export interface WorkingFile {
 /** The /data/*.json files a reader may look at. Not listed: files that exist only for the site's own plumbing. */
 export const WORKING_FILES: WorkingFile[] = [
   { path: "/data/coverage.json", title: "Coverage report", usedBy: "/methodology/#coverage",
-    about: "What the database holds for each source: filings and rows per month, filings held for review, the last runs of each data job and row counts for lobbying, contracts and donations. It counts everything stored, including rows the pages do not show, and, under storedNotShown, counts and dates for Form 144 notices and Schedules 13D and 13G (Form 144 notices are shown on pages once their load is current; the Schedules are not shown yet).",
+    about: "What the database holds for each source: filings and rows per month, filings held for review, the last runs of each data job and row counts for lobbying, contracts and donations. It counts everything stored, including rows the pages do not show, and, under storedNotShown, counts and dates for Form 144 notices and Schedules 13D and 13G (each is shown on stock and company pages once its load is current).",
     top: ["builtAt", "connected", "filings", "txns", "runs", "tables", "totals", "quality", "tableSizes", "payloadMb", "noTicker", "marketScope", "storedNotShown", "errors"] },
   { path: "/data/congress-screener.json", title: "Congress trade screener rows", usedBy: "/congress-trades/", instead: "/downloads/congress-trades.csv",
     about: "Every published row of the House and Senate periodic transaction reports, packed: each member and each report address is written once and a row is a short list of values.",

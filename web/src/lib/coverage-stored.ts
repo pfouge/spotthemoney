@@ -1,7 +1,7 @@
 // Two SEC filing types the database collects: Form 144 notices of proposed sales
 // (form144_notices, source sec_form144), shown on stock and company pages once their load has
 // reached today (lib/form144.ts), and Schedules 13D and 13G (schedule13_filings, source
-// sec_schedule13), which no page shows yet. Their counts go into /data/coverage.json (key storedNotShown) and the
+// sec_schedule13), shown the same way (lib/schedule13.ts). Their counts go into /data/coverage.json (key storedNotShown) and the
 // methodology's coverage list, so a reader, and a session without SQL, can see how far each
 // load has got. Counts and dates only: no names, no amounts.
 //
@@ -43,8 +43,9 @@ export function catchingUp(s: StoredSource, builtAt: string): boolean {
 
 /**
  * True when the newest filing on file is at most CAUGHT_UP_DAYS before the build day. This one
- * test decides both whether Form 144 notices are shown on pages (lib/form144-build.ts) and what
- * the methodology says about them, so the two cannot disagree.
+ * test, applied to each table's own newest filing, decides both whether Form 144 notices and
+ * Schedule 13 statements are shown on pages (lib/form144-build.ts, lib/schedule13-build.ts) and
+ * what the methodology says about them, so the two cannot disagree.
  */
 export function caughtUp(lastFiled: string | null | undefined, builtAt: string): boolean {
   if (!isDate(lastFiled)) return false;
@@ -74,7 +75,11 @@ export function form144Sentence(s: StoredSource, builtAt: string): string {
 export function schedule13Sentence(s: StoredSource, builtAt: string): string {
   if (!s.rows) return "";
   const d = s.kinds["13D"] ?? 0, g = s.kinds["13G"] ?? 0;
-  return `${many(s.rows, "ownership statement", "ownership statements")} on file (${n(d)} on Schedule 13D, ${n(g)} on Schedule 13G)${filedSpan(s)}, about ${many(s.issuers, "company", "companies")}; ${many(s.amendments, "is an amendment", "are amendments")}. They are filed by a holder of more than 5% of a class of shares, or by one reporting that it has fallen below that. A statement gives what the filer says it owned on a date, not a trade.${tail(s, builtAt)}`;
+  // Shown on pages exactly when the load is current (the same test lib/schedule13-build.ts applies).
+  const end = catchingUp(s, builtAt)
+    ? tail(s, builtAt)
+    : ` Statements about companies this site tracks (${many(s.trackedRows, "statement", "statements")}) are shown on the stock and company pages, each holder's newest one, as filed, and are in no buy or sell total; the others are stored and not shown.`;
+  return `${many(s.rows, "ownership statement", "ownership statements")} on file (${n(d)} on Schedule 13D, ${n(g)} on Schedule 13G)${filedSpan(s)}, about ${many(s.issuers, "company", "companies")}; ${many(s.amendments, "is an amendment", "are amendments")}. They are filed by a holder of more than 5% of a class of shares, or by one reporting that it has fallen below that. A statement gives what the filer says it owned on a date, not a trade.${end}`;
 }
 
 /** Faults in the counts themselves (months and kinds must add up to rows). Empty when sound. */
