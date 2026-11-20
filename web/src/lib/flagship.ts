@@ -14,6 +14,8 @@
 
 import { emptyForm144, form144Log } from "./form144";
 import { loadForm144, siteCompanyCiks } from "./form144-build";
+import { emptySchedule13, schedule13Log } from "./schedule13";
+import { loadSchedule13 } from "./schedule13-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -66,7 +68,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -152,7 +154,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -339,6 +341,18 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${form144Log(model.form144, builtAt, ciks)}`);
     } catch (err) {
       console.warn("[web] Form 144 notices skipped:", (err as Error).message);
+    }
+
+    // SEC Schedules 13D and 13G (large holders) for the stock and company pages. The same
+    // pattern: optional, and read only once the load has reached today, because with part of
+    // the record on file a holder's "newest statement" would not be its newest
+    // (lib/schedule13.ts, lib/schedule13-build.ts).
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.schedule13 = await loadSchedule13(sql, builtAt, ciks);
+      console.log(`[web] ${schedule13Log(model.schedule13, builtAt, ciks)}`);
+    } catch (err) {
+      console.warn("[web] Schedule 13 statements skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

@@ -26,7 +26,11 @@ test("stored sources: the sentences state the counts, the dates and that nothing
   assert.match(a, /filings after May 18, 2026 are not on file yet\.$/);
   const b = schedule13Sentence(s13, built);
   assert.match(b, /^5 ownership statements on file \(2 on Schedule 13D, 3 on Schedule 13G\), filed November 10, 2026 to November 18, 2026, about 1 company; 1 is an amendment\./);
-  assert.match(b, /not shown on any page yet\.$/, "a current load has no catching-up clause");
+  // A current Schedule 13 load is on pages (lib/schedule13.ts), and the sentence says so.
+  assert.match(b, /Statements about companies this site tracks \(0 statements\) are shown on the stock and company pages, each holder's newest one, as filed, and are in no buy or sell total; the others are stored and not shown\.$/);
+  assert.doesNotMatch(b, /not shown on any page yet|still working forward/);
+  const b2 = schedule13Sentence({ ...s13, lastFiled: "2026-11-09" }, built);
+  assert.match(b2, /stored and not shown on any page yet\. The load is still working forward to today: filings after November 9, 2026 are not on file yet\.$/);
   assert.equal(form144Sentence(emptyStored(), built), "");
   assert.equal(schedule13Sentence(emptyStored(), built), "");
   // Once the Form 144 load is current the notices are on pages, and the sentence says so.

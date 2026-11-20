@@ -59,11 +59,11 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "59c2576a031d4a66",
+      "web/src/lib/downloads.ts": "fd62632abbbe1b58",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "8de8f534ec2456fc",
+      "web/src/pages/downloads/index.astro": "f95c4e84a6c22ac1",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "4b512e199c90409e",
+      "web/src/lib/datafiles.ts": "a604b5774d94c248",
       "web/src/pages/developers.astro": "ad02755c67844e81"
     }
   },
@@ -166,10 +166,12 @@
     }
   },
   "ten-percent-owners-and-joint-filings": {
-    "reviewed": "2026-11-18",
+    "reviewed": "2026-11-20",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "1483d043734df0b3"
+      "web/src/components/TxnTable.astro": "1483d043734df0b3",
+      "web/src/lib/schedule13.ts": "c7788faba00ebb4a",
+      "web/src/components/LargeHolders.astro": "95fc4f51bc955377"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -203,12 +205,12 @@
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
-      "web/src/lib/server/od.ts": "f1edfaf15a5003cc",
+      "web/src/lib/server/od.ts": "5fba792dbf9bf007",
       "web/src/components/OdPageView.astro": "5a94f9549888f514",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "682ae185d862824a",
+      "web/src/pages/stocks/[ticker].astro": "3ebcd073c3342caf",
       "web/src/pages/insiders/[slug].astro": "600c62bab2983271",
-      "web/src/pages/companies/[slug].astro": "24f131e5fb64f712",
+      "web/src/pages/companies/[slug].astro": "19fe7c2278f5d772",
       "web/src/lib/form144.ts": "0f586952d65506a5",
       "web/src/components/PlannedSales.astro": "0801c8ef7321966a"
     }

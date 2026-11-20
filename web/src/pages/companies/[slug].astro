@@ -20,6 +20,8 @@ import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import PlannedSales from "../../components/PlannedSales.astro";
 import { noticesInWindow } from "../../lib/form144";
+import LargeHolders from "../../components/LargeHolders.astro";
+import { holdersOf } from "../../lib/schedule13";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, companyPath, personPath, securityPath, withinDays, num, plural, money, sum, roleLabel } from "../../lib/flagship";
 import { organizationLd, fitDescription, SOURCES } from "../../lib/seo";
@@ -57,11 +59,13 @@ const industryLink = industry ? industryHref(industry.code) : null;
 const primarySec = c.primaryTicker ? tickerPages(model).get(c.primaryTicker.toLowerCase()) : undefined;
 // Form 144 notices about the company, last 12 months (empty until that load has reached today).
 const plannedN = c.cik ? noticesInWindow(model.form144.byCik.get(c.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
+// Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
+const holdersN = c.cik ? holdersOf(model.schedule13.byCik.get(c.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const jump: [string, string][] = [
   ...(c.insiders.length ? [["#insiders", "Insiders"] as [string, string]] : []),
   ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
-  ["#insider-transactions", "Transactions"], ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []), ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
+  ["#insider-transactions", "Transactions"], ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []), ...(holdersN ? [["#large-holders", "Large holders"] as [string, string]] : []), ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
   ...(relatedCos.length ? [["#related", "Related companies"] as [string, string]] : []),
   ["#sources", "Sources"],
 ];
@@ -140,6 +144,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <TxnTable model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
 
   <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
+
+  <LargeHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
 
   <AdSlot label="Advertisement" />
 

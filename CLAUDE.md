@@ -3382,3 +3382,78 @@ on the site, in the guides or on the privacy page changed.
   notices match a person); nothing on the on-demand pages (needs the `od_*` functions); no
   per-company file; the past-3-months sales lines are in the CSV as sums only; no search or sitemap
   entry (no new page).
+
+### Schedules 13D and 13G, stage 2: "Large holders" on stock and company pages, behind the same date test (2026-11-20, scheduled parity run) — queue item (g2f)
+
+- **What.** Stock pages and company pages of the tracked set get a section "Large holders: Schedules
+  13D and 13G" (`web/src/components/LargeHolders.astro`, `section[data-large-holders]`, anchor
+  `#large-holders`, jump link), placed after "Planned sales": a summary sentence (holders with a
+  statement on record; how many report 5% or more, less than 5%, no percentage), one fixed caveat
+  (`HOLDER_CAVEAT`), a link to the CSV, and a sortable table of at most 25 holders (`HOLDER_ROWS`;
+  the busiest company on production has 14): holder as filed ("with 3 other reporting persons"),
+  percent of class (marked "below 5%" when under the filing threshold), shares stated, class, event
+  date, filed, link to the statement at the SEC. New download `large-holders-13d-13g.csv` (kind
+  `holders`, group insiders: EVERY statement on record about a company with a page, with
+  `newest_for_holder` and, for a 13D, `purpose_as_filed`). Methodology `#schedule-13`; guide
+  `ten-percent-owners-and-joint-filings` section `#large-holders` and one FAQ; a sentence in
+  `what-is-form-4` and a clause in `how-to-cite-and-reuse`. No migration, no data job change.
+- **Shown only when the load is current: the Form 144 pattern.** `loadSchedule13`
+  (`web/src/lib/schedule13-build.ts`, called from `flagship.ts` in its own try/catch) applies
+  `caughtUp` (`coverage-stored.ts`) to the newest `filed_at` in `schedule13_filings`. False:
+  `model.schedule13.shown` is false and `byCik` is empty, so the sections, jump links, CSV file,
+  methodology paragraph, guide section, FAQ and the guide's on-screen label (`ctx.schedule13Shown`)
+  all stay out and the methodology's coverage line keeps "stored and not shown on any page yet".
+  True: everything appears in that build and the coverage line says the tracked statements are
+  shown. The reason is stronger here than for Form 144: with part of the record on file a holder's
+  "newest statement" would not be its newest. **The sections disappear again if `sec_schedule13`
+  brings nothing new for more than 10 days.** On production at the merge the load was at
+  mid-August 2026, so nothing is visible yet.
+- **Rules** (`web/src/lib/schedule13.ts`, pure; tests `scripts/schedule13.test.ts`):
+  - One row per holder: its NEWEST statement about the company (`holdersOf`). A holder is the
+    submission's filer SEC number (`holderKey`; a name, whatever its capitals, when there is no
+    number). An amendment does not say what it replaces, so nothing else links statements. Newest =
+    filing date, then accession. **Known limit, stated in the methodology:** a filer with
+    statements about two classes of one company's shares shows only its newest (the CUSIP is empty
+    on two statements in three, so the class cannot be part of the key).
+  - A newest statement under 5% (`belowThreshold`; about a third of holders on production, many
+    reporting zero) stays listed and is marked. Dropping it would leave the older, larger figure
+    standing.
+  - `shares` and `percent` are the stored maxima over the reporting persons (stage 1). Nothing is
+    added up, across persons or across holders: the summary counts holders only.
+  - Order: largest stated percent first, no percent last; then shares, name, accession.
+  - No window: every statement on record counts (the record starts with the October 2025 index,
+    `RECORD_START_LABEL`). The page says a holder whose last statement is older is not listed and
+    that the list is not a full list of shareholders. **If the load's start date is moved back,
+    change `RECORD_START_LABEL`.** When the record is a few years old a window will be needed.
+  - A holder's name links to a page only when the filer number belongs to exactly one person or
+    company with a static page (`holderPath`): an insider who also files a 13G, or one tracked
+    company holding another.
+  - The 13D purpose text is NOT printed on pages (amendments mostly say "Item 4 is amended as
+    follows"); it is in the CSV, cut at `PURPOSE_MAX` (1,000). Nothing is derived from it, and no
+    wording calls a holder an activist or a statement a purchase or sale (the verifier checks).
+- **Build log** prints `[web] large holders (Schedules 13D and 13G): not shown (newest filing on
+  file D; ...)` or `... shown; N statements for C companies on the site (A amendments), newest D;
+  H holders by newest statement, B of them under 5%, K on Schedule 13D; most holders for one
+  company M; X companies with more than 25; largest stated holding S shares` for comparison with SQL.
+- **Verifier:** `node scripts/verify-schedule13.mjs <base-url> [--sample N]` (no browser; the
+  twenty-second). It reads the state from `/data/coverage.json` with its own copy of the 10-day
+  rule. Not shown: no file in the catalogue or on disk, no section on sampled pages, no
+  `#schedule-13` in the methodology, no `#large-holders` in the guide. Shown: the CSV (all
+  statements) is the oracle; the script works out each holder's newest statement itself, checks the
+  file's `newest_for_holder` column against that, and for sampled companies (busiest, quietest, one
+  with a holder under 5%, one with several statements by a holder, one over the cap) compares the
+  section's counts, row order and every cell on the company page and its ticker's stock page.
+  `verify-developers` accepts either wording of the coverage line for both sources by the same
+  state. Hidden state locally: copy the database, `update schedule13_filings set filed_at =
+  filed_at - 30`, build.
+- **Seed:** 40 more statements: NVIDIA (seven holders: three statements by one filer, an exit to
+  zero, a group on 13D with a purpose, Microsoft as a holder, an insider as a holder, a name with
+  markup and no filer number or percent, two statements on one day, fractional shares), Palantir
+  (28 holders, so the cap shows), Lockheed (one holder under 5%). The seed's Schedule 13 rows now
+  read as current.
+- `flagship-core.ts` `Flagship` gained `schedule13`; `server/od.ts` sets it empty (one line).
+  `downloads/index.astro` lists column dictionaries for the `notices` and `holders` kinds.
+  `storedNotShown.schedule13` keeps its key in the coverage file.
+- Not done: nothing on insider pages or on the on-demand pages; no view from the holder's side
+  ("what this fund reports holding"); no history of a holder's statements on the page (the CSV has
+  it); the 13D purpose on pages; a per-company file.

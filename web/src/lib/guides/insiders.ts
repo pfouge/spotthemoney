@@ -48,7 +48,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>The <a href="/insiders/">Insiders page</a> lists the newest filings and the <a href="/">trade map</a> shows where the dollars went.</p>
 <p>Three kinds of page hold the detail, and they link to one another:</p>
 <ul>
-<li><strong>A stock's page</strong> lists the insiders who filed for that ticker and the members of Congress who traded it, each with the number of rows, open-market purchases and sales, and the latest date. Above that list, a table sums the insiders' open-market purchases and sales over the last 3 and 12 months: trades, people, shares, dollars, how many sales were made under a 10b5-1 plan, and bought minus sold. It counts code P and code S rows only, by the date each was disclosed. A folded table breaks the rows down by Form 4 code. Where members of Congress have traded the ticker, a link above their rows opens the ${`<a href="/congress-trades/">Congress trade screener</a>`} on that ticker alone, to filter, sort and download them. "Related stocks" are the tickers traded by the same people, ranked by the number of filers in common.</li>
+<li><strong>A stock's page</strong> lists the insiders who filed for that ticker and the members of Congress who traded it, each with the number of rows, open-market purchases and sales, and the latest date. Above that list, a table sums the insiders' open-market purchases and sales over the last 3 and 12 months: trades, people, shares, dollars, how many sales were made under a 10b5-1 plan, and bought minus sold. It counts code P and code S rows only, by the date each was disclosed. A folded table breaks the rows down by Form 4 code. Where members of Congress have traded the ticker, a link above their rows opens the ${`<a href="/congress-trades/">Congress trade screener</a>`} on that ticker alone, to filter, sort and download them. "Related stocks" are the tickers traded by the same people, ranked by the number of filers in common.${c.schedule13Shown ? ` When a holder of more than ${c.holderThreshold}% has an ownership statement on record, the page also has a section "Large holders: Schedules 13D and 13G", which lists positions, not trades; the guide to <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">10% owners and large holders</a> explains it.` : ""}</li>
 <li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
 <li><strong>A company's page</strong> adds federal contracts and lobbying filings under the company's exact name, the members of Congress who traded its stock, and related companies.</li>
 </ul>
@@ -293,7 +293,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: "2026-11-16",
+    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: c.schedule13Shown ? "2026-11-20" : "2026-11-16",
     title: "10% owners and joint filings",
     seoTitle: ["10% Owners and Joint Form 4 Filings: One Trade, Many Forms", "10% Owners and Joint Form 4 Filings"],
     description: ["Funds that own over 10% of a company file Form 4 like executives, and related funds often each report the same trade. How to read them without double counting.", "Funds owning over 10% of a company file Form 4 too, and related funds often report the same trade. How to avoid double counting."],
@@ -319,10 +319,21 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <p>The underlying filings are not changed; this is a rule for adding up, written out in the <a href="/methodology/#values">methodology</a>.</p>` },
       { id: "filter", h: "How can I look at executives only?", html: `
 <p>Use the Role filter on the <a href="/insiders/">insider map</a>: "Officers", "Directors" or "10% owners". The picture often changes completely. A month that looks like heavy insider selling can turn out to be two funds, with officers and directors doing very little.</p>` },
+      ...(c.schedule13Shown ? [{ id: "large-holders", h: "What are Schedules 13D and 13G, and where are large holders listed?", html: `
+<p>They are the statements a holder files with the SEC after coming to own more than ${c.holderThreshold}% of a class of a company's voting shares. Schedule 13D is the long form: it is due within five business days of passing ${c.holderThreshold}% and states, among other things, the purpose of the holding. Schedule 13G is a short form that passive investors and institutions such as index fund managers may use instead; its deadlines depend on the kind of holder. A holder amends its statement when the holding changes materially, and files a last one when it falls to ${c.holderThreshold}% or less.</p>
+<p>A statement is not a Form 4. A Form 4 reports a trade: a date, a number of shares, a price. A Schedule 13D or 13G reports a position: how many shares the filer says it owned on the event date and what percent of the class that was. It does not say when or at what price the shares were bought or sold, and by the time anyone reads it the position may have changed. The two overlap only for the largest holders: one who passes 10% must file Form 4 for its trades as well.</p>
+<p>On this site, a stock's page and its company's page have a section titled "Large holders: Schedules 13D and 13G" when a statement about the company is on record. It lists each holder's newest statement, largest stated percentage first, at most ${c.holderRows} rows, each with a link to the statement at the SEC. Three things to keep in mind when reading it:</p>
+<ul>
+<li><strong>It is not a full list of shareholders.</strong> The record starts with statements published from ${c.holderRecordStart} on. A holder that filed before then and has not filed since is not listed, and holders under ${c.holderThreshold}% never had to file.</li>
+<li><strong>A row marked "below ${c.holderThreshold}%" is an exit notice.</strong> It is the holder reporting that it is no longer above the mark, sometimes with nothing left. It stays listed so that an older, larger figure is not left standing as the last word.</li>
+<li><strong>Rows are not to be added together.</strong> Related entities often file one statement together, and each reports the whole group's holding. The row shows the largest figure any one of them states, and the name of the first, "with 3 other reporting persons". Two rows can also describe overlapping shares, for example a fund manager and its parent company.</li>
+</ul>
+<p>None of these figures enters any buy or sell total, chart or the trade map. The rules are written out in the <a href="/methodology/#schedule-13">methodology</a>.</p>` }] : []),
     ],
     faqs: [
       { q: "What is a 10% owner on Form 4?", a: "A 10% owner is a person or fund that holds more than 10% of a class of a company's shares. They must report trades on Form 4 just as officers and directors do.", on: ["insiders"] },
       { q: "What does \"also in another filing\" mean?", a: `It means the same trade was reported on more than one Form 4, usually by related funds that own the shares together. Trades of ${c.jointMinUsd} or more are counted once in totals.`, on: ["insiders", "stocks"] },
+      ...(c.schedule13Shown ? [{ q: "What is the difference between Schedule 13D and Schedule 13G?", a: `Both are ownership statements filed with the SEC by a holder of more than ${c.holderThreshold}% of a class of a company's voting shares. Schedule 13D is the long form and states the purpose of the holding. Schedule 13G is a short form for passive investors and institutions. Neither reports a trade: each says what the filer owned on a date.`, on: ["stocks" as const] }] : []),
       { q: "Why are the biggest insider sales by funds and not executives?", a: "Because funds that own more than 10% of a company hold far more stock than any executive, and selling down a stake is how a fund returns money to its own investors." },
     ],
     sources: [
@@ -332,8 +343,8 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["what-is-form-4", "insider-buying-vs-insider-selling", "insider-options-and-derivatives", "how-to-use-the-trade-map"],
     seeLive: [{ label: "Insider map by role", href: "/insiders/" }, { label: "How values are computed", href: "/methodology/#values" }],
-    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro"],
-    ui: [{ text: "10% owners", on: "/insiders/" }, { text: "Officers", on: "/insiders/" }, { text: "Directors", on: "/insiders/" }],
+    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/components/LargeHolders.astro"],
+    ui: [{ text: "10% owners", on: "/insiders/" }, { text: "Officers", on: "/insiders/" }, { text: "Directors", on: "/insiders/" }, ...(c.schedule13Shown ? [{ text: "Large holders: Schedules 13D and 13G", on: "/stocks/nvda/" }] : [])],
     facts: [],
   }),
 ];

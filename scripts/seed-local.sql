@@ -278,8 +278,8 @@ select c.id, 'WITHHELD', e, st, a, current_date - d, 'seed-' || row_number() ove
 
 -- Stored, not shown (lib/coverage-stored.ts; /data/coverage.json key storedNotShown and the
 -- methodology's coverage list). Form 144: three notices and one amendment in two months, the
--- newest a few days old, so that load reads as current. Schedules 13D and 13G: the newest is
--- 40 days old, so that load reads as still catching up. One row of each is about a tracked
+-- newest a few days old, so that load reads as current. Schedules 13D and 13G: three statements
+-- about companies with no page, and further down the rows the pages show (also current). One row of each is about a tracked
 -- company (NVIDIA, cik 0001045810 in this seed if present; the count is whatever the join gives).
 delete from form144_notices where accession like 'seed-144-%';
 insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_name, seller_name, shares, market_value) values
@@ -309,9 +309,39 @@ select 'seed-144-p' || lpad(g::text, 2, '0'), case when g % 9 = 0 then '144/A' e
   from generate_series(1, 30) g;
 delete from schedule13_filings where accession like 'seed-13-%';
 insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, reporter_name, reporter_count, shares_owned, percent_of_class) values
-  ('seed-13-1', 'SCHEDULE 13D',   '13D', false, current_date - 80, (select cik from companies where cik is not null order by id limit 1), 'Seed Issuer One', 'SEED HOLDER A', 1, 5000000, 6.1),
+  ('seed-13-1', 'SCHEDULE 13D',   '13D', false, current_date - 80, '0009990003', 'Seed Issuer One', 'SEED HOLDER A', 1, 5000000, 6.1),
   ('seed-13-2', 'SCHEDULE 13G',   '13G', false, current_date - 75, '0009990001', 'Seed Issuer Two', 'SEED HOLDER B', 2, 800000, 5.3),
   ('seed-13-3', 'SCHEDULE 13G/A', '13G', true,  current_date - 40, '0009990001', 'Seed Issuer Two', 'SEED HOLDER B', 2, 700000, 4.6);
+-- Large holders shown on pages (lib/schedule13.ts; scripts/verify-schedule13.mjs). The newest row
+-- is a few days old, so the load reads as current and the sections are built. To exercise the
+-- hidden state: copy the database, `update schedule13_filings set filed_at = filed_at - 30`, build.
+-- NVIDIA: a holder with three statements (the newest wins, and it is not the largest), a holder
+-- whose newest statement reports nothing left (below 5%), a group of four on Schedule 13D with a
+-- purpose, a holder that is a company with a page here (Microsoft), a holder who is an insider
+-- with a page (filer_cik = people.cik), a holder with no filer number and markup in its name, a
+-- statement with no percent, two statements by one filer on one day (the later accession wins),
+-- and fractional shares. Palantir: 28 holders, so the 25-row cap shows. Lockheed Martin: one
+-- holder, one statement, under 5%. Microsoft, Apple, AMD: none (no section).
+insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, issuer_cusip, security_class, event_date, filer_cik, reporter_name, reporter_count, shares_owned, percent_of_class, rules, payload, source_url) values
+  ('seed-13-10', 'SCHEDULE 13G',   '13G', false, current_date - 300, '0001045810', 'NVIDIA CORP', '67066G104', 'Common Stock', current_date - 320, '0009997701', 'Seed Index Group', 1, 2266625855, 9.32, '{"Rule 13d-1(b)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001310/seed-13-10-index.htm'),
+  ('seed-13-11', 'SCHEDULE 13G/A', '13G', true,  current_date - 120, '0001045810', 'NVIDIA CORP', '67066G104', 'Common Stock', current_date - 140, '0009997701', 'Seed Index Group', 1, 2400000000, 9.9, '{"Rule 13d-1(b)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001311/seed-13-11-index.htm'),
+  ('seed-13-12', 'SCHEDULE 13G/A', '13G', true,  current_date - 20,  '0001045810', 'NVIDIA CORP', null, 'COMMON STOCK', current_date - 50, '0009997701', 'SEED INDEX GROUP', 1, 1777408252, 7.31, '{"Rule 13d-1(b)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001312/seed-13-12-index.htm'),
+  ('seed-13-13', 'SCHEDULE 13G',   '13G', false, current_date - 280, '0001045810', 'NVIDIA CORP', '67066G104', 'Common Stock', current_date - 300, '0009997702', 'Seed Asset Managers Inc.', 2, 1500000000, 6.2, '{"Rule 13d-1(b)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001313/seed-13-13-index.htm'),
+  ('seed-13-14', 'SCHEDULE 13G/A', '13G', true,  current_date - 60,  '0001045810', 'NVIDIA CORP', null, 'Common Stock', current_date - 75, '0009997702', 'Seed Asset Managers Inc.', 2, 0, 0, '{"Rule 13d-1(b)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001314/seed-13-14-index.htm'),
+  ('seed-13-15', 'SCHEDULE 13D',   '13D', false, current_date - 200, '0001045810', 'NVIDIA CORP', '67066G104', 'Common Stock, $0.001 par value per share', current_date - 204, '0009997703', 'Seed Partners Master Fund LP', 4, 1300000000.5, 5.4, '{}', '{"purpose": "The Reporting Persons acquired the Shares for investment purposes.   They may   engage in discussions with the Issuer''s management and board."}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001315/seed-13-15-index.htm'),
+  ('seed-13-16', 'SCHEDULE 13G',   '13G', false, current_date - 90,  '0001045810', 'NVIDIA CORP', '67066G104', 'Common Stock', current_date - 100, '0000789019', 'Microsoft Corporation', 1, 1250000000, 5.1, '{"Rule 13d-1(c)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001316/seed-13-16-index.htm'),
+  ('seed-13-17', 'SCHEDULE 13G/A', '13G', true,  current_date - 45,  '0001045810', 'NVIDIA CORP', '67066G104', 'Common Stock', current_date - 60, '0001100000', 'Huang Jen Hsun', 3, 860000000, 3.5, '{"Rule 13d-1(d)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001317/seed-13-17-index.htm'),
+  ('seed-13-18', 'SCHEDULE 13G',   '13G', false, current_date - 30,  '0001045810', 'NVIDIA CORP', null, null, null, null, '  The <b>Seed</b> Family   Trust & Co ', 1, 1240000000, null, '{}', '{}', null),
+  ('seed-13-19', 'SCHEDULE 13G',   '13G', false, current_date - 10,  '0001045810', 'NVIDIA CORP', null, 'Common Stock', current_date - 15, '0009997704', 'Seed Same Day LLC', 1, 1300000000, 5.3, '{"Rule 13d-1(c)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001319/seed-13-19-index.htm'),
+  ('seed-13-20', 'SCHEDULE 13G/A', '13G', true,  current_date - 10,  '0001045810', 'NVIDIA CORP', null, 'Common Stock', current_date - 15, '0009997704', 'Seed Same Day LLC', 1, 1310000000, 5.35, '{"Rule 13d-1(c)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001320/seed-13-20-index.htm'),
+  ('seed-13-21', 'SCHEDULE 13G/A', '13G', true,  current_date - 3,   '0000936468', 'LOCKHEED MARTIN CORP', '539830109', 'Common Stock', current_date - 20, '0009997705', 'Seed Trust Bank', 1, 9000000, 3.8, '{"Rule 13d-1(b)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/936468/000000000026001321/seed-13-21-index.htm');
+insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, issuer_cusip, security_class, event_date, filer_cik, reporter_name, reporter_count, shares_owned, percent_of_class, rules, source_url)
+select 'seed-13-p' || lpad(g::text, 2, '0'), case when g % 7 = 0 then 'SCHEDULE 13D/A' when g % 2 = 0 then 'SCHEDULE 13G/A' else 'SCHEDULE 13G' end, case when g % 7 = 0 then '13D' else '13G' end, (g % 7 = 0 or g % 2 = 0),
+       current_date - (g * 9 + 5), '0001321655', 'PALANTIR TECHNOLOGIES INC.', '69608A108', 'Class A Common Stock', current_date - (g * 9 + 25), lpad((9997800 + g)::text, 10, '0'),
+       'Seed Holder ' || lpad(g::text, 2, '0') || ' LP', 1 + (g % 3), 1000000 * (40 - g), case when g % 5 = 0 then 2.5 + g / 100.0 else 5 + (30 - g) / 4.0 end,
+       case when g % 7 = 0 then '{}'::text[] else '{"Rule 13d-1(b)"}'::text[] end,
+       'https://www.sec.gov/Archives/edgar/data/1321655/0000000000260014' || lpad(g::text, 2, '0') || '/seed-13-p' || lpad(g::text, 2, '0') || '-index.htm'
+  from generate_series(1, 28) g;
 
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of

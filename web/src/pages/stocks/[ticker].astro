@@ -6,6 +6,8 @@ import { industryHref } from "../../lib/industries";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import PlannedSales from "../../components/PlannedSales.astro";
 import { noticesInWindow } from "../../lib/form144";
+import LargeHolders from "../../components/LargeHolders.astro";
+import { holdersOf } from "../../lib/schedule13";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
@@ -48,6 +50,8 @@ const company = s.companyId != null ? model.companies.get(s.companyId) : undefin
 const cpath = company ? companyPath(company) : null;
 // Form 144 notices about the company, last 12 months (empty until that load has reached today).
 const plannedN = company?.cik ? noticesInWindow(model.form144.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
+// Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
+const holdersN = company?.cik ? holdersOf(model.schedule13.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 const y = txns.filter((t) => withinDays(t.disclosedAt, 365));
 const yIns = y.filter((t) => t.source === "sec_form4");
 const yCon = y.filter((t) => t.source !== "sec_form4");
@@ -79,6 +83,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
   ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
   ...(insider.length ? [["#insider-transactions", "Insider transactions"] as [string, string]] : []),
   ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []),
+  ...(holdersN ? [["#large-holders", "Large holders"] as [string, string]] : []),
   ...(congress.length ? [["#congress-trades", "Congress trades"] as [string, string]] : []),
   ...(related.length ? [["#related", "Related stocks"] as [string, string]] : []),
   ["#sources", "Sources"],
@@ -207,6 +212,8 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <TxnTable model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
 
   <PlannedSales model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "notices")} />
+
+  <LargeHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "holders")} />
 
   <AdSlot label="Advertisement" show={txns.length > 0} />
 
