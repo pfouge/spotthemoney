@@ -288,7 +288,9 @@ export function parseSchedule13Xml(xml: string, schedule: Schedule): ParsedSched
     schedule,
     issuerCik: cikOf(leaf(issuerBlock, "issuerCik")),
     issuerName: leaf(issuerBlock, "issuerName"),
-    issuerCusip: cleanText(blocks(issuerBlock, "issuerCusip")[0], 20),
+    // Statements filed from March 2026 name the element issuerCusipNumber (seen in the live run's
+    // sample_tags on 2026-11-20; every statement before that month had issuerCusip). First one given.
+    issuerCusip: cleanText(blocks(issuerBlock, "issuerCusip")[0] ?? blocks(issuerBlock, "issuerCusipNumber")[0] ?? blocks(cover, "issuerCusipNumber")[0], 20),
     securityClass: leaf(cover, "securitiesClassTitle"),
     eventDate: parseFormDate(leaf(cover, "dateOfEvent", "eventDateRequiresFilingThisStatement")),
     filerCik: cikOf(leaf(blocks(header, "filerCredentials")[0] ?? header, "cik")),

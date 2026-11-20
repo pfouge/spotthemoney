@@ -195,6 +195,19 @@ test("13D: issuer, every reporting person, largest figures, purpose", () => {
   assert.ok(hasShape13(p));
 });
 
+test("CUSIP: the element name used from March 2026 (issuerCusipNumber), with or without a wrapper", () => {
+  const d = XML_D.replace("<issuerCUSIP>83548F309</issuerCUSIP>", "<issuerCusipNumber>83548F309</issuerCusipNumber>");
+  assert.notEqual(d, XML_D);
+  assert.equal(parseSchedule13Xml(d, "13D").issuerCusip, "83548F309");
+  const g = XML_G.replace("<issuerCusip>74168J101</issuerCusip>", "<issuerCusips><issuerCusipNumber>74168J101</issuerCusipNumber><issuerCusipNumber>74168J209</issuerCusipNumber></issuerCusips>");
+  assert.notEqual(g, XML_G);
+  assert.equal(parseSchedule13Xml(g, "13G").issuerCusip, "74168J101");
+  // No CUSIP at all stays empty, and nothing else moves.
+  const none = parseSchedule13Xml(XML_G.replace("<issuerCusip>74168J101</issuerCusip>", ""), "13G");
+  assert.equal(none.issuerCusip, null);
+  assert.equal(none.issuerCik, "0001894562");
+});
+
 test("13G: its own element names; item 4 figures are not taken for a person's", () => {
   const p = parseSchedule13Xml(XML_G, "13G");
   assert.equal(p.issuerCik, "0001894562");

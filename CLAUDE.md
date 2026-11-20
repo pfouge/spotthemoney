@@ -3463,3 +3463,37 @@ on the site, in the guides or on the privacy page changed.
   not 33480"), and that source dropped out of `/data/coverage.json` and the methodology for that
   build. `coverage.ts` now reads each table in ONE statement (one snapshot). **Any count that is
   checked against another count of the same table must come from one statement.**
+
+### Large holders are live; what was put in place the day they switched on (2026-11-20, scheduled parity run) — queue item (h1)
+
+- **Switched on by the build of 16:28 UTC on 2026-11-20** (closing deploy of ingest run 44770857001,
+  version 5e5afae1). `sec_schedule13` run 1114 ended `success` through index day 2026-11-19: the
+  catch-up from 2025-10-01 is over (40,363 statements, 6,305 issuers). Build log and SQL agree on
+  all ten figures: 6,491 statements for 930 companies on the site (4,195 amendments), newest
+  2026-11-19; 4,238 holders by newest statement, 1,704 under 5%, 280 on Schedule 13D; most for one
+  company 14; none over the 25-row cap; largest stated holding 6,418,547,515 shares. The coverage
+  line reads `current`. One file more in the deploy (`large-holders-13d-13g.csv`): 38,270 read.
+  Form 144 was at 2026-08-17 that day and is still hidden.
+- **Freshness.** `scripts/freshness-check.mjs`: `sec_schedule13` now has `dataDays: 6` on
+  `max(filed_at)`. The sections hide themselves at 10 days (`CAUGHT_UP_DAYS`), so a stalled job
+  turns the daily ingest red (STALE) four days before that. **Do the same for `sec_form144` on the
+  day its sections switch on** (its entry still has no data date).
+- **`deploy.yml` has a new step, "Check planned sales and large holders against their files
+  (warning only)"**, after the build check: `verify-form144` and `verify-schedule13` against the
+  build served on the runner (`--sample 12`). It is the only check of these sections on production
+  data (scripts cannot read the public site reliably). It never fails a deploy: a mismatch prints
+  the verifier's output and an Actions warning `verify-<name>`. **After a deploy, read that step's
+  two lines** (`verify-schedule13: statements are shown; N checks pass ...`).
+- **CUSIP fault found, half fixed.** `issuer_cusip` is filled on every statement filed up to
+  February 2026, on 613 of 3,375 in March and on none since: statements filed from March 2026 name
+  the element `issuerCusipNumber`, and the parser read only `issuerCusip` (the names came from two
+  filings of late 2025). `parseSchedule13Xml` now reads either (test in
+  `sec_schedule13.test.ts`). **`PARSER_VERSION` was NOT raised**: a bump restarts the walk from
+  2025-10-01 and re-reads all 40,000 statements (about five 40-minute runs), and the new name is
+  known only from `stats.sample_tags_*`, not from a filing seen whole. Plan: read `with_cusip` in
+  the stats of the next daily run that stores new statements; if it equals or is close to
+  `stored`, raise `PARSER_VERSION` to 2 in its own pull request and dispatch runs until the walk
+  is back at today (the sections stay on meanwhile: the newest filing date does not move back).
+  Until then about 26,700 statements have an empty `cusip` in the CSV. Nothing on a page uses it.
+  Once CUSIPs are complete, the share class can become part of the holder match (the known limit
+  in the methodology: a filer with statements about two classes shows its newest only).
