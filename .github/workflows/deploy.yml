@@ -137,10 +137,24 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        # Cloudflare's API can still name the previous deployment for a moment after an upload
+        # (2026-11-20: asked one second after "Current Version ID", it answered with the version
+        # before; the new one was live). So ask up to five times, 10 seconds apart, before
+        # calling the deploy failed. A version that never becomes active still fails.
         run: |
           set -o pipefail
-          npx wrangler deployments status --config "$cfg" --json > ../deploy-status.json
-          node ../scripts/check-deployed-version.mjs ../deploy.log ../deploy-status.json
+          for attempt in 1 2 3 4 5; do
+            npx wrangler deployments status --config "$cfg" --json > ../deploy-status.json
+            if node ../scripts/check-deployed-version.mjs ../deploy.log ../deploy-status.json; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              echo "not active yet (attempt $attempt of 5); asking again in 10 seconds"
+              sleep 10
+            fi
+          done
+          echo "::error::the uploaded version did not become the active deployment within 40 seconds"
+          exit 1
 
       # The checks that read the public website (is the new build serving, sitemaps, robots,
       # llms.txt, JSON-LD, the on-demand pages) run in their own workflow, "live check"
