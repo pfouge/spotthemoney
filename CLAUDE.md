@@ -3218,3 +3218,10 @@ on the site, in the guides or on the privacy page changed.
   data on the server); no export or import of the list (the page address does that for one view); no
   renaming in place (save again under the new name and remove the old one); the insider screener does not
   exist yet and will need its own key.
+- **Shipped as PR #51 (`80b7de2`).** Its push deploy (44646708633) was cancelled mid-upload by the closing
+  deploy of a manual ingest run, which is by design (`deploy-web` concurrency; that deploy builds `main`).
+  That second deploy uploaded version 6edc3505 and then ended red: one second after the upload,
+  `wrangler deployments status` still named the previous deployment (7cdf76ee). A deploy started by hand
+  (44649109422) was green: version d5bb59cf serves 100% of traffic. **`deploy.yml` now asks for the active
+  deployment up to five times, 10 seconds apart**, before failing "Verify the deployed version"; a version
+  that never becomes active still fails.
