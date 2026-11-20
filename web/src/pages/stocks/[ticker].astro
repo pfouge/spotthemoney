@@ -219,6 +219,8 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
 
   <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
 
+  <AdSlot pos="low" />
+
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={txns} edgarId={s.ticker} />
   <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>

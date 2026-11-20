@@ -3,6 +3,7 @@
 // Figures come from lib/industries.ts (unit-tested). Counts of filed rows only: no ranking,
 // no dollar totals, and an industry is a label, not a statement about any trade.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -64,6 +65,8 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
   )}
 
   <div class="prose">
+  <AdSlot />
+
   <h2 id="about">What this page shows</h2>
   <p>The SEC gives every company that files with it a four-digit Standard Industrial Classification (SIC) code, such as 3674 for semiconductors. This page groups the companies on this site by the division of the SIC manual their code falls in, which is read from the code's first two digits. {x.divisions.length > 0 && <>Of the {num(x.companies)} companies here, <span data-fact="with-code">{num(x.withCode)}</span> have a code on file and <span data-fact="no-code">{num(noCode)}</span> do not (mostly funds and trusts){x.noDivision > 0 ? <>; {num(x.noDivision)} have a code that falls in no division and are not listed</> : null}.</>}</p>
   <p>The classification dates from 1987 and its divisions are broad. Software companies are under Services, and drug makers and chip makers are both under Manufacturing. A company has one code even when it works in several industries, and the SEC chooses it. So a division is a label for finding companies, not a measure of anything.</p>

@@ -12,9 +12,26 @@
 // The ID must be the site owner's own. Never paste an ID from another network or another site.
 export const ADSENSE_CLIENT = "ca-pub-9671575911691889"; // account opened 2026-11-15 under the business, site spotthemoney.com
 
-// In-page ad units (AdSlot). Keep false until Google has approved the site: before approval a
-// unit renders as an empty labelled box. The head tag above is what Google needs for review.
-export const AD_SLOTS_ON = false;
+// In-page ad units (AdSlot). Google approved the site on 2026-11-17 ("Ready", ads.txt
+// "Authorized"); switched on 2026-11-19. false turns every in-page unit off and leaves only the
+// head tag (and whatever Auto ads formats are switched on in AdSense for the site).
+export const AD_SLOTS_ON = true;
+
+// The ad units, created in AdSense (Ads > By ad unit) under the publisher ID above. The number is
+// the unit's data-ad-slot. One unit per position, so AdSense reports earnings by position.
+//   top        leaderboard under the site header, above the page title (BaseLayout, every ad page)
+//   mid        between panels, part way down a page (placed by each page template)
+//   low        a second in-page unit further down long pages
+//   article    in-article native unit inside guides and articles
+//   multiplex  grid of native ads after the page content, above the footer (BaseLayout)
+export const AD_UNITS = {
+  top: "2036885133",       // stm_top, display
+  mid: "8143128488",       // stm_mid, display
+  low: "5848137635",       // stm_low, display
+  article: "9665587007",   // stm_article, in-article
+  multiplex: "9125037663", // stm_multiplex, multiplex
+} as const;
+export type AdPos = keyof typeof AD_UNITS;
 
 const VALID = /^ca-pub-\d{16}$/;
 

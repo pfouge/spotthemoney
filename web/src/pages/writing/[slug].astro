@@ -2,6 +2,7 @@
 // /writing/<slug>/ — one article. The Markdown body is rendered by Astro inside .prose. Draft and
 // future-dated articles only exist in a PUBLIC_SHOW_DRAFTS=1 build, with a banner and noindex.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import Answer from "../../components/Answer.astro";
@@ -58,6 +59,8 @@ const ld = [
     <div class="prose article-body">
       <Content />
     </div>
+
+    <AdSlot pos="article" />
 
     {a.faqs.length > 0 && (
       <section class="prose article-faqs" aria-labelledby="questions">
