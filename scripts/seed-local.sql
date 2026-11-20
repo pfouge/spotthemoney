@@ -276,6 +276,23 @@ insert into donations (committee_id, donor_name, donor_employer, donor_state, am
 select c.id, 'WITHHELD', e, st, a, current_date - d, 'seed-' || row_number() over ()
   from committees c, (values ('Self-employed','TX',2500,3),('Retired','CA',1000,10),('Microsoft','WA',3300,15),('Lockheed Martin','MD',2900,22),('Not employed','OH',250,40)) as t(e, st, a, d);
 
+-- Stored, not shown (lib/coverage-stored.ts; /data/coverage.json key storedNotShown and the
+-- methodology's coverage list). Form 144: three notices and one amendment in two months, the
+-- newest a few days old, so that load reads as current. Schedules 13D and 13G: the newest is
+-- 40 days old, so that load reads as still catching up. One row of each is about a tracked
+-- company (NVIDIA, cik 0001045810 in this seed if present; the count is whatever the join gives).
+delete from form144_notices where accession like 'seed-144-%';
+insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_name, seller_name, shares, market_value) values
+  ('seed-144-1', '144',   current_date - 45, (select cik from companies where cik is not null order by id limit 1), 'Seed Issuer One', 'SEED SELLER A', 1000, 150000),
+  ('seed-144-2', '144',   current_date - 44, '0009990001', 'Seed Issuer Two', 'SEED SELLER B', 2500, 90000),
+  ('seed-144-3', '144/A', current_date - 6,  '0009990001', 'Seed Issuer Two', 'SEED SELLER B', 2500, 91000),
+  ('seed-144-4', '144',   current_date - 4,  '0009990002', 'Seed Issuer Three', 'SEED SELLER C', 400, 12000);
+delete from schedule13_filings where accession like 'seed-13-%';
+insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, reporter_name, reporter_count, shares_owned, percent_of_class) values
+  ('seed-13-1', 'SCHEDULE 13D',   '13D', false, current_date - 80, (select cik from companies where cik is not null order by id limit 1), 'Seed Issuer One', 'SEED HOLDER A', 1, 5000000, 6.1),
+  ('seed-13-2', 'SCHEDULE 13G',   '13G', false, current_date - 75, '0009990001', 'Seed Issuer Two', 'SEED HOLDER B', 2, 800000, 5.3),
+  ('seed-13-3', 'SCHEDULE 13G/A', '13G', true,  current_date - 40, '0009990001', 'Seed Issuer Two', 'SEED HOLDER B', 2, 700000, 4.6);
+
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
 -- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the

@@ -6,6 +6,7 @@
 // see at a glance how complete each data set was. Counts only: no names, no error text, no
 // run-log strings (only numeric stats are copied from ingest_runs).
 import { flagshipSql } from "./flagship";
+import { emptyStored, emptyStoredNotShown, storedLog, storedProblems, type StoredNotShown, type StoredSource } from "./coverage-stored";
 
 export interface FilingMonth {
   source: string; month: string; filings: number; published: number; pendingReview: number; needsOcr: number;
@@ -27,6 +28,8 @@ export interface Coverage {
   noTicker: { source: string; assetType: string; rows: number }[];
   /** Market-wide Form 4 filings loaded but kept off the site (stage 1). Counts only. */
   marketScope: { filings: number; transactions: number };
+  /** Filing types the database collects and no page shows yet (lib/coverage-stored.ts). Counts and dates only. */
+  storedNotShown: StoredNotShown;
   errors: string[];
 }
 
@@ -40,7 +43,7 @@ const numericStats = (stats: unknown): Record<string, number> => {
 };
 
 async function load(): Promise<Coverage> {
-  const c: Coverage = { builtAt: new Date().toISOString(), connected: false, filings: [], txns: [], runs: [], tables: {}, totals: {}, quality: {}, tableSizes: [], payloadMb: {}, noTicker: [], marketScope: { filings: 0, transactions: 0 }, errors: [] };
+  const c: Coverage = { builtAt: new Date().toISOString(), connected: false, filings: [], txns: [], runs: [], tables: {}, totals: {}, quality: {}, tableSizes: [], payloadMb: {}, noTicker: [], marketScope: { filings: 0, transactions: 0 }, storedNotShown: emptyStoredNotShown(), errors: [] };
   const sql = flagshipSql();
   if (!sql) return c;
   c.connected = true;
@@ -130,6 +133,31 @@ async function load(): Promise<Coverage> {
              (select count(*) from transactions t join filings f on f.id = t.filing_id where f.source::text = 'sec_form4' and f.scope = 'market')::int as transactions`;
     c.marketScope = { filings: m.filings, transactions: m.transactions };
   });
+  // Form 144 notices and Schedules 13D/13G: stored by their own daily jobs, shown nowhere yet.
+  // Each table is read on its own, so one missing table (a database from before its migration)
+  // leaves the other's counts in place.
+  type Head = { rows: number; amendments: number; issuers: number; trackedRows: number; firstFiled: string | null; lastFiled: string | null };
+  const stored = async (name: "form144" | "schedule13", head: Promise<Head[]>, months: Promise<{ month: string; rows: number }[]>, kinds: Promise<{ kind: string; rows: number }[]>) =>
+    step(`storedNotShown.${name}`, async () => {
+      const [h] = await head;
+      const s: StoredSource = { ...emptyStored(), ...(h ?? {}), months: (await months).map((r) => ({ ...r })), kinds: Object.fromEntries((await kinds).map((r) => [r.kind, r.rows])) };
+      const problems = storedProblems(name, s);
+      if (problems.length) throw new Error(problems.join("; "));
+      c.storedNotShown[name] = s;
+    });
+  await stored("form144",
+    sql<Head[]>`select count(*)::int as rows, count(*) filter (where n.form_type = '144/A')::int as amendments, count(distinct n.issuer_cik)::int as issuers,
+                       count(*) filter (where exists (select 1 from companies c where c.cik = n.issuer_cik and c.tracked))::int as "trackedRows",
+                       min(n.filed_at)::text as "firstFiled", max(n.filed_at)::text as "lastFiled" from form144_notices n`,
+    sql<{ month: string; rows: number }[]>`select to_char(filed_at, 'YYYY-MM') as month, count(*)::int as rows from form144_notices group by 1 order by 1`,
+    sql<{ kind: string; rows: number }[]>`select form_type as kind, count(*)::int as rows from form144_notices group by 1 order by 1`);
+  await stored("schedule13",
+    sql<Head[]>`select count(*)::int as rows, count(*) filter (where n.is_amendment)::int as amendments, count(distinct n.issuer_cik)::int as issuers,
+                       count(*) filter (where exists (select 1 from companies c where c.cik = n.issuer_cik and c.tracked))::int as "trackedRows",
+                       min(n.filed_at)::text as "firstFiled", max(n.filed_at)::text as "lastFiled" from schedule13_filings n`,
+    sql<{ month: string; rows: number }[]>`select to_char(filed_at, 'YYYY-MM') as month, count(*)::int as rows from schedule13_filings group by 1 order by 1`,
+    sql<{ kind: string; rows: number }[]>`select schedule as kind, count(*)::int as rows from schedule13_filings group by 1 order by 1`);
+  console.log(`[web] ${storedLog(c.storedNotShown, c.builtAt)}`);
   return c;
 }
 
