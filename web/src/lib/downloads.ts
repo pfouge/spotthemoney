@@ -22,7 +22,7 @@ import { changeCsv } from "./holdings";
 import { rowIssues } from "./lobbyissues";
 import { cleanDescription } from "./contracts";
 import { naicsTitle } from "./naics";
-import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, type Notice } from "./form144";
+import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOutOfRange, VALUE_MAX_PER_SHARE, type Notice } from "./form144";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
@@ -273,7 +273,8 @@ async function build(): Promise<Downloads> {
     { key: "relationship", about: "The seller's relationship to the company in the filer's own words (Officer, Director and so on), separated by commas.", get: (n) => relationshipLabel(n.relationships) },
     { key: "security_class", about: "Class of the securities, as filed.", get: (n) => cleanText(n.securityClass, 120) },
     { key: "shares_to_be_sold", about: "Number of shares or units the notice says are to be sold. A plan, not a sale. Empty when the form states none.", get: (n) => stated(n.shares) },
-    { key: "stated_market_value", about: "Aggregate market value of those shares as the filer states it, in dollars. Not a sale price or proceeds.", get: (n) => stated(n.marketValue) },
+    { key: "stated_market_value", about: "Aggregate market value of those shares as the filer states it, in dollars. Not a sale price or proceeds. Always the figure as filed, also when the next column says it cannot be right.", get: (n) => stated(n.marketValue) },
+    { key: "stated_value_out_of_range", about: `true when the stated market value works out to more than $${VALUE_MAX_PER_SHARE.toLocaleString("en-US")} a share, which cannot be right for the number of shares (a mistake on the form). The pages do not show such a figure.`, get: (n) => valueOutOfRange(n) },
     { key: "shares_outstanding", about: "Shares of the class outstanding, as the filer states it.", get: (n) => stated(n.sharesOutstanding) },
     { key: "approximate_sale_date", about: "The approximate date of sale stated on the notice (the earliest, when it gives several).", get: (n) => n.approxSaleDate },
     { key: "broker", about: "Name of the broker or market maker named on the notice.", get: (n) => cleanText(n.broker, 160) },

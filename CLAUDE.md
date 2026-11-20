@@ -3522,3 +3522,53 @@ on the site, in the guides or on the privacy page changed.
   `sec_form4.ts`, the market-wide thread's file): a security should belong to an issuer CIK, and
   the owner of a symbol should come from the SEC's own ticker list (`company_tickers.json`), not
   from whichever filing named it first. Not started; recorded in the project state doc.
+
+### Planned sales are live; a stated value that cannot be right is held back (2026-11-20, scheduled parity run) — queue item (h1) for Form 144
+
+- **Switched on by the build of 18:27 UTC on 2026-11-20** (closing deploy of the scheduled ingest run
+  44786385013, version 9a6514ac). `sec_form144` run 1132 ended `partial` on its budget through index
+  day 2026-11-16, newest notice 2026-11-17: within the 10 days, so the "Planned sales" sections, the
+  CSV file, the methodology paragraph and the guide section all appeared in that build. Build log and
+  SQL agree on all eight figures: 14,261 notices for 801 companies on the site (114 amendments),
+  newest 2026-11-17; 12,654 filed in the last 365 days for 792 companies; 147 companies with more
+  than 25. The deploy step printed `verify-form144: notices are shown; 3734 checks pass on 31 pages`.
+  Wrangler read 38,279 files (one more file: `planned-sales-form144.csv`).
+- **Found on that build: two notices state a market value that is a typing mistake, and the pages
+  printed it.** Synchrony Financial, accession 0001974078-26-000283: 4,000 shares, $25,240,000,000
+  (it should be about $252,400). Gartner, 0001398344-26-013885: 860 shares, $11,724,238,884. The
+  check before stage 2 was made when the load had reached June and the largest value was a real
+  $3.6B. Nothing was added up from them (the summary counts notices and sellers), but the cells and
+  the sort order showed them.
+- **Rule** (`valueOutOfRange`, `shownValue`, `heldNote`, `VALUE_MAX_PER_SHARE` = 1,000,000 in
+  `web/src/lib/form144.ts`; tests in `scripts/form144.test.ts`): a stated market value of more than
+  $1,000,000 a share is not shown on a page. The cell reads "not shown" (a link to methodology
+  `#form-144`, `td[data-ps-value-held]`, empty sort value), and a sentence under the table
+  (`p[data-ps-held-note][data-held]`) says how many values are held back and why. The CSV keeps
+  `stated_market_value` as filed and has a new column after it, `stated_value_out_of_range`
+  (true or false on every row). The database is unchanged.
+- **Why only that one test.** Tried on production first: a comparison with the median of the
+  company's other notices flags real rows (Netflix and Booking around their share splits, warrants,
+  preferred and depositary shares); an implied company value above $6 trillion (the market-cap
+  rule's ceiling) caught the same two rows and no others, and would lean on the form's
+  "shares outstanding" box, which is itself mistyped (Expedia: 1,775). One notice that is probably
+  wrong stays as filed: Motorola Solutions, 0001950047-26-007837, 1,757 shares for $36.0M
+  ($20,513 a share). Values that look too LOW (about 25 rows, for example $30 for 3,000 shares) are
+  left as filed: they overstate nothing.
+- **Build log** line now ends `largest stated value V; N stated values not shown (over 1000000
+  dollars a share)`; V leaves the held-back values out.
+- **Verifier.** `verify-form144` has its own copy of the rule: the CSV column against it on every
+  row; every company with an out-of-range value in its table is read whatever the sample; the cell
+  says "not shown" with the link, the figure appears nowhere in the row, the note under the table
+  states the count; the methodology states the rule. The seed has two such notices (NVIDIA,
+  Palantir) and one at $760,000 a share that stays shown.
+- **Freshness.** `scripts/freshness-check.mjs`: `sec_form144` now has `dataDays: 6` on
+  `max(filed_at)`, as `sec_schedule13` has. The sections hide at 10 days, so a stalled job turns the
+  daily ingest red four days before that.
+- Guide `what-is-form-4` (`#form-144`: one sentence; the limit comes from
+  `ctx.form144ValueMaxPerShare`) and methodology `#form-144` say what is held back and where the
+  filed figure is. `how-to-cite-and-reuse` re-read, unchanged.
+- **CUSIP (h1a): no proof yet.** No Schedule 13 statement has been stored since the reader learnt
+  the second element name (run 1125 at 17:46 UTC found nothing new), so `with_cusip` could not be
+  read. `PARSER_VERSION` stays at 1.
+- Not done: nothing changes a notice's figures in the database; no check of the share count, the
+  shares outstanding or the past-3-months proceeds; notices on insider pages (h2).

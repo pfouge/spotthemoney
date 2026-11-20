@@ -20,8 +20,12 @@ const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:/.test(a)) ?? "http://127.0.0.1:4321").replace(/\/$/, "");
 const SAMPLE = Number(args[args.indexOf("--sample") + 1]) > 0 && args.includes("--sample") ? Number(args[args.indexOf("--sample") + 1]) : 12;
 const ROWS = 25, WINDOW = 365, CAUGHT_UP = 10, DAY = 86400000;
+// A stated value above this many dollars a share is not shown on a page (this script's own copy
+// of the rule in web/src/lib/form144.ts).
+const MAX_PER_SHARE = 1_000_000;
+const outOfRange = (r) => Number(r.stated_market_value) > 0 && Number(r.shares_to_be_sold) > 0 && Number(r.stated_market_value) / Number(r.shares_to_be_sold) > MAX_PER_SHARE;
 const FILE = "planned-sales-form144.csv";
-const COLUMNS = ["filed_date", "form_type", "amendment", "company", "ticker", "issuer_cik", "seller", "seller_sec_number", "relationship", "security_class", "shares_to_be_sold", "stated_market_value", "shares_outstanding", "approximate_sale_date", "broker", "plan_adoption_date", "notice_date", "sold_past_3_months_shares", "sold_past_3_months_proceeds", "nothing_sold_past_3_months", "accession", "sec_url", "page_url"];
+const COLUMNS = ["filed_date", "form_type", "amendment", "company", "ticker", "issuer_cik", "seller", "seller_sec_number", "relationship", "security_class", "shares_to_be_sold", "stated_market_value", "stated_value_out_of_range", "shares_outstanding", "approximate_sale_date", "broker", "plan_adoption_date", "notice_date", "sold_past_3_months_shares", "sold_past_3_months_proceeds", "nothing_sold_past_3_months", "accession", "sec_url", "page_url"];
 
 let failures = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { failures++; console.log(`✗ ${msg}`); } };
@@ -123,6 +127,9 @@ csv.rows.forEach((r, i) => {
 });
 ok(badRows === 0, `${badRows} rows of the file are malformed (repeat accession, form type, date, company number, page or SEC address, or a figure of zero or less)`);
 ok(order, "the file is not newest filing first");
+const wrongMark = csv.rows.filter((r) => (r.stated_value_out_of_range === "true") !== outOfRange(r) || !["true", "false"].includes(r.stated_value_out_of_range));
+ok(wrongMark.length === 0, `${wrongMark.length} rows of the file mark stated_value_out_of_range differently from the rule (first: ${wrongMark[0]?.accession})`);
+const heldInFile = csv.rows.filter(outOfRange);
 
 const path = (u) => u.replace(/^https?:\/\/[^/]+/, "");
 const inWindow = (r) => { const t = Date.parse(r.filed_date + "T00:00:00Z"); return t <= built && t >= built - WINDOW * DAY; };
@@ -157,6 +164,9 @@ function checkSection(where, html, x) {
   ok(sec.rows.length === want.length, `${where}: ${sec.rows.length} table rows, expected ${want.length}`);
   ok((x.win.length > ROWS) === /data-ps-more/.test(sec.body), `${where}: the "newest ${ROWS} of" note is ${x.win.length > ROWS ? "missing" : "present without need"}`);
   if (x.win.length > ROWS) ok(body.includes(`${ROWS} newest of ${nf(x.win.length)} notices`), `${where}: the note does not state ${x.win.length} notices`);
+  const heldWant = want.filter(outOfRange).length;
+  const heldTag = (sec.body.match(/<p[^>]*data-ps-held-note[^>]*>/) ?? [""])[0];
+  ok(heldWant ? Number(attr(heldTag, "data-held")) === heldWant && /not shown: the figure on the form works out to more than \$1,000,000 a share/.test(body) : !heldTag, `${where}: ${heldWant} stated values are out of range in the rows shown and the note under the table ${heldTag ? `states ${attr(heldTag, "data-held")}` : "is missing"}`);
   sec.rows.forEach((row, i) => {
     const c = want[i];
     if (!c) return;
@@ -170,7 +180,12 @@ function checkSection(where, html, x) {
     ok(rel === clean(c.relationship, 400), `${where}: ${acc} relationship shown "${rel}", the file has "${c.relationship}"`);
     const sh = text(cellBy(row, "data-ps-shares")?.html ?? ""), val = text(cellBy(row, "data-ps-value")?.html ?? "");
     ok(sh === (c.shares_to_be_sold ? nf(c.shares_to_be_sold) : "—"), `${where}: ${acc} shares shown "${sh}" for "${c.shares_to_be_sold}"`);
-    ok(val === (c.stated_market_value ? usd(c.stated_market_value) : "—"), `${where}: ${acc} value shown "${val}" for "${c.stated_market_value}"`);
+    ok(val === (outOfRange(c) ? "not shown" : c.stated_market_value ? usd(c.stated_market_value) : "—"), `${where}: ${acc} value shown "${val}" for "${c.stated_market_value}" and ${c.shares_to_be_sold} shares`);
+    if (outOfRange(c)) {
+      heldSeen++;
+      ok(/data-ps-value-held/.test(cellBy(row, "data-ps-value")?.tag ?? "") && /href="\/methodology\/#form-144"/.test(cellBy(row, "data-ps-value")?.html ?? ""), `${where}: ${acc} holds its value back without the link that explains why`);
+      ok(!text(row.html).includes(usd(c.stated_market_value)) && !row.html.includes(String(Math.round(Number(c.stated_market_value)))), `${where}: ${acc} still carries the out-of-range figure somewhere in its row`);
+    }
     for (const [cellName, key] of [["data-ps-sale", "approximate_sale_date"], ["data-ps-plan", "plan_adoption_date"]]) {
       const shown = text(cellBy(row, cellName)?.html ?? "");
       ok(c[key] ? shown !== "—" && shown.includes(c[key].slice(0, 4)) : shown === "—", `${where}: ${acc} ${key} shown "${shown}" for "${c[key]}"`);
@@ -181,7 +196,9 @@ function checkSection(where, html, x) {
   });
 }
 
-let pagesRead = 0, otherCompany = 0, sharedSkipped = 0;
+let pagesRead = 0, otherCompany = 0, sharedSkipped = 0, heldSeen = 0;
+// Every company with an out-of-range value in the window is read, whatever the sample.
+for (const x of withRows) if (x.win.slice(0, ROWS).some(outOfRange)) pick.set(x.p, x);
 const cikOf = (x) => x.rows[0].issuer_cik;
 const byCik = new Map(ranked.map((x) => [cikOf(x), x]));
 const tickerCompanies = new Map();
@@ -227,10 +244,13 @@ for (const p of quiet) {
   ok(!r.text.includes("data-planned-sales"), `${p}: a section with no notice in the last 12 months`);
 }
 ok(/id="form-144"/.test(meth), "the methodology has no Form 144 section");
+ok(/more than 1,000,000 dollars a share/.test(text(meth)), "the methodology does not state the rule for a stated value that is not shown");
+const heldInTables = withRows.reduce((s, x) => s + x.win.slice(0, ROWS).filter(outOfRange).length, 0);
+ok(heldSeen >= heldInTables, `${heldInTables} out-of-range values should be held back in page tables, ${heldSeen} were seen`);
 ok(/id="form-144"/.test(guide), "the Form 4 guide has no Form 144 section");
 ok(/shown on the stock and company pages/.test(methLine) && !/not shown on any page yet/.test(methLine), "the methodology's coverage line still says the notices are not shown");
 const dl = (await get("/downloads/")).text;
 ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
 
-console.log(failures ? `verify-form144: ${failures} problem(s) in ${checks} checks` : `verify-form144: notices are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} notices in the file for ${byPage.size} companies, ${withRows.length} of them with a notice in the last 12 months; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
+console.log(failures ? `verify-form144: ${failures} problem(s) in ${checks} checks` : `verify-form144: notices are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} notices in the file for ${byPage.size} companies, ${withRows.length} of them with a notice in the last 12 months; ${heldInFile.length} stated values out of range, ${heldInTables} of them in a page table; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
 process.exit(failures ? 1 : 0);

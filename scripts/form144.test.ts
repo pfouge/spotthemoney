@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanText, stated, relationshipLabel, sortNotices, noticesInWindow, noticeSummary, summarySentence, sellerKey, form144Log, emptyForm144, NOTICE_CAVEAT, NOTICE_ROWS, type Notice } from "../web/src/lib/form144";
+import { cleanText, stated, relationshipLabel, sortNotices, noticesInWindow, noticeSummary, summarySentence, sellerKey, form144Log, emptyForm144, valueOutOfRange, shownValue, heldNote, VALUE_MAX_PER_SHARE, NOTICE_CAVEAT, NOTICE_ROWS, type Notice } from "../web/src/lib/form144";
 import { caughtUp, catchingUp, emptyStored, CAUGHT_UP_DAYS } from "../web/src/lib/coverage-stored";
 
 const base: Notice = { accession: "0000000000-26-000001", formType: "144", filedAt: "2026-11-10", issuerCik: "0000000001", filerCik: "0000000101", sellerName: "JANE ROE",
@@ -77,7 +77,31 @@ test("form 144: wording states a plan, never a sale, a reason or advice", () => 
 test("form 144: the build-log line", () => {
   assert.match(form144Log({ ...emptyForm144(), lastFiled: "2026-08-12" }, built, new Set()), /^planned sales \(Form 144\): not shown \(newest filing on file 2026-08-12;/);
   const many = Array.from({ length: NOTICE_ROWS + 1 }, (_, i) => n({ accession: `m-${String(i).padStart(2, "0")}`, issuerCik: "0000000002", marketValue: 10 + i }));
-  const d = { shown: true, lastFiled: "2026-11-18", byCik: new Map([["0000000001", [n({}), n({ accession: "z", formType: "144/A", filedAt: "2025-10-05", marketValue: 2e6 })]], ["0000000002", many], ["0000000003", [n({ accession: "off" })]]]) };
+  const d = { shown: true, lastFiled: "2026-11-18", byCik: new Map([["0000000001", [n({}), n({ accession: "z", formType: "144/A", filedAt: "2025-10-05", marketValue: 2e6 }), n({ accession: "typo", shares: 4000, marketValue: 25_240_000_000 })]], ["0000000002", many], ["0000000003", [n({ accession: "off" })]]]) };
   assert.equal(form144Log(d, built, new Set(["0000000001", "0000000002"])),
-    `planned sales (Form 144): shown; ${NOTICE_ROWS + 3} notices for 2 companies on the site (1 amendments), newest 2026-11-10; ${NOTICE_ROWS + 2} filed in the last 365 days for 2 companies; 1 companies with more than ${NOTICE_ROWS}; largest stated value 2000000`);
+    `planned sales (Form 144): shown; ${NOTICE_ROWS + 4} notices for 2 companies on the site (1 amendments), newest 2026-11-10; ${NOTICE_ROWS + 3} filed in the last 365 days for 2 companies; 1 companies with more than ${NOTICE_ROWS}; largest stated value 2000000; 1 stated values not shown (over 1000000 dollars a share)`);
+});
+
+test("form 144: a stated value that cannot be right for the share count is held back, and only that", () => {
+  // The two on production on 2026-11-20: $25.24 billion for 4,000 shares, $11.7 billion for 860.
+  assert.equal(valueOutOfRange({ shares: 4000, marketValue: 25_240_000_000 }), true);
+  assert.equal(valueOutOfRange({ shares: 860, marketValue: 11_724_238_884 }), true);
+  assert.equal(shownValue({ shares: 4000, marketValue: 25_240_000_000 }), null);
+  // Real large notices stay: 15 million shares for $4.07 billion; a share priced in the hundreds of thousands.
+  assert.equal(valueOutOfRange({ shares: 15_000_000, marketValue: 4_073_700_000 }), false);
+  assert.equal(shownValue({ shares: 15_000_000, marketValue: 4_073_700_000 }), 4_073_700_000);
+  assert.equal(valueOutOfRange({ shares: 10, marketValue: 7_600_000 }), false, "$760,000 a share is a real price");
+  assert.equal(valueOutOfRange({ shares: 1, marketValue: VALUE_MAX_PER_SHARE }), false, "the limit itself passes");
+  assert.equal(valueOutOfRange({ shares: 1, marketValue: VALUE_MAX_PER_SHARE + 1 }), true);
+  // Nothing to compare: a blank share count or value is not out of range, and a low value is left alone.
+  assert.equal(valueOutOfRange({ shares: null, marketValue: 9e12 }), false);
+  assert.equal(shownValue({ shares: null, marketValue: 250000 }), 250000);
+  assert.equal(valueOutOfRange({ shares: 0, marketValue: 9e12 }), false);
+  assert.equal(valueOutOfRange({ shares: 1000, marketValue: null }), false);
+  assert.equal(shownValue({ shares: 1000, marketValue: 0 }), null);
+  assert.equal(valueOutOfRange({ shares: 3000, marketValue: 30 }), false);
+  assert.equal(heldNote(0), "");
+  assert.match(heldNote(1), /^One stated market value in this table is not shown: .*more than \$1,000,000 a share/);
+  assert.match(heldNote(3), /^3 stated market values in this table are not shown/);
+  for (const s of [heldNote(1), heldNote(3)]) assert.doesNotMatch(s, /\u2014/);
 });

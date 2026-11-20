@@ -7,7 +7,7 @@ import type { Flagship } from "../lib/flagship";
 import type { DownloadFile } from "../lib/downloads";
 import { money, num } from "../lib/flagship";
 import { formatDate } from "../lib/format";
-import { noticesInWindow, noticeSummary, summarySentence, relationshipLabel, cleanText, stated, isAmendment, NOTICE_CAVEAT, NOTICE_ROWS } from "../lib/form144";
+import { noticesInWindow, noticeSummary, summarySentence, relationshipLabel, cleanText, stated, isAmendment, valueOutOfRange, shownValue, heldNote, NOTICE_CAVEAT, NOTICE_ROWS } from "../lib/form144";
 import { sellerPath } from "../lib/form144-build";
 import DownloadCsv from "./DownloadCsv.astro";
 
@@ -17,6 +17,8 @@ const all = cik && model.form144.shown ? model.form144.byCik.get(cik.padStart(10
 const rows = noticesInWindow(all, model.builtAt);
 const s = noticeSummary(rows);
 const shown = rows.slice(0, NOTICE_ROWS);
+// Stated values that cannot be right for the share count are held back (lib/form144.ts).
+const held = shown.filter((n) => valueOutOfRange(n)).length;
 const heads = [
   { label: "Filed", type: "num", cls: "" }, { label: "Seller, as filed", type: "text", cls: "" }, { label: "Class", type: "text", cls: "" },
   { label: "Shares to be sold", type: "num", cls: "num" }, { label: "Stated market value", type: "num", cls: "num" },
@@ -45,7 +47,9 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
             <td class="wrap ps-seller" data-v={seller.toLowerCase().replace(/[<>"]/g, "")} data-ps-seller>{href ? <a href={href}>{seller}</a> : seller}{rel && <span class="ps-sub" data-ps-rel>{rel}</span>}</td>
             <td class="wrap ps-class" data-v={(cls ?? "").toLowerCase().replace(/[<>"]/g, "")}>{cls ?? "—"}</td>
             <td class="num" data-v={stated(n.shares) ?? ""} data-ps-shares>{stated(n.shares) != null ? num(n.shares) : "—"}</td>
-            <td class="num" data-v={stated(n.marketValue) != null ? Math.round(n.marketValue!) : ""} data-ps-value>{stated(n.marketValue) != null ? money(n.marketValue, { compact: false }) : "—"}</td>
+            {valueOutOfRange(n)
+              ? <td class="num" data-v="" data-ps-value data-ps-value-held><a class="ps-held" href="/methodology/#form-144">not shown</a></td>
+              : <td class="num" data-v={shownValue(n) != null ? Math.round(n.marketValue!) : ""} data-ps-value>{shownValue(n) != null ? money(n.marketValue, { compact: false }) : "—"}</td>}
             <td class="mono" data-v={dayNum(n.approxSaleDate)} data-ps-sale>{n.approxSaleDate ? formatDate(n.approxSaleDate) : "—"}</td>
             <td class="mono" data-v={dayNum(n.planAdoptionDate)} data-ps-plan>{n.planAdoptionDate ? formatDate(n.planAdoptionDate) : "—"}</td>
             <td>{n.sourceUrl ? <a href={n.sourceUrl} rel="noopener nofollow" target="_blank">{isAmendment(n) ? "Form 144/A (amendment) ↗" : "Form 144 ↗"}</a> : (isAmendment(n) ? "Form 144/A (amendment)" : "Form 144")}</td>
@@ -53,6 +57,7 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
         );
       })}
     </tbody></table></div>
+    {held > 0 && <p class="ps-note" data-ps-held-note data-held={held}>{heldNote(held)}</p>}
     {rows.length > NOTICE_ROWS && <p class="ps-note" data-ps-more>The {NOTICE_ROWS} newest of {num(rows.length)} notices are shown. The rest are in the CSV file.</p>}
   </section>
 )}
@@ -62,4 +67,5 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
   .ps-class { min-width: 8rem; }
   @media (max-width: 640px) { .ps-seller { min-width: 10rem; } .ps-class { min-width: 7rem; } }
   .ps-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .ps-held { color: var(--ink-soft); font-size: 13px; text-decoration: underline; white-space: nowrap; }
 </style>
