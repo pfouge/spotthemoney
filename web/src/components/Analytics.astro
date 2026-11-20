@@ -10,11 +10,8 @@
 //      message (the one AdSense needs) can later grant it through the same consent mode.
 //    - Everywhere else: analytics_storage granted (first-party _ga cookies), unless the browser
 //      sends Global Privacy Control, which is treated as a refusal.
-//    - ad_storage, ad_user_data, ad_personalization (ads switched on 2026-11-19): denied in the
-//      EEA, the UK and Switzerland until the visitor agrees in Google's consent message
-//      (AdSense > Privacy & messaging, published 2026-11-19; it updates this same consent
-//      mode). Granted everywhere else, unless the browser sends Global Privacy Control, which
-//      is treated as a refusal (Google then serves non-personalised ads). /privacy/ says so.
+//    - ad_storage, ad_user_data, ad_personalization: denied everywhere. Change only when ads
+//      are switched on, through the consent message, and update /privacy/ first.
 //    - These defaults are queued before any Google tag loads (this component comes before the
 //      AdSense tag in BaseLayout's head). wait_for_update gives a consent message 500 ms to
 //      answer for visitors in the consent regions before tags fire.
@@ -39,8 +36,7 @@ const CONSENT_REGIONS = ["AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "
     var deny = { ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied", analytics_storage: "denied" };
     var gpc = false; try { gpc = navigator.globalPrivacyControl === true; } catch (e) {}
     gtag("consent", "default", Object.assign({}, deny, { region: regions, wait_for_update: 500 }));
-    var rest = gpc ? "denied" : "granted";
-    gtag("consent", "default", { ad_storage: rest, ad_user_data: rest, ad_personalization: rest, analytics_storage: rest });
+    gtag("consent", "default", Object.assign({}, deny, { analytics_storage: gpc ? "denied" : "granted" }));
     gtag("js", new Date());
     gtag("config", gaId, { allow_google_signals: false, allow_ad_personalization_signals: false, cookie_expires: 34128000 }); // 395 days ≈ 13 months, as /privacy/ states
   </script>

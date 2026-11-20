@@ -4,7 +4,6 @@
 // (unit-tested). Not under /congress/: every /congress/<x>/ address is a member profile.
 // A committee seat is context. Nothing here ties a trade to a committee's business.
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -66,8 +65,6 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
       </table></div>
     </section>
   )}
-
-  <AdSlot />
 
   <h2 id="about">What this page shows</h2>
   <p>One row for each full committee that has a member on record: the standing and select committees of the House and Senate, and the joint committees. A member who sits only on a subcommittee is counted under its full committee. A member on several committees is counted on each, so the columns do not add up to the number of members of Congress.</p>

@@ -124,7 +124,7 @@ const description = hasData
     persists; the actual rate your bond earns resets every six months.
   </p>
 
-  <AdSlot pos="low" />
+  <AdSlot label="Advertisement" />
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "i-bond-rates.csv")?.path], name: "Series I savings bond rates", path: "/rates/i-bonds/", description, dateModified: rate?.effectiveDate ?? new Date().toISOString().slice(0, 10), keywords: ["I-Bond", "I bond rate", "savings bonds", "inflation"], sources: [SOURCES.fiscaldata, SOURCES.bls], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
 

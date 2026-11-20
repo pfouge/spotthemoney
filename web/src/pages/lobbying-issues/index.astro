@@ -3,7 +3,6 @@
 // clients and registrants list it this year. Figures come from lib/lobbyissues.ts (unit-tested).
 // A filing reports one amount for all its issues: amounts here overlap and are not added up.
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -64,8 +63,6 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
       </table></div>
     </section>
   )}
-
-  <AdSlot />
 
   <h2 id="about">What this page shows</h2>
   <p>A lobbying report names the general issue areas the lobbying covered, chosen from a fixed list of 79 codes kept by the Senate and the House, such as taxation, defense or health. Many reports name several. This page counts each report under every issue it names, so the rows add up to more than the number of reports. {issues.length > 0 && <>For {year}, {num(several)} of {num(ytd.length)} filings name more than one issue and {num(none)} name none (most of those are registrations, which do not report lobbying activity).</>}</p>

@@ -5,7 +5,6 @@
 // leaves out everything that needs the build-time model (charts, Follow, TradingView, CSV links,
 // Congress tables, contracts and lobbying, ads).
 import BaseLayout from "../layouts/BaseLayout.astro";
-import AdSlot from "./AdSlot.astro";
 import Crumbs from "./Crumbs.astro";
 import Answer from "./Answer.astro";
 import TxnTable from "./TxnTable.astro";
@@ -73,7 +72,7 @@ const jump: [string, string][] = !hasRows ? [] : [
 const avgLag = (() => { const v = txns.map((t) => t.lagDays).filter((x): x is number => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; })();
 const insiderWord = kind === "stock" ? sec!.ticker : name;
 ---
-<BaseLayout title={titles} description={description} noindex={page.noindex} section={section} tape={false} ads={hasRows} modified={page.lastUpdated}>
+<BaseLayout title={titles} description={description} noindex={page.noindex} section={section} tape={false} ads={false} modified={page.lastUpdated}>
   <Crumbs crumbs={crumbs} />
   <div class="title-row">
     {kind === "stock" ? <h1><span class="mono">{sec!.ticker}</span> <span class="soft">{name}</span></h1> : <h1>{name}</h1>}
@@ -174,8 +173,6 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     </section>
   )}
 
-  <AdSlot show={hasRows} />
-
   <h2 id="insider-transactions">Transactions</h2>
   {page.truncated && <p class="section-note">{num(stats.rowCount)} rows are on record; the figures and tables on this page cover the newest {num(txns.length)}.</p>}
   <TxnTable model={model} txns={txns} limit={TABLE_ROWS} showPerson={kind !== "insider"} showSecurity={kind !== "stock"} emptyReason="No approved transactions yet. The filings may be amendments, holdings-only reports, or rows still under review." />
@@ -198,8 +195,6 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
       </ul>
     </section>
   )}
-
-  <AdSlot pos="low" show={hasRows} />
 
   <h2 id="sources">Sources and method</h2>
   <div class="source-panel" data-sources>

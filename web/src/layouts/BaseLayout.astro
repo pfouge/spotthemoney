@@ -7,7 +7,6 @@ import Wordmark from "../components/Wordmark.astro";
 
 import { fitTitle, fitDescription } from "../lib/seo";
 import { adClient } from "../lib/ads";
-import AdSlot from "../components/AdSlot.astro";
 import { FEEDS } from "../lib/feeds";
 
 // title / description: a string, or preferred wording first with shorter fallbacks after it
@@ -22,9 +21,7 @@ import { FEEDS } from "../lib/feeds";
 // none of these render exactly as before.
 // ads: false keeps the advertising tag off a page that has no publisher content of its own
 // (legal pages, contact, 404, sign-in shells). A noindex page never carries it either. With no
-// publisher ID in lib/ads.ts nothing is rendered anywhere. Every page that carries the tag also
-// gets two units from this layout: a leaderboard above the page content and a multiplex grid
-// below it (components/AdSlot.astro); page templates add the units in between.
+// publisher ID in lib/ads.ts nothing is rendered anywhere.
 interface Props {
   title: string | string[]; description?: string | string[]; section?: string; noindex?: boolean; modified?: string | null;
   author?: string; canonical?: string; ogImage?: string; ogType?: string; published?: string | null; ads?: boolean;
@@ -105,7 +102,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
     {adsense && <meta name="google-adsense-account" content={adsense} />}
     {adsense && <script is:inline async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsense}`} crossorigin="anonymous"></script>}
   </head>
-  <body data-ads={adsense ? "on" : undefined}>
+  <body>
     <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site" id="siteHeader">
       <div class="container">
@@ -186,9 +183,7 @@ const current = (href: string) => (path === href ? "page" : undefined);
 
     <main id="main" tabindex="-1">
       <div class="container">
-        {adsense && <AdSlot pos="top" />}
         <slot />
-        {adsense && <AdSlot pos="multiplex" />}
       </div>
     </main>
 

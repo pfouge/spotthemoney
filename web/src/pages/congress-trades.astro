@@ -7,7 +7,6 @@
 // JavaScript the newest rows are still here and the controls are hidden.
 // Not under /congress/: every /congress/<x>/ address is a member profile.
 import BaseLayout from "../layouts/BaseLayout.astro";
-import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
 import JsonLd from "../components/JsonLd.astro";
@@ -178,8 +177,6 @@ const sortTh = (k: (typeof SORT_KEYS)[number], cls = "") => ({ k, cls, label: HE
       <noscript><p class="section-note">These are the {num(first.rows.length)} most recently disclosed of {num(all.length)} transactions. The filters need JavaScript; the CSV file above has every row.</p></noscript>
     </div>
   )}
-
-  <AdSlot />
 
   <h2 id="about">What this table shows</h2>
   <p>One row for each transaction in a periodic transaction report on record here: the member who filed, the asset, whether it was a purchase, a sale or an exchange, whose asset it was, the trade date, the day the report was filed, the days between the two, the dollar range the report gives, and a link to the original report. Members report a range, not an exact figure, so no dollar total is shown. The reports are the authority for every row.</p>

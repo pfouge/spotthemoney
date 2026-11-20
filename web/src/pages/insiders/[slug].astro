@@ -165,8 +165,6 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 
   <LearnMore slugs={["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", ...(txns.some((t) => t.is10b51) ? ["rule-10b5-1-trading-plans"] : []), ...(txns.some((t) => t.isDerivative) ? ["insider-options-and-derivatives"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
 
-  <AdSlot pos="low" />
-
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={txns} filings={p.filings} edgarId={p.cik} />
   <p>

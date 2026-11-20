@@ -4,7 +4,6 @@
 // only, so the trades are every trade on record for today's members, whenever they were made.
 // A committee seat is context. Nothing here ties a trade to the committee's business.
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import TxnTable from "../../components/TxnTable.astro";
@@ -146,8 +145,6 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
       <TxnTable model={model} txns={c.txns} showPerson showSecurity limit={COMMITTEE_TRADE_ROWS} />
     </section>
   )}
-
-  <AdSlot />
 
   <h2 id="about">About this page</h2>
   <p>The member list is the committee's current membership from the public congress-legislators project, refreshed daily. A member who sits only on one of the committee's subcommittees is included. Members who have left Congress are not listed.</p>

@@ -1,30 +1,20 @@
 ---
-// In-page ad unit. Renders an AdSense unit when lib/ads.ts holds a publisher ID and AD_SLOTS_ON is
-// true (production builds only), and NOTHING otherwise: no placeholder. The AdSense script itself
-// is loaded once, in the page head, by BaseLayout. Ads sit between panels, never inside a data
-// table. `pos` picks the ad unit (lib/ads.ts AD_UNITS) and its shape:
-//   top        fixed-height leaderboard (100px phone, 90px from 768px): the height is reserved in
-//              CSS so the page title below it never moves when the ad arrives
-//   mid, low   responsive display unit, 280px reserved
-//   article    in-article native unit (fluid)
-//   multiplex  grid of native ads
-// Every unit carries a visible "Advertisement" label (the terms page says ads are labelled). A
-// unit Google leaves unfilled is hidden with its label (global.css, data-ad-status="unfilled").
-// Pass show={false} on a page state with no content of its own (a profile with no records, which
-// is also noindex): BaseLayout leaves the script off those pages.
-import { adClient, AD_SLOTS_ON, AD_UNITS, type AdPos } from "../lib/ads";
-interface Props { pos?: AdPos; label?: string; show?: boolean; }
-const { pos = "mid", label = "Advertisement", show = true } = Astro.props as Props;
+// In-page display-ad slot. Renders a responsive AdSense unit when lib/ads.ts holds a publisher ID
+// (production builds only), and NOTHING otherwise: no placeholder on the live site. The AdSense
+// script itself is loaded once, in the page head, by BaseLayout. Ads sit between panels, never
+// inside a data table. `slot` is the AdSense ad-unit id; when omitted the unit is an auto-format
+// responsive unit. Every unit carries a visible "Advertisement" label (the terms page says ads
+// are labelled). Pass show={false} on a page state with no content of its own (a profile with
+// no records, which is also noindex): BaseLayout leaves the script off those pages.
+import { adClient, AD_SLOTS_ON } from "../lib/ads";
+interface Props { slot?: string; label?: string; show?: boolean; }
+const { slot, label = "Advertisement", show = true } = Astro.props as Props;
 const client = show && AD_SLOTS_ON ? adClient() : "";
-const slot = AD_UNITS[pos];
 ---
 {client && (
-  <aside class={`ad-slot ad-${pos}`} aria-label={label} data-ad-pos={pos}>
+  <aside class="ad-slot" aria-label={label}>
     <p class="ad-label">{label}</p>
-    {pos === "top" && <ins class="adsbygoogle" data-ad-client={client} data-ad-slot={slot}></ins>}
-    {(pos === "mid" || pos === "low") && <ins class="adsbygoogle" style="display:block" data-ad-client={client} data-ad-slot={slot} data-ad-format="auto" data-full-width-responsive="true"></ins>}
-    {pos === "article" && <ins class="adsbygoogle" style="display:block; text-align:center;" data-ad-client={client} data-ad-slot={slot} data-ad-layout="in-article" data-ad-format="fluid"></ins>}
-    {pos === "multiplex" && <ins class="adsbygoogle" style="display:block" data-ad-client={client} data-ad-slot={slot} data-ad-format="autorelaxed"></ins>}
+    <ins class="adsbygoogle" style="display:block" data-ad-client={client} data-ad-slot={slot} data-ad-format="auto" data-full-width-responsive="true"></ins>
     <script is:inline>(adsbygoogle = window.adsbygoogle || []).push({});</script>
   </aside>
 )}

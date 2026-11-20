@@ -272,19 +272,7 @@ input:focus { outline: none; border-color: var(--signal); }
 .ad-label { margin: 0 0 0.5rem; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); max-width: none; }
 .prose ul { max-width: 72ch; padding-left: 1.2rem; }
 .prose li { margin-bottom: 0.5rem; }
-.ad-slot { color: var(--ink-soft); text-align: center; margin: 1.75rem 0; font-size: 12.5px; overflow: hidden; }
-/* Space is reserved before the ad arrives so nothing below it moves (layout shift). */
-.ad-top { margin: 0.75rem 0 1.25rem; }
-.ad-top ins.adsbygoogle { display: block; width: 100%; height: 100px; }
-@media (min-width: 768px) { .ad-top ins.adsbygoogle { height: 90px; } }
-.ad-mid, .ad-low { min-height: 305px; }
-.ad-article { min-height: 225px; }
-.ad-multiplex { margin: 2.5rem 0 0.5rem; }
-/* A unit Google could not fill is taken out with its label. */
-.ad-slot:has(ins.adsbygoogle[data-ad-status="unfilled"]) { display: none; }
-/* A page without the ad script (noindex, or ads off) shows no unit even if its template has one. */
-body:not([data-ads]) .ad-slot { display: none; }
-@media print { .ad-slot { display: none; } }
+.ad-slot { border: 1px dashed var(--line-strong); border-radius: var(--r-md); color: var(--ink-soft); text-align: center; padding: 1.4rem 1rem; margin: 1.75rem 0; font-size: 12.5px; }
 
 .disclaimer { color: var(--ink-soft); font-size: 12.5px; line-height: 1.6; }
 .disclaimer strong { color: var(--ink); }

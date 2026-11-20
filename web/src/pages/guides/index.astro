@@ -2,7 +2,6 @@
 // /guides/ — the hub: every guide, grouped. Guides are data (lib/guides); see types.ts for how
 // they are kept in step with the site.
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -48,8 +47,6 @@ const minutes = (n: number) => Math.max(2, Math.round(n / 220));
       </ul>
     </section>
   ))}
-  <AdSlot />
-
   <p class="disclaimer"><strong>Not investment advice.</strong> The guides explain public records and how this site presents them. They make no recommendations.</p>
   <JsonLd data={ld} />
 </BaseLayout>
