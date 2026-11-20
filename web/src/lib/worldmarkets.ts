@@ -40,6 +40,10 @@ const DEUTSCHE_BOERSE: Exchange = { label: "Deutsche Börse", flag: "de", usdMil
 const NASDAQ_NORDIC: Exchange = { label: "Nasdaq Nordic and Baltics", short: "Nasdaq Nordic", flag: "se", usdMillions: 2_334_520.01 };
 const BME: Exchange = { label: "BME Spanish Exchanges", short: "BME Spain", flag: "es", usdMillions: 1_375_321.12 };
 
+const SHANGHAI: Exchange = { label: "Shanghai Stock Exchange", short: "Shanghai", flag: "cn", usdMillions: 10_174_142.45 };
+const SHENZHEN: Exchange = { label: "Shenzhen Stock Exchange", short: "Shenzhen", flag: "cn", usdMillions: 7_138_814.4 };
+const HONG_KONG: Exchange = { label: "Hong Kong Exchanges", flag: "hk", usdMillions: 5_795_895.06 };
+
 /** One bar of the ranking: a single exchange, or (United States) two exchanges stacked. */
 export interface MarketBar { label: string; short?: string; flag: string; parts: Exchange[] }
 const one = (e: Exchange): MarketBar => ({ label: e.label, short: e.short, flag: e.flag, parts: [e] });
@@ -53,11 +57,11 @@ export const UNITED_STATES: MarketBar = { label: "United States (Nasdaq + NYSE)"
 /** Chart 1: the eighteen bars, largest first (sorted here, not by hand). */
 export const LARGEST_MARKETS: MarketBar[] = [
   UNITED_STATES,
-  one({ label: "Shanghai Stock Exchange", short: "Shanghai", flag: "cn", usdMillions: 10_174_142.45 }),
+  one(SHANGHAI),
   one({ label: "Japan Exchange Group", flag: "jp", usdMillions: 8_872_885.93 }),
   one(EURONEXT),
-  one({ label: "Shenzhen Stock Exchange", short: "Shenzhen", flag: "cn", usdMillions: 7_138_814.4 }),
-  one({ label: "Hong Kong Exchanges", flag: "hk", usdMillions: 5_795_895.06 }),
+  one(SHENZHEN),
+  one(HONG_KONG),
   one({ label: "TMX Group", flag: "ca", usdMillions: 4_963_725.58 }),
   one({ label: "Taiwan Stock Exchange", short: "Taiwan", flag: "tw", usdMillions: 4_915_156.93 }),
   one({ label: "NSE India", flag: "in", usdMillions: 4_904_475.25 }),
@@ -93,10 +97,18 @@ export const EU_EXCHANGES: Exchange[] = [
   { label: "Bratislava Stock Exchange", flag: "sk", usdMillions: 3_308.91 },
 ].sort((a, b) => b.usdMillions - a.usdMillions);
 
+/** Chart 2: China is the mainland's exchanges in the WFE table, Shanghai and Shenzhen. The Beijing Stock
+ *  Exchange is not in the table. Hong Kong is a separate market with its own bar in the ranking and is
+ *  not added in (`HONG_KONG_EXCHANGE` is exported so the page can say what adding it would give). */
+export const CHINA_EXCHANGES: Exchange[] = [SHANGHAI, SHENZHEN];
+export const HONG_KONG_EXCHANGE = HONG_KONG;
+
 export const US_MILLIONS = barMillions(UNITED_STATES);
 export const EU_MILLIONS = sumMillions(EU_EXCHANGES);
 export const US_EU_MULTIPLE = US_MILLIONS / EU_MILLIONS;
 export const US_EU_GAP_MILLIONS = Math.round((US_MILLIONS - EU_MILLIONS) * 100) / 100;
+export const CHINA_MILLIONS = sumMillions(CHINA_EXCHANGES);
+export const US_CHINA_MULTIPLE = US_MILLIONS / CHINA_MILLIONS;
 
 /** USD millions as "$78.71T". Chart 1 uses two decimals, chart 2 one. */
 export const trillions = (usdMillions: number, decimals = 2): string => `$${(usdMillions / 1e6).toFixed(decimals)}T`;
@@ -111,8 +123,11 @@ export function marketCsvRows(): MarketCsvRow[] {
       section: "largest_stock_markets", rank: i + 1, market: b.label, flag: b.flag, usdMillions: barMillions(b),
       components: b.parts.length > 1 ? b.parts.map((p) => `${p.label} ${p.usdMillions.toFixed(2)}`).join(" + ") : "",
     })),
-    { section: "united_states_vs_european_union", rank: 1, market: "United States", flag: "us", usdMillions: US_MILLIONS, components: UNITED_STATES.parts.map((p) => p.label).join(" + ") },
-    { section: "united_states_vs_european_union", rank: 2, market: "European Union", flag: "eu", usdMillions: EU_MILLIONS, components: `${EU_EXCHANGES.length} EU-based exchanges` },
+    ...[
+      { market: "United States", flag: "us", usdMillions: US_MILLIONS, components: UNITED_STATES.parts.map((p) => p.label).join(" + ") },
+      { market: "European Union", flag: "eu", usdMillions: EU_MILLIONS, components: `${EU_EXCHANGES.length} EU-based exchanges` },
+      { market: "China", flag: "cn", usdMillions: CHINA_MILLIONS, components: CHINA_EXCHANGES.map((p) => p.label).join(" + ") },
+    ].sort((a, b) => b.usdMillions - a.usdMillions).map((r, i) => ({ section: "united_states_eu_china", rank: i + 1, ...r })),
     ...EU_EXCHANGES.map((e, i) => ({ section: "eu_exchanges_summed", rank: i + 1, market: e.label, flag: e.flag, usdMillions: e.usdMillions, components: "" })),
   ];
 }

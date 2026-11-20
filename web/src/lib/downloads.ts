@@ -325,8 +325,8 @@ async function rateFiles(): Promise<DownloadFile[]> {
 // ── markets (typed-in WFE figures in lib/worldmarkets.ts; no database read) ──────────────
 function marketFile(): DownloadFile {
   return file<MarketCsvRow>({ name: "world-stock-markets.csv", group: "markets", kind: "markets", title: `World stock markets by size, ${WFE.asOfLabel}`,
-    about: `Domestic market capitalization by exchange, and the United States against the European Union. Source: ${WFE.name}.`, updated: `${WFE.asOf}-01` }, [
-    { key: "section", about: "largest_stock_markets (the ranking), united_states_vs_european_union (the two totals) or eu_exchanges_summed (what the EU total adds up).", get: (r) => r.section },
+    about: `Domestic market capitalization by exchange, and the United States against the European Union and China. Source: ${WFE.name}.`, updated: `${WFE.asOf}-01` }, [
+    { key: "section", about: "largest_stock_markets (the ranking), united_states_eu_china (the three totals) or eu_exchanges_summed (what the EU total adds up).", get: (r) => r.section },
     { key: "rank", about: "Position within the section, largest first.", get: (r) => r.rank },
     { key: "market", about: "Exchange or exchange group. The United States row combines Nasdaq and NYSE.", get: (r) => r.market },
     { key: "components", about: "What a combined row adds up. Empty for a single exchange.", get: (r) => r.components },
