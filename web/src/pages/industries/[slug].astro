@@ -3,6 +3,7 @@
 // carry, and those companies with counts of disclosed trades. Figures come from
 // lib/industries.ts. Counts of filed rows only; an industry is a label.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -98,6 +99,8 @@ const heads: { label: string; type: "text" | "num" | "date"; cls?: string }[] = 
   </section>
 
   <div class="prose">
+  <AdSlot />
+
   <h2 id="about">About this page</h2>
   <p>{d.name} is division {d.code} of the Standard Industrial Classification manual, which covers codes that begin with {range}. A company is listed here because the SEC's record of the company carries a code in that range. The code and its wording are the SEC's; this site adds only the division, by looking up the code's first two digits.</p>
   <p>The classification dates from 1987 and is broad, a company has a single code even when it works in several industries, and the SEC chooses the code. The division is a way to find companies. It does not measure anything, and nothing here compares a trade with the industry of the company.</p>

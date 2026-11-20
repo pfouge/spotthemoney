@@ -2,6 +2,7 @@
 // /writing/ — every published article, newest first. Articles are Markdown files in
 // src/content/articles/ (PUBLISHING-ARTICLES.md); data helpers are in lib/articles.ts.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getArticles, getAuthorMap, articlePath } from "../../lib/articles";
@@ -41,6 +42,8 @@ const ld = [
       ))}
     </ul>
   )}
+  <AdSlot />
+
   <p class="disclaimer"><strong>Not investment advice.</strong> Articles are written by their authors. They present public records and make no recommendation to buy or sell anything. <a href="/writing/rss.xml">RSS feed</a></p>
   <JsonLd data={ld} />
 </BaseLayout>

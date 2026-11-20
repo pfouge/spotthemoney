@@ -2,6 +2,7 @@
 // /feeds/ — the RSS feeds: what each one carries, how many items it holds now, and how to use one.
 // Items and rules come from lib/feeds.ts (unit-tested); the feeds are /feeds/<id>.xml.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -67,6 +68,8 @@ const ld = {
       )}
     </ul>
   </section>
+
+  <AdSlot />
 
   <h2 id="how">How to use a feed</h2>
   <p>RSS is an open format that feed readers, many email programs and automation tools understand. Paste a feed's address into the reader's "add feed" or "subscribe" box and it checks the address for you and lists anything new. There is nothing to sign up for here, and the site does not know who reads a feed.</p>

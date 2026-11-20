@@ -5,6 +5,7 @@
 // scripts/directory.ts. Without JavaScript the whole table is shown and the controls are hidden.
 // Committee seats are current assignments, shown for context: nothing here ties a trade to one.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
 import JsonLd from "../components/JsonLd.astro";
@@ -104,6 +105,8 @@ const heads = [sortTh("Member", "text"), sortTh("Chamber", "text"), sortTh("Part
       <p class="empty-reason" data-dir="empty" hidden>No member matches these filters. <button type="button" class="linklike" data-dir="reset2">Clear the filters</button></p>
     </div>
   )}
+
+  <AdSlot />
 
   <h2 id="about">What this page shows</h2>
   <p>One row for each member of Congress on record here: sitting members from the public roster, and members who filed a report and have since left office. "Trades" counts every transaction row in the member's periodic transaction reports on this site; "Trades, 12 months" counts those disclosed in the last 365 days. A member's own page has every trade, with dates, amount ranges and a link to each filing.</p>

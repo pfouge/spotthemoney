@@ -2,6 +2,7 @@
 // /faq/ — every question the guides answer, in one place, grouped by topic. The answers are
 // the guides' own text (lib/guides), so this page cannot drift from them.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
 import JsonLd from "../components/JsonLd.astro";
@@ -42,6 +43,8 @@ const ld = { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SIT
       </section>
     ))}
   </div>
+  <AdSlot />
+
   <p class="disclaimer"><strong>Not investment advice.</strong> These answers explain public records and how this site presents them. Something missing or wrong? <a href="/corrections/">Tell us</a>.</p>
   <JsonLd data={ld} />
 </BaseLayout>
