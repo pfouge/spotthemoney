@@ -100,7 +100,7 @@
       "web/src/pages/congress-committees/index.astro": "f6bdffb814b346d8",
       "web/src/pages/congress-committees/[slug].astro": "9be9dda894ccedd4",
       "web/src/lib/screener.ts": "528bda637853c2d1",
-      "web/src/pages/congress-trades.astro": "7abace49f23138a8",
+      "web/src/pages/congress-trades.astro": "9079fcf4ce9f84bf",
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5",
       "web/src/lib/tickerhistory.ts": "50fdeba2cb1f0a66",
       "web/src/lib/savedscreens.ts": "971608586608dc5f"

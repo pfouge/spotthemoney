@@ -8,13 +8,16 @@
 //   mid, low   responsive display unit, 280px reserved
 //   article    in-article native unit (fluid)
 //   multiplex  grid of native ads
-// Every unit carries a visible "Advertisement" label (the terms page says ads are labelled). A
+// Every unit carries a visible "Advertisements" label, one of the two wordings AdSense allows (the terms page says ads are labelled). A
 // unit Google leaves unfilled is hidden with its label (global.css, data-ad-status="unfilled").
 // Pass show={false} on a page state with no content of its own (a profile with no records, which
 // is also noindex): BaseLayout leaves the script off those pages.
 import { adClient, AD_SLOTS_ON, AD_UNITS, type AdPos } from "../lib/ads";
 interface Props { pos?: AdPos; label?: string; show?: boolean; }
-const { pos = "mid", label = "Advertisement", show = true } = Astro.props as Props;
+const { pos = "mid", show = true } = Astro.props as Props;
+// AdSense allows two labels above an ad unit, "Advertisements" and "Sponsored Links", and no other
+// wording. The label is fixed here; a `label` prop passed by an older template is ignored.
+const label = "Advertisements";
 const client = show && AD_SLOTS_ON ? adClient() : "";
 const slot = AD_UNITS[pos];
 ---
