@@ -164,7 +164,7 @@ const description = hasData
     Source: U.S. Department of the Treasury, Daily Treasury Par Yield Curve Rates.
   </p>
 
-  <AdSlot label="Advertisement" />
+  <AdSlot pos="low" />
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")?.path], name: "U.S. Treasury par yield curve (daily)", path: "/rates/treasury-yields/", description, dateModified: curve?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["Treasury yields", "yield curve", "10-year Treasury", "2s10s spread"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
 

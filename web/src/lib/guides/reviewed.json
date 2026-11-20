@@ -46,10 +46,10 @@
     }
   },
   "how-i-bond-rates-work": {
-    "reviewed": "2026-10-09",
+    "reviewed": "2026-11-20",
     "covers": {
       "web/src/lib/ibond.ts": "25119c31f8a07e82",
-      "web/src/pages/rates/i-bonds.astro": "08070848d2f2b3e9"
+      "web/src/pages/rates/i-bonds.astro": "1b26ec19ff2c3bcb"
     }
   },
   "how-to-cite-and-reuse": {
@@ -68,7 +68,7 @@
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
-    "reviewed": "2026-11-19",
+    "reviewed": "2026-11-20",
     "covers": {
       "db/migrations/0017_accounts_watchlists.sql": "4a5e6b6c524d3c41",
       "db/migrations/0026_watch_feed_new_age.sql": "bcb89a59da716eba",
@@ -80,7 +80,7 @@
       "web/src/lib/watchcards-build.ts": "646d3aeb7f64b6d2",
       "web/src/scripts/watchcards.ts": "73e5abc9c1535b1c",
       "web/src/lib/feeds.ts": "ee8aabc55d188199",
-      "web/src/pages/feeds/index.astro": "a27f6d607a58fba6",
+      "web/src/pages/feeds/index.astro": "6d80e3c15c603ca7",
       "db/migrations/0025_email_alerts_stage1.sql": "20f18614f837af9a",
       "ingest/src/lib/digest.ts": "0d80de65efc76bf5",
       "ingest/src/jobs/alerts_digest.ts": "290ac0a3893c1e11",
@@ -93,14 +93,14 @@
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "3d25690dbaafaaf3",
+      "web/src/pages/congress/[slug].astro": "f1d213c0ca9eaae6",
       "web/src/lib/directory.ts": "0466a663969706ab",
-      "web/src/pages/congress-members.astro": "6a6bde89ed17d42d",
+      "web/src/pages/congress-members.astro": "bf0dc59073a99673",
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
-      "web/src/pages/congress-committees/index.astro": "5b2137a71662a90d",
-      "web/src/pages/congress-committees/[slug].astro": "9775526e21f68d84",
+      "web/src/pages/congress-committees/index.astro": "f6bdffb814b346d8",
+      "web/src/pages/congress-committees/[slug].astro": "9be9dda894ccedd4",
       "web/src/lib/screener.ts": "528bda637853c2d1",
-      "web/src/pages/congress-trades.astro": "2d2a19e710e9db31",
+      "web/src/pages/congress-trades.astro": "7abace49f23138a8",
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5",
       "web/src/lib/tickerhistory.ts": "50fdeba2cb1f0a66",
       "web/src/lib/savedscreens.ts": "971608586608dc5f"
@@ -149,13 +149,13 @@
     }
   },
   "lobbying-disclosure-reports": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-20",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
       "web/src/pages/lobbying/index.astro": "663e97f26df53b0c",
       "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
-      "web/src/pages/lobbying-issues/index.astro": "d9fe57464505956d",
-      "web/src/pages/lobbying-issues/[slug].astro": "fd56d24e8e633581"
+      "web/src/pages/lobbying-issues/index.astro": "a33c2d2d4f48fb57",
+      "web/src/pages/lobbying-issues/[slug].astro": "0bc35da024ab951a"
     }
   },
   "rule-10b5-1-trading-plans": {
@@ -179,9 +179,9 @@
     }
   },
   "treasury-yield-curve-explained": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-20",
     "covers": {
-      "web/src/pages/rates/treasury-yields.astro": "0443c4b826db85b1"
+      "web/src/pages/rates/treasury-yields.astro": "39886db10f83dced"
     }
   },
   "what-disclosure-data-cannot-tell-you": {
@@ -194,7 +194,7 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-19",
+    "reviewed": "2026-11-20",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
@@ -204,11 +204,11 @@
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
       "web/src/lib/server/od.ts": "7d2ced0be0a68bf0",
-      "web/src/components/OdPageView.astro": "a75d34eef3e63e18",
+      "web/src/components/OdPageView.astro": "5a94f9549888f514",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "b8610db325fd1b64",
-      "web/src/pages/insiders/[slug].astro": "8107b4e7068198df",
-      "web/src/pages/companies/[slug].astro": "31a304f956ac2143"
+      "web/src/pages/stocks/[ticker].astro": "bd3e17b930005da6",
+      "web/src/pages/insiders/[slug].astro": "600c62bab2983271",
+      "web/src/pages/companies/[slug].astro": "d7694081324e844a"
     }
   }
 }

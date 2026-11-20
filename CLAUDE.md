@@ -3265,3 +3265,23 @@ on the site, in the guides or on the privacy page changed.
 - Monthly update: next WFE issue + the same month's LSE factsheet and month-end rate. Check the row sums
   against WFE's regional totals, and re-check which exchanges are missing that month.
 
+
+## SESSION STATE 2026-11-19 — advertising switched on
+- **AdSense approved** (site "Ready", ads.txt "Authorized", 2026-11-17). `AD_SLOTS_ON = true` in `web/src/lib/ads.ts`.
+- **Five ad units**, created in AdSense under pub-9671575911691889, ids in `AD_UNITS` (`lib/ads.ts`): `stm_top`
+  2036885133, `stm_mid` 8143128488, `stm_low` 5848137635, `stm_article` 9665587007, `stm_multiplex` 9125037663.
+  One unit per position so AdSense reports earnings by position.
+- **Where they sit:** `BaseLayout` puts `top` (leaderboard, fixed 100px phone / 90px from 768px) above the page
+  content and `multiplex` below it on every page that carries the ad script. Page templates add `mid`
+  (`<AdSlot />`) and, on profile pages and two rates pages, `low`. Guides and articles get `article`. Never
+  inside a table. Space is reserved in `global.css`; an unfilled unit is hidden with its label.
+- **No ads on:** noindex pages, `ads={false}` pages (privacy, terms, contact, 404, watchlists), embeds. A template's
+  `<AdSlot />` is hidden by `body:not([data-ads])` when the layout left the script off.
+- **On-demand pages** (`OdPageView`) now carry ads when they have rows (`ads={hasRows}`).
+- **Consent:** `Analytics.astro` grants `ad_storage`, `ad_user_data`, `ad_personalization` outside the EEA, UK and
+  Switzerland unless the browser sends Global Privacy Control; inside those countries they stay denied until the
+  visitor agrees in Google's consent message ("spotthemoney.com consent", AdSense > Privacy & messaging, published
+  2026-11-19, with a "Do not consent" button in every country, logo off). No US state message was created.
+- **Auto ads** are a setting in AdSense (Ads > By site > spotthemoney.com), not code. See the project state doc for
+  which formats are on.
+- `/privacy/` (dated 2026-11-20) and `/about/` say advertising is on. Change them with any change to the above.

@@ -3,6 +3,7 @@
 // sections (question headings, each opening with its answer), the guide's own questions and
 // answers, where to see it live, related guides, primary sources. Article + FAQPage JSON-LD.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -59,11 +60,14 @@ const ld = [
     </nav>
 
     <div class="prose guide-body">
-      {sections.map((s) => (
-        <section>
-          <h2 id={s.id}>{s.h}</h2>
-          <Fragment set:html={s.html} />
-        </section>
+      {sections.map((s, i) => (
+        <>
+          <section>
+            <h2 id={s.id}>{s.h}</h2>
+            <Fragment set:html={s.html} />
+          </section>
+          {i === 1 && sections.length > 2 && <AdSlot pos="article" />}
+        </>
       ))}
 
       <section>

@@ -4,6 +4,7 @@
 // A filing reports one amount for all its issues: amounts here are totals on the filings that
 // list this issue, never an amount spent on this issue alone.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -86,6 +87,8 @@ const tables = [
       {i.newest.map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? ""}</td><td>{orgPath(model, l.registrant) ? <a href={orgPath(model, l.registrant)!}>{l.registrant}</a> : (l.registrant ?? "")}</td><td>{orgPath(model, l.client) ? <a href={orgPath(model, l.client)!}>{l.client}</a> : (l.client ?? "")}</td><td><IssueList row={l} index={index} current={i.code} /></td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : ""}</td></tr>)}
     </tbody></table></div>
   </section>
+
+  <AdSlot />
 
   <h2 id="about">About this page</h2>
   <p>"{i.name}" is one of the 79 general issue areas a lobbying report can name (code {i.code}). The wording is the Senate's. This page lists the reports that name it, whether or not they name other issues as well.</p>
