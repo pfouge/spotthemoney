@@ -25,7 +25,7 @@ const heads = [
 const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 ---
 {rows.length > 0 && (
-  <section aria-labelledby="planned-sales" data-planned-sales data-notices={rows.length} data-sellers={s.sellers} data-amendments={s.amendments}>
+  <section aria-labelledby="planned-sales" data-planned-sales data-cik={cik!.padStart(10, "0")} data-notices={rows.length} data-sellers={s.sellers} data-amendments={s.amendments}>
     <h2 id="planned-sales">Planned sales: Form 144 notices</h2>
     <p data-ps-summary>{summarySentence(name, s)}</p>
     <p class="ps-note" data-ps-caveat>{NOTICE_CAVEAT} <a href="/guides/what-is-form-4/#form-144">What a Form 144 is</a>.</p>

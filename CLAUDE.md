@@ -3497,3 +3497,28 @@ on the site, in the guides or on the privacy page changed.
   Until then about 26,700 statements have an empty `cusip` in the CSV. Nothing on a page uses it.
   Once CUSIPs are complete, the share class can become part of the holder match (the known limit
   in the methodology: a filer with statements about two classes shows its newest only).
+- **The new deploy step found something on its first run (deploy 44775263090): 26 findings on
+  `/stocks/sats/` and `/stocks/pru/`.** The pages were right; the verifier was not. It took "the
+  stock page of a company's main ticker" to be that company's page, but in the data several
+  companies can carry one `primary_ticker` (see the next bullet), and a stock page shows the
+  company that owns the security. Fixed the same hour: both sections now carry
+  `data-cik="<10 digits>"` (`LargeHolders.astro`, `PlannedSales.astro`), and
+  `verify-schedule13` / `verify-form144` compare a stock page's section with the file's rows for
+  the company the section names. A stock page with no section whose ticker is the main ticker of
+  several companies is left out. Each verifier's last line counts both cases. The seed has such a
+  company (SEED SPONSOR CREDIT FUND, main ticker NVDA, no security); the old verifier fails on it.
+- **DATA FAULT, pre-existing, NOT fixed: a security is matched by ticker alone, so one company's
+  Form 4 rows can sit on another company's stock page.** On production 13 tickers are the
+  `primary_ticker` of two or three companies with a page (29 companies; 16 of them own no
+  security). Mostly a fund or spin-off whose insider filings name the sponsor's symbol (PGIM
+  funds on PRU, Blackstone and Franklin funds on BX and BEN, a KKR fund on GE, Augusta SpinCo on
+  BDX, Arbutus on ROIV, Strive on SATS, Supernus, Inc. beside Supernus Pharmaceuticals). **Two are
+  the wrong way round: the KKR security belongs to "KKR Real Estate Select Trust Inc." (not KKR &
+  Co. Inc.) and the IVZ security to "Invesco Real Estate Income Trust Inc." (not Invesco Ltd.)**, so
+  `/stocks/kkr/` and `/stocks/ivz/` name the wrong company in their header, industry line, large
+  holders and (when shown) planned sales, and mix both companies' insider rows. Query to list
+  them: companies with a slug whose `upper(primary_ticker)` is shared, against
+  `site_securities.company_id`. The fix belongs to the Form 4 write path (`storeForm4Filing` in
+  `sec_form4.ts`, the market-wide thread's file): a security should belong to an issuer CIK, and
+  the owner of a symbol should come from the SEC's own ticker list (`company_tickers.json`), not
+  from whichever filing named it first. Not started; recorded in the project state doc.

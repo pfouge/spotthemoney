@@ -171,7 +171,7 @@
       "web/src/lib/joint.ts": "1781ca3686529507",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
       "web/src/lib/schedule13.ts": "c7788faba00ebb4a",
-      "web/src/components/LargeHolders.astro": "95fc4f51bc955377"
+      "web/src/components/LargeHolders.astro": "7a6858b6d9aa1116"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -212,7 +212,7 @@
       "web/src/pages/insiders/[slug].astro": "600c62bab2983271",
       "web/src/pages/companies/[slug].astro": "19fe7c2278f5d772",
       "web/src/lib/form144.ts": "0f586952d65506a5",
-      "web/src/components/PlannedSales.astro": "0801c8ef7321966a"
+      "web/src/components/PlannedSales.astro": "39e8d3ff43fec624"
     }
   }
 }
