@@ -114,7 +114,7 @@ function xml13g(n, form) {
       <issuerInfo>
         <issuerCik>${n.issuerCik}</issuerCik>
         <issuerName>${n.issuerName}</issuerName>
-        <issuerCusip>${n.cusip}</issuerCusip>
+        ${n.newCusipName ? `<issuerCusipNumber>${n.cusip}</issuerCusipNumber>` : `<issuerCusip>${n.cusip}</issuerCusip>`}
         <issuerPrincipalExecutiveOfficeAddress><ns2:street1>60 FIRST ST.</ns2:street1><ns2:city>CAMBRIDGE</ns2:city></issuerPrincipalExecutiveOfficeAddress>
       </issuerInfo>
       <designateRulesPursuantThisScheduleFiled><designateRulePursuantThisScheduleFiled>${n.rule ?? "Rule 13d-1(b)"}</designateRulePursuantThisScheduleFiled></designateRulesPursuantThisScheduleFiled>
@@ -146,7 +146,8 @@ const FILINGS = [
   { acc: "0009900013-26-000002", day: "20261001", cik: "9100001", form: "SCHEDULE 13G",
     n: { ...ACME, filerCik: "0009000012", event: "09/30/2026", persons: [{ name: "Example Investment Management, Inc.", amount: "9236955", percent: "5.3" }] } },
   { acc: "0009900013-26-000003", day: "20261001", cik: "9100001", form: "SCHEDULE 13G/A",
-    n: { ...ACME, filerCik: "0009000012", event: "09/30/2026", rule: "Rule 13d-1(c)", persons: [{ name: "Example Investment Management, Inc.", amount: "9,300,000", percent: "5.4%" }] } },
+    // this one names the CUSIP element as statements filed from March 2026 do
+    n: { ...ACME, newCusipName: true, filerCik: "0009000012", event: "09/30/2026", rule: "Rule 13d-1(c)", persons: [{ name: "Example Investment Management, Inc.", amount: "9,300,000", percent: "5.4%" }] } },
   { acc: "0009900013-26-000004", day: "20261002", cik: "9100002", form: "SCHEDULE 13D/A",
     n: { ...BETA, filerCik: "0009000014", event: "10/01/2026", purpose: "x".repeat(2600), persons: [{ name: "Delta Dana Family Trust", amount: "1500000.00", percent: "12.25", type: "OO" }] } },
   { acc: "0009900013-26-000005", day: "20261002", cik: "9100002", form: "SCHEDULE 13G", n: null /* no data file */ },

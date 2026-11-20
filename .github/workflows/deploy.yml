@@ -116,6 +116,24 @@ jobs:
           sleep 2
           node scripts/verify-live.mjs http://127.0.0.1:4321 --sample 5 --fail-on-challenge --static
 
+      # The two sections that switch themselves on and off by the age of the newest filing on file
+      # (planned sales, large holders) are compared with their own CSV files on the build about to
+      # ship: the only place this can be done on production data, because scripts cannot read the
+      # public site reliably (Bot Fight Mode). NOT a gate: a finding is an Actions warning and the
+      # deploy goes on. The daily data can hold a filing no rule foresaw, and a blocked deploy
+      # would freeze every page for a fault in one section. Read the warning, fix, redeploy.
+      - name: Check planned sales and large holders against their files (warning only)
+        run: |
+          curl -fsS -o /dev/null http://127.0.0.1:4321/ || { (cd web/dist/client && python3 -m http.server 4321 --bind 127.0.0.1 >/dev/null 2>&1 &); sleep 2; }
+          for v in form144 schedule13; do
+            if node scripts/verify-$v.mjs http://127.0.0.1:4321 --sample 12 > "verify-$v.log" 2>&1; then
+              echo "verify-$v: $(tail -n 2 "verify-$v.log" | tr '\n' ' ')"
+            else
+              tail -n 60 "verify-$v.log"
+              echo "::warning title=verify-$v::this build's section does not match its CSV file; see the step log"
+            fi
+          done
+
       - name: Deploy to Cloudflare Workers
         working-directory: web
         env:
