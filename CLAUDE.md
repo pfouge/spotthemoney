@@ -3457,3 +3457,9 @@ on the site, in the guides or on the privacy page changed.
 - Not done: nothing on insider pages or on the on-demand pages; no view from the holder's side
   ("what this fund reports holding"); no history of a holder's statements on the page (the CSV has
   it); the 13D purpose on pages; a per-company file.
+- **Found on the first production build of this change, fixed the same hour (follow-up PR):** the
+  coverage report read each stored table's totals, months and kinds as three queries. While a data
+  job was loading the table the three disagreed, the sums check threw ("the months add up to 33485,
+  not 33480"), and that source dropped out of `/data/coverage.json` and the methodology for that
+  build. `coverage.ts` now reads each table in ONE statement (one snapshot). **Any count that is
+  checked against another count of the same table must come from one statement.**

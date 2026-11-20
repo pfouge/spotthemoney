@@ -42,7 +42,7 @@
     "covers": {
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "ingest/py/congress_ptr_job.py": "931cbe58060d7c88",
-      "web/src/lib/coverage.ts": "09258cf552b58456"
+      "web/src/lib/coverage.ts": "45cb5bf5a564ff9d"
     }
   },
   "how-i-bond-rates-work": {
@@ -191,7 +191,7 @@
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "shared/src/tradevalue.ts": "fa250c11636cb867",
-      "web/src/lib/coverage.ts": "09258cf552b58456",
+      "web/src/lib/coverage.ts": "45cb5bf5a564ff9d",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67"
     }
   },

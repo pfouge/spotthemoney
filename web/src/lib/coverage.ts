@@ -133,30 +133,37 @@ async function load(): Promise<Coverage> {
              (select count(*) from transactions t join filings f on f.id = t.filing_id where f.source::text = 'sec_form4' and f.scope = 'market')::int as transactions`;
     c.marketScope = { filings: m.filings, transactions: m.transactions };
   });
-  // Form 144 notices and Schedules 13D/13G: stored by their own daily jobs, shown nowhere yet.
-  // Each table is read on its own, so one missing table (a database from before its migration)
-  // leaves the other's counts in place.
+  // Form 144 notices and Schedules 13D/13G: stored by their own daily jobs. Each table is read
+  // on its own, so one missing table (a database from before its migration) leaves the other's
+  // counts in place. Each table's totals, months and kinds come from ONE statement, so they are
+  // one snapshot: read as three queries they disagreed whenever a data job was loading the table
+  // during the build, the sums check below failed, and the source dropped out of the report.
   type Head = { rows: number; amendments: number; issuers: number; trackedRows: number; firstFiled: string | null; lastFiled: string | null };
-  const stored = async (name: "form144" | "schedule13", head: Promise<Head[]>, months: Promise<{ month: string; rows: number }[]>, kinds: Promise<{ kind: string; rows: number }[]>) =>
+  type Snapshot = { head: Head | null; months: { month: string; rows: number }[] | null; kinds: { kind: string; rows: number }[] | null };
+  const stored = async (name: "form144" | "schedule13", read: () => Promise<Snapshot[]>) =>
     step(`storedNotShown.${name}`, async () => {
-      const [h] = await head;
-      const s: StoredSource = { ...emptyStored(), ...(h ?? {}), months: (await months).map((r) => ({ ...r })), kinds: Object.fromEntries((await kinds).map((r) => [r.kind, r.rows])) };
+      const [snap] = await read();
+      const s: StoredSource = { ...emptyStored(), ...(snap?.head ?? {}), months: (snap?.months ?? []).map((r) => ({ ...r })), kinds: Object.fromEntries((snap?.kinds ?? []).map((r) => [r.kind, r.rows])) };
       const problems = storedProblems(name, s);
       if (problems.length) throw new Error(problems.join("; "));
       c.storedNotShown[name] = s;
     });
-  await stored("form144",
-    sql<Head[]>`select count(*)::int as rows, count(*) filter (where n.form_type = '144/A')::int as amendments, count(distinct n.issuer_cik)::int as issuers,
-                       count(*) filter (where exists (select 1 from companies c where c.cik = n.issuer_cik and c.tracked))::int as "trackedRows",
-                       min(n.filed_at)::text as "firstFiled", max(n.filed_at)::text as "lastFiled" from form144_notices n`,
-    sql<{ month: string; rows: number }[]>`select to_char(filed_at, 'YYYY-MM') as month, count(*)::int as rows from form144_notices group by 1 order by 1`,
-    sql<{ kind: string; rows: number }[]>`select form_type as kind, count(*)::int as rows from form144_notices group by 1 order by 1`);
-  await stored("schedule13",
-    sql<Head[]>`select count(*)::int as rows, count(*) filter (where n.is_amendment)::int as amendments, count(distinct n.issuer_cik)::int as issuers,
-                       count(*) filter (where exists (select 1 from companies c where c.cik = n.issuer_cik and c.tracked))::int as "trackedRows",
-                       min(n.filed_at)::text as "firstFiled", max(n.filed_at)::text as "lastFiled" from schedule13_filings n`,
-    sql<{ month: string; rows: number }[]>`select to_char(filed_at, 'YYYY-MM') as month, count(*)::int as rows from schedule13_filings group by 1 order by 1`,
-    sql<{ kind: string; rows: number }[]>`select schedule as kind, count(*)::int as rows from schedule13_filings group by 1 order by 1`);
+  await stored("form144", () => sql<Snapshot[]>`
+    with t as (select n.form_type, n.filed_at, n.issuer_cik, (n.form_type = '144/A') as amended,
+                      exists (select 1 from companies c where c.cik = n.issuer_cik and c.tracked) as tracked
+                 from form144_notices n)
+    select (select row_to_json(h) from (select count(*)::int as rows, count(*) filter (where amended)::int as amendments, count(distinct issuer_cik)::int as issuers,
+                                               count(*) filter (where tracked)::int as "trackedRows", min(filed_at)::text as "firstFiled", max(filed_at)::text as "lastFiled" from t) h) as head,
+           (select json_agg(m order by m.month) from (select to_char(filed_at, 'YYYY-MM') as month, count(*)::int as rows from t group by 1) m) as months,
+           (select json_agg(k order by k.kind) from (select form_type as kind, count(*)::int as rows from t group by 1) k) as kinds`);
+  await stored("schedule13", () => sql<Snapshot[]>`
+    with t as (select n.schedule, n.filed_at, n.issuer_cik, n.is_amendment as amended,
+                      exists (select 1 from companies c where c.cik = n.issuer_cik and c.tracked) as tracked
+                 from schedule13_filings n)
+    select (select row_to_json(h) from (select count(*)::int as rows, count(*) filter (where amended)::int as amendments, count(distinct issuer_cik)::int as issuers,
+                                               count(*) filter (where tracked)::int as "trackedRows", min(filed_at)::text as "firstFiled", max(filed_at)::text as "lastFiled" from t) h) as head,
+           (select json_agg(m order by m.month) from (select to_char(filed_at, 'YYYY-MM') as month, count(*)::int as rows from t group by 1) m) as months,
+           (select json_agg(k order by k.kind) from (select schedule as kind, count(*)::int as rows from t group by 1) k) as kinds`);
   console.log(`[web] ${storedLog(c.storedNotShown, c.builtAt)}`);
   return c;
 }
