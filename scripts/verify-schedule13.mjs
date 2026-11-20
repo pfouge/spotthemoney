@@ -211,7 +211,11 @@ function checkSection(where, html, x) {
   });
 }
 
-let pagesRead = 0;
+let pagesRead = 0, otherCompany = 0, sharedSkipped = 0;
+const cikOf = (x) => x.rows[0].issuer_cik;
+const byCik = new Map(ranked.map((x) => [cikOf(x), x]));
+const tickerCompanies = new Map();
+for (const c of companiesCsv.rows) if (c.ticker) tickerCompanies.set(c.ticker.toUpperCase(), (tickerCompanies.get(c.ticker.toUpperCase()) ?? 0) + 1);
 for (const x of pick.values()) {
   const page = await get(x.p);
   ok(page.status === 200, `${x.p} answered ${page.status}`);
@@ -219,11 +223,29 @@ for (const x of pick.values()) {
   pagesRead++;
   checkSection(x.p, page.text, x);
   ok(/href="#large-holders"/.test(page.text), `${x.p}: no jump link to the section`);
+  ok(attr(section(page.text)?.tag ?? "", "data-cik") === cikOf(x), `${x.p}: the section does not carry the company's SEC number (${cikOf(x)})`);
   const ticker = x.rows.find((r) => r.ticker)?.ticker;
   if (ticker) {
     const sp = `/stocks/${ticker.toLowerCase()}/`;
     const stock = await get(sp);
-    if (stock.status === 200) { pagesRead++; checkSection(sp, stock.text, x); ok(/href="#large-holders"/.test(stock.text), `${sp}: no jump link to the section`); }
+    if (stock.status !== 200) continue;
+    pagesRead++;
+    // A ticker's page belongs to the company that issues the security. In the data several
+    // companies can carry the same main ticker (a fund whose filings name its sponsor's symbol,
+    // say), so the section says whose statements it shows and is compared with THAT company's
+    // rows in the file. With no section and a ticker several companies carry, nothing can be said.
+    const sec = section(stock.text);
+    const shownCik = sec ? attr(sec.tag, "data-cik") : null;
+    if (sec && shownCik !== cikOf(x)) {
+      const y = byCik.get(shownCik);
+      ok(!!y && (tickerCompanies.get(ticker.toUpperCase()) ?? 0) > 1, `${sp}: the section is about SEC number ${shownCik}, not ${cikOf(x)} (${x.p}), and ${y ? "the ticker is the main ticker of one company only" : "that number has no rows in the file"}`);
+      if (y) { otherCompany++; checkSection(sp, stock.text, y); }
+    } else if (!sec && (tickerCompanies.get(ticker.toUpperCase()) ?? 0) > 1) {
+      sharedSkipped++;
+    } else {
+      checkSection(sp, stock.text, x);
+    }
+    if (sec) ok(/href="#large-holders"/.test(stock.text), `${sp}: no jump link to the section`);
   }
 }
 // Companies not in the file have no section.
@@ -241,5 +263,5 @@ const dl = (await get("/downloads/")).text;
 ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
 
 const holdersAll = withRows.reduce((a, x) => a + x.holders.length, 0);
-console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersAll} holders by newest statement)`);
+console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersAll} holders by newest statement; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
 process.exit(failures ? 1 : 0);

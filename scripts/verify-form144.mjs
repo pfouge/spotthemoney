@@ -181,7 +181,11 @@ function checkSection(where, html, x) {
   });
 }
 
-let pagesRead = 0;
+let pagesRead = 0, otherCompany = 0, sharedSkipped = 0;
+const cikOf = (x) => x.rows[0].issuer_cik;
+const byCik = new Map(ranked.map((x) => [cikOf(x), x]));
+const tickerCompanies = new Map();
+for (const c of companiesCsv.rows) if (c.ticker) tickerCompanies.set(c.ticker.toUpperCase(), (tickerCompanies.get(c.ticker.toUpperCase()) ?? 0) + 1);
 for (const x of pick.values()) {
   const page = await get(x.p);
   ok(page.status === 200, `${x.p} answered ${page.status}`);
@@ -189,11 +193,28 @@ for (const x of pick.values()) {
   pagesRead++;
   checkSection(x.p, page.text, x);
   ok(/href="#planned-sales"/.test(page.text), `${x.p}: no jump link to the section`);
+  ok(attr(section(page.text)?.tag ?? "", "data-cik") === cikOf(x), `${x.p}: the section does not carry the company's SEC number (${cikOf(x)})`);
   const ticker = x.rows.find((r) => r.ticker)?.ticker;
   if (ticker) {
     const sp = `/stocks/${ticker.toLowerCase()}/`;
     const stock = await get(sp);
-    if (stock.status === 200) { pagesRead++; checkSection(sp, stock.text, x); }
+    if (stock.status !== 200) continue;
+    pagesRead++;
+    // A ticker's page belongs to the company that issues the security. In the data several
+    // companies can carry the same main ticker, so the section says whose notices it shows and
+    // is compared with THAT company's rows. With no section and a ticker several companies
+    // carry, nothing can be said (the issuing company may have no notice in the window).
+    const sec = section(stock.text);
+    const shownCik = sec ? attr(sec.tag, "data-cik") : null;
+    if (sec && shownCik !== cikOf(x)) {
+      const y = byCik.get(shownCik);
+      ok(!!y && y.win.length > 0 && (tickerCompanies.get(ticker.toUpperCase()) ?? 0) > 1, `${sp}: the section is about SEC number ${shownCik}, not ${cikOf(x)} (${x.p}), and ${y ? "that company should have no section, or the ticker is the main ticker of one company only" : "that number has no rows in the file"}`);
+      if (y && y.win.length) { otherCompany++; checkSection(sp, stock.text, y); }
+    } else if (!sec && (tickerCompanies.get(ticker.toUpperCase()) ?? 0) > 1) {
+      sharedSkipped++;
+    } else {
+      checkSection(sp, stock.text, x);
+    }
   }
 }
 // Companies with no notice in the window, and companies not in the file at all, have no section.
@@ -211,5 +232,5 @@ ok(/shown on the stock and company pages/.test(methLine) && !/not shown on any p
 const dl = (await get("/downloads/")).text;
 ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
 
-console.log(failures ? `verify-form144: ${failures} problem(s) in ${checks} checks` : `verify-form144: notices are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} notices in the file for ${byPage.size} companies, ${withRows.length} of them with a notice in the last 12 months)`);
+console.log(failures ? `verify-form144: ${failures} problem(s) in ${checks} checks` : `verify-form144: notices are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} notices in the file for ${byPage.size} companies, ${withRows.length} of them with a notice in the last 12 months; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
 process.exit(failures ? 1 : 0);

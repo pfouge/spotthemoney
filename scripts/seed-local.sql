@@ -281,6 +281,14 @@ select c.id, 'WITHHELD', e, st, a, current_date - d, 'seed-' || row_number() ove
 -- newest a few days old, so that load reads as current. Schedules 13D and 13G: three statements
 -- about companies with no page, and further down the rows the pages show (also current). One row of each is about a tracked
 -- company (NVIDIA, cik 0001045810 in this seed if present; the count is whatever the join gives).
+-- A second company that carries NVIDIA's ticker as its main ticker and issues no security. On
+-- production 16 companies are like this (a fund whose insider filings name its sponsor's symbol:
+-- three companies carry PRU). It has its own page with its own notices and holders; the NVDA
+-- stock page shows NVIDIA's, and the verifiers must not mix the two. Inserted here, after the
+-- Form 4 seed, which joins companies by ticker.
+insert into companies (name, cik, primary_ticker, slug)
+select 'SEED SPONSOR CREDIT FUND', '0009996601', 'NVDA', 'seed-sponsor-credit-fund'
+ where not exists (select 1 from companies where cik = '0009996601');
 delete from form144_notices where accession like 'seed-144-%';
 insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_name, seller_name, shares, market_value) values
   ('seed-144-1', '144',   current_date - 45, (select cik from companies where cik is not null order by id limit 1), 'Seed Issuer One', 'SEED SELLER A', 1000, 150000),
@@ -307,6 +315,8 @@ select 'seed-144-p' || lpad(g::text, 2, '0'), case when g % 9 = 0 then '144/A' e
        case when g % 3 = 0 then '{Officer,Director}'::text[] else '{Director}'::text[] end, 'Class A Common Stock', 1000 * g, 41250.75 * g, current_date - (g * 5 + 4), 'Seed Brokerage LLC', current_date - (g * 5 + 4), true,
        'https://www.sec.gov/Archives/edgar/data/1321655/0000000000260001' || lpad(g::text, 2, '0') || '/seed-144-p' || lpad(g::text, 2, '0') || '-index.htm'
   from generate_series(1, 30) g;
+insert into form144_notices (accession, form_type, filed_at, issuer_cik, issuer_name, filer_cik, seller_name, relationships, security_class, shares, market_value, approx_sale_date, notice_date)
+values ('seed-144-90', '144', current_date - 12, '0009996601', 'SEED SPONSOR CREDIT FUND', '0009996611', 'Seed Fund Seller', '{Director}', 'Common Shares', 4000, 100000, current_date - 12, current_date - 12);
 delete from schedule13_filings where accession like 'seed-13-%';
 insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, reporter_name, reporter_count, shares_owned, percent_of_class) values
   ('seed-13-1', 'SCHEDULE 13D',   '13D', false, current_date - 80, '0009990003', 'Seed Issuer One', 'SEED HOLDER A', 1, 5000000, 6.1),
@@ -335,6 +345,9 @@ insert into schedule13_filings (accession, form_type, schedule, is_amendment, fi
   ('seed-13-19', 'SCHEDULE 13G',   '13G', false, current_date - 10,  '0001045810', 'NVIDIA CORP', null, 'Common Stock', current_date - 15, '0009997704', 'Seed Same Day LLC', 1, 1300000000, 5.3, '{"Rule 13d-1(c)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001319/seed-13-19-index.htm'),
   ('seed-13-20', 'SCHEDULE 13G/A', '13G', true,  current_date - 10,  '0001045810', 'NVIDIA CORP', null, 'Common Stock', current_date - 15, '0009997704', 'Seed Same Day LLC', 1, 1310000000, 5.35, '{"Rule 13d-1(c)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/1045810/000000000026001320/seed-13-20-index.htm'),
   ('seed-13-21', 'SCHEDULE 13G/A', '13G', true,  current_date - 3,   '0000936468', 'LOCKHEED MARTIN CORP', '539830109', 'Common Stock', current_date - 20, '0009997705', 'Seed Trust Bank', 1, 9000000, 3.8, '{"Rule 13d-1(b)"}', '{}', 'https://www.sec.gov/Archives/edgar/data/936468/000000000026001321/seed-13-21-index.htm');
+insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, security_class, event_date, filer_cik, reporter_name, reporter_count, shares_owned, percent_of_class, rules) values
+  ('seed-13-90', 'SCHEDULE 13G',   '13G', false, current_date - 70, '0009996601', 'SEED SPONSOR CREDIT FUND', 'Common Shares', current_date - 80, '0009996621', 'Seed Fund Holder One', 1, 2000000, 22.5, '{"Rule 13d-1(c)"}'),
+  ('seed-13-91', 'SCHEDULE 13G/A', '13G', true,  current_date - 25, '0009996601', 'SEED SPONSOR CREDIT FUND', 'Common Shares', current_date - 40, '0009996622', 'Seed Fund Holder Two', 1, 300000, 3.4, '{"Rule 13d-1(c)"}');
 insert into schedule13_filings (accession, form_type, schedule, is_amendment, filed_at, issuer_cik, issuer_name, issuer_cusip, security_class, event_date, filer_cik, reporter_name, reporter_count, shares_owned, percent_of_class, rules, source_url)
 select 'seed-13-p' || lpad(g::text, 2, '0'), case when g % 7 = 0 then 'SCHEDULE 13D/A' when g % 2 = 0 then 'SCHEDULE 13G/A' else 'SCHEDULE 13G' end, case when g % 7 = 0 then '13D' else '13G' end, (g % 7 = 0 or g % 2 = 0),
        current_date - (g * 9 + 5), '0001321655', 'PALANTIR TECHNOLOGIES INC.', '69608A108', 'Class A Common Stock', current_date - (g * 9 + 25), lpad((9997800 + g)::text, 10, '0'),
