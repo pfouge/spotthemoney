@@ -3676,3 +3676,46 @@ on the site, in the guides or on the privacy page changed.
   that security, changes which stock pages exist and belongs with the write-path work. A
   company's own rows stored under its old symbol stay on its current ticker (same company).
   The on-demand pages apply none of this.
+
+### SEC company financials, stage 1: stored, not shown (2026-11-22, interactive session) — PR #67
+
+Peter asked what the site lacks to be "akin to a Bloomberg terminal" and agreed that fundamentals from
+SEC filings go first. The plan, the rules and the later stages are in the Project doc
+`claude/parity-queue-additions.md` (item A1). No page, file or feed reads the new tables yet.
+
+- **Migration 0032**: `company_financials` (cik 10 digits, concept, tag as filed with its taxonomy,
+  unit, period_start NULL for a balance-sheet date, period_end, value, form, fy, fp, filed, accession)
+  and `company_financials_checked` (cik, checked_at, status ok / not_found / no_facts, rows,
+  newest_filed). Row-level security on, no policy, no API grants; `site_build` may read. Next free
+  migration number: 0033.
+- **Source `sec_company_financials`** (`ingest/src/sources/sec_company_financials.ts`; reader
+  `ingest/src/lib/companyfacts.ts`; concepts, tag order, forms and floor in
+  `shared/src/fundamentals.ts`): one request per TRACKED company to
+  `data.sec.gov/api/xbrl/companyfacts/CIK<10 digits>.json`. Eleven concepts (revenue, net_income,
+  eps_diluted, operating_cash_flow, capex, assets, liabilities, liabilities_and_equity, equity, cash,
+  long_term_debt), forms 10-K, 10-Q, 20-F, 40-F and amendments, periods ending 2023-01-01 or later.
+  For each concept, unit and period the first tag of the list with a fact wins, and among its facts
+  the newest filing. **`fy` and `fp` in the SEC's answer describe the filing, not the period**: a
+  period is its start and end dates. A company's rows are replaced in one transaction each time it
+  is read. Never-asked companies first, then at most 150 a run last read over 7 days ago. 40-minute
+  budget (`partial`), 5 failures in a row (`failed`), shape guard (nothing written or marked until one
+  answer has the layout). Its own matrix group `financials` in `ingest.yml`; listed in
+  `scripts/freshness-check.mjs` by run. Test fake: `scripts/fake-sec-companyfacts.mjs` through
+  `SEC_DATA_BASE` (tests only).
+- **The layout was measured before the build** in Peter's Chrome (a script run in a tab on
+  data.sec.gov over 72 tracked companies): data.sec.gov is not reachable from the cloud sandbox.
+- **First live run (ingest run 45040035039, 15:45 UTC): the shape is proven.** `success` in 5.5
+  minutes: 998 asked, 938 with figures, 18 with none, 20 unknown to the SEC (404), 22 answers without
+  a us-gaap or ifrs-full block, 0 failures; 154,644 rows, 46.5 MB (database 1,104 MB). Companies with
+  a figure for a period ending since 2025-10-01: revenue 876, net income 914, diluted EPS 869,
+  operating cash flow 913, assets 914, equity 908, cash 907, liabilities and equity 912, total
+  liabilities 725, capital expenditure 778, long-term debt 709. Units: USD 928 companies, then JPY 8,
+  CNY 7, EUR 4, TWD 2, RUB 1. Apple's three newest revenue rows equal the figures read from the SEC
+  in the browser (fiscal 2026 $478,834M, accession 0000320193-26-000026).
+- **Known, small:** the 22 answers with no financial taxonomy (funds and trusts, by the look of it)
+  are counted `odd_answers`, not marked, and so are asked again every run; they should be stored as
+  `no_facts` once the shape is proven. The run reports `remaining` 22 until then.
+- **For stage 2 (showing them):** a "Financials, as filed" section inline on stock and company pages
+  (no new page per company); quarters and fiscal years are told apart by the length of the period; a
+  fourth quarter and a cash-flow quarter exist only as differences of filed figures; show the unit;
+  check for typing mistakes in filings before anything is shown.
