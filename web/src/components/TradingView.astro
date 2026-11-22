@@ -13,7 +13,7 @@ const tvUrl = `https://www.tradingview.com/symbols/${encodeURIComponent(symbol)}
   <h2>Share price</h2>
   <div class="tv-info" data-tv-slot="info"></div>
   <div class="tv-chart" data-tv-slot="chart"></div>
-  <p class="tv-note">Price and chart by <a href={tvUrl} rel="noopener nofollow" target="_blank">TradingView</a>{name ? ` for ${name}` : ""}. US share prices here are delayed, not real-time. The trade records on this page come from government filings, not from this chart.</p>
+  <p class="tv-note">Price and chart by <a href={tvUrl} rel="noopener nofollow" target="_blank">TradingView</a>{name ? ` for ${name}` : ""}. The chart opens on daily candles for one year with volume, the 20, 50, 100 and 200 day simple moving averages and a 14 day RSI. US share prices here are delayed, not real-time. The trade records on this page come from government filings, not from this chart.</p>
   <noscript><p class="tv-note"><a href={tvUrl} rel="noopener nofollow">See {symbol} on TradingView</a>.</p></noscript>
 </section>
 
