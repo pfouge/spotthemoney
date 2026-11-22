@@ -5,3 +5,4 @@ export * from "./tradevalue.js";
 export * from "./floor.js";
 export * from "./sic.js";
 export * from "./fundamentals.js";
+export * from "./events8k.js";
