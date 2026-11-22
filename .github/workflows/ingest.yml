@@ -103,7 +103,15 @@ jobs:
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations
-            sources: fec_committees fec_schedule_a
+            sources: fec_committees fec_schedule_a fec_independent_expenditures
+          - name: company-events
+            sources: sec_company_events sec_exec_pay
+          - name: votes
+            sources: congress_votes
+          - name: lobbyist-contributions
+            sources: senate_lda_contributions
+          - name: assistance
+            sources: usaspending_assistance
           - name: prices
             sources: twelvedata_eod
     name: ingest (${{ matrix.group.name }})
@@ -163,7 +171,15 @@ jobs:
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations
-            sources: fec_committees fec_schedule_a
+            sources: fec_committees fec_schedule_a fec_independent_expenditures
+          - name: company-events
+            sources: sec_company_events sec_exec_pay
+          - name: votes
+            sources: congress_votes
+          - name: lobbyist-contributions
+            sources: senate_lda_contributions
+          - name: assistance
+            sources: usaspending_assistance
           - name: prices
             sources: twelvedata_eod
     name: ingest-retry (${{ matrix.group.name }})

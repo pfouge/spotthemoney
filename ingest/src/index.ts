@@ -13,22 +13,29 @@ import { SystemicFailureError } from "./lib/run.js";
 import { ingestIBonds } from "./sources/ibonds.js";
 import { ingestTreasuryYieldCurve } from "./sources/treasury_yield_curve.js";
 import { ingestSenateLda, ingestSenateLdaHistory } from "./sources/senate_lda.js";
+import { ingestSenateLdaContributions } from "./sources/senate_lda_contributions.js";
 import { ingestUsaspending } from "./sources/usaspending.js";
 import { ingestUsaspendingDetails } from "./sources/usaspending_details.js";
+import { ingestUsaspendingAssistance } from "./sources/usaspending_assistance.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
 import { ingestFecScheduleAHistory } from "./sources/fec_schedule_a_history.js";
+import { ingestFecIndependentExpenditures } from "./sources/fec_independent_expenditures.js";
 import { ingestSecForm4, ingestSecForm4History } from "./sources/sec_form4.js";
 import { ingestSecForm4Bulk } from "./sources/sec_form4_bulk.js";
+import { ingestSec13fHoldings } from "./sources/sec_13f_holdings.js";
 import { ingestSecForm4Index } from "./sources/sec_form4_index.js";
 import { ingestSecForm144 } from "./sources/sec_form144.js";
 import { ingestSecSchedule13 } from "./sources/sec_schedule13.js";
 import { ingestSecCompanySize } from "./sources/sec_company_size.js";
 import { ingestSecCompanySic } from "./sources/sec_company_sic.js";
 import { ingestSecCompanyFinancials } from "./sources/sec_company_financials.js";
+import { ingestSecCompanyEvents } from "./sources/sec_company_events.js";
+import { ingestSecExecPay } from "./sources/sec_exec_pay.js";
 import { ingestSecCompanyTickers, readRepair } from "./sources/sec_company_tickers.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
 import { ingestCongressRoster } from "./sources/congress_roster.js";
+import { ingestCongressVotes } from "./sources/congress_votes.js";
 import { ingestTreasuryRealYieldCurve } from "./sources/treasury_real_yield_curve.js";
 import { ingestBlsCpi } from "./sources/bls_cpi.js";
 import { ingestFecCommittees } from "./sources/fec_committees.js";
@@ -44,6 +51,7 @@ import type { IngestRunResult } from "@stm/shared";
 // per run and the X job posts publicly, so neither may ride along with the daily batch.
 const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean; run: () => Promise<IngestRunResult> }> = {
   universe: { label: "Tracked-ticker universe (securities seed)", cadence: "daily", daily: true, run: ingestUniverse },
+  congress_votes: { label: "Congress roll-call votes (House + Senate; stored, not yet shown)", cadence: "daily", daily: true, run: ingestCongressVotes },
   congress_roster: { label: "Congress roster (party/state/district/bioguide)", cadence: "daily", daily: true, run: ingestCongressRoster },
   ibonds: { label: "I-Bond Composite Rate", cadence: "on_reset", daily: true, run: ingestIBonds },
   treasury_yield_curve: { label: "Treasury Daily Par Yield Curve", cadence: "daily", daily: true, run: ingestTreasuryYieldCurve },
@@ -51,20 +59,27 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   bls_cpi: { label: "BLS CPI-U (I-Bond variable-rate input)", cadence: "daily", daily: true, run: ingestBlsCpi },
   senate_lda: { label: "Senate LDA Lobbying Filings", cadence: "daily", daily: true, run: ingestSenateLda },
   senate_lda_history: { label: "Senate LDA history pass (every filing posted since 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSenateLdaHistory },
+  senate_lda_contributions: { label: "Senate LDA lobbyist contribution reports (LD-203; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSenateLdaContributions },
   usaspending: { label: "USAspending Contract Awards", cadence: "daily", daily: true, run: ingestUsaspending },
   // Fills description, sub-agency and end date for awards the searches no longer return, by award id.
   usaspending_details: { label: "USAspending award details by award id (fills blanks)", cadence: "daily", daily: true, run: ingestUsaspendingDetails },
+  usaspending_assistance: { label: "USAspending federal financial assistance (grants, loans, direct payments; stored, not yet shown)", cadence: "daily", daily: true, run: ingestUsaspendingAssistance },
   fec_committees: { label: "FEC committee universe (members + top PACs)", cadence: "weekly", daily: true, run: ingestFecCommittees },
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
+  fec_independent_expenditures: { label: "FEC Schedule E independent expenditures (current cycle)", cadence: "daily", daily: true, run: ingestFecIndependentExpenditures },
   sec_company_size: { label: "SEC company size (shares outstanding, public float)", cadence: "daily", daily: true, run: ingestSecCompanySize },
   sec_company_sic: { label: "SEC industry codes (SIC) for companies", cadence: "daily", daily: true, run: ingestSecCompanySic },
   // Financial-statement figures for tracked companies from the SEC XBRL companyfacts API (migration 0032; stored, not yet shown).
   sec_company_financials: { label: "SEC company financials (XBRL companyfacts; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecCompanyFinancials },
+  sec_company_events: { label: "SEC 8-K events and item codes (stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecCompanyEvents },
+  // Pay Versus Performance executive-pay facts from the SEC XBRL frames API (migration 0039; stored, not yet shown).
+  sec_exec_pay: { label: "SEC executive pay (Pay Versus Performance, XBRL frames; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecExecPay },
   // The SEC's list of which filer owns each ticker; ends with repair_ticker_owners() (migration 0031).
   sec_company_tickers: { label: "SEC ticker owners (which filer each ticker belongs to)", cadence: "daily", daily: true, run: ingestSecCompanyTickers },
   fec_schedule_a_history: { label: "FEC Schedule A history pass (back to 2025-10-01, capped per committee)", cadence: "on_demand", daily: false, run: ingestFecScheduleAHistory },
   sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: () => ingestSecForm4() },
   sec_form4_bulk: { label: "SEC Insider Transactions Data Sets, market-wide Form 4 (kept off the site)", cadence: "on_demand", daily: false, run: ingestSecForm4Bulk },
+  sec_13f_holdings: { label: "SEC Form 13F Data Sets, institutional holdings of tracked companies (stored, not shown)", cadence: "on_demand", daily: false, run: ingestSec13fHoldings },
   sec_form4_index: { label: "SEC EDGAR daily index, market-wide Form 4 (kept off the site)", cadence: "daily", daily: true, run: ingestSecForm4Index },
   // Form 144 notices of proposed sales, every issuer. Stored in form144_notices; no page reads it yet.
   sec_form144: { label: "SEC Form 144 notices of proposed sales (daily index; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecForm144 },

@@ -105,7 +105,7 @@ export function windowSlices(today: Date, windowDays: number, sliceDays = SLICE_
   return out;
 }
 
-function parseAmount(v: unknown): number | null {
+export function parseAmount(v: unknown): number | null {
   if (v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
@@ -146,7 +146,7 @@ export function dateOnly(v: unknown): string | null {
   return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === d ? d : null;
 }
 
-function isShapeRejection(err: unknown): boolean {
+export function isShapeRejection(err: unknown): boolean {
   const m = err instanceof Error ? err.message : String(err);
   return m.includes("HTTP 400") || m.includes("HTTP 422");
 }
