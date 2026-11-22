@@ -13,6 +13,7 @@ import { SystemicFailureError } from "./lib/run.js";
 import { ingestIBonds } from "./sources/ibonds.js";
 import { ingestTreasuryYieldCurve } from "./sources/treasury_yield_curve.js";
 import { ingestSenateLda, ingestSenateLdaHistory } from "./sources/senate_lda.js";
+import { ingestSenateLdaContributions } from "./sources/senate_lda_contributions.js";
 import { ingestUsaspending } from "./sources/usaspending.js";
 import { ingestUsaspendingDetails } from "./sources/usaspending_details.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
@@ -51,6 +52,7 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   bls_cpi: { label: "BLS CPI-U (I-Bond variable-rate input)", cadence: "daily", daily: true, run: ingestBlsCpi },
   senate_lda: { label: "Senate LDA Lobbying Filings", cadence: "daily", daily: true, run: ingestSenateLda },
   senate_lda_history: { label: "Senate LDA history pass (every filing posted since 2025-10-01)", cadence: "on_demand", daily: false, run: ingestSenateLdaHistory },
+  senate_lda_contributions: { label: "Senate LDA lobbyist contribution reports (LD-203; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSenateLdaContributions },
   usaspending: { label: "USAspending Contract Awards", cadence: "daily", daily: true, run: ingestUsaspending },
   // Fills description, sub-agency and end date for awards the searches no longer return, by award id.
   usaspending_details: { label: "USAspending award details by award id (fills blanks)", cadence: "daily", daily: true, run: ingestUsaspendingDetails },
