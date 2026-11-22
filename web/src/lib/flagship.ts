@@ -86,9 +86,11 @@ async function load(): Promise<Flagship> {
         select id, name, cik, slug::text as slug, primary_ticker::text as primary_ticker, sector from site_companies`,
       sql<{ id: number; ticker: string; type: string; name: string | null; company_id: number | null }[]>`
         select id, ticker::text as ticker, type::text as type, name, company_id from site_securities`,
-      sql<{ id: number; source: string; external_id: string | null; filer_person_id: number | null; filer_company_id: number | null; filed_at: string | null; source_url: string | null; confidence: number; review: string; is_published: boolean }[]>`
+      sql<{ id: number; source: string; external_id: string | null; filer_person_id: number | null; filer_company_id: number | null; filed_at: string | null; source_url: string | null; confidence: number; review: string; is_published: boolean; issuer_symbol: string | null }[]>`
         select id, source::text as source, external_id, filer_person_id, filer_company_id, filed_at::text as filed_at, source_url,
-               confidence::float8 as confidence, review::text as review, is_published
+               confidence::float8 as confidence, review::text as review, is_published,
+               -- the trading symbol the Form 4 itself states for its issuer (lib/issuer.ts)
+               case when source = 'sec_form4' then left(payload->'issuer'->>'ticker', 60) end as issuer_symbol
           from site_filings
          where review in ('auto_approved','approved') and confidence >= 0.9
            and source in ('sec_form4','house_ptr','senate_ptr')
@@ -194,9 +196,23 @@ async function load(): Promise<Flagship> {
     // that tells a per-share price from a row total typed into the price box (shared/tradevalue).
     // A Form 4 row whose filing names another issuer than the company that owns the row's
     // ticker comes off that ticker (lib/issuer.ts): it is the issuer's row, not the stock's.
-    const foreign = foreignIssuerRows(txnRows, model.filings, model.securities);
+    const stated = new Map(filingRows.map((f) => [f.id, f.issuer_symbol]));
+    // Filer numbers that have a ticker of their own in the SEC's list (migration 0031). Optional:
+    // with no list, no row of another issuer is kept on a ticker.
+    const listedCiks = new Set<string>();
+    try {
+      for (const r of await sql<{ cik: string }[]>`select distinct cik from sec_tickers`) listedCiks.add(r.cik.padStart(10, "0"));
+    } catch (err) {
+      console.warn(`[web] the SEC ticker list could not be read (${err instanceof Error ? err.message : String(err)}); rows are kept on a ticker only for its own company`);
+    }
+    const hasOwnTicker = (companyId: number): boolean => {
+      const cik = model.companies.get(companyId)?.cik;
+      return listedCiks.size === 0 || cik == null || listedCiks.has(cik.padStart(10, "0"));
+    };
+    const issuers = foreignIssuerRows(txnRows, model.filings, model.securities, stated, hasOwnTicker);
+    const foreign = issuers.foreign;
     for (const t of txnRows) if (foreign.has(t.id)) t.security_id = null;
-    console.log(issuerLog(foreign, model.securities, (id) => model.companies.get(id)?.name ?? `company ${id}`, sharedMainTickers(model.companies.values())));
+    console.log(issuerLog(issuers, model.securities, (id) => model.companies.get(id)?.name ?? `company ${id}`, sharedMainTickers(model.companies.values())));
     const refPrice = refPriceMap(txnRows.filter((t) => model.filings.get(t.filing_id)?.source === "sec_form4"));
     const built: Txn[] = []; const ownedAfter = new Map<number, number | null>();
     for (const t of txnRows) {
