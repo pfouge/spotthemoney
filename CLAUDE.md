@@ -3719,3 +3719,72 @@ SEC filings go first. The plan, the rules and the later stages are in the Projec
   (no new page per company); quarters and fiscal years are told apart by the length of the period; a
   fourth quarter and a cash-flow quarter exist only as differences of filed figures; show the unit;
   check for typing mistakes in filings before anything is shown.
+
+### Financials, as filed: shown on stock and company pages (2026-11-22, scheduled parity run) — queue item A1, stage 2
+
+- **What.** Stock pages and company pages of the tracked set have a section "Financials, as filed"
+  (`web/src/components/Financials.astro`, `section[data-financials]`, anchor `#financials`, jump
+  link), placed after "Large holders": a summary sentence (currency, how many fiscal years and
+  quarters, newest report), one fixed caveat (`FIN_CAVEAT`), a link to the CSV, and two tables,
+  "Fiscal years" (the 3 newest, `YEARS_SHOWN`) and "Quarters" (the 4 newest, `QUARTERS_SHOWN`).
+  Lines: revenue, net income, diluted earnings per share, cash and equivalents, total assets, total
+  liabilities, shareholders' equity; the fiscal-year table adds cash from operations and capital
+  expenditure. The last line of each table links the reports a column's figures came from. New
+  download `company-financials.csv` (kind `financials`: one row per company and period, EVERY
+  fiscal year and quarter on file, columns `not_shown`, `on_page`, `reports`). Methodology
+  `#financials`; guide `what-is-form-4` section `#financials`, one FAQ, one source; a clause in
+  `how-to-cite-and-reuse`. No migration. One file more in the deploy.
+- **Rules** (`web/src/lib/financials.ts`, pure; tests `scripts/financials.test.ts`; loader and
+  per-company memo in `financials-build.ts`, called from `flagship.ts` in its own try/catch, so a
+  missing table leaves the section, file, methodology paragraph and guide section out):
+  - A period is told by its length: 80 to 100 days a quarter, 350 to 380 days a fiscal year
+    (measured on production: quarters 82 to 97, years 363 to 370). Half-year and nine-month rows
+    (a 10-Q's year-to-date columns) are never read by the build.
+  - **Nothing is worked out from two filed figures.** A fourth fiscal quarter is not filed on its
+    own, so it has no column; cash from operations and capital expenditure are in the fiscal-year
+    table only (a 10-Q gives them year to date). The caveat says both.
+  - The company's currency is the unit of its newest filed figure that is not per share
+    (`companyUnit`); rows in a second currency are left out (13 companies on production filed
+    revenue in two). Amounts are printed in that currency, never converted (`finMoney`:
+    "$478.83B", "CNY 12.30B", a real minus sign).
+  - Two periods of a kind ending close together (under 300 days for years, 60 for quarters): the
+    later is kept.
+  - **Three checks hold a figure back ("not shown", linked to the methodology; the CSV keeps the
+    figure and names the check in `not_shown`):** `implied_shares` (net income ÷ EPS under
+    `MIN_IMPLIED_SHARES` = 100,000, or |EPS| above that when there is no net income: Halliburton's
+    2023 quarters are stored as 790,000 a share, QVC as millions); `balance` (total assets differ
+    from "liabilities and equity" on the same date by more than 0.5%: 19 dates on production, for
+    example General Dynamics' quarter ends carry the year-end assets); `cash_over_assets`.
+    `liabilities_and_equity` is read for the check and is in the CSV, not on pages.
+  - A figure filed under another tag than the same line in the table's newest column carries a
+    small "a" and a note (`markTagChanges`).
+  - **Long-term debt is stored and NOT shown** (not read by the build, not in the CSV): the stored
+    tag is not always the total (Domino's 10-K: $14.6M under `LongTermDebt` against $4.9B under
+    `LongTermDebtNoncurrent` in its 10-Qs; Synopsys, Gallagher the same way). A comparison with a
+    company's own median was tried on production and rejected as a general rule: it flags real
+    things (new companies, a quarter near zero).
+  - No ratio that needs a price, no score, ranking or forecast; the verifier fails advice wording.
+- **Build log** prints `[web] financials (SEC XBRL): N rows read for C companies, newest filing D;
+  W companies with a table (U not in dollars); Y fiscal years and Q quarters on file; on pages: H
+  figures not shown (balance n, cash_over_assets n, implied_shares n), T filed under a changed
+  tag; O rows in a second currency left out`. SQL for the first number: rows of
+  `company_financials` whose concept is not `long_term_debt` and whose period is a date, 80 to 100
+  or 350 to 380 days, for CIKs of `site_companies`.
+- **Verifier:** `node scripts/verify-financials.mjs <base-url> [--sample N]` (no browser; the
+  twenty-third). Oracle: the CSV. Its own copy of the period lengths, the three checks, the column
+  counts and the printing of an amount; every company with a held figure on its page is read
+  whatever the sample. `deploy.yml`'s warning-only step now runs it on the production build too:
+  **read its line in the deploy log** (`verify-financials: N checks pass ...`).
+- **Ingest fix in the same change** (`sec_company_financials.ts`, `lib/companyfacts.ts`): figures
+  already in the table count as proof of the layout, and an answer that has a `facts` object with
+  no us-gaap or ifrs-full block, for a company with nothing on file, is stored as `no_facts`
+  (`stats.no_taxonomy`). Before this, a daily run whose queue held only those 22 companies would
+  have ended `failed` ("none of the answers had the companyfacts layout"). A company that HAS
+  figures is never emptied by such an answer.
+- `flagship-core.ts` `Flagship` gained `financials`; `server/od.ts` sets it empty (one line).
+- The seed holds figures for six companies: NVIDIA (four years, five quarters, a changed tag, a
+  dash, a loss, an EPS scale mistake), Microsoft (reports in CNY there, with dollar rows left out),
+  Palantir (assets that do not balance, cash above assets), Lockheed (dates only: no section),
+  Apple (one quarter), the SWAP trust.
+- Not done: nothing on the on-demand pages or insider pages; no fundamentals screener (A1 stage
+  3); no ratios; no chart; long-term debt; a fourth quarter or cash-flow quarter by difference.

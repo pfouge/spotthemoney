@@ -10,7 +10,8 @@
 //                          pre-floor period; diluted EPS in USD/shares; a quarter and a year-to-date.
 //   0000789019 (Microsoft) ifrs-full in CNY (a 20-F filer)
 //   0001321655 (Palantir)  the right layout but only a pre-floor period: no usable figure
-//   every other CIK: 404 (the seed's Lockheed among them)
+//   0000002488 (AMD) and 0000936468 (Lockheed): a `facts` object with no us-gaap or ifrs-full block
+//   every other CIK: 404
 // mode "down":    every request answers 503.
 // mode "noshape": every request answers 200 with a body that has no companyfacts layout.
 // env FAKE_SLOW_MS: wait this long before each answer (to hit a time budget).
@@ -59,6 +60,15 @@ const KNOWN = {
       ] }),
       Assets: tag({ CNY: [f({ end: "2025-12-31", val: 9000000, form: "20-F", accn: "0000789019-26-000001", filed: "2026-04-20" })] }),
     },
+  } },
+  // Answers with a `facts` object and no us-gaap or ifrs-full block (funds and trusts). The first
+  // company has nothing in the table and is stored as no_facts once the layout is proven; the
+  // second is used with figures already on file, which such an answer must never remove.
+  "0000002488": { cik: 2488, entityName: "NO TAXONOMY FUND", facts: {
+    dei: { EntityCommonStockSharesOutstanding: tag({ shares: [f({ end: "2026-02-10", val: 1000 })] }) },
+  } },
+  "0000936468": { cik: 936468, entityName: "NO TAXONOMY, FIGURES ON FILE", facts: {
+    dei: { EntityCommonStockSharesOutstanding: tag({ shares: [f({ end: "2026-02-10", val: 1000 })] }) },
   } },
   "0001321655": { cik: 1321655, entityName: "OLD FACTS INC", facts: {
     "us-gaap": { Assets: tag({ USD: [f({ end: "2019-12-31", val: 1, accn: "0001321655-20-000001", filed: "2020-02-20" })] }) },

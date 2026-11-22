@@ -16,6 +16,8 @@ import { emptyForm144, form144Log } from "./form144";
 import { loadForm144, siteCompanyCiks } from "./form144-build";
 import { emptySchedule13, schedule13Log } from "./schedule13";
 import { loadSchedule13 } from "./schedule13-build";
+import { emptyFinancials, financialsLog } from "./financials";
+import { loadFinancials } from "./financials-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -69,7 +71,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -157,7 +159,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -380,6 +382,17 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${schedule13Log(model.schedule13, builtAt, ciks)}`);
     } catch (err) {
       console.warn("[web] Schedule 13 statements skipped:", (err as Error).message);
+    }
+
+    // Figures from companies' annual and quarterly reports (SEC XBRL), for the "Financials, as
+    // filed" section of stock and company pages. Optional: a missing table leaves the section out
+    // (lib/financials.ts, lib/financials-build.ts).
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.financials = await loadFinancials(sql, ciks);
+      console.log(`[web] ${financialsLog(model.financials, ciks)}`);
+    } catch (err) {
+      console.warn("[web] company financials skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

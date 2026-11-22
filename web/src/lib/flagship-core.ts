@@ -5,6 +5,7 @@
 // working unchanged.
 import type { Form144Data } from "./form144";
 import type { Schedule13Data } from "./schedule13";
+import type { FinancialsData } from "./financials";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -130,6 +131,8 @@ export interface Flagship {
   form144: Form144Data;
   /** SEC Schedules 13D and 13G about companies on the site (lib/schedule13.ts). Empty, with shown false, until the load has reached today. */
   schedule13: Schedule13Data;
+  /** Figures from companies' annual and quarterly reports, by 10-digit CIK (lib/financials.ts). Empty when the table cannot be read. */
+  financials: FinancialsData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

@@ -37,6 +37,8 @@ export interface PickResult {
   rows: FinRow[];
   /** True when the answer has the layout this reader expects, even if no row survives the filters. */
   hasShape: boolean;
+  /** True when the answer carries a `facts` object at all with something in it (possibly no us-gaap or ifrs-full block: funds and trusts). */
+  hasFacts: boolean;
 }
 
 const FORMS = new Set(FIN_FORMS);
@@ -105,7 +107,7 @@ export function pickFacts(json: unknown): PickResult {
   const facts = isObject(json) ? json["facts"] : undefined;
   const hasShape = detectShape(facts);
   const rows: FinRow[] = [];
-  if (!isObject(facts)) return { rows, hasShape };
+  if (!isObject(facts)) return { rows, hasShape, hasFacts: false };
 
   for (const concept of FIN_CONCEPTS) {
     // unit + period → winning fact; an earlier tag's period is never replaced by a later tag's.
@@ -137,5 +139,5 @@ export function pickFacts(json: unknown): PickResult {
       }
     }
   }
-  return { rows, hasShape };
+  return { rows, hasShape, hasFacts: Object.keys(facts).length > 0 };
 }

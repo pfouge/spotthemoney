@@ -119,8 +119,13 @@ export async function ingestSecCompanyFinancials(): Promise<IngestRunResult> {
   let stoppedOnBudget = false;
   let fatal: string | null = null;
   let lastFailure = "";
-  let shapeProven = false;
+  // Figures already in the table are proof that the layout is the one this job reads (an earlier
+  // run stored them), so a run whose queue holds only companies with no financial taxonomy (funds
+  // and trusts) is not mistaken for a change of layout.
+  const [held] = await sql<{ n: number }[]>`select count(*)::int as n from (select 1 from company_financials limit 1) x`;
+  let shapeProven = (held?.n ?? 0) > 0;
   let oddBeforeProof = 0;
+  c.no_taxonomy = 0;
   const sync = () => {
     Object.assign(ctx.extra, c);
     ctx.extra["stopped_on_budget"] = stoppedOnBudget;
@@ -144,7 +149,20 @@ export async function ingestSecCompanyFinancials(): Promise<IngestRunResult> {
       outage.ok();
       const picked = pickFacts(answer);
       answer = null; // the answer can be several MB; keep only the rows
-      if (!picked.hasShape) {
+      // Layout proven, a `facts` object with no us-gaap or ifrs-full block, and nothing of this
+      // company in the table: it files no financial statements in a taxonomy this job reads.
+      // Stored as no_facts so it is not asked again every day. A company that HAS figures on file
+      // is never emptied by such an answer: it is counted odd and left as it is.
+      let noTaxonomy = false;
+      if (!picked.hasShape && shapeProven && picked.hasFacts) {
+        const [has] = await sql<{ n: number }[]>`select count(*)::int as n from (select 1 from company_financials where cik = ${cik} limit 1) x`;
+        noTaxonomy = (has?.n ?? 0) === 0;
+      }
+      if (noTaxonomy) {
+        c.no_taxonomy!++;
+        rows = [];
+        status = "no_facts";
+      } else if (!picked.hasShape) {
         c.odd_answers!++;
         if (!shapeProven) {
           oddBeforeProof++;
@@ -155,9 +173,11 @@ export async function ingestSecCompanyFinancials(): Promise<IngestRunResult> {
         }
         continue; // not marked: asked again next run
       }
-      shapeProven = true;
-      rows = picked.rows;
-      status = rows.length > 0 ? "ok" : "no_facts";
+      else {
+        shapeProven = true;
+        rows = picked.rows;
+        status = rows.length > 0 ? "ok" : "no_facts";
+      }
     } catch (err) {
       if (isNotFound(err)) {
         outage.ok();
