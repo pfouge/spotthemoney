@@ -24,6 +24,7 @@ import { ingestSecForm144 } from "./sources/sec_form144.js";
 import { ingestSecSchedule13 } from "./sources/sec_schedule13.js";
 import { ingestSecCompanySize } from "./sources/sec_company_size.js";
 import { ingestSecCompanySic } from "./sources/sec_company_sic.js";
+import { ingestSecCompanyFinancials } from "./sources/sec_company_financials.js";
 import { ingestSecCompanyTickers, readRepair } from "./sources/sec_company_tickers.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
@@ -57,6 +58,8 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
   sec_company_size: { label: "SEC company size (shares outstanding, public float)", cadence: "daily", daily: true, run: ingestSecCompanySize },
   sec_company_sic: { label: "SEC industry codes (SIC) for companies", cadence: "daily", daily: true, run: ingestSecCompanySic },
+  // Financial-statement figures for tracked companies from the SEC XBRL companyfacts API (migration 0032; stored, not yet shown).
+  sec_company_financials: { label: "SEC company financials (XBRL companyfacts; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecCompanyFinancials },
   // The SEC's list of which filer owns each ticker; ends with repair_ticker_owners() (migration 0031).
   sec_company_tickers: { label: "SEC ticker owners (which filer each ticker belongs to)", cadence: "daily", daily: true, run: ingestSecCompanyTickers },
   fec_schedule_a_history: { label: "FEC Schedule A history pass (back to 2025-10-01, capped per committee)", cadence: "on_demand", daily: false, run: ingestFecScheduleAHistory },

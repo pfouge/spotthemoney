@@ -65,6 +65,9 @@ const CHECKS = [
   // Industry codes from the SEC's submissions data (table company_sic). No data date: a company's
   // code rarely changes; the run itself is what must stay alive.
   { code: "sec_company_sic", label: "SEC industry codes (SIC)", runDays: 2 },
+  // Financial-statement figures (table company_financials, migration 0032). Companies are refreshed
+  // about weekly, so no data date: the run itself is what must stay alive.
+  { code: "sec_company_financials", label: "SEC company financials (XBRL)", runDays: 2 },
   // The SEC's ticker list (table sec_tickers, migration 0031). The list is replaced whole every
   // run, so its age is the run's age. A run that ends "failed" with the list stored means the
   // repair refused a step (more than 40 rows would change): a person should look.
