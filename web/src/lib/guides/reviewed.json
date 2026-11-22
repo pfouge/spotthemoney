@@ -20,9 +20,9 @@
     }
   },
   "federal-contracts-usaspending": {
-    "reviewed": "2026-11-19",
+    "reviewed": "2026-11-22",
     "covers": {
-      "ingest/src/sources/usaspending.ts": "d16468c7a6977833",
+      "ingest/src/sources/usaspending.ts": "cb89baca2f6a40b0",
       "ingest/src/sources/usaspending_details.ts": "07829dbe76ba5f00",
       "web/src/pages/contracts/index.astro": "93066c3c6ad5b591",
       "web/src/lib/contracts.ts": "c37352d0a3425c41",
