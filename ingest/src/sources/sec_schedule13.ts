@@ -61,7 +61,10 @@ import { blocks, cleanText, leaf, parseFormDate, leafTags, noticeIndexUrl } from
 
 const SOURCE = "sec_schedule13";
 /** Bump after a parser fix: rows stored by an older version are fetched and written again. */
-export const PARSER_VERSION = 1;
+// 2 (2026-11-22): the issuer's CUSIP is read under either element name (`issuerCusip` up to
+// February 2026, `issuerCusipNumber` since). Proven on the run of 2026-11-21: 50 statements
+// stored, 50 with a CUSIP. The bump re-reads every stored statement once, in place.
+export const PARSER_VERSION = 2;
 export const DEFAULT_SINCE = FORM4_FLOOR;
 /** Statements of one schedule held back, unwritten, until one of them has the expected shape. */
 export const SHAPE_SAMPLE = 20;
