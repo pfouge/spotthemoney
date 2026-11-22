@@ -22,6 +22,9 @@ import PlannedSales from "../../components/PlannedSales.astro";
 import { noticesInWindow } from "../../lib/form144";
 import LargeHolders from "../../components/LargeHolders.astro";
 import Financials from "../../components/Financials.astro";
+import ReportedHoldings from "../../components/ReportedHoldings.astro";
+import { holdingsOf } from "../../lib/schedule13";
+import { statementsFiledBy } from "../../lib/schedule13-build";
 import { financialsOf } from "../../lib/financials-build";
 import { holdersOf } from "../../lib/schedule13";
 import JsonLd from "../../components/JsonLd.astro";
@@ -65,11 +68,13 @@ const plannedN = c.cik ? noticesInWindow(model.form144.byCik.get(c.cik.padStart(
 const holdersN = c.cik ? holdersOf(model.schedule13.byCik.get(c.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 // Figures from the company's annual and quarterly reports (lib/financials.ts); null when none are on file.
 const hasFinancials = !!financialsOf(model, c.cik);
+// Schedule 13 statements this company filed about other companies on the site.
+const holdingsN = holdingsOf(statementsFiledBy(model, c.cik), model.builtAt).length;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const jump: [string, string][] = [
   ...(c.insiders.length ? [["#insiders", "Insiders"] as [string, string]] : []),
   ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
-  ["#insider-transactions", "Transactions"], ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []), ...(holdersN ? [["#large-holders", "Large holders"] as [string, string]] : []), ...(hasFinancials ? [["#financials", "Financials"] as [string, string]] : []), ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
+  ["#insider-transactions", "Transactions"], ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []), ...(holdersN ? [["#large-holders", "Large holders"] as [string, string]] : []), ...(holdingsN ? [["#reported-holdings", "Holdings it reports"] as [string, string]] : []), ...(hasFinancials ? [["#financials", "Financials"] as [string, string]] : []), ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
   ...(relatedCos.length ? [["#related", "Related companies"] as [string, string]] : []),
   ["#sources", "Sources"],
 ];
@@ -150,6 +155,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
 
   <LargeHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+
+  <ReportedHoldings model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
 
   <Financials model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "financials")} />
 

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanText, stated, relationshipLabel, sortNotices, noticesInWindow, noticeSummary, summarySentence, sellerKey, form144Log, emptyForm144, valueOutOfRange, shownValue, heldNote, VALUE_MAX_PER_SHARE, NOTICE_CAVEAT, NOTICE_ROWS, type Notice } from "../web/src/lib/form144";
+import { cleanText, stated, relationshipLabel, sortNotices, noticesInWindow, noticeSummary, summarySentence, sellerKey, form144Log, emptyForm144, valueOutOfRange, shownValue, heldNote, VALUE_MAX_PER_SHARE, NOTICE_CAVEAT, NOTICE_ROWS, filerSummary, filerSentence, filerLog, FILER_NOTE, type Notice } from "../web/src/lib/form144";
 import { caughtUp, catchingUp, emptyStored, CAUGHT_UP_DAYS } from "../web/src/lib/coverage-stored";
 
 const base: Notice = { accession: "0000000000-26-000001", formType: "144", filedAt: "2026-11-10", issuerCik: "0000000001", filerCik: "0000000101", sellerName: "JANE ROE",
@@ -104,4 +104,21 @@ test("form 144: a stated value that cannot be right for the share count is held 
   assert.match(heldNote(1), /^One stated market value in this table is not shown: .*more than \$1,000,000 a share/);
   assert.match(heldNote(3), /^3 stated market values in this table are not shown/);
   for (const s of [heldNote(1), heldNote(3)]) assert.doesNotMatch(s, /\u2014/);
+});
+
+test("form 144, the filer's side: counts notices and companies, adds nothing up, and the log line counts pages", () => {
+  const xs = [n({}), n({ accession: "0000000000-26-000002", formType: "144/A" }), n({ accession: "0000000000-26-000003", issuerCik: "0000000002", planAdoptionDate: "2026-01-05" })];
+  const s = filerSummary(xs);
+  assert.deepEqual(s, { notices: 3, amendments: 1, companies: 2, withPlan: 1 });
+  const text = filerSentence("ROE JANE", s);
+  assert.equal(text, "ROE JANE is the filer of 3 Form 144 notices submitted to the SEC in the last 12 months about 2 companies this site tracks, 1 of them an amendment. 1 notice states the date a Rule 10b5-1 trading plan was adopted.");
+  assert.equal(filerSentence("X", filerSummary([])), "");
+  for (const t of [text, FILER_NOTE]) { assert.doesNotMatch(t, /\b(sold|dumped|cashing|bearish|warning)\b/i); assert.ok(!t.includes("\u2014")); }
+  const d = emptyForm144(); d.shown = true;
+  d.byCik.set("0000000001", [xs[0]!, xs[1]!, n({ accession: "0000000000-26-000009", filerCik: "0000000999" }), n({ accession: "0000000000-24-000001", filedAt: "2024-01-05" })]);
+  d.byCik.set("0000000002", [xs[2]!]);
+  d.byCik.set("0000000003", [n({ accession: "0000000000-26-000010", issuerCik: "0000000003" })]); // a company with no page
+  assert.equal(filerLog(d, built, new Set(["0000000101"]), new Set(["0000000001", "0000000002"])), "planned sales by filer: 3 notices in the last 365 days on 1 insider pages; most on one page 3; 0 pages with more than 25");
+  d.shown = false;
+  assert.equal(filerLog(d, built, new Set(), new Set()), "planned sales by filer: not shown");
 });
