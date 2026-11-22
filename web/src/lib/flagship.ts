@@ -19,6 +19,7 @@ import { loadSchedule13 } from "./schedule13-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
+import { foreignIssuerRows, sharedMainTickers, issuerLog } from "./issuer";
 import postgres from "postgres";
 import { normalizeOrgName, FORM4_FLOOR, cleanSicCode, sicDivision } from "@stm/shared";
 import { refPriceMap, buildTxn, jointMap } from "./txnbuild";
@@ -191,6 +192,11 @@ async function load(): Promise<Flagship> {
     }
     // Typical share price per security (median of open-market insider trades): the yardstick
     // that tells a per-share price from a row total typed into the price box (shared/tradevalue).
+    // A Form 4 row whose filing names another issuer than the company that owns the row's
+    // ticker comes off that ticker (lib/issuer.ts): it is the issuer's row, not the stock's.
+    const foreign = foreignIssuerRows(txnRows, model.filings, model.securities);
+    for (const t of txnRows) if (foreign.has(t.id)) t.security_id = null;
+    console.log(issuerLog(foreign, model.securities, (id) => model.companies.get(id)?.name ?? `company ${id}`, sharedMainTickers(model.companies.values())));
     const refPrice = refPriceMap(txnRows.filter((t) => model.filings.get(t.filing_id)?.source === "sec_form4"));
     const built: Txn[] = []; const ownedAfter = new Map<number, number | null>();
     for (const t of txnRows) {
@@ -223,6 +229,11 @@ async function load(): Promise<Flagship> {
           const c = model.companies.get(s.companyId);
           if (c) { c.txns.push(txn); if (!f.isPublished) c.underReview = true; }
         }
+      } else {
+        // Taken off a ticker above: listed on the issuer's own company page.
+        const fr = foreign.get(own.id);
+        const c = fr ? model.companies.get(fr.issuerCompanyId) : undefined;
+        if (c) { c.txns.push(txn); if (!f.isPublished) c.underReview = true; }
       }
     }
     if (joint.size) console.log(`flagship: ${joint.size} Form 4 rows repeat a transaction already reported in an earlier filing (joint filings) — counted once`);

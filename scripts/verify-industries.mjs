@@ -73,6 +73,37 @@ ok(coRows.every((r) => /^\d{10}$/.test(r.cik) || r.cik === ""), "companies.csv: 
 ok(coRows.every((r) => r.sic_code === "" || /^\d{4}$/.test(r.sic_code)), "companies.csv: a sic_code is not four digits");
 ok(coRows.every((r) => (r.sic_code === "") === (r.sic_division === "") || (r.sic_code !== "" && !divOf(r.sic_code))), "companies.csv: sic_division does not go with sic_code");
 ok(coRows.every((r) => r.sic_code === "" || (divOf(r.sic_code)?.[1] ?? "") === r.sic_division), "companies.csv: a sic_division is not the manual's division for its code");
+// ── ticker owners (migration 0031, web/src/lib/issuer.ts): a ticker has one company ──
+let tickerPages = 0;
+{
+  const up = (t) => String(t ?? "").trim().toUpperCase();
+  const add = (m, k, v) => { const l = m.get(k); if (l) l.push(v); else m.set(k, [v]); };
+  const main = new Map(), owns = new Map();
+  for (const r of coRows) {
+    if (r.ticker) add(main, up(r.ticker), r.company);
+    for (const t of (r.tickers ? r.tickers.split(";") : [])) if (t) add(owns, up(t), r.company);
+  }
+  for (const [t, names] of main) ok(names.length === 1, `companies.csv: ${t} is the main ticker of ${names.length} companies (${names.join("; ")})`);
+  for (const [t, names] of owns) ok(names.length === 1, `companies.csv: the ${t} security is listed under ${names.length} companies (${names.join("; ")})`);
+  for (const r of coRows) {
+    if (!r.ticker) continue;
+    const owners = owns.get(up(r.ticker)) ?? [];
+    ok(owners.length === 0 || owners.includes(r.company), `companies.csv: ${r.company} carries ${up(r.ticker)} as its main ticker, but the security is ${owners.join("; ")}'s`);
+  }
+  // The stock page of a ticker names the company that owns it in companies.csv.
+  const withStock = coRows.filter((r) => r.tickers && r.page_url);
+  const step = Math.max(1, Math.floor(withStock.length / 25));
+  const sample = withStock.filter((r, i) => i % step === 0 || ["KKR", "IVZ", "SWAP"].some((t) => r.tickers.split(";").map(up).includes(t))).slice(0, 40);
+  for (const r of sample) {
+    const t = r.tickers.split(";")[0];
+    const page = await get(`/stocks/${t.toLowerCase()}/`);
+    if (page.status !== 200) continue; // a company can own a ticker with no trades on record: no page
+    tickerPages++;
+    const m = page.text.match(/<dt[^>]*>Company<\/dt>\s*<dd[^>]*>\s*(?:<a[^>]*href="([^"]+)"[^>]*>)?/);
+    const want = new URL(r.page_url).pathname;
+    ok(!!m && m[1] === want, `/stocks/${t.toLowerCase()}/: the Company line links to ${m?.[1] ?? "nothing"}, companies.csv says ${t} is ${r.company}'s (${want})`);
+  }
+}
 const f4 = [], ptr = [];
 for (const p of listed) {
   if (/\/insider-trades-/.test(p) && !/insider-trades-latest/.test(p)) f4.push(...parseCsv((await get(p)).text));
@@ -172,5 +203,5 @@ ok((await get("/companies/")).text.includes('href="/industries/"'), "/companies/
 // phone width cannot be tested without a browser; the tables sit in the site's scrolling wrapper.
 ok((hubRes.text.match(/<div class="tablewrap">/g) ?? []).length >= 1, "the list's table is not in the scrolling wrapper");
 
-console.log(failures ? `verify-industries: ${failures} problem(s) in ${checks} checks` : `✓ verify-industries: ${checks} checks pass: ${hubRows.length} divisions, ${codesSeen} industry codes, ${companies} companies recounted from ${f4.length} Form 4 rows and ${ptr.length} congressional rows, ${backLinks} pages link back`);
+console.log(failures ? `verify-industries: ${failures} problem(s) in ${checks} checks` : `✓ verify-industries: ${checks} checks pass: ${hubRows.length} divisions, ${codesSeen} industry codes, ${companies} companies recounted from ${f4.length} Form 4 rows and ${ptr.length} congressional rows, ${backLinks} pages link back, ${tickerPages} stock pages name the company that owns the ticker`);
 process.exit(failures ? 1 : 0);

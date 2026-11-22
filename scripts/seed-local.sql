@@ -362,6 +362,55 @@ select 'seed-13-p' || lpad(g::text, 2, '0'), case when g % 7 = 0 then 'SCHEDULE 
        'https://www.sec.gov/Archives/edgar/data/1321655/0000000000260014' || lpad(g::text, 2, '0') || '/seed-13-p' || lpad(g::text, 2, '0') || '-index.htm'
   from generate_series(1, 28) g;
 
+-- ── Ticker owners (migration 0031, web/src/lib/issuer.ts) ────────────────────────────────
+-- The SEC's ticker list for the seed's companies, and the two faults the repair and the build
+-- rule put right:
+--   SWAP  the security is with SEED SWAPPED TRUST, the SEC lists the ticker under SEED SWAPPED
+--         PARENT CORP, and both carry it as main ticker (production: KKR, IVZ). After the
+--         repair the security is the parent's, the trust has no main ticker, and the trust's
+--         Form 4 rows are on the trust's company page, not on /stocks/swap/.
+--   NVDA  SEED SPONSOR CREDIT FUND carries NVIDIA's ticker and its insider's row is stored on
+--         the NVDA security (production: PGIM funds on PRU). After the repair the fund has no
+--         main ticker and the row is on the fund's company page only.
+delete from ticker_owner_changes;
+delete from sec_tickers;
+insert into sec_tickers (ticker, cik, title, rank) values
+  ('NVDA', '0001045810', 'NVIDIA CORP', 0), ('MSFT', '0000789019', 'MICROSOFT CORP', 1),
+  ('PLTR', '0001321655', 'Palantir Technologies Inc.', 2), ('LMT', '0000936468', 'LOCKHEED MARTIN CORP', 3),
+  ('AAPL', '0000320193', 'Apple Inc.', 4), ('AMD', '0000002488', 'ADVANCED MICRO DEVICES INC', 5),
+  ('SWAP', '0009996702', 'SEED SWAPPED PARENT CORP', 6);
+insert into companies (name, cik, primary_ticker, slug) values
+  ('SEED SWAPPED PARENT CORP', '0009996702', 'SWAP', 'seed-swapped-parent-corp'),
+  ('SEED SWAPPED TRUST', '0009996703', 'SWAP', 'seed-swapped-trust');
+insert into securities (ticker, type, name, company_id) values
+  ('SWAP', 'equity', 'Seed Swapped', (select id from companies where cik = '0009996703'));
+insert into people (full_name, slug, cik) values
+  ('Seed Parent Officer', 'seed-parent-officer', '0001100101'),
+  ('Seed Trust Trustee', 'seed-trust-trustee', '0001100102'),
+  ('Seed Fund Director', 'seed-fund-director', '0001100103');
+insert into person_roles (person_id, role_kind, company_id, officer_title, is_director) values
+  ((select id from people where cik = '0001100101'), 'insider', (select id from companies where cik = '0009996702'), 'Chief Financial Officer', false),
+  ((select id from people where cik = '0001100102'), 'insider', (select id from companies where cik = '0009996703'), null, true),
+  ((select id from people where cik = '0001100103'), 'insider', (select id from companies where cik = '0009996601'), null, true);
+create temp table seed_owner (accession text, person_cik text, company_cik text, ticker text, filed date, txn date, code text, shares numeric, price numeric);
+insert into seed_owner values
+  ('0009996702-26-000001', '0001100101', '0009996702', 'SWAP', current_date - 9,  current_date - 10, 'P', 1000, 20.00),
+  ('0009996703-26-000001', '0001100102', '0009996703', 'SWAP', current_date - 8,  current_date - 9,  'S', 400,  25.00),
+  ('0009996703-26-000002', '0001100102', '0009996703', 'SWAP', current_date - 20, current_date - 21, 'P', 600,  24.00),
+  ('0009996601-26-000001', '0001100103', '0009996601', 'NVDA', current_date - 11, current_date - 12, 'P', 250,  10.00);
+insert into filings (source, external_id, filer_person_id, filer_company_id, filed_at, source_url, confidence, review, is_published, payload)
+select 'sec_form4', f.accession, p.id, c.id, f.filed::timestamptz,
+       'https://www.sec.gov/Archives/edgar/data/' || ltrim(c.cik, '0') || '/' || replace(f.accession, '-', '') || '/wk-form4_' || replace(f.accession, '-', '') || '.xml',
+       1.0, 'auto_approved', true, jsonb_build_object('accession', f.accession, 'seed', true,
+       'issuer', jsonb_build_object('cik', c.cik, 'name', c.name, 'ticker', 'NONE'),
+       'transactions', jsonb_build_array(jsonb_build_object('shares', f.shares)))
+  from seed_owner f join people p on p.cik = f.person_cik join companies c on c.cik = f.company_cik;
+insert into transactions (filing_id, person_id, security_id, side, txn_code, is_derivative, txn_date, disclosed_at, shares, price, disclosure_lag_days, confidence, review, is_10b5_1, owner_type, asset_type)
+select fi.id, fi.filer_person_id, s.id, case f.code when 'P' then 'buy' else 'sell' end::txn_side,
+       f.code, false, f.txn, f.filed, f.shares, f.price, f.filed - f.txn, 1.0, 'auto_approved', false, 'self', 'stock'
+  from seed_owner f join filings fi on fi.external_id = f.accession join securities s on s.ticker = f.ticker and s.type = 'equity';
+select repair_ticker_owners();
+
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
 -- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the

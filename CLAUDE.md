@@ -3572,3 +3572,74 @@ on the site, in the guides or on the privacy page changed.
   read. `PARSER_VERSION` stays at 1.
 - Not done: nothing changes a notice's figures in the database; no check of the share count, the
   shares outstanding or the past-3-months proceeds; notices on insider pages (h2).
+
+### Which company a ticker belongs to (2026-11-22, scheduled parity run) — queue item (h0), part (a)
+
+- **Fault (found 2026-11-20).** A security is found by ticker alone (`unique (ticker, type)`), and
+  the tracked Form 4 write path (`storeForm4Filing` in `sec_form4.ts`) does two things on every
+  filing it stores: `on conflict (ticker, type) do update set company_id`, and
+  `primary_ticker = excluded.primary_ticker`. A filing with no usable trading symbol ("NONE",
+  "N/A") falls back to the ticker the filing was fetched for, and `sec_form4_index` passes a
+  tracked company's `primary_ticker` back in. So a fund or spin-off was given its sponsor's ticker,
+  its insiders' rows were stored on the sponsor's security, and the security itself went to the
+  company of the last filing stored. On production: 13 tickers were the main ticker of two or
+  three companies with a page; the KKR security belonged to "KKR Real Estate Select Trust Inc."
+  and IVZ to "Invesco Real Estate Income Trust Inc."; 392 Form 4 rows on 14 issuer and ticker
+  pairs sat on a ticker another company owns (SQL, 2026-11-22).
+- **The write path was NOT changed** (it belongs to the market-wide thread, stage 3c). Everything
+  here repairs after it, so it must keep running until that path stops doing the two things above.
+- **Migration 0031.** `sec_tickers(ticker, cik, title, rank, origin, checked_at)`: the SEC's list
+  of which filer each ticker belongs to. `ticker_owner_changes`: every change the repair makes,
+  with the old value (the way back by hand; closed to the API roles and to `site_build`).
+  `repair_ticker_owners()` returns jsonb counts and does two things, for what the static site
+  shows only: (1) an ACTIVE equity security whose ticker the SEC lists under another TRACKED
+  company is pointed at that company; (2) a tracked company loses a `primary_ticker` that is
+  another company's active security, unless the SEC lists the ticker under this very company.
+  Each step refuses to change more than 40 rows at once (`skipped` in the answer). It changes no
+  filing and no transaction. The migration seeds KKR and IVZ (`origin = 'seed'`) and calls the
+  function, so the first build after it is right. Next free migration number: 0032.
+- **Source `sec_company_tickers`** (`ingest/src/sources/sec_company_tickers.ts`; tests beside it):
+  one request for `www.sec.gov/files/company_tickers.json` (the shape the daily `sec_form4` job
+  has always read), fewer than 5,000 usable rows = `failed` with the stored list untouched, the
+  list replaced in one transaction, then the repair. A refused repair step ends the run `failed`
+  with the list stored. Daily, first in the `company-facts` group of `ingest.yml` (both matrix
+  lists); in `scripts/freshness-check.mjs` by run. Fake: `scripts/fake-sec-tickers.mjs` through
+  `SEC_EDGAR_BASE` (tests only; modes ok, short, noshape, down; `SEC_TICKERS_MIN_ROWS`).
+- **The runner calls `repair_ticker_owners()` after EVERY run** (`ingest/src/index.ts`, after the
+  publish step; never fails the run; prints a line only when it changed something). That is what
+  undoes a re-point made by `sec_form4` or `sec_form4_index` minutes earlier. **If the job log of
+  a daily run shows "✓ ticker owners: N securities moved ..." every day for the same tickers, that
+  is the write path flapping, not a fault of the repair.**
+- **Build rule** (`web/src/lib/issuer.ts`, pure; tests `scripts/issuer.test.ts`; wired in
+  `flagship.ts`): a Form 4 row whose filing's company (`filings.filer_company_id`, the issuer) is
+  not the company that owns the row's security comes off that security at build time
+  (`security_id` treated as null). It stays on the filer's page and is listed on the ISSUER's
+  company page, shown as "stock (no ticker)". It is in no ticker's totals, table, CSV, trade map
+  or feed item for that ticker. Congressional rows are never touched. The database rows are
+  unchanged. `server/od.ts` and `market-model.ts` (the on-demand pages) do not apply the rule.
+- **Build log** prints `[web] ticker owners: N Form 4 rows in F filings name an issuer other than
+  the company that owns the ticker; ticker (owner) rows from issuers: PRU (PRUDENTIAL FINANCIAL
+  INC) 4 from 2, ...; no ticker is the main ticker of more than one company`. SQL for the same:
+  `transactions t join site_filings f join site_securities s` where `f.source = 'sec_form4'`,
+  `f.filed_at >= '2025-10-01'`, the publishing bar, and `f.filer_company_id <> s.company_id`.
+- **Verifier.** `verify-industries` (it reads `companies.csv`): no ticker is the main ticker of
+  two companies, no security is listed under two, no company's main ticker is another company's
+  security, and sampled stock pages (KKR, IVZ and the seed's SWAP always) name in their "Company"
+  line the company that owns the ticker in `companies.csv`. On production before this change the
+  first check would have failed for 13 tickers.
+- **Seed:** SEC list rows for the seed's companies; SWAP (security with a trust, listed under the
+  parent, both carrying the ticker); the SEED SPONSOR CREDIT FUND now has an insider with a row
+  stored on NVDA. The seed ends with `select repair_ticker_owners();`, so that fund no longer
+  shares NVIDIA's main ticker (the shared-ticker branch of `verify-form144` and
+  `verify-schedule13` is no longer exercised locally; it stays as a guard).
+- Methodology `#ticker-owners`; guide `what-is-form-4` gained a paragraph and covers `issuer.ts`.
+- **Not done (part b and beyond):** the write path itself (stage 3c: a filing whose issuer is not
+  the security's company should not attach to it, and a missing symbol should not fall back to
+  the fetched ticker); inactive (market-only) securities and untracked companies, which the
+  on-demand pages read; giving a fund's rows a label better than "stock (no ticker)"; setting a
+  cleared company's main ticker to the one the SEC lists for it (Strive is ASST, Arbutus ABUS).
+- **Unattended-run note:** the database tool asked for a person's confirmation on a rolled-back
+  dry run of this migration (it holds DDL) and nobody was there, so the tool was not used again
+  in that run. The migration was tested on the local copy and shipped through `deploy.yml`.
+  Production figures in the change note come from read-only queries made before that point and
+  from the build log.

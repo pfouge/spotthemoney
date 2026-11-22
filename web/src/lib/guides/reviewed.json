@@ -196,11 +196,12 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-20",
+    "reviewed": "2026-11-22",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
       "web/src/lib/entity.ts": "4bf646367321d06f",
+      "web/src/lib/issuer.ts": "3097ec42d5ce53dc",
       "web/src/lib/industries.ts": "fbe7ab75d1ab8c70",
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
