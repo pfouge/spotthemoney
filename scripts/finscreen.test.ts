@@ -1,0 +1,145 @@
+// Company financials screener: the rules in web/src/lib/finscreen.ts.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  packFinScreen, unpackFinScreen, rowsFor, finMatches, finScreen, sortFsRows, fsSummaryLine, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, finScreenCounts, finScreenerHref,
+  fsCellText, fsViewCsv, fsViewCsvName, finScreenLog, usd, stepLabel, revMinLabel,
+  NO_FS_FILTER, DEFAULT_FS_VIEW, FS_CONCEPTS, FS_KEYS, REV_MIN_STEPS, REV_MAX_STEPS, ASSET_MIN_STEPS, type FsCompany, type FsPeriod, type FsConcept,
+} from "../web/src/lib/finscreen";
+
+const period = (end: string, v: Partial<Record<FsConcept, number | null>>, held: FsConcept[] = []): FsPeriod => ({
+  end, start: null, filed: "2026-02-01", form: "10-K", accession: "0000000001-26-000001",
+  v: { revenue: null, net_income: null, eps_diluted: null, assets: null, equity: null, ...v },
+  held: Object.fromEntries(FS_CONCEPTS.map((c) => [c.key, held.includes(c.key)])) as Record<FsConcept, boolean>,
+});
+const MFG = { name: "Manufacturing", slug: "manufacturing" }, SVC = { name: "Services", slug: "services" };
+const co = (name: string, x: Partial<FsCompany>): FsCompany => ({ name, path: `/companies/${name.toLowerCase()}/`, ticker: name.slice(0, 3).toUpperCase(), cik: "0000000001", division: null, sic: "", unit: "USD", year: null, quarter: null, ...x });
+const companies: FsCompany[] = [
+  co("Alpha", { cik: "0000000001", division: MFG, sic: "3674", year: period("2025-12-31", { revenue: 5e10, net_income: 4e9, eps_diluted: 3.2, assets: 9e10, equity: 4e10 }), quarter: period("2026-06-30", { revenue: 1.4e10, net_income: -2e8, eps_diluted: -0.1, assets: 9.5e10, equity: 4e10 }) }),
+  co("Beta", { cik: "0000000002", division: SVC, sic: "7372", year: period("2026-06-30", { revenue: 8e8, net_income: -5e7, eps_diluted: -0.4, assets: 2e9, equity: 1e9 }) }),
+  co("Gamma", { cik: "0000000003", division: MFG, sic: "3711", unit: "JPY", year: period("2026-03-31", { revenue: 4.5e13, net_income: 4e12, eps_diluted: 300, assets: 9e13, equity: 3e13 }) }),
+  co("Delta", { cik: "0000000004", year: period("2025-09-30", { revenue: 2e11, net_income: 1e10, eps_diluted: 790000, assets: 3e11, equity: 1e11 }, ["eps_diluted", "assets"]) }),
+  co("Epsilon", { cik: "0000000005", division: SVC, sic: "7370", quarter: period("2026-09-30", { revenue: 3e7, net_income: 1e6 }) }),
+  co("alpha two", { cik: "0000000006", division: MFG, year: period("2025-12-31", { net_income: 0, assets: 5e9 }) }),
+];
+const all = unpackFinScreen(packFinScreen("2026-11-22", companies));
+const names = (f: Partial<typeof NO_FS_FILTER>) => rowsFor(all, f.period ?? "year").filter((r) => finMatches(r, { ...NO_FS_FILTER, ...f })).map((r) => r.c.name).sort();
+
+test("packing keeps every figure and drops the held ones", () => {
+  const d = packFinScreen("2026-11-22", companies);
+  assert.deepEqual(d.divisions, [MFG, SVC]);
+  assert.equal(all.length, 6);
+  const alpha = all[0]!, delta = all.find((c) => c.name === "Delta")!;
+  assert.equal(alpha.year!.v.revenue, 5e10);
+  assert.equal(alpha.quarter!.v.net_income, -2e8);
+  assert.deepEqual(alpha.division, MFG);
+  assert.equal(delta.division, null);
+  assert.equal(delta.year!.held.eps_diluted, true);
+  assert.equal(delta.year!.v.eps_diluted, null, "a held figure is not in the data file");
+  assert.equal(delta.year!.v.assets, null);
+  assert.equal(delta.year!.v.revenue, 2e11);
+  assert.ok(!JSON.stringify(d).includes("790000"));
+  assert.equal(all.find((c) => c.name === "Beta")!.quarter, null);
+});
+
+test("a view holds only companies with that period", () => {
+  assert.deepEqual(rowsFor(all, "year").map((r) => r.c.name), ["Alpha", "Beta", "Gamma", "Delta", "alpha two"]);
+  assert.deepEqual(rowsFor(all, "quarter").map((r) => r.c.name), ["Alpha", "Epsilon"]);
+});
+
+test("dollar filters read dollar figures only; the sign of net income reads every currency", () => {
+  assert.deepEqual(names({ rmin: REV_MIN_STEPS[1] }), ["Alpha", "Delta"]);          // Gamma is in JPY, Beta is under, alpha two has none
+  assert.deepEqual(names({ rmax: REV_MAX_STEPS[1] }), ["Beta"]);
+  assert.deepEqual(names({ rmin: REV_MIN_STEPS[0], rmax: REV_MAX_STEPS[1] }), ["Beta"]);
+  assert.deepEqual(names({ rmin: REV_MIN_STEPS[3], rmax: REV_MAX_STEPS[0] }), []);
+  assert.deepEqual(names({ amin: ASSET_MIN_STEPS[0] }), ["Alpha", "Beta", "alpha two"]); // Delta's assets are held back, Gamma's are in JPY
+  assert.deepEqual(names({ ni: "pos" }), ["Alpha", "Delta", "Gamma"]);
+  assert.deepEqual(names({ ni: "neg" }), ["Beta"]);                                 // zero is neither
+  assert.deepEqual(names({ ni: "neg", period: "quarter" }), ["Alpha"]);
+  assert.deepEqual(names({ unit: "JPY" }), ["Gamma"]);
+  assert.deepEqual(names({ division: "manufacturing" }), ["Alpha", "Gamma", "alpha two"]);
+  assert.deepEqual(names({ division: "manufacturing", unit: "USD", ni: "pos" }), ["Alpha"]);
+  assert.deepEqual(names({ q: "alpha" }), ["Alpha", "alpha two"]);
+  assert.deepEqual(names({ q: "GAM" }), ["Gamma"]);
+  assert.deepEqual(names({ q: "two alpha" }), ["alpha two"]);
+  assert.equal(usd(rowsFor(all, "year")[2]!, "revenue"), null);
+});
+
+test("sorting: amounts in another currency, held figures and empty cells go last either way", () => {
+  const y = rowsFor(all, "year");
+  assert.deepEqual(sortFsRows(y, "revenue", "desc").map((r) => r.c.name), ["Delta", "Alpha", "Beta", "alpha two", "Gamma"]);
+  assert.deepEqual(sortFsRows(y, "revenue", "asc").map((r) => r.c.name), ["Beta", "Alpha", "Delta", "alpha two", "Gamma"]);
+  assert.deepEqual(sortFsRows(y, "assets", "desc").map((r) => r.c.name), ["Alpha", "alpha two", "Beta", "Delta", "Gamma"]);
+  assert.deepEqual(sortFsRows(y, "company", "asc").map((r) => r.c.name), ["Alpha", "alpha two", "Beta", "Delta", "Gamma"]);
+  assert.deepEqual(sortFsRows(y, "end", "desc").map((r) => r.c.name), ["Beta", "Gamma", "Alpha", "alpha two", "Delta"]);
+  assert.deepEqual(sortFsRows(y, "net_income", "asc").map((r) => r.c.name).slice(0, 2), ["Beta", "alpha two"]);
+});
+
+test("paging and the count line", () => {
+  const many = unpackFinScreen(packFinScreen("2026-11-22", Array.from({ length: 60 }, (_, i) => co(`Co ${String(i).padStart(2, "0")}`, { cik: String(i).padStart(10, "0"), year: period("2025-12-31", { revenue: (i + 1) * 1e9 }) }))));
+  const p1 = finScreen(many, DEFAULT_FS_VIEW);
+  assert.equal(p1.rows.length, 50); assert.equal(p1.pages, 2); assert.equal(p1.total, 60); assert.equal(p1.rows[0]!.c.name, "Co 59");
+  assert.equal(fsSummaryLine(p1, "year"), "All 60 companies with a fiscal year on file. Showing 1 to 50.");
+  const p2 = finScreen(many, { ...DEFAULT_FS_VIEW, page: 9 });
+  assert.equal(p2.page, 2); assert.equal(p2.from, 51); assert.equal(p2.to, 60);
+  const some = finScreen(many, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, rmin: REV_MIN_STEPS[2] }, per: 25 });
+  assert.equal(some.total, 51);
+  assert.equal(fsSummaryLine(some, "year"), "51 companies of 60 with a fiscal year on file. Showing 1 to 25.");
+  assert.equal(fsSummaryLine(finScreen(many, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, q: "zzz" } }), "year"), "No company matches these filters.");
+  assert.equal(fsSummaryLine(finScreen(many, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, period: "quarter" } }), "quarter"), "No company has a quarter on file yet.");
+  assert.match(fsSummaryLine(finScreen(all, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, ni: "neg" } }), "year"), /^1 company of 5 /);
+});
+
+test("the address: round trip, defaults left out, junk ignored", () => {
+  assert.equal(toFinHash(DEFAULT_FS_VIEW), "");
+  const v = { f: { ...NO_FS_FILTER, period: "quarter" as const, division: "manufacturing", unit: "USD", rmin: 1e9, rmax: 1e10, ni: "pos" as const, amin: 1e10, q: "al pha" }, sort: "assets" as const, dir: "asc" as const, page: 3, per: 25 };
+  const hash = toFinHash(v);
+  assert.deepEqual(parseFinHash(hash), v);
+  assert.ok(new URLSearchParams(hash.slice(1)).has("division"));
+  for (const k of new URLSearchParams(hash.slice(1)).keys()) assert.ok(FS_KEYS.includes(k), k);
+  assert.deepEqual(parseFinHash("#period=decade&division=<script>&unit=dollars&rmin=7&rmax=abc&ni=maybe&amin=-1&sort=quality&dir=up&page=0&per=7"), DEFAULT_FS_VIEW);
+  assert.equal(parseFinHash("#sort=company").dir, "asc");
+  assert.equal(parseFinHash("#unit=jpy").f.unit, "JPY");
+  assert.equal(isFsViewHash("#about"), false);
+  assert.equal(isFsViewHash("#x=1"), false);
+  assert.equal(isFsViewHash("#division=services"), true);
+  assert.equal(isDefaultFsFilter(parseFinHash("#sort=assets&per=25").f), true);
+  assert.equal(isDefaultFsFilter(parseFinHash("#period=quarter").f), false);
+  assert.equal(finScreenerHref({ division: "services" }), "/company-financials/#division=services");
+  assert.equal(finScreenerHref({}), "/company-financials/");
+});
+
+test("what a link from an industry page opens on", () => {
+  const c = finScreenCounts(all);
+  assert.equal(c.total, 5);
+  assert.deepEqual([...c.division].sort(), [["manufacturing", 3], ["services", 1]]);
+  assert.equal(finScreen(all, parseFinHash("#division=manufacturing")).total, c.division.get("manufacturing"));
+});
+
+test("cells, labels and the file of the rows on screen", () => {
+  const y = rowsFor(all, "year");
+  const alpha = y[0]!, gamma = y[2]!, delta = y[3]!, two = y[4]!;
+  assert.equal(fsCellText(alpha, "revenue"), "$50.00B");
+  assert.equal(fsCellText(alpha, "eps_diluted"), "$3.20");
+  assert.equal(fsCellText(gamma, "revenue"), "JPY 45.00T");
+  assert.equal(fsCellText(gamma, "eps_diluted"), "JPY 300.00");
+  assert.equal(fsCellText(delta, "eps_diluted"), "not shown");
+  assert.equal(fsCellText(two, "revenue"), "");
+  assert.equal(fsCellText(two, "net_income"), "$0");
+  assert.equal(stepLabel(1e8), "$100 million"); assert.equal(revMinLabel(1e11), "Revenue $100 billion or more");
+  const csv = fsViewCsv(all, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, ni: "pos" } });
+  const lines = (csv.charCodeAt(0) === 0xfeff ? csv.slice(1) : csv).trim().split("\r\n");
+  assert.equal(lines.length, 4);
+  assert.ok(lines[0]!.startsWith("company,ticker,cik,sic_code,sic_division,period,period_start,period_end,currency,revenue,net_income,eps_diluted,assets,equity,not_shown,"));
+  assert.ok(lines[1]!.startsWith("Delta,"), "largest dollar revenue first");
+  assert.ok(lines[1]!.includes("eps_diluted; assets"));
+  assert.ok(!lines[1]!.includes("790000"));
+  assert.ok(lines[3]!.startsWith("Gamma,"));
+  assert.ok(lines[2]!.includes("https://www.sec.gov/Archives/edgar/data/1/000000000126000001/0000000001-26-000001-index.htm"));
+  assert.equal(fsViewCsvName({ ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, division: "manufacturing", rmin: 1e9 } }, "2026-11-22"), "company-financials-fiscal-year-manufacturing-revmin1000000000-2026-11-22.csv");
+  const log = finScreenLog(all);
+  assert.match(log, /^financials screener: 6 companies, 5 with a fiscal year, 2 with a quarter; 1 not in dollars;/);
+  assert.match(log, /net income above zero 3, below zero 1/);
+  assert.match(log, /figures not shown 2 \(fiscal year\), 0 \(quarter\)/);
+  for (const bad of ["score", "rating", "best", "worst", "cheap", "undervalued"]) assert.ok(!log.toLowerCase().includes(bad));
+});

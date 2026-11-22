@@ -63,7 +63,7 @@
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "0dd0f86f9fb8dc5b",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "a604b5774d94c248",
+      "web/src/lib/datafiles.ts": "2e6787a6687f9d77",
       "web/src/pages/developers.astro": "ad02755c67844e81"
     }
   },
@@ -216,8 +216,10 @@
       "web/src/lib/form144.ts": "5792da219a57b938",
       "web/src/components/PlannedSales.astro": "cecc243987af144c",
       "web/src/lib/financials.ts": "5ac8828e6d9e5b2c",
-      "web/src/components/Financials.astro": "84a5fc0797e6b868",
-      "web/src/components/FiledNotices.astro": "cc73065ceec3cc06"
+      "web/src/components/Financials.astro": "dbc487422b5f91e4",
+      "web/src/components/FiledNotices.astro": "cc73065ceec3cc06",
+      "web/src/lib/finscreen.ts": "a0d26b17bd0dfed7",
+      "web/src/pages/company-financials.astro": "0f3a75c5a7b9d6be"
     }
   }
 }
