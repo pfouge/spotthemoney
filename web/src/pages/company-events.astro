@@ -1,0 +1,135 @@
+---
+// Company events: /company-events/. Every Form 8-K report filed in the last 12 months by a company
+// with a page on this site, with filters (company or ticker, item, industry division, report or
+// amendment, window) and sortable columns. Rules are in lib/events8k.ts (unit-tested). The page prints
+// the first rows itself; scripts/companyevents.ts loads /data/company-events.json and takes over, so
+// without JavaScript the first rows are still here and the controls are hidden.
+// Not under /companies/: every /companies/<x>/ address is a company page.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, num, plural } from "../lib/flagship";
+import { datasetLd } from "../lib/seo";
+import { siteEventsHub } from "../lib/events8k-build";
+import {
+  unpackHub, hubScreen, hubSummaryLine, hubItemOptions, hubShortDate, orderItems, itemLabel, isAmendment, safeUrl,
+  DEFAULT_HUB_VIEW, DEFAULT_PER, PER_PAGE, HUB_WINDOWS, HUB_WINDOW_LABEL, FORMS, FORM_LABEL, EXHIBITS_ITEM, EVENTS_DATA, EVENT_CAVEAT, EVENT_WINDOW_DAYS,
+} from "../lib/events8k";
+
+const model = await getFlagship();
+const { data } = siteEventsHub(model);
+const all = unpackHub(data);
+const first = hubScreen(all, DEFAULT_HUB_VIEW, data.built);
+const items = hubItemOptions(all);
+const companies = new Set(all.map((r) => r.c.cik)).size;
+const lastUpdated = all.map((r) => r.e.filed).sort().at(-1) ?? model.builtAt;
+const answer = all.length === 0
+  ? "No Form 8-K reports are on file here yet. Reports are added as companies file them with the SEC."
+  : `${plural(first.total, "company event report")} (Form 8-K) ${first.total === 1 ? "was" : "were"} filed in the last 30 days by ${plural(first.companies, "company", "companies")} with a page on this site; ${num(all.length)} in the last 12 months. Each row is the company's own report and the SEC's heading for each item it names.`;
+const description = "The newest Form 8-K reports from companies on this site, with the SEC's item headings. Filter by item, industry and date.";
+const csv = (await getDownloads()).files.find((f) => f.name === "company-events.csv");
+const ld = datasetLd({ downloads: [csv?.path], name: "Company events: Form 8-K reports", path: "/company-events/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["Form 8-K", "company events", "SEC filings", "current reports"], sources: [{ name: "SEC EDGAR: Form 8-K", url: "https://www.sec.gov/search-filings" }], parentCatalogPath: "/" });
+---
+<BaseLayout title="Company Events: Newest Form 8-K Reports" description={description} section="Companies" noindex={all.length === 0}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: "Company events", path: "/company-events/" }]} />
+  <h1>Company events</h1>
+  <p class="lede">The Form 8-K reports that companies on this site filed with the SEC in the last 12 months, newest first, with the SEC's heading for each item a report names. Narrow the list by item, industry and date.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR, Form 8-K and 8-K/A; SEC industry codes" />
+
+  {all.length === 0 ? <p class="empty-reason">No Form 8-K reports on file yet.</p> : (
+    <div class="evhub" data-evhub data-src={EVENTS_DATA} data-built={data.built} data-total={all.length}>
+      <div class="controls ev-controls" role="group" aria-label="Filter reports">
+        <div class="ctl"><label class="lbl" for="ev-q">Company or ticker</label><input id="ev-q" class="hm-input" data-ev="q" type="search" placeholder="Company or ticker" autocomplete="off" maxlength="60" /></div>
+        <div class="ctl"><span class="lbl">Item</span>
+          <select data-ev="item" aria-label="Item the report names"><option value="">Any item</option>{items.map((i) => <option value={i.item}>{`${i.item} ${i.heading ?? ""}`.trim()} ({i.reports})</option>)}</select>
+        </div>
+        {data.divisions.length > 0 && (
+          <div class="ctl"><span class="lbl">Industry</span>
+            <select data-ev="division" aria-label="Industry division, as the SEC classifies the company"><option value="">Any industry</option>{data.divisions.map((d) => <option value={d.slug}>{d.name}</option>)}</select>
+          </div>
+        )}
+        <div class="ctl"><span class="lbl">Form</span>
+          <select data-ev="form" aria-label="Report or amendment"><option value="">Reports and amendments</option>{FORMS.map((f) => <option value={f}>{FORM_LABEL[f]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Filed</span>
+          <select data-ev="w" aria-label="When the report was filed">{HUB_WINDOWS.map((w) => <option value={w} selected={w === DEFAULT_HUB_VIEW.f.w}>{HUB_WINDOW_LABEL[w]}</option>)}</select>
+        </div>
+      </div>
+      <p class="section-note ev-count"><span data-ev="count" aria-live="polite">{hubSummaryLine(first)}</span> <button type="button" class="linklike" data-ev="reset" hidden>Reset filters</button></p>
+      <DownloadCsv file={csv} note="every report on record for every company with a page, not only the rows filtered here" />
+      <p class="dl-row ev-dl"><button type="button" class="dl" data-ev="download">Download these rows (CSV)</button> <span class="dl-meta">The reports that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+
+      <div class="tablewrap"><table class="data ev-hub-table">
+        <thead><tr>
+          <th aria-sort="descending" data-sort="filed" data-first="desc"><button type="button" class="sort" aria-label="Sort by filed">Filed<span class="arr" aria-hidden="true">▼</span></button></th>
+          <th aria-sort="none" data-sort="company" data-first="asc"><button type="button" class="sort" aria-label="Sort by company">Company<span class="arr" aria-hidden="true"></span></button></th>
+          <th>Industry</th>
+          <th>Form</th>
+          <th>Items</th>
+          <th>Report</th>
+        </tr></thead>
+        <tbody data-ev="rows">
+          {first.rows.map((r) => {
+            const its = orderItems(r.e.items); const url = safeUrl(r.e.sourceUrl); const am = isAmendment(r.e);
+            return (
+              <tr data-cik={r.c.cik} data-event={r.e.accession}>
+                <td class="mono">{hubShortDate(r.e.filed)}</td>
+                <td>{r.c.path ? <a href={r.c.path}>{r.c.name}</a> : r.c.name}{r.c.ticker && <span class="soft small mono"> {r.c.ticker}</span>}</td>
+                <td>{r.c.division && <a href={`/industries/${r.c.division.slug}/`}>{r.c.division.name}</a>}</td>
+                <td data-ev-form>{r.e.form}{am && <span class="soft small"> amendment</span>}</td>
+                <td class="wrap ev-items" data-ev-items>{its.length ? its.map((i) => <span class:list={["ev-item", i === EXHIBITS_ITEM && "ev-soft"]} data-item={i}>{itemLabel(i)}</span>) : "—"}</td>
+                <td>{url ? <a href={url} rel="noopener nofollow" target="_blank">{am ? "8-K/A" : "8-K"} ↗</a> : (am ? "8-K/A" : "8-K")}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table></div>
+      <p class="empty-reason" data-ev="empty" hidden>No report matches these filters. <button type="button" class="linklike" data-ev="reset2">Clear the filters</button></p>
+      <div class="ev-pager" data-ev="pager">
+        <button type="button" class="chip" data-ev="prev" disabled>Previous</button>
+        <span data-ev="pageinfo" class="soft">Page 1 of {num(first.pages)}</span>
+        <button type="button" class="chip" data-ev="next" disabled={first.pages <= 1}>Next</button>
+        <label class="ev-per soft">Rows per page <select data-ev="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
+      </div>
+      <noscript><p class="section-note">These are the first {num(first.rows.length)} reports of the last 30 days. The filters need JavaScript; the CSV file above has every report on record.</p></noscript>
+    </div>
+  )}
+
+  <h2 id="about">What this list shows</h2>
+  <p>{EVENT_CAVEAT} A company must file one within four business days of the event, so the filing date is close to the date of the event; the event date in the CSV file is the one the report states. A report can name several items. Item 9.01 (financial statements and exhibits) is on most reports because it attaches the documents of another item, so it is printed last and in softer ink.</p>
+  <p>The list covers {plural(companies, "company", "companies")} with a page on this site and the last {EVENT_WINDOW_DAYS} days of filings. An amendment (8-K/A) is its own row; the form does not say which report it amends, so the rows are not linked. Nothing here is read from the reports themselves, rated or compared with any trade. How reports are counted: <a href="/methodology/#company-events">methodology</a>. What a Form 8-K is: <a href="/guides/form-8-k-company-events/">the guide</a>.</p>
+  <AdSlot />
+
+  <p class="disclaimer"><strong>Not investment advice.</strong> Reports shown as filed with the SEC; no judgement about any company is made or implied.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  .ev-controls .hm-input { width: 200px; }
+  .ev-controls select { max-width: 290px; }
+  .ev-count { margin: 0 0 0.25rem; }
+  .ev-dl { margin-top: 0; }
+  .ev-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
+  .ev-dl button.dl:hover { background: var(--chip); }
+  .ev-dl button.dl:disabled { opacity: 0.45; cursor: default; }
+  :global(html:not(.js)) .ev-dl { display: none; }
+  .ev-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
+  .ev-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
+  .ev-pager button.chip:disabled { opacity: 0.45; cursor: default; }
+  .ev-pager[hidden] { display: none; }
+  .ev-per { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .linklike { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+  .ev-items { min-width: 16rem; }
+  .ev-item { display: block; line-height: 1.35; }
+  .ev-soft { color: var(--ink-soft); font-size: 13px; }
+  .evhub[data-loading] .ev-hub-table { opacity: 0.6; }
+  :global(html:not(.js)) .ev-controls, :global(html:not(.js)) .ev-pager { display: none; }
+</style>
+<script>
+  import "../scripts/companyevents";
+</script>

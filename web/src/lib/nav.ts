@@ -28,8 +28,8 @@ export const NAV: NavGroup[] = [
     { href: "/companies/", label: "Companies", desc: "Insiders, contracts and lobbying by company", live: true },
     { href: "/industries/", label: "Industries", desc: "Companies grouped by SEC industry code", live: true },
     { href: "/company-financials/", label: "Financials screener", desc: "Filed revenue, income and assets side by side", live: true },
-    { href: "/company-events/", label: "Company events", desc: "Filings that announce company news", live: false },
-    { href: "/executive-pay/", label: "Executive pay", desc: "What companies report paying their officers", live: false },
+    { href: "/company-events/", label: "Company events", desc: "Filings that announce company news", live: true },
+    { href: "/executive-pay/", label: "Executive pay", desc: "What companies report paying their officers", live: true },
   ] },
   { key: "washington", label: "Washington", href: "/washington/", items: [
     { href: "/washington/", label: "Overview", desc: "Money moving through Washington", live: true },

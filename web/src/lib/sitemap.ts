@@ -13,6 +13,10 @@ import { buildIssues, ISSUES_PATH } from "./lobbyissues";
 import { siteIndustries } from "./industries-build";
 import { siteFinScreen } from "./finscreen-build";
 import { FIN_SCREENER_PATH } from "./finscreen";
+import { siteEventsHub } from "./events8k-build";
+import { sitePayHub } from "./execpay-build";
+import { EVENTS_PATH } from "./events8k";
+import { PAY_PATH } from "./execpay";
 import { INDUSTRIES_PATH } from "./industries";
 import { MARKETS_PATH, WFE } from "./worldmarkets";
 import { getMarketIndexable, SITEMAP_URL_LIMIT } from "./market";
@@ -69,6 +73,9 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     ...industries.map((d) => ({ loc: d.path, lastmod: built, changefreq: "daily" as const, priority: 0.5 })),
     // The company financials screener is indexable only when it has rows (pages/company-financials.astro).
     ...(siteFinScreen(model).all.length ? [{ loc: FIN_SCREENER_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
+    // Company events and executive pay are indexable only when they have rows (their pages).
+    ...(siteEventsHub(model).data.rows.length ? [{ loc: EVENTS_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...(sitePayHub(model).data.rows.length ? [{ loc: PAY_PATH, lastmod: built, changefreq: "weekly" as const, priority: 0.5 }] : []),
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/donations/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/lobbying/", lastmod: built, changefreq: "daily", priority: 0.7 },

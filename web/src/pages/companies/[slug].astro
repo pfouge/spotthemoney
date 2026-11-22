@@ -26,6 +26,12 @@ import PlannedSales from "../../components/PlannedSales.astro";
 import { noticesInWindow } from "../../lib/form144";
 import LargeHolders from "../../components/LargeHolders.astro";
 import Financials from "../../components/Financials.astro";
+import CompanyEvents from "../../components/CompanyEvents.astro";
+import ExecutivePay from "../../components/ExecutivePay.astro";
+import { eventsOf } from "../../lib/events8k-build";
+import { eventsInWindow } from "../../lib/events8k";
+import { payOf } from "../../lib/execpay-build";
+import { payGlance, shownYears as payShownYears } from "../../lib/execpay";
 import ReportedHoldings from "../../components/ReportedHoldings.astro";
 import { holdingsOf } from "../../lib/schedule13";
 import { statementsFiledBy } from "../../lib/schedule13-build";
@@ -76,10 +82,15 @@ const finYears = fin ? shownYears(fin) : [];
 const finQuarters = fin ? shownQuarters(fin) : [];
 const finShown = finYears.length + finQuarters.length > 0;
 const finNewest = finYears[0] ?? finQuarters[0];
+// Form 8-K reports filed in the last 12 months (lib/events8k.ts) and Pay Versus Performance figures (lib/execpay.ts).
+const evRows = eventsInWindow(eventsOf(model, c.cik), model.builtAt.slice(0, 10));
+const payYears = payOf(model, c.cik);
+const payTile = payGlance(payYears);
+const companyShown = finShown || evRows.length > 0 || payShownYears(payYears).length > 0;
 // Schedule 13 statements this company filed about other companies on the site.
 const holdingsN = holdingsOf(statementsFiledBy(model, c.cik), model.builtAt).length;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
-const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || finShown || plannedN > 0 || holdersN > 0 || holdingsN > 0;
+const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || companyShown || plannedN > 0 || holdersN > 0 || holdingsN > 0;
 const latestInsider = txns.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 const glance = [
   ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
@@ -87,13 +98,15 @@ const glance = [
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
   ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
+  ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
+  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
   ...(c.contracts.length ? [{ label: "Federal contracts", value: num(c.contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
   ...(c.lobbying.length ? [{ label: "Lobbying filings", value: num(c.lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
 ];
 const groupList = hasData ? [
   { id: "trading", label: "Trading" },
   ...(holdersN || holdingsN ? [{ id: "ownership", label: "Ownership" }] : []),
-  ...(finShown ? [{ id: "company", label: "Company" }] : []),
+  ...(companyShown ? [{ id: "company", label: "Company" }] : []),
   { id: "washington", label: "Washington" },
   { id: "record", label: "About this record" },
 ] : [];
@@ -185,9 +198,11 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </PageGroup>
   )}
 
-  {finShown && (
+  {companyShown && (
     <PageGroup id="company" label="Company">
       <Financials model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "financials")} />
+      <ExecutivePay model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "execpay")} />
+      <CompanyEvents model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "events")} />
     </PageGroup>
   )}
 

@@ -26,6 +26,8 @@ import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOu
 import { SHOWN_CONCEPTS, CHECK_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
 import { financialsOf } from "./financials-build";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
+import { EVENT_CSV_COLUMNS, sortEvents, type EventCsvRow } from "./events8k";
+import { PAY_CSV_COLUMNS, sortYears, type PayCsvRow } from "./execpay";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -40,7 +42,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -357,6 +359,21 @@ async function build(): Promise<Downloads> {
     { key: "page_url", about: "The company's page on this site.", get: (r) => { const c = fco(r); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
   ];
   add(file({ name: "company-financials.csv", group: "insiders", kind: "financials", title: "Company financials, as filed with the SEC", about: "One row per company and period: revenue, net income, earnings per share, cash flow and balance-sheet totals from annual and quarterly reports, for the companies this site tracks. Figures as filed, in the company's own currency.", updated: finRows.reduce<string | null>((a, r) => { const d = sourceFilings(r.period)[0]?.filed ?? null; return d && (!a || d > a) ? d : a; }, null) }, finCols, finRows));
+
+
+  // Company events (Form 8-K): every report on record for a company with a page, one row per report
+  // (lib/events8k.ts). The page section shows the last 12 months; the file holds all of them.
+  const evRows: EventCsvRow[] = [];
+  const payRows: PayCsvRow[] = [];
+  for (const c of [...byCik.values()].filter((x) => x.slug).sort((a, b) => a.name.localeCompare(b.name) || a.cik!.localeCompare(b.cik!))) {
+    const k = c.cik!.padStart(10, "0");
+    const path = companyPath(c);
+    const base = { company: c.name, cik: k, ticker: c.primaryTicker ?? "", pagePath: path ? SITE_URL + path : null };
+    for (const e of sortEvents(m.events.byCik.get(k) ?? [])) evRows.push({ ...base, e });
+    for (const y of sortYears(m.execPay.byCik.get(k) ?? [])) payRows.push({ ...base, y });
+  }
+  add(file({ name: "company-events.csv", group: "insiders", kind: "events", title: "Company events: Form 8-K reports", about: "One row per Form 8-K report (or 8-K/A amendment) filed by a company this site has a page for: filing and event dates, the item numbers the report names with the SEC's heading for each, and a link to the report. The text of a report is not included.", updated: newest(evRows.map((r) => r.e.filed)) }, EVENT_CSV_COLUMNS, evRows));
+  add(file({ name: "executive-pay.csv", group: "insiders", kind: "execpay", title: "Executive pay, as filed (Pay Versus Performance)", about: "One row per company and fiscal year: the principal executive officer's total and compensation actually paid, and the average for the other named executive officers, in dollars as the company tagged them. No person is named.", updated: newest(payRows.map((r) => r.y.fiscalYearEnd)) }, PAY_CSV_COLUMNS, payRows));
 
   // Rates
   for (const f of await rateFiles()) add(f);

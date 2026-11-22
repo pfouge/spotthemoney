@@ -18,6 +18,10 @@ import { emptySchedule13, schedule13Log, holdingsLog } from "./schedule13";
 import { loadSchedule13 } from "./schedule13-build";
 import { emptyFinancials, financialsLog } from "./financials";
 import { loadFinancials } from "./financials-build";
+import { emptyEvents, eventsLog } from "./events8k";
+import { loadEvents } from "./events8k-build";
+import { emptyPay, payLog } from "./execpay";
+import { loadPay } from "./execpay-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -71,7 +75,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -159,7 +163,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -395,6 +399,23 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${financialsLog(model.financials, ciks)}`);
     } catch (err) {
       console.warn("[web] company financials skipped:", (err as Error).message);
+    }
+
+    // Form 8-K reports (lib/events8k.ts) and executive pay figures (lib/execpay.ts): each optional, so
+    // a missing table leaves its section, file and hub out.
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.events = await loadEvents(sql, ciks);
+      console.log(`[web] ${eventsLog(model.events, builtAt, ciks)}`);
+    } catch (err) {
+      console.warn("[web] company events skipped:", (err as Error).message);
+    }
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.execPay = await loadPay(sql, ciks);
+      console.log(`[web] ${payLog(model.execPay, ciks)}`);
+    } catch (err) {
+      console.warn("[web] executive pay skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

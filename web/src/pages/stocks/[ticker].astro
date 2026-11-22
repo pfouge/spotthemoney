@@ -12,6 +12,12 @@ import PlannedSales from "../../components/PlannedSales.astro";
 import { noticesInWindow } from "../../lib/form144";
 import LargeHolders from "../../components/LargeHolders.astro";
 import Financials from "../../components/Financials.astro";
+import CompanyEvents from "../../components/CompanyEvents.astro";
+import ExecutivePay from "../../components/ExecutivePay.astro";
+import { eventsOf } from "../../lib/events8k-build";
+import { eventsInWindow } from "../../lib/events8k";
+import { payOf } from "../../lib/execpay-build";
+import { payGlance, shownYears as payShownYears } from "../../lib/execpay";
 import { financialsOf } from "../../lib/financials-build";
 import { holdersOf } from "../../lib/schedule13";
 import { getDownloads } from "../../lib/downloads";
@@ -64,6 +70,11 @@ const finYears = fin ? shownYears(fin) : [];
 const finQuarters = fin ? shownQuarters(fin) : [];
 const finShown = finYears.length + finQuarters.length > 0;
 const finNewest = finYears[0] ?? finQuarters[0];
+// Form 8-K reports filed in the last 12 months (lib/events8k.ts) and Pay Versus Performance figures (lib/execpay.ts).
+const evRows = eventsInWindow(eventsOf(model, company?.cik), model.builtAt.slice(0, 10));
+const payYears = payOf(model, company?.cik);
+const payTile = payGlance(payYears);
+const companyShown = finShown || evRows.length > 0 || payShownYears(payYears).length > 0;
 const y = txns.filter((t) => withinDays(t.disclosedAt, 365));
 const yIns = y.filter((t) => t.source === "sec_form4");
 const yCon = y.filter((t) => t.source !== "sec_form4");
@@ -96,9 +107,11 @@ const glance = [
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
+  ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
+  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
 ];
 const hasData = txns.length > 0;
-const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN ? [{ id: "ownership", label: "Ownership" }] : []), ...(finShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
+const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
 
 const answer = txns.length === 0
   ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.`
@@ -236,9 +249,11 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
     </PageGroup>
   )}
 
-  {finShown && (
+  {companyShown && (
     <PageGroup id="company" label="Company">
       <Financials model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "financials")} />
+      <ExecutivePay model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "execpay")} />
+      <CompanyEvents model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "events")} />
     </PageGroup>
   )}
 

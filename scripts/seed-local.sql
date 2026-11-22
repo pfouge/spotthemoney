@@ -550,6 +550,68 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
 insert into company_financials_checked (cik, checked_at, status, rows, newest_filed)
 select cik, now(), 'ok', count(*), max(filed) from company_financials group by cik;
 
+-- Company events (Form 8-K, company_events): dates are relative to today so the 12-month window and the
+-- 15-row cap behave the same whenever the seed is loaded. NVIDIA: 20 reports across 14 months with varied
+-- items (2.02 + 9.01, 5.02, 8.01 alone, 1.01 + 2.03 + 9.01, an amendment, two on one day, one older than 12
+-- months). Palantir: 3. Microsoft: 1, older than 12 months only (no section, still in the CSV file).
+-- One report is by a CIK with no company (never shown). A few source addresses are not the standard
+-- folder shape, so the packed hub file's full-address branch runs.
+delete from company_events;
+insert into company_events (accession, cik, form, filed, report_date, items, primary_document, source_url) values
+  ('0001045810-26-000001', '0001045810', '8-K',   current_date - 5,   current_date - 6,   '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000001/doc.htm'),
+  ('0001045810-26-000002', '0001045810', '8-K',   current_date - 12,  current_date - 14,  '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000002/doc.htm'),
+  ('0001045810-26-000003', '0001045810', '8-K',   current_date - 20,  current_date - 20,  '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000003/doc.htm'),
+  ('0001045810-26-000004', '0001045810', '8-K',   current_date - 30,  current_date - 31,  '{9.01,1.01,2.03}', 'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000004/doc.htm'),
+  ('0001045810-26-000005', '0001045810', '8-K/A', current_date - 33,  null,               '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000005/doc.htm'),
+  ('0001045810-26-000006', '0001045810', '8-K',   current_date - 45,  current_date - 45,  '{7.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000006/doc.htm'),
+  ('0001045810-26-000007', '0001045810', '8-K',   current_date - 45,  current_date - 46,  '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000007/doc.htm'),
+  ('0001045810-26-000008', '0001045810', '8-K',   current_date - 60,  current_date - 61,  '{5.07}',           null,      'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1045810&type=8-K'),
+  ('0001045810-26-000009', '0001045810', '8-K',   current_date - 75,  current_date - 76,  '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000009/doc.htm'),
+  ('0001045810-26-000010', '0001045810', '8-K',   current_date - 90,  current_date - 92,  '{5.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000010/doc.htm'),
+  ('0001045810-26-000011', '0001045810', '8-K',   current_date - 110, current_date - 111, '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000011/doc.htm'),
+  ('0001045810-26-000012', '0001045810', '8-K',   current_date - 130, current_date - 131, '{7.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000012/doc.htm'),
+  ('0001045810-26-000013', '0001045810', '8-K',   current_date - 150, current_date - 151, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000013/doc.htm'),
+  ('0001045810-26-000014', '0001045810', '8-K',   current_date - 180, current_date - 181, '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000014/doc.htm'),
+  ('0001045810-26-000015', '0001045810', '8-K',   current_date - 210, current_date - 211, '{1.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000015/doc.htm'),
+  ('0001045810-26-000016', '0001045810', '8-K',   current_date - 250, current_date - 251, '{8.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000016/doc.htm'),
+  ('0001045810-26-000017', '0001045810', '8-K',   current_date - 290, current_date - 291, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000017/doc.htm'),
+  ('0001045810-26-000018', '0001045810', '8-K',   current_date - 330, current_date - 331, '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000018/doc.htm'),
+  ('0001045810-26-000019', '0001045810', '8-K',   current_date - 360, current_date - 361, '{7.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000019/doc.htm'),
+  ('0001045810-25-000020', '0001045810', '8-K',   current_date - 420, current_date - 421, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581025000020/doc.htm'),
+  ('0001321655-26-000001', '0001321655', '8-K',   current_date - 3,   current_date - 4,   '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1321655/000132165526000001/doc.htm'),
+  ('0001321655-26-000002', '0001321655', '8-K',   current_date - 40,  current_date - 41,  '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1321655/000132165526000002/doc.htm'),
+  ('0001321655-26-000003', '0001321655', '8-K',   current_date - 200, current_date - 201, '{1.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1321655/000132165526000003/doc.htm'),
+  ('0000789019-25-000001', '0000789019', '8-K',   current_date - 500, current_date - 501, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/789019/000078901925000001/doc.htm'),
+  ('0009999001-26-000001', '0009999001', '8-K',   current_date - 10,  current_date - 11,  '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/9999001/000999900126000001/doc.htm');
+
+-- Executive pay (exec_pay, Pay Versus Performance). NVIDIA: five fiscal years, so the cap of four shows,
+-- with a negative compensation actually paid and one missing measure. Palantir: one year with a total of $1
+-- and an actually-paid figure of $2.4 billion (both marked). Lockheed: other named officers only (the
+-- section shows, the glance tile does not). One CIK has no company (never shown). Microsoft has none.
+delete from exec_pay;
+insert into exec_pay (cik, measure, tag, fiscal_year_end, value, accession, frame) values
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2026-01-25', 49866000,  '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2026-01-25', 112400000, '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2026-01-25', 13900000,  '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2026-01-25', 31200000,  '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2025-01-26', 34200000,  '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2025-01-26', 189000000, '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2025-01-26', 9800000,   '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2025-01-26', 61000000,  '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2024-01-28', 21300000,  '0001045810-24-000036', 'CY2023'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2024-01-28', 210500000, '0001045810-24-000036', 'CY2023'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2024-01-28', 6600000,   '0001045810-24-000036', 'CY2023'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2023-01-29', 24400000,  '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2023-01-29', -3100000,  '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2023-01-29', 7000000,   '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2023-01-29', -1200000,  '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2022-01-30', 19000000,  '0001045810-22-000028', 'CY2021'),
+  ('0001321655', 'peo_total',              'PeoTotalCompAmt',                 '2025-12-31', 1,          '0001321655-26-000010', 'CY2025'),
+  ('0001321655', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2025-12-31', 2400000000, '0001321655-26-000010', 'CY2025'),
+  ('0000936468', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2025-12-31', 8000000,   '0000936468-26-000011', 'CY2025'),
+  ('0000936468', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2025-12-31', 9100000,   '0000936468-26-000011', 'CY2025'),
+  ('0009999001', 'peo_total',              'PeoTotalCompAmt',                 '2025-12-31', 10000000,  '0009999001-26-000001', 'CY2025');
+
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
 -- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the

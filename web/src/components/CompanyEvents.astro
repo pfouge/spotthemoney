@@ -1,0 +1,74 @@
+---
+// "Company events: Form 8-K reports" on stock and company pages (lib/events8k.ts has the rules).
+// Renders nothing unless the company has a report filed in the last 12 months. A report is the
+// company's own statement that something happened: nothing here is read from its text, derived from
+// it or placed beside a trade.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import { formatDate } from "../lib/format";
+import { eventsOf } from "../lib/events8k-build";
+import { eventsInWindow, eventSummary, summarySentence, itemCounts, itemLabel, orderItems, isAmendment, safeUrl, EVENT_CAVEAT, EVENT_ROWS, EXHIBITS_ITEM, EVENTS_PATH } from "../lib/events8k";
+import DownloadCsv from "./DownloadCsv.astro";
+
+interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
+const { model, cik, name, file } = Astro.props;
+const rows = eventsInWindow(eventsOf(model, cik), model.builtAt.slice(0, 10));
+const s = eventSummary(rows);
+const shown = rows.slice(0, EVENT_ROWS);
+const counts = itemCounts(rows);
+const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
+---
+{rows.length > 0 && (
+  <section aria-labelledby="company-events" id="company-events-section" data-company-events data-cik={cik!.padStart(10, "0")} data-reports={rows.length} data-amendments={s.amendments}>
+    <h2 id="company-events">Company events: Form 8-K reports</h2>
+    <p data-ev-summary>{summarySentence(name, s)}</p>
+    <p class="ev-note" data-ev-caveat>{EVENT_CAVEAT} <a href="/guides/form-8-k-company-events/">What a Form 8-K is</a>.</p>
+    <DownloadCsv file={file} label="Download all reports (CSV)" note="every company with a page" />
+    <p class="ev-note"><a href={EVENTS_PATH}>Browse the newest reports from all companies</a>.</p>
+    <div class="tablewrap"><table class="data ev-table" data-sortable><thead><tr>
+      <th aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by filed">Filed<span class="arr" aria-hidden="true"></span></button></th>
+      <th aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by event date">Event date<span class="arr" aria-hidden="true"></span></button></th>
+      <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by form">Form<span class="arr" aria-hidden="true"></span></button></th>
+      <th>Items</th>
+      <th>Report</th>
+    </tr></thead><tbody>
+      {shown.map((e) => {
+        const items = orderItems(e.items);
+        const url = safeUrl(e.sourceUrl);
+        const am = isAmendment(e);
+        return (
+          <tr data-event={e.accession}>
+            <td class="mono" data-v={dayNum(e.filed)} data-ev-filed>{formatDate(e.filed)}</td>
+            <td class="mono" data-v={dayNum(e.reportDate)} data-ev-date>{e.reportDate ? formatDate(e.reportDate) : "—"}</td>
+            <td data-v={e.form.toLowerCase()} data-ev-form>{e.form}{am && <span class="ev-amend" data-ev-amendment> amendment</span>}</td>
+            <td class="wrap ev-items" data-ev-items>{items.length
+              ? items.map((i) => <span class:list={["ev-item", i === EXHIBITS_ITEM && "ev-soft"]} data-item={i}>{itemLabel(i)}</span>)
+              : "—"}</td>
+            <td>{url ? <a href={url} rel="noopener nofollow" target="_blank">{am ? "8-K/A" : "8-K"} at the SEC ↗</a> : (am ? "8-K/A" : "8-K")}</td>
+          </tr>
+        );
+      })}
+    </tbody></table></div>
+    {rows.length > EVENT_ROWS && <p class="ev-note" data-ev-more>The {EVENT_ROWS} newest of {rows.length.toLocaleString("en-US")} reports are shown. The rest are in the CSV file.</p>}
+    {counts.length > 0 && (
+      <details class="ev-by-item" data-ev-by-item>
+        <summary>Reports by item, last 12 months</summary>
+        <div class="tablewrap"><table class="data"><thead><tr><th>Item</th><th>Heading, as the SEC names it</th><th class="num">Reports</th></tr></thead><tbody>
+          {counts.map((c) => (
+            <tr data-item={c.item}><td class="mono">{c.item}</td><td class="wrap">{c.heading ?? "No SEC heading on file"}</td><td class="num" data-count>{c.reports}</td></tr>
+          ))}
+        </tbody></table></div>
+      </details>
+    )}
+  </section>
+)}
+<style>
+  .ev-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .ev-items { min-width: 16rem; }
+  .ev-item { display: block; line-height: 1.35; }
+  .ev-soft { color: var(--ink-soft); font-size: 13px; }
+  .ev-amend { color: var(--ink-soft); font-size: 12.5px; }
+  .ev-by-item { margin-top: 12px; }
+  .ev-by-item summary { cursor: pointer; font-weight: 600; }
+  @media (max-width: 640px) { .ev-items { min-width: 12rem; } }
+</style>

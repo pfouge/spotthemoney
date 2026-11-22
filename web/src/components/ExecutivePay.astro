@@ -1,0 +1,60 @@
+---
+// "Executive pay, as filed" on stock and company pages (lib/execpay.ts has the rules). The four
+// Pay Versus Performance figures per fiscal year, as the company tagged them. Nothing is computed
+// or held back; an unusually large or small figure carries a mark. No person is named, and this
+// section never appears on an insider page.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import { payOf } from "../lib/execpay-build";
+import { shownYears, paySummary, payMoney, payMarked, payFilingUrl, shortDate, PAY_KEYS, PAY_ROW_LABEL, PAY_CAVEAT, PAY_MARK_NOTE, PAY_PATH } from "../lib/execpay";
+import DownloadCsv from "./DownloadCsv.astro";
+
+interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
+const { model, cik, name, file } = Astro.props;
+const all = payOf(model, cik);
+const years = shownYears(all);
+const k10 = cik ? cik.padStart(10, "0") : "";
+let marks = 0;
+for (const y of years) for (const k of PAY_KEYS) if (payMarked(k, y.values[k])) marks++;
+---
+{years.length > 0 && (
+  <section aria-labelledby="executive-pay" id="executive-pay-section" data-executive-pay data-cik={k10} data-years={all.length} data-shown={years.length}>
+    <h2 id="executive-pay">Executive pay, as filed</h2>
+    <p data-pay-summary>{paySummary(name, all)}</p>
+    <p class="pay-note" data-pay-caveat>{PAY_CAVEAT} <a href="/guides/executive-pay-pay-versus-performance/">How to read the table</a>.</p>
+    <DownloadCsv file={file} label="Download all executive pay (CSV)" note="every company with figures" />
+    <p class="pay-note"><a href={PAY_PATH}>Compare executive pay across companies</a>.</p>
+    <div class="tablewrap"><table class="data pay-table"><thead><tr>
+      <th scope="col">Fiscal year ending</th>
+      {years.map((y) => <th scope="col" class="num" data-fye={y.fiscalYearEnd}>{shortDate(y.fiscalYearEnd)}</th>)}
+    </tr></thead><tbody>
+      {PAY_KEYS.map((k) => (
+        <tr data-pay={k}>
+          <th scope="row" class="wrap">{PAY_ROW_LABEL[k]}</th>
+          {years.map((y) => {
+            const v = y.values[k];
+            return v == null
+              ? <td class="num" data-v="" data-fye={y.fiscalYearEnd}>—</td>
+              : <td class:list={["num", v < 0 && "pay-neg"]} data-v={Math.round(v)} data-fye={y.fiscalYearEnd} data-marked={payMarked(k, v) ? "1" : undefined}>{payMoney(v)}{payMarked(k, v) && <sup class="pay-mark" title={PAY_MARK_NOTE} data-pay-mark> a</sup>}</td>;
+          })}
+        </tr>
+      ))}
+      <tr data-pay-filing>
+        <th scope="row">Filing</th>
+        {years.map((y) => {
+          const u = payFilingUrl(k10, y.accession);
+          return <td class="num" data-fye={y.fiscalYearEnd}>{u ? <a href={u} rel="noopener nofollow" target="_blank">Filing ↗</a> : "—"}</td>;
+        })}
+      </tr>
+    </tbody></table></div>
+    {marks > 0 && <p class="pay-note" data-pay-mark-note data-marks={marks}><sup class="pay-mark">a</sup> {PAY_MARK_NOTE}</p>}
+    {all.length > years.length && <p class="pay-note" data-pay-more>The {years.length} newest of {all.length} fiscal years are shown. All are in the CSV file.</p>}
+  </section>
+)}
+<style>
+  .pay-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .pay-neg { color: var(--red-ink); }
+  .pay-mark { color: var(--ink-soft); margin-left: 2px; }
+  .pay-table th[scope="row"] { min-width: 15rem; font-weight: 500; }
+  @media (max-width: 640px) { .pay-table th[scope="row"] { min-width: 11rem; } }
+</style>

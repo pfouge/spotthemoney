@@ -6,6 +6,8 @@
 import type { Form144Data } from "./form144";
 import type { Schedule13Data } from "./schedule13";
 import type { FinancialsData } from "./financials";
+import type { EventsData } from "./events8k";
+import type { PayData } from "./execpay";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -133,6 +135,10 @@ export interface Flagship {
   schedule13: Schedule13Data;
   /** Figures from companies' annual and quarterly reports, by 10-digit CIK (lib/financials.ts). Empty when the table cannot be read. */
   financials: FinancialsData;
+  /** Form 8-K reports by 10-digit CIK (lib/events8k.ts). Empty when the table cannot be read. */
+  events: EventsData;
+  /** Pay Versus Performance figures by 10-digit CIK (lib/execpay.ts). Empty when the table cannot be read. */
+  execPay: PayData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

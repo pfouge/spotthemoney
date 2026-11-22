@@ -62,6 +62,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>The figures are the company's own. Companies file their financial statements with every number labelled (${ext("https://www.sec.gov/search-filings/edgar-application-programming-interfaces", "the SEC publishes those labelled figures")}), and this site reads a fixed set of them. They are shown as filed, in the currency the company reports in, and nothing is estimated or converted. When a later report restates an earlier period, the later report's figure is the one shown.</p>
 <p>Four things follow from showing only what was filed. A period is told by its length, so a column is either a quarter of about three months or a fiscal year. A fourth fiscal quarter has no column, because companies report it inside the annual report and not on its own. Cash-flow lines are in the fiscal-year table only, because a quarterly report gives them for the year so far. And a dash means the report did not give that figure under a label this site reads, which happens: not every company reports a total for liabilities, for instance.</p>
 <p>A few filed figures look wrong as stored, and the page prints "not shown" in their place: earnings per share that would mean the company has fewer than ${c.finMinImpliedShares} shares, total assets that do not equal liabilities plus equity on the same date, and cash larger than total assets. The first of these is usually a figure filed in the wrong scale, but a very small company can really have that few shares; either way the figure as filed is in the download. A small letter beside a figure means it was filed under a different label than the same line in the newest column. Every fiscal year and quarter on file, with the figures as filed, is in one file on the <a href="/downloads/">downloads page</a>. There are no ratios that need a share price, no scores and no forecasts, and the section is a record of filings, not a view on the company.</p>
+<p>Two more sections sit beside it in the "Company" group of a page, when the company has the data: "Executive pay, as filed", the Pay Versus Performance table of its proxy statement (<a href="/guides/executive-pay-pay-versus-performance/">how to read it</a>), and "Company events: Form 8-K reports", the current reports it filed in the last 12 months (<a href="/guides/form-8-k-company-events/">what a Form 8-K is</a>). Neither enters any buy or sell total, and neither is read for the reason behind a trade.</p>
 <p>To see many companies at once, use the <a href="/company-financials/">company financials screener</a>. It lists the newest fiscal year, or the newest quarter, of every company on this site in one table, with the same figures as filed and the same "not shown" rule. It can be narrowed by industry, by the currency a company reports in, by revenue, by total assets and by whether net income was above or below zero, and any column can be sorted. Because nothing is converted, the revenue and total-assets filters read only companies that report in U.S. dollars. The table has no score or rating: sorting a column orders companies by that one filed figure.</p>` }] : []),
       ...(c.form144Shown ? [{ id: "form-144", h: "What is a Form 144 notice, and how is it different from a Form 4?", html: `
 <p>A Form 144 is a notice of a planned sale. Under the SEC's Rule 144, an affiliate of a company (an officer, a director or a large holder) who intends to sell restricted or control shares files one with the SEC when the sale in any three months is to be more than 5,000 shares or more than $50,000. It is filed when the order is placed with a broker, and it has been filed electronically since 2023, so it is public the same day.</p>
@@ -358,6 +359,117 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     seeLive: [{ label: "Insider map by role", href: "/insiders/" }, { label: "How values are computed", href: "/methodology/#values" }],
     covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/components/LargeHolders.astro", "web/src/components/ReportedHoldings.astro"],
     ui: [{ text: "10% owners", on: "/insiders/" }, { text: "Officers", on: "/insiders/" }, { text: "Directors", on: "/insiders/" }, ...(c.schedule13Shown ? [{ text: "Large holders: Schedules 13D and 13G", on: "/stocks/nvda/" }] : [])],
+    facts: [],
+  }),
+
+  // ───────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "form-8-k-company-events", group: "insiders", updated: "2026-11-22",
+    title: "Form 8-K: what company event reports are",
+    seoTitle: ["Form 8-K Explained: Company Event Reports and Their Items", "Form 8-K Explained: Company Event Reports"],
+    description: ["A Form 8-K is a company's own report that something happened. What triggers one, the four-business-day deadline, the common items and how to read them.", "What a Form 8-K is, what triggers one, its deadline, the common items such as 2.02 and 5.02, and how to read them."],
+    answer: `A Form 8-K is the report a public company files with the SEC when something specific happens, such as an earnings release, a major agreement or a change of officers. Most are due within four business days of the event, and each names the numbered items, with fixed SEC headings, that the event falls under.`,
+    keyFacts: [
+      "Most 8-K reports are due within four business days of the event; a few are due sooner.",
+      "Each report names one or more numbered items, and the SEC fixes the heading of each item.",
+      "Item 9.01 attaches financial statements and exhibits to another item, so it is on most reports.",
+      "An amendment is filed as an 8-K/A; the form does not say which report it amends.",
+      `This site lists the reports of the last ${c.eventWindowDays} days and their items. It does not read or summarise their text.`,
+    ],
+    sections: [
+      { id: "what", h: "What is a Form 8-K?", html: `
+<p>It is the "current report" of a public company: a short filing that tells the market, within days, about an event the SEC considers important to investors. The annual report (Form 10-K) and the quarterly report (Form 10-Q) arrive on a fixed calendar. An 8-K arrives when something happens, which is why a company can file several in one week and none for a quarter.</p>
+<p>The report is the company's own statement. It is not a review by the SEC and it is not a judgement about whether the event is good or bad for anyone.</p>` },
+      { id: "triggers", h: "What triggers a Form 8-K, and when is it due?", html: `
+<p>Triggers are listed in the form as numbered items grouped into sections: business and operations, financial information, securities and trading markets, matters relating to accountants, corporate governance and management, and others. Examples are signing or ending a material agreement (Item 1.01 and Item 1.02), completing an acquisition (Item 2.01), publishing quarterly results (Item 2.02), a change of the auditor (Item 4.01), the departure or appointment of a director or certain officers (Item 5.02) and the results of a shareholder vote (Item 5.07).</p>
+<p>Most items must be reported within four business days of the event. A few are due earlier or have their own rules. The text of a report usually carries the date of the event, and the filing date is within days of it. The <a href="/company-events/">company events list</a> shows the filing date and, in the CSV file, the event date the report states.</p>` },
+      { id: "items", h: "Which items are the most common, and what do they mean?", html: ` 
+<p>A handful of items account for most reports.</p>
+${table(["Item", "SEC heading", "What it usually is"], [
+  ["1.01", "Entry into a Material Definitive Agreement", "A significant contract, loan or merger agreement was signed."],
+  ["2.02", "Results of Operations and Financial Condition", "The company announced results, often attached as a press release."],
+  ["5.02", "Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers", "A director or senior officer left or joined, or pay arrangements for named officers changed."],
+  ["7.01", "Regulation FD Disclosure", "Information given to the public at once, such as an investor presentation."],
+  ["8.01", "Other Events", "Anything the company considers important that no other item covers."],
+  ["9.01", "Financial Statements and Exhibits", "The documents attached to another item: press releases, agreements, statements."],
+])}
+<p>Item 9.01 is on most reports because the exhibits of the other items are listed under it. For that reason the lists on this site print it last, in softer ink, and leave it out when they name the items a company files most often.</p>` },
+      { id: "amendments", h: "What is an 8-K/A?", html: `
+<p>An 8-K/A is an amendment: the company adds or corrects something in an earlier report, or files financial statements it was allowed to supply later. The form does not state which earlier report it amends, so this site shows an amendment as its own row, marked "amendment", and does not link it to any other.</p>` },
+      { id: "site", h: "What does this site show about Form 8-K reports?", html: `
+<p>Three things. A stock's page and its company's page have a section titled "Company events: Form 8-K reports" when the company has a report filed in the last ${c.eventWindowDays} days: a sentence with the count, the ${c.eventRows} newest reports with their filing and event dates and the SEC's heading for each item, a folded table of reports by item, and a link to each report at the SEC. The <a href="/company-events/">company events list</a> has every report filed in the last 12 months by any company with a page here, with filters for item, industry, form and date. And <a href="/downloads/">the CSV file</a> lists every report on record, with the item headings.</p>
+<p>What the site does not do: it does not read, summarise or rate the text of a report, it does not call any report good or bad news, and it does not set a report beside any trade. A report and a trade on the same day can be a coincidence, a routine schedule or something else; a filing cannot say which.${c.eventsShown ? ' The rules are written out in the <a href="/methodology/#company-events">methodology</a>.' : ""}</p>` },
+    ],
+    faqs: [
+      { q: "What is a Form 8-K?", a: "A Form 8-K is the report a public company files with the SEC when something specific happens, such as an earnings release, a major agreement or a change of officers. It is the company's own statement, filed within days of the event.", on: ["stocks"] },
+      { q: "How soon after an event is a Form 8-K filed?", a: "Most items must be reported within four business days of the event, and a few are due sooner. The filing date is therefore close to the event date, which the report states.", on: ["stocks"] },
+      { q: "What does Item 2.02 on a Form 8-K mean?", a: "Item 2.02 is titled Results of Operations and Financial Condition. A company files it when it announces results, usually with the earnings press release attached as an exhibit." },
+      { q: "What does Item 5.02 on a Form 8-K mean?", a: "Item 5.02 covers the departure or election of directors, the appointment or departure of certain officers, and compensatory arrangements of certain officers. It is the item behind most announcements of a new chief executive or director." },
+      { q: "Why is Item 9.01 on almost every Form 8-K?", a: "Item 9.01 lists the financial statements and exhibits attached to the report, such as a press release or an agreement. Because other items usually come with an exhibit, 9.01 is on most reports." },
+      { q: "Does this site say whether a Form 8-K is good or bad news?", a: "No. The site lists each report, its dates and the SEC's headings for its items, and does not read or rate the text. A filing cannot show why an insider traded or whether the news moved a price." },
+    ],
+    sources: [
+      { name: "Investor.gov: How to read an 8-K", url: "https://www.investor.gov/introduction-investing/general-resources/news-alerts/alerts-bulletins/investor-bulletins/how-read-8" },
+      { name: "SEC: Form 8-K investor bulletin (PDF)", url: "https://www.sec.gov/files/readan8k.pdf" },
+    ],
+    related: ["what-is-form-4", "insider-buying-vs-insider-selling", "executive-pay-pay-versus-performance", "how-to-cite-and-reuse"],
+    seeLive: [{ label: "Company events list", href: "/company-events/" }, ...(c.eventsShown ? [{ label: "How reports are counted", href: "/methodology/#company-events" }] : [])],
+    covers: ["web/src/lib/events8k.ts", "web/src/components/CompanyEvents.astro", "shared/src/events8k.ts"],
+    ui: c.eventsShown ? [{ text: "Company events: Form 8-K reports", on: "/stocks/nvda/" }, { text: "Reports by item, last 12 months", on: "/stocks/nvda/" }] : [],
+    facts: [],
+  }),
+
+  // ───────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "executive-pay-pay-versus-performance", group: "insiders", updated: "2026-11-22",
+    title: "Executive pay: the Pay Versus Performance table",
+    seoTitle: ["Executive Pay Explained: The Pay Versus Performance Table", "Executive Pay: The Pay Versus Performance Table"],
+    description: ["What the Pay Versus Performance table shows: total pay in the summary table, compensation actually paid, why it can be negative, and what the data cannot tell you.", "What the Pay Versus Performance table shows, why compensation actually paid can be negative, and the limits of the data."],
+    answer: `The Pay Versus Performance table, in a company's annual proxy statement, gives for each fiscal year the principal executive officer's total pay in the Summary Compensation Table, a second figure called compensation actually paid, and averages for the other named executive officers. Compensation actually paid is a measure the SEC defines, and it is not the cash a person received.`,
+    keyFacts: [
+      "The table is required by Item 402(v) of Regulation S-K for fiscal years ending on or after December 16, 2022.",
+      "Compensation actually paid revalues share awards each year, so it can be larger, smaller or negative compared with the summary total.",
+      "The figures cover the principal executive officer and, as an average, the other named executive officers.",
+      `This site shows the ${c.payYears} newest fiscal years a company has on file and marks figures of ${c.payLarge} or more.`,
+      "The data names no person, and a company can be missing for reasons the data does not give.",
+    ],
+    sections: [
+      { id: "what", h: "What is the Pay Versus Performance table?", html: `
+<p>It is a table in the proxy statement, the document a company sends before its annual shareholder meeting. Since the SEC's 2022 rule it must show, year by year, how the pay of the company's top executives compares with the company's results. The rule is Item 402(v) of Regulation S-K and first applied to fiscal years ending on or after December 16, 2022, which for most companies meant the proxy statement of spring 2023.</p>
+<p>This site shows only the pay columns, because those are the ones the SEC publishes as structured data. The other columns of the table, such as shareholder return and net income, are not part of this page.</p>` },
+      { id: "figures", h: "What are the four figures?", html: `
+${table(["Figure on this site", "What it is"], [
+  ["Principal executive officer: total, Summary Compensation Table", "The total pay of the chief executive in the Summary Compensation Table: salary, bonus, the grant-date value of share awards and options, and other pay."],
+  ["Principal executive officer: compensation actually paid", "The SEC's adjusted measure for the same person: the summary total changed to reflect the year's change in the value of share awards and pension benefits."],
+  ["Other named executive officers, average: total", "The same Summary Compensation Table total, averaged over the other named executive officers, usually the next highest paid executives."],
+  ["Other named executive officers, average: compensation actually paid", "The adjusted measure, averaged over the same group."],
+])}
+<p>All four are in dollars, as the company tagged them for the SEC. A dash on this site means the company did not tag that figure.</p>` },
+      { id: "actually-paid", h: "What does \"compensation actually paid\" mean, and why can it be negative?", html: `
+<p>It is an SEC-defined measure, not a payment. It starts from the Summary Compensation Table total and replaces the grant-date value of share awards and options with their value as it changed during the year, and it adjusts pension amounts. When a company's share price falls, awards granted earlier lose value, and the adjustment can outweigh the rest of the pay, so the figure can fall below the summary total and even below zero. When the share price rises it can be far higher.</p>
+<p>So "actually paid" is not what a person took home in the year. Cash pay is part of it; much of the rest is a revaluation of awards the person may not yet have received and may never receive. Where a figure is negative this site prints it with a minus sign and does not change it.</p>` },
+      { id: "site", h: "How does this site present the figures?", html: `
+<p>A stock's page and its company's page have a section titled "Executive pay, as filed" when the company has figures on file. It is a table of the ${c.payYears} newest fiscal years, newest first, headed by the date each fiscal year ended, with a link to the filing each column came from. The <a href="/executive-pay/">executive pay list</a> has one row per company with its newest year, with filters for industry, fiscal year and the size of the principal executive officer's total, and every column can be sorted. <a href="/downloads/">The CSV file</a> has every fiscal year on file.</p>
+<p>A figure of ${c.payLarge} or more, or a total of less than ${c.paySmall}, is marked with a small "a". The mark does not say the figure is wrong; it says the figure is unusual and worth checking against the filing, because a company can tag a number in the wrong scale. Nothing is held back, computed or converted.</p>` },
+      { id: "limits", h: "What can this data not tell you?", html: `
+<p>It cannot name the person: the data carries no name, and a principal executive officer's own page on this site never carries these figures. It cannot say why pay was set at a level or whether it was deserved; it is not a ranking of companies by pay quality and the site does not rate any company. It covers only companies that file the table in the structured data the SEC publishes, which is roughly four in ten of the companies with a page here. The rest are smaller reporting companies with a reduced disclosure, foreign companies and funds that do not file the table, or companies that tagged it differently.</p>
+<p>A company that had two principal executives in a year may report them in separate columns, and the data can then hold one figure or none for that year. The table in the proxy statement is the authority.${c.execPayShown ? ' The rules are written out in the <a href="/methodology/#executive-pay">methodology</a>.' : ""}</p>` },
+    ],
+    faqs: [
+      { q: "What is compensation actually paid?", a: "Compensation actually paid is a measure the SEC defines for the Pay Versus Performance table. It starts from the Summary Compensation Table total and revalues share awards and pension benefits for the year, so it is not the cash a person received.", on: ["stocks"] },
+      { q: "Why can compensation actually paid be negative?", a: "When a company's share price falls, share awards granted in earlier years lose value, and the revaluation can be larger than the rest of the pay. The measure then falls below the summary total and can drop below zero." },
+      { q: "Which companies have to file a Pay Versus Performance table?", a: "Companies that file a proxy statement with executive compensation disclosure, for fiscal years ending on or after December 16, 2022. Smaller reporting companies give a reduced version, and some kinds of filers are exempt. Not every company on this site has figures on file." },
+      { q: "Does this site name the executive behind each figure?", a: "No. The data the site reads names no person, and the figures are shown for the company only. Nothing here says who received them." },
+      { q: "Why is a company on this site missing executive pay figures?", a: "It may be exempt, it may have given a reduced version, its proxy statement may not be in the data yet, or it may have tagged the table in a way the data does not capture. The data does not say which." },
+    ],
+    sources: [
+      { name: "SEC: Pay Versus Performance, final rule 34-95607 (PDF)", url: "https://www.sec.gov/rules/final/2022/34-95607.pdf" },
+      { name: "Harvard Law School Forum on Corporate Governance: the SEC's pay versus performance rule", url: "https://corpgov.law.harvard.edu/?p=151133" },
+    ],
+    related: ["what-is-form-4", "form-8-k-company-events", "insider-buying-vs-insider-selling", "how-to-cite-and-reuse"],
+    seeLive: [{ label: "Executive pay list", href: "/executive-pay/" }, ...(c.execPayShown ? [{ label: "How the figures are read", href: "/methodology/#executive-pay" }] : [])],
+    covers: ["web/src/lib/execpay.ts", "web/src/components/ExecutivePay.astro", "shared/src/execpay.ts"],
+    ui: c.execPayShown ? [{ text: "Executive pay, as filed", on: "/stocks/nvda/" }] : [],
     facts: [],
   }),
 ];
