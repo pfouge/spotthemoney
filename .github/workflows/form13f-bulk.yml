@@ -25,7 +25,7 @@ on:
       sets:
         description: "Data sets to load (space-separated: YYYYqN or DDmonYYYY-DDmonYYYY, e.g. 01mar2026-31may2026)"
         required: false
-        default: "01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026"
+        default: "01sep2025-30nov2025 01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026"
       remaining:
         description: "How many more times this may restart itself"
         required: false
@@ -47,7 +47,7 @@ jobs:
       more: ${{ steps.run.outputs.more }}
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      SETS: ${{ github.event.inputs.sets || '01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026' }}
+      SETS: ${{ github.event.inputs.sets || '01sep2025-30nov2025 01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026' }}
       SEC_UA: ${{ secrets.SEC_EDGAR_USER_AGENT || vars.SEC_EDGAR_USER_AGENT || 'spotthemoney.com ingest (+https://spotthemoney.com/contact/)' }}
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +61,26 @@ jobs:
       - name: Apply migrations
         run: node db/migrate.mjs
 
+      - name: Pick the newest data sets (scheduled run)
+        if: github.event_name == 'schedule'
+        run: |
+          # The SEC's windows are Dec-Feb, Mar-May, Jun-Aug, Sep-Nov. Ask for the two that ended most
+          # recently; one the SEC has not published yet is reported as not available and skipped.
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import datetime, calendar
+          t = datetime.date.today()
+          mon = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"]
+          out = []
+          y, m = t.year, t.month
+          while len(out) < 2:
+              m -= 1
+              if m == 0: y, m = y - 1, 12
+              if m in (2, 5, 8, 11):
+                  sm, sy = (m - 2, y) if m > 2 else (12, y - 1)
+                  last = calendar.monthrange(y, m)[1]
+                  out.append(f"01{mon[sm-1]}{sy}-{last:02d}{mon[m-1]}{y}")
+          print("SETS=" + " ".join(reversed(out)))
+          PY
       - name: Download the data sets
         run: |
           set -euo pipefail
@@ -79,12 +99,14 @@ jobs:
               echo "$q not available from $base (HTTP $code)"
               rm -f "$zip"
             done
-            if [ "$got" != "1" ]; then echo "::error::neither SEC directory returned a ZIP for $q"; exit 1; fi
+            if [ "$got" != "1" ]; then echo "::warning::neither SEC directory returned a ZIP for $q (not published yet?)"; continue; fi
+            any=1
             mkdir -p "$root/${q}_form13f"
             unzip -q -o -j "$zip" -d "$root/${q}_form13f"
             rm -f "$zip"
             ls "$root/${q}_form13f" | head -20
           done
+          if [ "${any:-0}" != "1" ]; then echo "::error::no data set could be downloaded"; exit 1; fi
 
       - name: Load institutional holdings
         id: run
@@ -106,7 +128,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REMAINING: ${{ github.event.inputs.remaining || '6' }}
-      SETS: ${{ github.event.inputs.sets || '01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026' }}
+      SETS: ${{ github.event.inputs.sets || '01sep2025-30nov2025 01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026' }}
     steps:
       - name: Restart
         run: |

@@ -31,8 +31,8 @@
 //
 // No FEC_API_KEY: skipped exactly like fec_schedule_a (stats.skipped), status success.
 //
-// Env: FEC_API_KEY, FEC_CYCLE, FEC_API_BASE (tests only), CONGRESS_ROSTER_URL, FEC_IE_MAX_REQUESTS (400),
-// FEC_IE_MAX_MINUTES (25), FEC_IE_MAX_CONSECUTIVE_FAILURES (5), FEC_IE_PER_PAGE (100),
+// Env: FEC_API_KEY, FEC_CYCLE, FEC_API_BASE (tests only), CONGRESS_ROSTER_URL, FEC_IE_MAX_REQUESTS (140: it runs after fec_schedule_a in one job and shares its key's 1,000 requests an hour),
+// FEC_IE_MAX_MINUTES (12), FEC_IE_MAX_CONSECUTIVE_FAILURES (5), FEC_IE_PER_PAGE (100),
 // FEC_IE_MIN_GAP_MS (3700: about 970 requests an hour at most, under the key's 1,000),
 // FEC_IE_RETRIES (1).
 
@@ -86,8 +86,8 @@ export async function ingestFecIndependentExpenditures(): Promise<IngestRunResul
   const key = apiKey;
   const startedAt = Date.now();
   const cycle = Number(process.env.FEC_CYCLE ?? currentCycle());
-  const maxRequests = Math.max(1, Math.floor(envNumber("FEC_IE_MAX_REQUESTS", 400)));
-  const budgetMin = envNumber("FEC_IE_MAX_MINUTES", 25);
+  const maxRequests = Math.max(1, Math.floor(envNumber("FEC_IE_MAX_REQUESTS", 140)));
+  const budgetMin = envNumber("FEC_IE_MAX_MINUTES", 12);
   const budgetMs = budgetMin > 0 ? budgetMin * 60_000 : null;
   const failLimit = Math.max(1, Math.floor(envNumber("FEC_IE_MAX_CONSECUTIVE_FAILURES", 5)));
   const perPage = Math.min(100, Math.max(1, Math.floor(envNumber("FEC_IE_PER_PAGE", 100))));

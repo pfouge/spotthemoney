@@ -81,6 +81,14 @@ const CHECKS = [
   // Fills contract details by award id for awards the searches no longer return. "partial" while
   // a backlog is being worked through counts as alive; with nothing left it is a quick success.
   { code: "usaspending_details", label: "USAspending award details (by id)", runDays: 2 },
+  // Seven sources added 2026-11-22 (migrations 0033 to 0039). Listed by run only until each first
+  // catch-up has reached today; add a data date then.
+  { code: "senate_lda_contributions", label: "Lobbyist contributions (LD-203)", runDays: 2 },
+  { code: "sec_company_events", label: "SEC company events (8-K)", runDays: 2 },
+  { code: "sec_exec_pay", label: "SEC executive pay (XBRL frames)", runDays: 2 },
+  { code: "congress_votes", label: "House and Senate roll-call votes", runDays: 2 },
+  { code: "fec_independent_expenditures", label: "FEC independent expenditures", runDays: 2 },
+  { code: "usaspending_assistance", label: "USAspending grants, loans, direct payments", runDays: 2 },
   { code: "fec_committees", label: "FEC committees", runDays: 8 },
   // Receipts appear only after a committee files (monthly or quarterly), hence the long allowance.
   { code: "fec_schedule_a", label: "FEC donations", runDays: 2, dataDays: 75,
