@@ -24,6 +24,7 @@ import { ingestSecForm144 } from "./sources/sec_form144.js";
 import { ingestSecSchedule13 } from "./sources/sec_schedule13.js";
 import { ingestSecCompanySize } from "./sources/sec_company_size.js";
 import { ingestSecCompanySic } from "./sources/sec_company_sic.js";
+import { ingestSecCompanyTickers, readRepair } from "./sources/sec_company_tickers.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
 import { ingestCongressRoster } from "./sources/congress_roster.js";
@@ -56,6 +57,8 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
   sec_company_size: { label: "SEC company size (shares outstanding, public float)", cadence: "daily", daily: true, run: ingestSecCompanySize },
   sec_company_sic: { label: "SEC industry codes (SIC) for companies", cadence: "daily", daily: true, run: ingestSecCompanySic },
+  // The SEC's list of which filer owns each ticker; ends with repair_ticker_owners() (migration 0031).
+  sec_company_tickers: { label: "SEC ticker owners (which filer each ticker belongs to)", cadence: "daily", daily: true, run: ingestSecCompanyTickers },
   fec_schedule_a_history: { label: "FEC Schedule A history pass (back to 2025-10-01, capped per committee)", cadence: "on_demand", daily: false, run: ingestFecScheduleAHistory },
   sec_form4: { label: "SEC EDGAR Form 3/4/5 (ticker-scoped)", cadence: "daily", daily: true, run: () => ingestSecForm4() },
   sec_form4_bulk: { label: "SEC Insider Transactions Data Sets, market-wide Form 4 (kept off the site)", cadence: "on_demand", daily: false, run: ingestSecForm4Bulk },
@@ -187,5 +190,19 @@ try {
   if ((row?.n ?? 0) > 0) console.log(`✓ publish: ${row!.n} filing(s) from approved sources set public`);
 } catch (err) {
   console.error("⚠ publish step skipped:", err instanceof Error ? err.message : String(err));
+}
+// Ticker owners (migration 0031): the Form 4 write path points a security at the company of the
+// last filing that named its ticker, and gives a fund with no trading symbol its sponsor's
+// ticker. After every run, put back what the SEC's ticker list says. Cheap; never fails the run.
+try {
+  const [row] = await getDb()<{ r: unknown }[]>`select repair_ticker_owners() as r`;
+  const r = readRepair(row?.r);
+  if (r.securities_moved || r.tickers_cleared) {
+    console.log(`✓ ticker owners: ${r.securities_moved} securities moved to the company the SEC lists${r.moved.length ? ` (${r.moved.join(", ")})` : ""}, ` +
+      `${r.tickers_cleared} borrowed main tickers cleared${r.cleared.length ? ` (${r.cleared.join(", ")})` : ""}`);
+  }
+  if (r.skipped.length) console.error(`⚠ ticker owners: ${r.skipped.join("; ")}`);
+} catch (err) {
+  console.error("⚠ ticker-owner step skipped:", err instanceof Error ? err.message : String(err));
 }
 await closeDb();

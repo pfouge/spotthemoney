@@ -97,7 +97,7 @@ jobs:
           - name: holders
             sources: sec_schedule13
           - name: company-facts
-            sources: sec_company_sic alerts_digest usaspending_details
+            sources: sec_company_tickers sec_company_sic alerts_digest usaspending_details
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations
@@ -155,7 +155,7 @@ jobs:
           - name: holders
             sources: sec_schedule13
           - name: company-facts
-            sources: sec_company_sic alerts_digest usaspending_details
+            sources: sec_company_tickers sec_company_sic alerts_digest usaspending_details
           - name: lobbying-contracts
             sources: senate_lda usaspending
           - name: donations
