@@ -209,6 +209,10 @@ export async function ingestSecCompanyFinancials(): Promise<IngestRunResult> {
   ctx.extra["table_rows"] = tot?.rows ?? 0;
   console.log(`${SOURCE}: asked ${c.asked} of ${queue.length}; ${c.stored_companies} with figures (${c.rows_written} rows), ${c.no_facts} without, ${c.not_found} unknown to the SEC, ${c.odd_answers} odd, ${c.failures} failed, ${c.remaining} left; table holds ${tot?.rows ?? 0} rows for ${tot?.companies ?? 0} companies`);
 
+  // A short queue can end before the guard's count is reached: answers came, none had the layout.
+  if (!fatal && !shapeProven && c.odd_answers! > 0) {
+    fatal = `none of the ${c.odd_answers} answers had the companyfacts layout: the data is not in the shape this job expects; nothing was written`;
+  }
   if (fatal || outage.tripped) {
     const error = fatal ?? `${outage.count} requests in a row failed (last: ${lastFailure.slice(0, 160)})`;
     return { source: SOURCE, rowsSeen: ctx.rowsSeen, rowsChanged: ctx.rowsChanged, status: "failed", error, stats: ctx.stats() };
