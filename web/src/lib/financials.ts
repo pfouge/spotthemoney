@@ -12,8 +12,10 @@
 //     own, so it has no column; cash-flow figures are filed year-to-date in quarterly reports,
 //     so they are in the fiscal-year table only.
 //   - A missing figure is a dash, never a guess.
-//   - Three checks hold a figure back ("not shown") when the filed data cannot be right as
-//     stored: earnings per share that imply fewer than MIN_IMPLIED_SHARES shares; total assets
+//   - Three checks hold a figure back ("not shown") when the filed data looks wrong as stored:
+//     earnings per share that imply fewer than MIN_IMPLIED_SHARES shares (usually a figure filed
+//     in the wrong scale; now and then real, for a very small company after a reverse split:
+//     seen on production, so the wording never says "mistake" outright); total assets
 //     that differ from "liabilities and equity" on the same date by more than BALANCE_TOLERANCE;
 //     cash larger than total assets. The CSV file keeps the figure as filed and names the check.
 //   - No ratio that needs a market price, no score, rating or ranking, no forecast.
@@ -49,6 +51,8 @@ export const QUARTER_DAYS: readonly [number, number] = [80, 100];
 export const YEAR_DAYS: readonly [number, number] = [350, 380];
 /** Earnings per share that imply fewer shares than this (net income ÷ EPS) are held back. */
 export const MIN_IMPLIED_SHARES = 100_000;
+/** With no net income filed for the period there is nothing to divide: earnings per share beyond this, either way, are held back. */
+export const MAX_EPS_WITHOUT_INCOME = 10_000;
 /** Total assets and "liabilities and equity" on one date may differ by this share before assets are held back. */
 export const BALANCE_TOLERANCE = 0.005;
 
@@ -142,7 +146,7 @@ function applyChecks(p: Period, le: FinRow | undefined): void {
   const eps = c["eps_diluted"], ni = c["net_income"];
   if (eps && eps.value !== 0) {
     const implied = ni ? Math.abs(ni.value / eps.value) : null;
-    if (implied != null ? implied < MIN_IMPLIED_SHARES && ni!.value !== 0 : Math.abs(eps.value) > MIN_IMPLIED_SHARES) eps.held = "implied_shares";
+    if (implied != null ? implied < MIN_IMPLIED_SHARES && ni!.value !== 0 : Math.abs(eps.value) > MAX_EPS_WITHOUT_INCOME) eps.held = "implied_shares";
   }
   const assets = c["assets"], cash = c["cash"];
   if (assets && le && Math.abs(assets.value - le.value) > BALANCE_TOLERANCE * Math.max(Math.abs(assets.value), 1)) assets.held = "balance";

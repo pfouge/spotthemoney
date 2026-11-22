@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   periodKind, companyUnit, companyFinancials, shownYears, shownQuarters, filingUrl, sourceFilings, finMoney, finPerShare,
   heldList, heldCount, tagChangeCount, csvRows, summarySentence, financialsLog, emptyFinancials, FIN_CAVEAT, HELD_TEXT,
-  SHOWN_CONCEPTS, LOADED_CONCEPTS, MIN_IMPLIED_SHARES, type FinRow,
+  SHOWN_CONCEPTS, LOADED_CONCEPTS, MAX_EPS_WITHOUT_INCOME, type FinRow,
 } from "../web/src/lib/financials";
 
 let n = 0;
@@ -98,7 +98,8 @@ test("held back: earnings per share that imply too few shares", () => {
   assert.equal(mk(716_000_000, 0.79).cells["eps_diluted"]!.held, null);
   assert.equal(mk(-5_000_000, -66_245.01).cells["eps_diluted"]!.held, "implied_shares");
   assert.equal(mk(90_000_000_000, 62_000).cells["eps_diluted"]!.held, null);             // a very high share price, 1.45M shares
-  assert.equal(mk(null, MIN_IMPLIED_SHARES + 1).cells["eps_diluted"]!.held, "implied_shares");
+  assert.equal(mk(null, MAX_EPS_WITHOUT_INCOME + 1).cells["eps_diluted"]!.held, "implied_shares");
+  assert.equal(mk(null, -30_560).cells["eps_diluted"]!.held, "implied_shares");
   assert.equal(mk(null, 500).cells["eps_diluted"]!.held, null);
   assert.equal(mk(0, 0.01).cells["eps_diluted"]!.held, null);                            // nothing to divide
   assert.equal(mk(1000, 0).cells["eps_diluted"]!.held, null);

@@ -59,7 +59,7 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
         </tbody></table></div>
       </>
     ))}
-    {held > 0 && <p class="fin-note" data-fin-held-note data-held={held}>{held === 1 ? "One figure is" : `${held} figures are`} not shown because {reasons.map((r) => HELD_TEXT[r]).join("; or ")}. That points to a mistake in the filed data or to two different things filed under one heading. The CSV file has the figure as filed.</p>}
+    {held > 0 && <p class="fin-note" data-fin-held-note data-held={held}>{held === 1 ? "One figure is" : `${held} figures are`} not shown because {reasons.map((r) => HELD_TEXT[r]).join("; or ")}. That is usually a mistake in the filed data or two different things filed under one heading; now and then it is real, for a company with very few shares. The CSV file has the figure as filed.</p>}
     {changed > 0 && <p class="fin-note" data-fin-tag-note data-changed={changed}><sup>a</sup> Filed under a different heading (XBRL tag) than the same line in the newest column, so the two may not measure exactly the same thing.</p>}
   </section>
 )}
