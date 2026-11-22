@@ -117,14 +117,18 @@ test("units are separate: the same period in USD and EUR gives two rows", () => 
 });
 
 test("empty facts and an object with no shape", () => {
-  assert.deepEqual(pickFacts({ cik: 1, facts: {} }), { rows: [], hasShape: false });
+  assert.deepEqual(pickFacts({ cik: 1, facts: {} }), { rows: [], hasShape: false, hasFacts: false });
+  assert.deepEqual(pickFacts({ cik: 1, facts: { dei: { EntityCommonStockSharesOutstanding: { units: { shares: [] } } } } }), { rows: [], hasShape: false, hasFacts: true });
   assert.equal(pickFacts({ message: "other" }).hasShape, false);
-  for (const bad of [null, undefined, "x", 5, [], { facts: [] }, { facts: { "us-gaap": { A: { units: {} } } } }, { facts: { dei: { X: tag({ shares: [fact({ end: "2024-01-01", val: 1 })] }) } } }]) {
-    assert.deepEqual(pickFacts(bad), { rows: [], hasShape: false });
+  for (const bad of [null, undefined, "x", 5, [], { facts: [] }]) {
+    assert.deepEqual(pickFacts(bad), { rows: [], hasShape: false, hasFacts: false });
+  }
+  for (const noTaxonomy of [{ facts: { "us-gaap": { A: { units: {} } } } }, { facts: { dei: { X: tag({ shares: [fact({ end: "2024-01-01", val: 1 })] }) } } }]) {
+    assert.deepEqual(pickFacts(noTaxonomy), { rows: [], hasShape: false, hasFacts: true });
   }
 });
 
 test("shape is true even when no row survives the filters", () => {
   const r = pickFacts(doc({ "us-gaap": { Assets: tag({ USD: [fact({ end: "2020-12-31", val: 1 })] }) } }));
-  assert.deepEqual(r, { rows: [], hasShape: true });
+  assert.deepEqual(r, { rows: [], hasShape: true, hasFacts: true });
 });

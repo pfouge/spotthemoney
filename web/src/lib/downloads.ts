@@ -23,6 +23,8 @@ import { rowIssues } from "./lobbyissues";
 import { cleanDescription } from "./contracts";
 import { naicsTitle } from "./naics";
 import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOutOfRange, VALUE_MAX_PER_SHARE, type Notice } from "./form144";
+import { SHOWN_CONCEPTS, CHECK_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
+import { financialsOf } from "./financials-build";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
@@ -38,7 +40,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -320,6 +322,41 @@ async function build(): Promise<Downloads> {
     { key: "page_url", about: "The company's page on this site.", get: (x) => { const c = sco(x); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
   ];
   add(file({ name: "large-holders-13d-13g.csv", group: "insiders", kind: "holders", title: "Large holders: SEC Schedules 13D and 13G", about: "One row per ownership statement by a holder of more than 5% of a class of shares, or one reporting it has fallen below that, for the companies this site tracks. A statement says what the filer owned on a date; it is not a trade.", updated: newest(statements.map((x) => x.filedAt)) }, holderCols, statements));
+
+  // Company financials: every fiscal year and quarter on file for the companies on the site, one
+  // row per company and period, the figures as filed (lib/financials.ts). The page section shows
+  // the newest of them; `on_page` says which.
+  const finRows: FinCsvRow[] = [];
+  const onPage = new Set<FinCsvRow["period"]>();
+  for (const c of [...byCik.values()].filter((x) => x.slug).sort((a, b) => a.name.localeCompare(b.name) || a.cik!.localeCompare(b.cik!))) {
+    const f = financialsOf(m, c.cik);
+    if (!f) continue;
+    for (const p of [...shownYears(f), ...shownQuarters(f)]) onPage.add(p);
+    finRows.push(...csvRows(c.cik!.padStart(10, "0"), f));
+  }
+  const fco = (r: FinCsvRow) => byCik.get(r.cik);
+  const FIN_ABOUT: Record<string, string> = {
+    revenue: "Revenue for the period.", net_income: "Net income (a loss is negative) for the period.", eps_diluted: "Diluted earnings per share for the period, in the currency per share.",
+    operating_cash_flow: "Net cash from operating activities. Fiscal years only: quarterly reports give it for the year to date.", capex: "Payments for property, plant and equipment. Fiscal years only.",
+    cash: "Cash and cash equivalents on the last day of the period.", assets: "Total assets on the last day of the period.", liabilities: "Total liabilities on the last day of the period. Empty when the report gives no such total.",
+    equity: "Shareholders' equity on the last day of the period.",
+  };
+  const finCols: Column<FinCsvRow>[] = [
+    { key: "company", about: "The company, as this site names it.", get: (r) => fco(r)?.name },
+    { key: "ticker", about: "The company's main ticker on this site.", get: (r) => fco(r)?.primaryTicker },
+    { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
+    { key: "period", about: "fiscal_year or quarter, told by the length of the period (350 to 380 days, 80 to 100 days). A fourth fiscal quarter is not filed on its own and has no row.", get: (r) => (r.period.kind === "year" ? "fiscal_year" : "quarter") },
+    { key: "period_start", about: "First day of the period (YYYY-MM-DD).", get: (r) => r.period.start },
+    { key: "period_end", about: "Last day of the period (YYYY-MM-DD).", get: (r) => r.period.end },
+    { key: "currency", about: "The currency the company reports in. Every amount in the row is in this currency; nothing is converted.", get: (r) => r.unit },
+    ...SHOWN_CONCEPTS.map((sc): Column<FinCsvRow> => ({ key: sc.key, about: `${FIN_ABOUT[sc.key]} As filed.`, get: (r) => r.period.cells[sc.key]?.value })),
+    { key: CHECK_CONCEPT, about: "Total liabilities and equity on the last day of the period, as filed. Not shown on pages; used to check total assets.", get: (r) => r.period.cells[CHECK_CONCEPT]?.value },
+    { key: "not_shown", about: `Figures of this row a page does not print, each with the reason: implied_shares (the earnings per share would mean fewer than ${MIN_IMPLIED_SHARES.toLocaleString("en-US")} shares), balance (total assets do not equal liabilities and equity), cash_over_assets. The figure in its column is still the one filed.`, get: (r) => heldList(r.period) },
+    { key: "on_page", about: `true for the periods the company's page shows: the ${YEARS_SHOWN} newest fiscal years and the ${QUARTERS_SHOWN} newest quarters.`, get: (r) => onPage.has(r.period) },
+    { key: "reports", about: "The reports the figures were taken from: form, filing date and address at the SEC, separated by semicolons. The newest report that states a period is used, so a restated figure replaces the original.", get: (r) => sourceFilings(r.period).map((s) => `${s.form} ${s.filed} ${filingUrl(r.cik, s.accession) ?? s.accession}`).join("; ") || null },
+    { key: "page_url", about: "The company's page on this site.", get: (r) => { const c = fco(r); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
+  ];
+  add(file({ name: "company-financials.csv", group: "insiders", kind: "financials", title: "Company financials, as filed with the SEC", about: "One row per company and period: revenue, net income, earnings per share, cash flow and balance-sheet totals from annual and quarterly reports, for the companies this site tracks. Figures as filed, in the company's own currency.", updated: finRows.reduce<string | null>((a, r) => { const d = sourceFilings(r.period)[0]?.filed ?? null; return d && (!a || d > a) ? d : a; }, null) }, finCols, finRows));
 
   // Rates
   for (const f of await rateFiles()) add(f);

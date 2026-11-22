@@ -2,6 +2,7 @@
 // the current I-Bond rate from the database. A guide that quotes one of these can never
 // disagree with the site, because both read the same thing.
 import { NOTICE_ROWS, VALUE_MAX_PER_SHARE } from "../form144";
+import { YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES } from "../financials";
 import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL } from "../schedule13";
 import { DESCRIPTION_SHOWN } from "../contracts";
 import { feedDef } from "../feeds";
@@ -53,6 +54,8 @@ export interface GuideCtx {
   form144ValueMaxPerShare: string;
   /** True once Schedule 13D and 13G statements are shown on pages (lib/schedule13.ts); the rows a page prints, the filing threshold in percent, and the month the record starts. */
   schedule13Shown: boolean; holderRows: number; holderThreshold: number; holderRecordStart: string;
+  /** True when company financials are on file (lib/financials.ts); the fiscal years and quarters a page shows; the share count under which earnings per share are held back, as text. */
+  financialsShown: boolean; finYears: number; finQuarters: number; finMinImpliedShares: string;
   /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
   form4Floor: string;
   /** Calendar days after which the site flags a Form 4 as late. */
@@ -97,6 +100,7 @@ async function build(): Promise<GuideCtx> {
     contractDescriptionShown: DESCRIPTION_SHOWN,
     form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS, form144ValueMaxPerShare: VALUE_MAX_PER_SHARE.toLocaleString("en-US"),
     schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL,
+    financialsShown: m.financials.byCik.size > 0, finYears: YEARS_SHOWN, finQuarters: QUARTERS_SHOWN, finMinImpliedShares: MIN_IMPLIED_SHARES.toLocaleString("en-US"),
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
     capBands: CAP_BANDS.map((b) => ({ label: b.label, range: b.range })),
