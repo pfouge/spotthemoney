@@ -161,7 +161,10 @@ export function decide(plan: Plan, existing: Existing | undefined, storedAccessi
 }
 
 /** Keep the newest `n` distinct periods (ISO strings). Returns the cut-off: periods below it are dropped. */
-export function keepCutoff(periods: string[], n: number): string | null {
-  const distinct = [...new Set(periods)].sort().reverse();
+export function keepCutoff(periods: string[], n: number, today: string = new Date().toISOString().slice(0, 10)): string | null {
+  // Only real calendar quarter ends that are not in the future decide what is kept: one filing with
+  // a mistyped report period must not push a whole real quarter out of the table.
+  const real = periods.filter((p) => /-(03-31|06-30|09-30|12-31)$/.test(p) && p <= today);
+  const distinct = [...new Set(real)].sort().reverse();
   return distinct.length > n ? distinct[n - 1]! : null;
 }

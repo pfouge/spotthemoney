@@ -96,3 +96,9 @@ test("retention cut-off keeps the newest N periods", () => {
   assert.equal(keepCutoff(["2025-06-30", "2025-09-30", "2025-12-31"], 4), null);
   assert.equal(keepCutoff(["2025-03-31", "2025-06-30", "2025-09-30", "2025-12-31", "2026-03-31"], 4), "2025-06-30");
 });
+
+test("keepCutoff ignores mistyped and future report periods", () => {
+  const ps = ["2026-06-30", "2026-03-31", "2025-12-31", "2025-09-30", "2027-06-30", "2026-05-15"];
+  assert.equal(keepCutoff(ps, 2, "2026-11-22"), "2026-03-31");
+  assert.equal(keepCutoff(["2026-06-30"], 2, "2026-11-22"), null);
+});
