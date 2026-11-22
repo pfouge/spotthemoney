@@ -1,6 +1,10 @@
 ---
 // Ticker page: /stocks/<ticker>/ — insider and congressional activity in one security.
 import LearnMore from "../../components/LearnMore.astro";
+import Glance from "../../components/Glance.astro";
+import GroupBar from "../../components/GroupBar.astro";
+import PageGroup from "../../components/PageGroup.astro";
+import { shownYears, shownQuarters } from "../../lib/financials";
 import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, industryOf, insiderPeriods, isOpenSale } from "../../lib/entity";
 import { industryHref } from "../../lib/industries";
 import DownloadCsv from "../../components/DownloadCsv.astro";
@@ -55,7 +59,11 @@ const plannedN = company?.cik ? noticesInWindow(model.form144.byCik.get(company.
 // Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
 const holdersN = company?.cik ? holdersOf(model.schedule13.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 // Figures from the company's annual and quarterly reports (lib/financials.ts); null when none are on file.
-const hasFinancials = !!financialsOf(model, company?.cik);
+const fin = financialsOf(model, company?.cik);
+const finYears = fin ? shownYears(fin) : [];
+const finQuarters = fin ? shownQuarters(fin) : [];
+const finShown = finYears.length + finQuarters.length > 0;
+const finNewest = finYears[0] ?? finQuarters[0];
 const y = txns.filter((t) => withinDays(t.disclosedAt, 365));
 const yIns = y.filter((t) => t.source === "sec_form4");
 const yCon = y.filter((t) => t.source !== "sec_form4");
@@ -81,18 +89,16 @@ const periods = insider.length ? insiderPeriods(insider) : [];
 const signed = (n: number, f: (x: number) => string) => (n === 0 ? f(0) : `${n > 0 ? "+" : "\u2212"}${f(Math.abs(n))}`);
 const tone = (n: number) => (n > 0 ? "num pos" : n < 0 ? "num neg" : "num");
 const anyUnpriced = periods.some((p) => p.unpriced > 0);
-const jump: [string, string][] = txns.length === 0 ? [] : [
-  ...(periods.length ? [["#insider-summary", "3 and 12 months"] as [string, string]] : []),
-  ...(insiderList.length ? [["#insiders", "Insiders"] as [string, string]] : []),
-  ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
-  ...(insider.length ? [["#insider-transactions", "Insider transactions"] as [string, string]] : []),
-  ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []),
-  ...(holdersN ? [["#large-holders", "Large holders"] as [string, string]] : []),
-  ...(hasFinancials ? [["#financials", "Financials"] as [string, string]] : []),
-  ...(congress.length ? [["#congress-trades", "Congress trades"] as [string, string]] : []),
-  ...(related.length ? [["#related", "Related stocks"] as [string, string]] : []),
-  ["#sources", "Sources"],
+const latestOf = (rows: { disclosedAt: string | null }[]) => rows.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
+const glance = [
+  ...(insider.length ? [{ label: "Insider transactions", value: num(insider.length), note: latestOf(insider) ? `Latest ${formatDate(latestOf(insider)!)}` : undefined, href: "#insider-transactions" }] : []),
+  ...(congress.length ? [{ label: "Congress trades", value: num(congress.length), note: latestOf(congress) ? `Latest ${formatDate(latestOf(congress)!)}` : undefined, href: "#congress-trades" }] : []),
+  ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
+  ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
+  ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
 ];
+const hasData = txns.length > 0;
+const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN ? [{ id: "ownership", label: "Ownership" }] : []), ...(finShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
 
 const answer = txns.length === 0
   ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.`
@@ -122,12 +128,7 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: SEC EDGAR Form 4; House Clerk and Senate eFD PTRs" : "Sources: SEC EDGAR Form 4; House Clerk PTRs"} />
   <ReviewNote show={underReview} what="Some rows on this page" />
 
-  {jump.length > 0 && (
-    <nav class="jump" aria-label="On this page">
-      <span>On this page</span>
-      {jump.map(([href, label]) => <a href={href}>{label}</a>)}
-    </nav>
-  )}
+  <Glance items={hasData ? glance : []} />
 
   <section class="datastrip">
     <div class="cell"><div class="k">Insider txns (12m)</div><div class="v">{num(yIns.length)}</div></div>
@@ -136,6 +137,9 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
     <div class="cell"><div class="k">Distinct filers (12m)</div><div class="v">{num(insiders.size + members.size)}</div></div>
   </section>
 
+  <GroupBar groups={groupList} />
+
+  <PageGroup id="trading" label="Trading">
   {["equity", "etf", "adr"].includes(s.type) && <TradingView symbol={s.ticker} name={name} />}
 
   <VizStock security={s} company={company ?? null} />
@@ -216,18 +220,31 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <h2 id="insider-transactions">Insider transactions</h2>
   <TxnTable model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
 
-  <PlannedSales model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "notices")} />
-
-  <LargeHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "holders")} />
-
-  <Financials model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "financials")} />
-
-  <AdSlot label="Advertisement" show={txns.length > 0} />
-
   <h2 id="congress-trades">Congressional trades</h2>
   <ScreenerLink ticker={s.ticker} n={screenerCountsFor(model, personPath).ticker.get(s.ticker.toUpperCase()) ?? 0} of={`in ${s.ticker} by members of Congress`} />
   <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
 
+  <PlannedSales model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "notices")} />
+
+  </PageGroup>
+
+  <AdSlot label="Advertisement" show={txns.length > 0} />
+
+  {holdersN > 0 && (
+    <PageGroup id="ownership" label="Ownership">
+      <LargeHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "holders")} />
+    </PageGroup>
+  )}
+
+  {finShown && (
+    <PageGroup id="company" label="Company">
+      <Financials model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "financials")} />
+    </PageGroup>
+  )}
+
+  <AdSlot pos="low" />
+
+  <PageGroup id="record" label="About this record">
   {related.length > 0 && (
     <section aria-labelledby="related" data-related>
       <h2 id="related">Related stocks</h2>
@@ -240,11 +257,11 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
 
   <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
 
-  <AdSlot pos="low" />
-
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={txns} edgarId={s.ticker} />
   <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  </PageGroup>
+
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures are shown as filed and may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>

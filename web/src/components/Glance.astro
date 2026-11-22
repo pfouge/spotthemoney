@@ -1,0 +1,17 @@
+---
+// "At a glance" tiles on an entity page: a few counts the page already holds, each linking to
+// the section that lists the rows. A tile is passed in only when its section is on the page.
+interface Props { items: { label: string; value: string; note?: string; href: string }[] }
+const items = Astro.props.items.slice(0, 8);
+---
+{items.length >= 1 && (
+  <section class="glance" aria-label="At a glance" data-glance>
+    {items.map((i) => (
+      <a href={i.href}>
+        <span class="glance-v">{i.value}</span>
+        <span class="glance-k">{i.label}</span>
+        {i.note && <span class="glance-n">{i.note}</span>}
+      </a>
+    ))}
+  </section>
+)}

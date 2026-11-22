@@ -1,0 +1,10 @@
+---
+// One group of an entity page's sections. The sections inside keep their own h2 and ids.
+// The page decides whether a group exists; this component only frames what it is given.
+interface Props { id: string; label: string }
+const { id, label } = Astro.props;
+---
+<div class="pgroup" id={id} role="group" aria-label={label} data-pgroup>
+  <p class="pgroup-label" aria-hidden="true">{label}</p>
+  <slot />
+</div>

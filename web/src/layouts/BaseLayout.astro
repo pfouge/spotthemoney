@@ -9,6 +9,7 @@ import { fitTitle, fitDescription } from "../lib/seo";
 import { adClient } from "../lib/ads";
 import AdSlot from "../components/AdSlot.astro";
 import { FEEDS } from "../lib/feeds";
+import { NAV, FOOT_ABOUT, liveItems, groupFor } from "../lib/nav";
 
 // title / description: a string, or preferred wording first with shorter fallbacks after it
 // (see fitTitle / fitDescription). noindex: pages that exist for navigation but have no data
@@ -47,6 +48,15 @@ const modified = (Astro.props.modified ?? new Date().toISOString()).slice(0, 10)
 const citeTitle = title.replace(/\s*[|–—-]\s*Spot the Money\s*$/i, "").trim() || title;
 const path = Astro.url.pathname;
 const current = (href: string) => (path === href ? "page" : undefined);
+const activeGroup = groupFor(path)?.key;
+// 22px line icons, one per menu (the first four are the ones the old flat links used).
+const NAV_ICON: Record<string, string> = {
+  congress: "M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M3 10h18M12 3l9 5H3z",
+  insiders: "M4 7h16v13H4zM9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M4 13h16",
+  companies: "M4 21V8l6-3v16M10 21V11l10-3v13M3 21h18M6.5 11h1M6.5 14h1M6.5 17h1M14 14h1M14 17h1M17.5 14h1M17.5 17h1",
+  washington: "M4 20h16M6 20v-7M18 20v-7M10 20v-4h4v4M5 13h14M12 4a6 6 0 0 1 6 6H6a6 6 0 0 1 6-6zM12 2v2",
+  markets: "M4 19l5-6 4 3 7-9M15 7h5v5",
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -118,12 +128,15 @@ const current = (href: string) => (path === href ? "page" : undefined);
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>Search members, insiders, tickers</span><kbd aria-hidden="true">/</kbd>
         </button>
         <nav class="site" id="siteMenu" aria-label="Primary">
-          <a href="/congress/" aria-current={current("/congress/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M3 10h18M12 3l9 5H3z"/></svg><span>Congress</span><i class="chev" aria-hidden="true">›</i></a>
-          <a href="/insiders/" aria-current={current("/insiders/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M4 13h16"/></svg><span>Insiders</span><i class="chev" aria-hidden="true">›</i></a>
-          <a href="/disclosures/" aria-current={current("/disclosures/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Newest</span><i class="chev" aria-hidden="true">›</i></a>
-          <a href="/washington/" aria-current={current("/washington/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16M6 20v-7M18 20v-7M10 20v-4h4v4M5 13h14M12 4a6 6 0 0 1 6 6H6a6 6 0 0 1 6-6zM12 2v2"/></svg><span>Washington</span><i class="chev" aria-hidden="true">›</i></a>
-          <a href="/rates/" aria-current={current("/rates/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19l5-6 4 3 7-9M15 7h5v5"/></svg><span>Rates</span><i class="chev" aria-hidden="true">›</i></a>
-          <a href="/guides/" aria-current={current("/guides/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21a2 2 0 0 0 2 2h13v-4M8 7h7M8 11h5"/></svg><span>Guides</span><i class="chev" aria-hidden="true">›</i></a>
+          {NAV.map((g) => (
+            <details class="navm" name="navm" data-nav={g.key}>
+              <summary aria-current={activeGroup === g.key ? "true" : undefined}><svg class="navm-ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={NAV_ICON[g.key]}/></svg><span>{g.label}</span><svg class="navm-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+              <div class="navm-panel"><ul>
+                {liveItems(g).map((i) => <li><a href={i.href} aria-current={current(i.href)}><span class="navm-l">{i.label}</span><span class="navm-d">{i.desc}</span></a></li>)}
+              </ul></div>
+            </details>
+          ))}
+          <a class="navm-plain" href="/guides/" aria-current={current("/guides/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21a2 2 0 0 0 2 2h13v-4M8 7h7M8 11h5"/></svg><span>Guides</span><i class="chev" aria-hidden="true">›</i></a>
         </nav>
         <a class="icon-btn acct-btn" id="acctBtn" href="/watchlist/" aria-label="Watchlist" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg><span class="acct-badge" hidden></span></a>
         <button class="icon-btn theme-btn" id="themeBtn" type="button" aria-label="Switch color theme">
@@ -204,23 +217,18 @@ const current = (href: string) => (path === href ? "page" : undefined);
           information only, with no buy/sell recommendations and no trade execution.
         </p>
         <p>Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, Senate eFD, FEC, USAspending, Senate LDA. An independent site, not affiliated with any government body, campaign or broker.</p>
-        <nav class="foot-links" aria-label="About this site">
-          <a href="/about/">About</a>
-          <a href="/guides/">Guides</a>
-          <a href="/writing/">Writing</a>
-          <a href="/markets/largest-stock-exchanges/">World markets</a>
-          <a href="/faq/">FAQ</a>
-          <a href="/methodology/">Methodology</a>
-          <a href="/downloads/">Downloads</a>
-          <a href="/feeds/">RSS feeds</a>
-          <a href="/developers/">Developers</a>
-          <a href="/guides/how-to-cite-and-reuse/">How to cite</a>
-          <a href="/corrections/">Corrections</a>
-          <a href="/terms/">Terms</a>
-          <a href="/privacy/">Privacy</a>
-          <a href="/contact/">Contact</a>
-          <a href="/llms.txt">llms.txt</a>
-        </nav>
+        <div class="foot-cols">
+          {NAV.map((g) => (
+            <nav aria-label={g.label}>
+              <p class="foot-h"><a href={g.href}>{g.label}</a></p>
+              <ul>{liveItems(g).map((i) => <li><a href={i.href}>{i.label}</a></li>)}</ul>
+            </nav>
+          ))}
+          <nav class="foot-links" aria-label="About this site">
+            <p class="foot-h">About and data</p>
+            <ul>{FOOT_ABOUT.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+          </nav>
+        </div>
         <p>© {year} spotthemoney.com</p>
       </div>
     </footer>

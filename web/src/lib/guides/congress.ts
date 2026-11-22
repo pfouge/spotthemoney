@@ -72,7 +72,7 @@ export const congressGuides: ((c: GuideCtx) => Guide)[] = [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-11-20",
+    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-11-22",
     title: "How to read a congressional trade report",
     seoTitle: ["How to Read a Congressional Stock Trade Report (PTR)", "How to Read a Congressional Trade Report"],
     description: ["A periodic transaction report lists the asset, owner, type, trade date, filing date and a dollar range. What each column means, with the House and Senate codes.", "What each column of a congressional trade report means: owner, type, dates and the dollar range, with House and Senate codes."],
@@ -99,13 +99,13 @@ ${table(["Column", "What it tells you"], [
 ])}
 <p>On this site the same fields appear in each member's table as Security, Side, Trade date, Disclosed, Lag, Value and Flags, with a link to the source document in the last column. Every trade table can be sorted: click a column title such as Trade date, Value or Lag to sort by it, click again to reverse, and click a third time to return to the original newest-first order. Congressional tables have no "Held after" or "Change" column, because a report gives no share counts or holdings; those columns appear only in tables of corporate insiders' Form 4 rows. The Flags column marks a late report, the owner when it is not the member, and two facts about the member's earlier rows in the same ticker, "first on record" and a run such as "3rd buy in a row", which are explained ${`<a href="/guides/how-to-read-a-congressional-trade-report/#ticker-history">below</a>`}.</p>` },
       { id: "member-page", h: "What does a member's page on this site show?", html: `
-<p>Each member with a report on record has a page that starts with the seat, party, the date the current term began and the member's committees, followed by one paragraph that sums up the record. The <strong>Follow</strong> button beside the name adds the member to your free watchlist, which then shows each new report as it is disclosed (see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}). Below that, in order:</p>
+<p>Each member with a report on record has a page that starts with the seat, party, the date the current term began and the member's committees, followed by one paragraph that sums up the record. The <strong>Follow</strong> button beside the name adds the member to your free watchlist, which then shows each new report as it is disclosed (see ${`<a href="/guides/how-to-follow-members-insiders-and-stocks/">how to follow</a>`}). Below that come "At a glance" tiles, each with a count that opens its section, and a bar that jumps between three groups: Trading, Washington (the committees) and About this record. In order:</p>
 <ul>
 <li><strong>Most-traded stocks.</strong> The tickers that appear most often in the member's reports, with the number of purchases and sales and the sum of the ranges as filed. An "Also on record" note means the company's own page here lists lobbying reports or federal contract awards. It describes the company, not the member.</li>
 <li><strong>Year by year, and whose trades.</strong> Trades counted by the year of the trade, and by the owner the report names: the member, the spouse, a dependent child or a joint holding.</li>
 <li><strong>How this record compares.</strong> The member's number of trades, median days from trade to report and share of trades reported after ${c.congressDeadlineDays} days, beside the same figures for every member with at least one trade on record here. Members who reported no trades are not part of the comparison.</li>
-<li><strong>Committee assignments.</strong> Current committees and subcommittees, with any leadership post. They are listed for context. This site does not match trades to committee business, and a seat on a committee is not evidence about any trade.</li>
 <li><strong>Disclosed trades and filings.</strong> Every row with its link to the original report, then the list of reports themselves.</li>
+<li><strong>Committee assignments.</strong> Current committees and subcommittees, with any leadership post. They are listed for context. This site does not match trades to committee business, and a seat on a committee is not evidence about any trade.</li>
 </ul>
 <p>The page ends with other members from the same state, members who traded the same tickers, and short answers to the questions people ask most about that member. All of it is counted from the same rows as the trade table.</p>` },
       { id: "directory", h: "How do I find a member, or all the members from one state or committee?", html: `

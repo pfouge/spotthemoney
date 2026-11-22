@@ -3,6 +3,10 @@
 // federal contracts and lobbying (exact normalized-name match on USAspending recipient /
 // LDA client; a miss simply shows the reason line).
 import LearnMore from "../../components/LearnMore.astro";
+import Glance from "../../components/Glance.astro";
+import GroupBar from "../../components/GroupBar.astro";
+import PageGroup from "../../components/PageGroup.astro";
+import { shownYears, shownQuarters } from "../../lib/financials";
 import { insiderRows, memberRows, relatedCompanies, sizeOf, industryOf, tickerPages } from "../../lib/entity";
 import { industryHref } from "../../lib/industries";
 import { orgPath } from "../../lib/links";
@@ -67,17 +71,32 @@ const plannedN = c.cik ? noticesInWindow(model.form144.byCik.get(c.cik.padStart(
 // Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
 const holdersN = c.cik ? holdersOf(model.schedule13.byCik.get(c.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 // Figures from the company's annual and quarterly reports (lib/financials.ts); null when none are on file.
-const hasFinancials = !!financialsOf(model, c.cik);
+const fin = financialsOf(model, c.cik);
+const finYears = fin ? shownYears(fin) : [];
+const finQuarters = fin ? shownQuarters(fin) : [];
+const finShown = finYears.length + finQuarters.length > 0;
+const finNewest = finYears[0] ?? finQuarters[0];
 // Schedule 13 statements this company filed about other companies on the site.
 const holdingsN = holdingsOf(statementsFiledBy(model, c.cik), model.builtAt).length;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
-const jump: [string, string][] = [
-  ...(c.insiders.length ? [["#insiders", "Insiders"] as [string, string]] : []),
-  ...(memberList.length ? [["#members", "Members of Congress"] as [string, string]] : []),
-  ["#insider-transactions", "Transactions"], ...(plannedN ? [["#planned-sales", "Planned sales"] as [string, string]] : []), ...(holdersN ? [["#large-holders", "Large holders"] as [string, string]] : []), ...(holdingsN ? [["#reported-holdings", "Holdings it reports"] as [string, string]] : []), ...(hasFinancials ? [["#financials", "Financials"] as [string, string]] : []), ["#contracts", "Contracts"], ["#lobbying", "Lobbying"],
-  ...(relatedCos.length ? [["#related", "Related companies"] as [string, string]] : []),
-  ["#sources", "Sources"],
+const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || finShown || plannedN > 0 || holdersN > 0 || holdingsN > 0;
+const latestInsider = txns.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
+const glance = [
+  ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
+  ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
+  ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
+  ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
+  ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
+  ...(c.contracts.length ? [{ label: "Federal contracts", value: num(c.contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
+  ...(c.lobbying.length ? [{ label: "Lobbying filings", value: num(c.lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
 ];
+const groupList = hasData ? [
+  { id: "trading", label: "Trading" },
+  ...(holdersN || holdingsN ? [{ id: "ownership", label: "Ownership" }] : []),
+  ...(finShown ? [{ id: "company", label: "Company" }] : []),
+  { id: "washington", label: "Washington" },
+  { id: "record", label: "About this record" },
+] : [];
 const lastUpdated = [txns[0]?.filedAt, c.contracts[0]?.createdAt, c.lobbying[0]?.createdAt].filter(Boolean).sort().reverse()[0] ?? model.builtAt;
 
 const answer = `${c.name}${c.primaryTicker ? ` (${c.primaryTicker})` : ""} has ${plural(c.insiders.length, "insider")} on file who disclosed ${plural(y.length, "transaction")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "sale")}, about ${money(sum(y.map((t) => t.value)))} at reported prices)${congressTxns.length ? `, and ${plural(congressTxns.length, "congressional trade")} in its stock ${congressTxns.length === 1 ? "is" : "are"} on record` : ""}. ${c.contracts.length ? `USAspending shows ${plural(c.contracts.length, "federal contract award")} with a combined value of ${money(contractsTotal)} to a recipient with this name that started in the last 180 days` : "No federal contract award that started in the last 180 days was found for a recipient with exactly this name"}${lobbyingYtd.length ? `, and ${plural(lobbyingYtd.length, "lobbying filing")} naming it as client report ${money(lobbyingTotal)} in ${lobbyingYear}.` : "; no lobbying filing names it as client this year."}`;
@@ -109,11 +128,11 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <Answer text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
   <ReviewNote show={c.underReview} what="Insider rows" />
 
-  <nav class="jump" aria-label="On this page">
-    <span>On this page</span>
-    {jump.map(([href, label]) => <a href={href}>{label}</a>)}
-  </nav>
+  <Glance items={hasData ? glance : []} />
 
+  <GroupBar groups={groupList} />
+
+  <PageGroup id="trading" label="Trading">
   <VizStock company={c} />
 
   <h2 id="insiders">Insiders</h2>
@@ -154,14 +173,25 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 
   <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
 
-  <LargeHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
-
-  <ReportedHoldings model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
-
-  <Financials model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "financials")} />
+  </PageGroup>
 
   <AdSlot label="Advertisement" />
 
+  {(holdersN > 0 || holdingsN > 0) && (
+    <PageGroup id="ownership" label="Ownership">
+      <LargeHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+
+      <ReportedHoldings model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+    </PageGroup>
+  )}
+
+  {finShown && (
+    <PageGroup id="company" label="Company">
+      <Financials model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "financials")} />
+    </PageGroup>
+  )}
+
+  <PageGroup id="washington" label="Washington">
   <h2 id="contracts">Federal contracts (USAspending, awards started in the last 180 days)</h2>
   {c.contracts.length === 0 ? <p class="empty-reason">No contract award starting in the last 180 days was found for a recipient named exactly "{c.name}". Subsidiaries and differently-spelled recipients are not matched. Search <a href="/contracts/">contracts</a>.</p> : (
     <div class="tablewrap">
@@ -190,6 +220,11 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </div>
   )}
 
+  </PageGroup>
+
+  <AdSlot pos="low" />
+
+  <PageGroup id="record" label="About this record">
   {relatedCos.length > 0 && (
     <section aria-labelledby="related" data-related>
       <h2 id="related">Related companies</h2>
@@ -202,12 +237,12 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 
   <LearnMore slugs={["what-is-form-4", "insider-buying-vs-insider-selling", ...(c.contracts.length ? ["federal-contracts-usaspending"] : []), ...(c.lobbying.length ? ["lobbying-disclosure-reports"] : []), "what-disclosure-data-cannot-tell-you"]} />
 
-  <AdSlot pos="low" />
-
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={c.txns} edgarId={c.cik ?? c.primaryTicker}
     extra={[{ name: "USAspending, federal contract awards", records: c.contracts.length, unit: c.contracts.length === 1 ? "award" : "awards", href: SOURCES.usaspending.url, linkLabel: "USAspending" }, { name: "Lobbying disclosure filings", records: c.lobbying.length, unit: c.lobbying.length === 1 ? "filing" : "filings", href: SOURCES.lda.url, linkLabel: "LDA.gov search" }]} />
   <p>Insiders and their transactions come from SEC EDGAR Form 4 filings for this issuer. Contracts and lobbying are matched by exact normalized name (suffixes like Inc./Corp. ignored) to USAspending recipients and LDA clients. This is a conservative match that misses subsidiaries on purpose. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  </PageGroup>
+
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>

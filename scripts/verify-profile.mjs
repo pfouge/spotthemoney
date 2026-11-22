@@ -49,7 +49,8 @@ for (const path of sample) {
       answer: txt(document.querySelector(".answer")), robots: document.querySelector('meta[name="robots"]')?.content ?? "",
       total: cell("Trades on record"), buys: cell("Purchases"), sells: cell("Sales"), stocksCell: cell("Stocks traded"),
       years: rows("[data-profile-years]"), owners: rows("[data-profile-owners]"), stocks: rows("[data-profile-stocks]"),
-      jump: [...document.querySelectorAll("nav.jump a")].map((a) => a.getAttribute("href")), missing: [...document.querySelectorAll("nav.jump a")].map((a) => a.getAttribute("href")).filter((h) => !document.querySelector(h)),
+      jump: [...document.querySelectorAll("[data-glance] a, nav.groupbar a")].map((a) => a.getAttribute("href")), missing: [...document.querySelectorAll("[data-glance] a, nav.groupbar a")].map((a) => a.getAttribute("href")).filter((h) => !document.querySelector(h)),
+      present: ["by-year", "trades", "filings", "questions", "sources"].filter((i) => document.getElementById(i)),
       qa: [...document.querySelectorAll("[data-profile-qa] .faq-item")].map((x) => ({ q: txt(x.querySelector("h3")), a: txt(x.querySelector("p")) })),
       faq: ld.find((x) => x["@type"] === "FAQPage")?.mainEntity?.map((x) => ({ q: x.name, a: x.acceptedAnswer?.text })) ?? [],
       person: ld.find((x) => x["@type"] === "Person") ?? null,
@@ -68,7 +69,9 @@ for (const path of sample) {
   if (total === 0) { ok(/noindex/.test(d.robots), `${at} a member with no trades should be noindex`); continue; }
   ok(!/noindex/.test(d.robots), `${at} has trades but is noindex`);
   ok(d.missing.length === 0, `${at} jump links point at missing sections: ${d.missing.join(", ")}`);
-  for (const need of ["#by-year", "#trades", "#filings", "#questions", "#sources"]) ok(d.jump.includes(need), `${at} jump links lack ${need}`);
+  // The jump-link row became "At a glance" tiles plus a group bar (2026-11-22): the sections must still be there, and the bar must reach them.
+  for (const need of ["by-year", "trades", "filings", "questions", "sources"]) ok(d.present.includes(need), `${at} lacks the section #${need}`);
+  for (const need of ["#trading", "#record"]) ok(d.jump.includes(need), `${at} group bar lacks ${need}`);
   const yearSum = d.years.reduce((n, r) => n + int(r[1]), 0), ownerSum = d.owners.reduce((n, r) => n + int(r[1]), 0);
   // A row with neither a trade date nor a disclosure date has no year; allow that and nothing else.
   ok(yearSum <= total && yearSum >= total * 0.95, `${at} year rows add up to ${yearSum}, Trades on record says ${total}`);
@@ -106,8 +109,8 @@ for (const w of [390, 1100]) {
 const quiet = linked.find((h) => !withTrades.includes(h));
 if (quiet) {
   await page.goto(base + quiet, { waitUntil: "domcontentloaded" });
-  const q = await page.evaluate(() => ({ robots: document.querySelector('meta[name="robots"]')?.content ?? "", facts: document.querySelectorAll("[data-profile-facts] dt").length, jump: !!document.querySelector("nav.jump") }));
-  ok(/noindex/.test(q.robots) && q.facts >= 2 && !q.jump, `${quiet}: a member with no trades should be noindex, keep the header facts and have no jump links`);
+  const q = await page.evaluate(() => ({ robots: document.querySelector('meta[name="robots"]')?.content ?? "", facts: document.querySelectorAll("[data-profile-facts] dt").length, jump: !!document.querySelector("nav.groupbar, [data-glance]") }));
+  ok(/noindex/.test(q.robots) && q.facts >= 2 && !q.jump, `${quiet}: a member with no trades should be noindex, keep the header facts and have no group bar or at-a-glance tiles`);
 }
 ok(errors.length === 0, `page errors: ${errors.slice(0, 3).join(" | ")}`);
 await browser.close();

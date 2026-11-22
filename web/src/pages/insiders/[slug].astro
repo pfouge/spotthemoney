@@ -1,6 +1,9 @@
 ---
 // Insider profile: /insiders/<slug>/ — one page per person with an insider role (Form 4 filer).
 // Answer-first (roadmap B.3), then the transactions, then sources, last-updated, disclaimer.
+import Glance from "../../components/Glance.astro";
+import GroupBar from "../../components/GroupBar.astro";
+import PageGroup from "../../components/PageGroup.astro";
 import LearnMore from "../../components/LearnMore.astro";
 import { codeRows, yearRows, colleagues } from "../../lib/entity";
 import DownloadCsv from "../../components/DownloadCsv.astro";
@@ -56,11 +59,19 @@ const uniqueTickers = [...new Map(tickers.map((s) => [s.ticker, s])).values()];
 // Form 144 notices and Schedule 13 statements submitted under this person's SEC number (empty until those loads are current).
 const filedN = noticesInWindow(noticesFiledBy(model, p.cik), model.builtAt).length;
 const holdingsN = holdingsOf(statementsFiledBy(model, p.cik), model.builtAt).length;
-const jump: [string, string][] = txns.length === 0 ? [] : [
-  ["#by-type", "By type"], ["#by-year", "By year"], ["#transactions", "Transactions"],
-  ...(filedN ? [["#filed-notices", "Planned sales"] as [string, string]] : []), ...(holdingsN ? [["#reported-holdings", "Large holdings"] as [string, string]] : []), ["#filings", "Filings"],
-  ...(peers.length ? [["#colleagues", "Other insiders"] as [string, string]] : []),
-  ["#sources", "Sources"],
+const noData = txns.length === 0;
+const glance = noData ? [] : [
+  { label: "Transactions", value: num(txns.length), note: lastTrade ? `Latest ${formatDate(lastTrade)}` : undefined, href: "#transactions" },
+  { label: "Open-market buys", value: num(openMarketBuys.length), href: "#by-type" },
+  { label: "Sales", value: num(sells.length), href: "#by-type" },
+  ...(filedN ? [{ label: "Planned sales", value: num(filedN), note: "Form 144 notices, 12 months", href: "#filed-notices" }] : []),
+  ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G", href: "#reported-holdings" }] : []),
+  ...(p.filings.length ? [{ label: "Filings", value: num(p.filings.length), href: "#filings" }] : []),
+];
+const groupList = noData ? [] : [
+  { id: "trading", label: "Trading" },
+  ...(holdingsN ? [{ id: "ownership", label: "Ownership" }] : []),
+  { id: "record", label: "About this record" },
 ];
 
 const answer = txns.length === 0
@@ -97,12 +108,7 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
   <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote="Source: SEC EDGAR Form 4 filings" />
   <ReviewNote show={p.underReview} what="These Form 4 rows" />
 
-  {jump.length > 0 && (
-    <nav class="jump" aria-label="On this page">
-      <span>On this page</span>
-      {jump.map(([href, label]) => <a href={href}>{label}</a>)}
-    </nav>
-  )}
+  <Glance items={glance} />
 
   <section class="datastrip">
     <div class="cell"><div class="k">Transactions</div><div class="v">{num(txns.length)}</div></div>
@@ -111,6 +117,9 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     <div class="cell"><div class="k">Avg. disclosure lag</div><div class="v">{avg(txns.map((t) => t.lagDays)) == null ? "—" : `${avg(txns.map((t) => t.lagDays))!.toFixed(1)}d`}</div></div>
   </section>
 
+  <GroupBar groups={groupList} />
+
+  <PageGroup id="trading" label="Trading">
   <VizPerson person={p} />
 
   {txns.length > 0 && (
@@ -140,12 +149,6 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
   <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
   <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet. The filings below may be amendments, holdings-only reports, or rows still under review." />
 
-  <FiledNotices model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
-
-  <ReportedHoldings model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
-
-  <AdSlot label="Advertisement" show={txns.length > 0} />
-
   <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
     <div class="tablewrap">
@@ -167,6 +170,21 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     </div>
   )}
 
+  <FiledNotices model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
+
+  </PageGroup>
+
+  <AdSlot label="Advertisement" show={txns.length > 0} />
+
+  {holdingsN > 0 && (
+    <PageGroup id="ownership" label="Ownership">
+    <ReportedHoldings model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+    </PageGroup>
+  )}
+
+  <AdSlot pos="low" />
+
+  <PageGroup id="record" label="About this record">
   {peers.length > 0 && (
     <section aria-labelledby="colleagues" data-related>
       <h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2>
@@ -179,8 +197,6 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 
   <LearnMore slugs={["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", ...(txns.some((t) => t.is10b51) ? ["rule-10b5-1-trading-plans"] : []), ...(txns.some((t) => t.isDerivative) ? ["insider-options-and-derivatives"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
 
-  <AdSlot pos="low" />
-
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={txns} filings={p.filings} edgarId={p.cik} />
   <p>
@@ -189,6 +205,8 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     The lag is the filing date minus the trade date; Form 4 is due within two business days. Amendments (4/A) are not merged.
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
   </p>
+  </PageGroup>
+
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade and may be amended later. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>
