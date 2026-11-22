@@ -4,6 +4,9 @@
 // answer → headline figures → most-traded stocks → charts → year by year and whose trades →
 // comparison with other members → committees → every trade → filings → related members →
 // questions → sources. The figures come from lib/profile.ts, which is unit-tested.
+import Glance from "../../components/Glance.astro";
+import GroupBar from "../../components/GroupBar.astro";
+import PageGroup from "../../components/PageGroup.astro";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
@@ -96,11 +99,19 @@ const ld = {
 const faqLd = qa.length ? { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}${path}#questions`,
   mainEntity: qa.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) } : null;
 
-const jump: [string, string][] = txns.length === 0 ? [] : [
-  ...(topStocks.length ? [["#stocks", "Stocks"] as [string, string]] : []),
-  ["#charts", "Charts"], ["#by-year", "By year"], ...(peers.members > 1 ? [["#compare", "Compared"] as [string, string]] : []),
-  ...(groups.length ? [["#committees", "Committees"] as [string, string]] : []),
-  ["#trades", "Trades"], ["#filings", "Filings"], ["#questions", "Questions"], ["#sources", "Sources"],
+const showCompare = txns.length > 0 && peers.members > 1;
+const glance = noindex ? [] : [
+  { label: "Trades on record", value: num(txns.length), note: prof.lastTrade ? `Latest ${formatDate(prof.lastTrade)}` : undefined, href: "#trades" },
+  ...(topStocks.length ? [{ label: "Stocks traded", value: num(prof.stocks.length), note: "Most traded listed first", href: "#stocks" }] : []),
+  { label: "Reported late", value: num(late.length), note: `After ${CONGRESS_DEADLINE_DAYS} days`, href: "#trades" },
+  ...(groups.length ? [{ label: "Committees", value: num(groups.length), note: "Listed for context", href: "#committees" }] : []),
+  ...(p.filings.length ? [{ label: "Filings", value: num(p.filings.length), note: "Periodic transaction reports", href: "#filings" }] : []),
+  ...(showCompare && rank ? [{ label: "Rank by trades", value: ordinal(rank), note: `Of ${num(peers.members)} members`, href: "#compare" }] : []),
+];
+const groupList = noindex ? [] : [
+  { id: "trading", label: "Trading" },
+  ...(groups.length ? [{ id: "washington", label: "Washington" }] : []),
+  { id: "record", label: "About this record" },
 ];
 ---
 <BaseLayout title={[`${p.name} Stock Trades: STOCK Act Disclosures`, `${p.name} Stock Trades`]} description={description} noindex={noindex} section="Congress">
@@ -123,12 +134,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
   <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote={role.chamber === "senate" ? "Source: Senate eFD periodic transaction reports" : "Source: House Clerk periodic transaction reports"} />
   <ReviewNote show={p.underReview} what="These congressional rows" />
 
-  {jump.length > 0 && (
-    <nav class="jump" aria-label="On this page">
-      <span>On this page</span>
-      {jump.map(([href, label]) => <a href={href}>{label}</a>)}
-    </nav>
-  )}
+  <Glance items={glance} />
 
   <section class="datastrip">
     <div class="cell"><div class="k">Trades on record</div><div class="v">{num(txns.length)}</div></div>
@@ -140,6 +146,9 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
     <div class="cell"><div class="k">Late filings</div><div class={`v ${late.length ? "neg" : ""}`}>{num(late.length)}</div></div>
   </section>
 
+  <GroupBar groups={groupList} />
+
+  <PageGroup id="trading" label="Trading">
   {topStocks.length > 0 && (
     <section aria-labelledby="stocks">
       <h2 id="stocks">Most-traded stocks</h2>
@@ -205,7 +214,7 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
     </section>
   )}
 
-  {txns.length > 0 && peers.members > 1 && (
+  {showCompare && (
     <section aria-labelledby="compare" data-profile-compare>
       <h2 id="compare">How this record compares</h2>
       <p class="section-note">Against the {num(peers.members)} members of Congress with at least one trade on record here. Members with no reported trades are not in the comparison, and coverage starts on different dates for the House and the Senate.</p>
@@ -223,32 +232,10 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
     </section>
   )}
 
-  {groups.length > 0 && (
-    <section aria-labelledby="committees" data-profile-committees>
-      <h2 id="committees">Committee assignments</h2>
-      <p class="section-note">Current assignments in the {chamberName}{groups.some((g) => g.seat.chamber === "joint") ? " and joint committees" : ""}. Listed for context only: nothing on this page connects a trade to committee business. A committee's name opens its page here, with its members and the trades they have disclosed.</p>
-      <ul class="seats">
-        {groups.map((g) => (
-          <li>
-            <div class="seat-head">
-              {committeePaths.get(g.seat.code) ? <a href={committeePaths.get(g.seat.code)}>{g.seat.name}</a> : g.seat.url ? <a href={g.seat.url} rel="noopener" target="_blank">{g.seat.name}</a> : <span>{g.seat.name}</span>}
-              <span class={`tag ${g.seat.title ? "lead" : ""}`}>{seatTitle(g.seat)}</span>
-            </div>
-            {g.seat.jurisdiction && <p class="seat-what">{g.seat.jurisdiction}</p>}
-            {g.subs.length > 0 && <p class="seat-subs"><span>Subcommittees:</span> {g.subs.map((s) => `${s.name}${s.title ? ` (${s.title})` : ""}`).join(" · ")}</p>}
-          </li>
-        ))}
-      </ul>
-      <p class="section-note">Source: the public-domain <a href="https://github.com/unitedstates/congress-legislators" rel="noopener" target="_blank">congress-legislators</a> dataset, refreshed daily. Descriptions of a committee's remit are the dataset's own wording.</p>
-    </section>
-  )}
-
   <h2 id="trades">Disclosed trades</h2>
   <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
   <ScreenerLink member={p.slug!} n={screenerCountsFor(model, personPath).member.get(p.slug!) ?? 0} of={`by ${p.name}`} />
   <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />
-
-  <AdSlot label="Advertisement" show={!noindex} />
 
   <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
@@ -271,6 +258,37 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
     </div>
   )}
 
+  </PageGroup>
+
+  <AdSlot label="Advertisement" show={!noindex} />
+
+  {groups.length > 0 && (
+    <PageGroup id="washington" label="Washington">
+  {groups.length > 0 && (
+    <section aria-labelledby="committees" data-profile-committees>
+      <h2 id="committees">Committee assignments</h2>
+      <p class="section-note">Current assignments in the {chamberName}{groups.some((g) => g.seat.chamber === "joint") ? " and joint committees" : ""}. Listed for context only: nothing on this page connects a trade to committee business. A committee's name opens its page here, with its members and the trades they have disclosed.</p>
+      <ul class="seats">
+        {groups.map((g) => (
+          <li>
+            <div class="seat-head">
+              {committeePaths.get(g.seat.code) ? <a href={committeePaths.get(g.seat.code)}>{g.seat.name}</a> : g.seat.url ? <a href={g.seat.url} rel="noopener" target="_blank">{g.seat.name}</a> : <span>{g.seat.name}</span>}
+              <span class={`tag ${g.seat.title ? "lead" : ""}`}>{seatTitle(g.seat)}</span>
+            </div>
+            {g.seat.jurisdiction && <p class="seat-what">{g.seat.jurisdiction}</p>}
+            {g.subs.length > 0 && <p class="seat-subs"><span>Subcommittees:</span> {g.subs.map((s) => `${s.name}${s.title ? ` (${s.title})` : ""}`).join(" · ")}</p>}
+          </li>
+        ))}
+      </ul>
+      <p class="section-note">Source: the public-domain <a href="https://github.com/unitedstates/congress-legislators" rel="noopener" target="_blank">congress-legislators</a> dataset, refreshed daily. Descriptions of a committee's remit are the dataset's own wording.</p>
+    </section>
+  )}
+    </PageGroup>
+  )}
+
+  <AdSlot pos="low" />
+
+  <PageGroup id="record" label="About this record">
   {(stateMates.length > 0 || stockMates.length > 0) && (
     <section aria-labelledby="related" data-profile-related>
       <h2 id="related">Related members</h2>
@@ -305,8 +323,6 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
     </section>
   )}
 
-  <AdSlot pos="low" />
-
   <h2 id="sources">Sources and method</h2>
   <SourcePanel model={model} txns={txns} filings={p.filings} />
   <p>
@@ -317,6 +333,8 @@ const jump: [string, string][] = txns.length === 0 ? [] : [
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
   </p>
   <p class="section-note">Official records: {sourceLinks.map((l, i) => <>{i > 0 && " · "}<a href={l.href} rel="noopener" target="_blank">{l.label}</a></>)}. Party, seat and term dates come from the congress-legislators dataset.</p>
+  </PageGroup>
+
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade by weeks and are sometimes amended. No inference about intent is made or implied.</p>
   <JsonLd data={ld} />
   {faqLd && <JsonLd data={faqLd} />}

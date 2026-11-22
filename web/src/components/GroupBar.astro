@@ -1,0 +1,11 @@
+---
+// Sticky "On this page" bar of an entity page: one link per group of sections (PageGroup).
+// Renders nothing with fewer than two groups. scripts/ui.ts marks the group in view.
+interface Props { groups: { id: string; label: string }[] }
+const { groups } = Astro.props;
+---
+{groups.length >= 2 && (
+  <nav class="groupbar" aria-label="On this page" data-groupbar>
+    {groups.map((g) => <a href={`#${g.id}`}>{g.label}</a>)}
+  </nav>
+)}

@@ -36,7 +36,7 @@ function parseCsv(text) {
 }
 const csv = async (name) => { const r = await fetch(`${base}/downloads/${name}`); return r.ok ? parseCsv(await r.text()) : null; };
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));

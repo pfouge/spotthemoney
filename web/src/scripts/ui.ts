@@ -23,6 +23,49 @@ function initMenu(): void {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") set(false); });
 }
 
+// Header menus (details.navm). The shared name makes them exclusive where the browser supports it;
+// this also covers older browsers, and closes a menu on an outside click, on Escape (focus goes
+// back to its summary) and when focus leaves the nav. Nothing opens on hover.
+function initNavMenus(): void {
+  const nav = document.getElementById("siteMenu");
+  const all = [...document.querySelectorAll<HTMLDetailsElement>("details.navm")];
+  if (!nav || all.length === 0) return;
+  for (const d of all) d.addEventListener("toggle", () => { if (d.open) for (const o of all) if (o !== d) o.open = false; });
+  const closeAll = (): void => { for (const d of all) d.open = false; };
+  document.addEventListener("click", (e) => { if (!nav.contains(e.target as Node)) closeAll(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const open = all.find((d) => d.open);
+    if (!open) return;
+    open.open = false;
+    open.querySelector("summary")?.focus();
+  });
+  nav.addEventListener("focusout", (e) => { const to = (e as FocusEvent).relatedTarget as Node | null; if (to && !nav.contains(to)) closeAll(); });
+}
+
+// The group bar of an entity page: mark the group in view (aria-current="true" on its link).
+function initGroupBar(): void {
+  const bar = document.querySelector<HTMLElement>("nav.groupbar");
+  if (!bar || !("IntersectionObserver" in window)) return;
+  const groups = [...document.querySelectorAll<HTMLElement>(".pgroup[id]")];
+  if (groups.length === 0) return;
+  const links = new Map<string, HTMLAnchorElement>();
+  for (const a of bar.querySelectorAll<HTMLAnchorElement>("a[href^='#']")) links.set(a.getAttribute("href")!.slice(1), a);
+  const visible = new Set<string>();
+  const mark = (): void => {
+    const first = groups.find((g) => visible.has(g.id));
+    for (const [id, a] of links) { if (first && id === first.id) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); }
+    const cur = first ? links.get(first.id) : null;
+    if (cur && bar.scrollWidth > bar.clientWidth) { const x = cur.offsetLeft - 16; if (Math.abs(bar.scrollLeft - x) > 40) bar.scrollTo({ left: x }); }
+  };
+  const hdr = document.getElementById("siteHeader")?.offsetHeight ?? 64;
+  const io = new IntersectionObserver((entries) => {
+    for (const en of entries) { if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id); }
+    mark();
+  }, { rootMargin: `-${hdr + bar.offsetHeight + 8}px 0px -55% 0px` });
+  for (const g of groups) io.observe(g);
+}
+
 type Row = [kind: string, title: string, sub: string, url: string, weight: number];
 
 function initSearch(): void {
@@ -86,6 +129,8 @@ function initAnswerMore(): void {
 
 initTheme();
 initMenu();
+initNavMenus();
+initGroupBar();
 initSearch();
 initAnswerMore();
 

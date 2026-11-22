@@ -6,6 +6,7 @@
 //   2. ORPHAN   a page in the sitemap that no other page links to, or that cannot be reached
 //               from the home page by following links (full crawl only).
 //   3. DEPTH    a sitemap page more than 4 clicks from the home page (full crawl only).
+//   GROUPS   at-a-glance and group-bar links resolve; groups are in order with an h2 each
 //   4. ENTITY   a stock, company, insider or member page with trades that lacks its header
 //               facts, its links to the guides, or (where it has anchors) working jump links.
 //   5. AUTO     an automatic glossary link that points at its own page, at a missing guide,
@@ -137,9 +138,24 @@ for (const path of pages) {
     ok(/data-(entity|profile)-facts/.test(main), `ENTITY ${path}: no header facts`);
     ok(/href="\/guides\/[a-z0-9-]+\//.test(main), `ENTITY ${path}: no link to any guide`);
     ok(/id="sources"/.test(main), `ENTITY ${path}: no Sources section`);
-    const jump = /<nav class="jump"[\s\S]*?<\/nav>/.exec(main)?.[0] ?? "";
+    // GROUPS: the "At a glance" tiles and the group bar replaced the old jump-link row (2026-11-22).
     const have = ids(html);
-    for (const h of hrefs(jump)) ok(have.has(h.slice(1)), `ENTITY ${path}: jump link ${h} goes nowhere`);
+    ok(!/<nav class="jump"/.test(main), `GROUPS ${path}: the old jump-link row is still there`);
+    const glanceHtml = /<section class="glance"[\s\S]*?<\/section>/.exec(main)?.[0] ?? "";
+    const barHtml = /<nav class="groupbar"[\s\S]*?<\/nav>/.exec(main)?.[0] ?? "";
+    for (const h of [...hrefs(glanceHtml), ...hrefs(barHtml)]) ok(h.startsWith("#") && have.has(h.slice(1)), `GROUPS ${path}: glance or group bar link ${h} goes nowhere`);
+    const groupEls = [...main.matchAll(/<div class="pgroup" id="([^"]+)"[^>]*>([\s\S]*?)(?=<div class="pgroup" id=|<p class="disclaimer"|<\/main>)/g)];
+    const order = ["trading", "ownership", "company", "washington", "record"];
+    let last = -1;
+    for (const g of groupEls) {
+      ok(order.includes(g[1]), `GROUPS ${path}: unknown group id ${g[1]}`);
+      ok(/<h2[ >]/.test(g[2]), `GROUPS ${path}: group ${g[1]} has no h2`);
+      const at = order.indexOf(g[1]);
+      ok(at > last, `GROUPS ${path}: group ${g[1]} is out of order`);
+      last = at;
+    }
+    ok(groupEls.length === 0 || groupEls.at(-1)[1] === "record", `GROUPS ${path}: "About this record" is not the last group`);
+    if (barHtml) ok(hrefs(barHtml).map((h) => h.slice(1)).join() === groupEls.map((g) => g[1]).join(), `GROUPS ${path}: the group bar does not list the groups on the page, in order`);
     if (kind !== "congress") ok(/data-learn-more/.test(main), `ENTITY ${path}: no "Guides for this page" block`);
     // Industry fact (company and stock pages): only the SEC's code, its wording and the division.
     // The fact links to the page of its division at the code (lib/industries.ts); the general link

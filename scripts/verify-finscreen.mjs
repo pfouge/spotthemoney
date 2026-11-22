@@ -210,7 +210,7 @@ let chromium = null;
 if (!noBrowser) { try { ({ chromium } = await import("playwright")); } catch { browserNote = "Playwright is not installed: browser checks skipped"; } }
 if (chromium) {
   let browser = null;
-  try { browser = await chromium.launch(); } catch { browserNote = "no browser could be started: browser checks skipped"; }
+  try { browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}); } catch { browserNote = "no browser could be started: browser checks skipped"; }
   if (browser) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true });
   const page = await ctx.newPage();

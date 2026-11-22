@@ -70,6 +70,22 @@ for (const theme of ["light", "dark"]) {
         checked++;
       } catch (e) { failures.push(`${where}: could not be checked (${String(e).slice(0, 120)})`); }
     }
+    // Menu open (2026-11-22): the Congress menu on the home page, in the same theme and width.
+    try {
+      const where = `/ [${theme}, ${w}px, Congress menu open]`;
+      await page.goto(base + "/", { waitUntil: "load" });
+      if (w < 1024) await page.click("#menuBtn");
+      await page.click('nav.site details[data-nav="congress"] > summary');
+      await page.waitForTimeout(200);
+      await page.evaluate(axeSource);
+      const res = await page.evaluate(async () => {
+        // eslint-disable-next-line no-undef
+        const r = await axe.run({ exclude: [["iframe"], [".tv"], [".ad-slot"]] }, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"] } });
+        return r.violations.map((v) => ({ id: v.id, impact: v.impact, n: v.nodes.length, sample: v.nodes.slice(0, 3).map((x) => `${x.target.join(" ")} — ${(x.any[0]?.message ?? x.failureSummary ?? "").slice(0, 140)}`) }));
+      });
+      for (const v of res) failures.push(`${where}: ${v.id} (${v.impact}, ${v.n} element${v.n === 1 ? "" : "s"})\n      ${v.sample.join("\n      ")}`);
+      checked++;
+    } catch (e) { failures.push(`menu open [${theme}, ${w}px]: could not be checked (${String(e).slice(0, 120)})`); }
     await ctx.close();
   }
 }
