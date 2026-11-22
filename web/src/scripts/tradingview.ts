@@ -24,6 +24,20 @@ function mountWidget(slot: HTMLElement, file: string, config: Record<string, unk
   slot.appendChild(box);
 }
 
+// ONE setup for every full chart on the site (Peter, 2026-11-22): the conventional daily swing
+// layout. Daily candles over one year; volume bars under the price (the widget draws them unless
+// hide_volume is set); TradingView's built-in Moving Average Ribbon, whose defaults are the 20, 50,
+// 100 and 200 day simple averages; and a 14 day RSI in its own pane. The free embed takes study
+// ids only, not study settings, which is why the ribbon is used: four separate "SMA" studies
+// would all be drawn at the widget's default length. Change the setup here and nowhere else.
+// The small watchlist charts are TradingView's Mini Chart, which draws a price line only and
+// accepts no studies.
+export const CHART_SETUP = {
+  interval: "D", range: "12M", timezone: "America/New_York", style: "1",
+  hide_volume: false, hide_top_toolbar: false, withdateranges: true,
+  studies: ["STD;MA%Ribbon", "STD;RSI"],
+} as const;
+
 function mount(root: HTMLElement): void {
   const symbol = root.dataset.symbol;
   if (!symbol) return;
@@ -32,7 +46,7 @@ function mount(root: HTMLElement): void {
   const chart = root.querySelector<HTMLElement>('[data-tv-slot="chart"]');
   if (info) mountWidget(info, "embed-widget-symbol-info.js", { symbol, width: "100%", locale: "en", colorTheme: t, isTransparent: true });
   if (chart) mountWidget(chart, "embed-widget-advanced-chart.js", {
-    autosize: true, symbol, interval: "D", timezone: "Etc/UTC", theme: t, style: "1", locale: "en",
+    ...CHART_SETUP, autosize: true, symbol, theme: t, locale: "en",
     allow_symbol_change: false, calendar: false, hide_side_toolbar: true, save_image: false,
     support_host: "https://www.tradingview.com",
   });
