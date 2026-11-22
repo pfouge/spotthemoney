@@ -18,6 +18,7 @@ import { ingestUsaspending } from "./sources/usaspending.js";
 import { ingestUsaspendingDetails } from "./sources/usaspending_details.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
 import { ingestFecScheduleAHistory } from "./sources/fec_schedule_a_history.js";
+import { ingestFecIndependentExpenditures } from "./sources/fec_independent_expenditures.js";
 import { ingestSecForm4, ingestSecForm4History } from "./sources/sec_form4.js";
 import { ingestSecForm4Bulk } from "./sources/sec_form4_bulk.js";
 import { ingestSecForm4Index } from "./sources/sec_form4_index.js";
@@ -61,6 +62,7 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   usaspending_details: { label: "USAspending award details by award id (fills blanks)", cadence: "daily", daily: true, run: ingestUsaspendingDetails },
   fec_committees: { label: "FEC committee universe (members + top PACs)", cadence: "weekly", daily: true, run: ingestFecCommittees },
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
+  fec_independent_expenditures: { label: "FEC Schedule E independent expenditures (current cycle)", cadence: "daily", daily: true, run: ingestFecIndependentExpenditures },
   sec_company_size: { label: "SEC company size (shares outstanding, public float)", cadence: "daily", daily: true, run: ingestSecCompanySize },
   sec_company_sic: { label: "SEC industry codes (SIC) for companies", cadence: "daily", daily: true, run: ingestSecCompanySic },
   // Financial-statement figures for tracked companies from the SEC XBRL companyfacts API (migration 0032; stored, not yet shown).
