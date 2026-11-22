@@ -1,0 +1,73 @@
+---
+// "Planned sales this insider filed: Form 144 notices" on insider pages: the notices on the
+// company pages, seen from the filer's side (lib/form144.ts has the rules). Renders nothing
+// unless the Form 144 load is current and a notice was submitted under this person's SEC number
+// in the last 12 months about a company with a page here. A notice is a plan, never a sale.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import { money, num, companyPath } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { noticesInWindow, filerSummary, filerSentence, cleanText, stated, isAmendment, valueOutOfRange, shownValue, heldNote, NOTICE_CAVEAT, FILER_NOTE, NOTICE_ROWS } from "../lib/form144";
+import { noticesFiledBy, siteCompanyByCik } from "../lib/form144-build";
+import DownloadCsv from "./DownloadCsv.astro";
+
+interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
+const { model, cik, name, file } = Astro.props;
+const rows = noticesInWindow(noticesFiledBy(model, cik), model.builtAt);
+const s = filerSummary(rows);
+const shown = rows.slice(0, NOTICE_ROWS);
+const held = shown.filter((n) => valueOutOfRange(n)).length;
+const cos = siteCompanyByCik(model);
+const heads = [
+  { label: "Filed", type: "num", cls: "" }, { label: "Company", type: "text", cls: "" }, { label: "Class", type: "text", cls: "" },
+  { label: "Shares to be sold", type: "num", cls: "num" }, { label: "Stated market value", type: "num", cls: "num" },
+  { label: "Approximate sale date", type: "num", cls: "" }, { label: "10b5-1 plan adopted", type: "num", cls: "" },
+];
+const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
+const attrText = (t: string) => t.toLowerCase().replace(/[<>"]/g, "");
+const same = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").sort().join(" ");
+---
+{rows.length > 0 && (
+  <section aria-labelledby="filed-notices" data-filed-notices data-cik={cik!.trim().padStart(10, "0")} data-notices={rows.length} data-companies={s.companies} data-amendments={s.amendments}>
+    <h2 id="filed-notices">Planned sales: Form 144 notices this filer submitted</h2>
+    <p data-fn-summary>{filerSentence(name, s)}</p>
+    <p class="fn-note" data-fn-caveat>{NOTICE_CAVEAT} {FILER_NOTE} <a href="/guides/what-is-form-4/#form-144">What a Form 144 is</a>.</p>
+    <DownloadCsv file={file} label="Download all notices (CSV)" note="every tracked company" />
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      <th>Source</th>
+    </tr></thead><tbody>
+      {shown.map((n) => {
+        const co = cos.get(n.issuerCik)!;
+        // The seller a notice names is printed only when it is not this person (a trust, a family entity).
+        const sellerRaw = cleanText(n.sellerName);
+        const seller = sellerRaw && same(sellerRaw) !== same(name) ? sellerRaw : null;
+        const cls = cleanText(n.securityClass, 60);
+        return (
+          <tr data-notice={n.accession}>
+            <td class="mono" data-v={dayNum(n.filedAt)}>{formatDate(n.filedAt)}</td>
+            <td class="wrap fn-co" data-v={attrText(co.name)} data-fn-company={n.issuerCik}><a href={companyPath(co)!}>{co.name}</a>{seller && <span class="fn-sub" data-fn-seller>seller named: {seller}</span>}</td>
+            <td class="wrap fn-class" data-v={attrText(cls ?? "")}>{cls ?? "—"}</td>
+            <td class="num" data-v={stated(n.shares) ?? ""} data-fn-shares>{stated(n.shares) != null ? num(n.shares) : "—"}</td>
+            {valueOutOfRange(n)
+              ? <td class="num" data-v="" data-fn-value data-fn-value-held><a class="fn-held" href="/methodology/#form-144">not shown</a></td>
+              : <td class="num" data-v={shownValue(n) != null ? Math.round(n.marketValue!) : ""} data-fn-value>{shownValue(n) != null ? money(n.marketValue, { compact: false }) : "—"}</td>}
+            <td class="mono" data-v={dayNum(n.approxSaleDate)} data-fn-sale>{n.approxSaleDate ? formatDate(n.approxSaleDate) : "—"}</td>
+            <td class="mono" data-v={dayNum(n.planAdoptionDate)} data-fn-plan>{n.planAdoptionDate ? formatDate(n.planAdoptionDate) : "—"}</td>
+            <td>{n.sourceUrl ? <a href={n.sourceUrl} rel="noopener nofollow" target="_blank">{isAmendment(n) ? "Form 144/A (amendment) ↗" : "Form 144 ↗"}</a> : (isAmendment(n) ? "Form 144/A (amendment)" : "Form 144")}</td>
+          </tr>
+        );
+      })}
+    </tbody></table></div>
+    {held > 0 && <p class="fn-note" data-fn-held-note data-held={held}>{heldNote(held)}</p>}
+    {rows.length > NOTICE_ROWS && <p class="fn-note" data-fn-more>The {NOTICE_ROWS} newest of {num(rows.length)} notices are shown. The rest are in the CSV file.</p>}
+  </section>
+)}
+<style>
+  .fn-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .fn-co { min-width: 13rem; }
+  .fn-class { min-width: 8rem; }
+  @media (max-width: 640px) { .fn-co { min-width: 10rem; } .fn-class { min-width: 7rem; } }
+  .fn-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .fn-held { color: var(--ink-soft); font-size: 13px; text-decoration: underline; white-space: nowrap; }
+</style>

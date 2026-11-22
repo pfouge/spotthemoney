@@ -173,3 +173,66 @@ export function schedule13Log(d: Schedule13Data, builtAt: string, companyCiks: R
   }
   return `large holders (Schedules 13D and 13G): shown; ${rows} statements for ${issuers} companies on the site (${amend} amendments), newest ${newest || "none"}; ${holders} holders by newest statement, ${below} of them under ${THRESHOLD_PERCENT}%, ${on13D} on Schedule 13D; most holders for one company ${most}; ${capped} companies with more than ${HOLDER_ROWS}; largest stated holding ${Math.round(maxShares)} shares`;
 }
+
+/** A second build-log line: the filer's side. `people` and `companies` = 10-digit CIKs of people and companies with a page. */
+export function holdingsLog(d: Schedule13Data, builtAt: string, people: ReadonlySet<string>, companies: ReadonlySet<string>): string {
+  if (!d.shown) return "large holdings by filer: not shown";
+  const pairs = new Map<string, Set<string>>();
+  const end = builtAt.slice(0, 10);
+  for (const [issuer, xs] of d.byCik) {
+    if (!companies.has(issuer)) continue;
+    for (const s of xs) {
+      if (!s.filerCik || s.filerCik === issuer || s.filedAt > end || !(people.has(s.filerCik) || companies.has(s.filerCik))) continue;
+      const set = pairs.get(s.filerCik); if (set) set.add(issuer); else pairs.set(s.filerCik, new Set([issuer]));
+    }
+  }
+  let rows = 0, most = 0, onPeople = 0, onCompanies = 0;
+  for (const [f, set] of pairs) { rows += set.size; if (set.size > most) most = set.size; if (companies.has(f)) onCompanies++; if (people.has(f)) onPeople++; }
+  return `large holdings by filer: ${rows} filer and company pairs on ${onPeople} insider pages and ${onCompanies} company pages; most on one page ${most}`;
+}
+
+// ── the filer's side: what one filer reports holding in other companies ─────────────────────
+export interface Holding {
+  /** The filer's newest statement on record about the company. */
+  latest: Statement;
+  /** Statements on record by this filer about the company, the newest included. */
+  statements: number;
+}
+
+/**
+ * One filer's newest statement about each company, from that filer's statements. Statements
+ * dated after the build day are left out. Order: largest stated percent first, no percent last;
+ * ties by shares, then the company's number, then accession.
+ */
+export function holdingsOf(xs: readonly Statement[], builtAt: string): Holding[] {
+  const end = String(builtAt).slice(0, 10);
+  const by = new Map<string, Holding>();
+  for (const s of sortStatements(xs)) {
+    if (!isDate(s.filedAt) || (isDate(end) && s.filedAt > end)) continue;
+    const h = by.get(s.issuerCik);
+    if (h) h.statements++; else by.set(s.issuerCik, { latest: s, statements: 1 });
+  }
+  const pct = (h: Holding) => percentStated(h.latest.percent) ?? -1;
+  return [...by.values()].sort((a, b) =>
+    pct(b) - pct(a) || (sharesStated(b.latest.shares) ?? -1) - (sharesStated(a.latest.shares) ?? -1)
+    || a.latest.issuerCik.localeCompare(b.latest.issuerCik) || b.latest.accession.localeCompare(a.latest.accession));
+}
+
+/** The sentence above the table on the filer's page. Counts companies; nothing is added up. */
+export function holdingsSentence(name: string, hs: readonly Holding[]): string {
+  if (!hs.length) return "";
+  const below = hs.filter((h) => belowThreshold(h.latest)).length;
+  const noPercent = hs.filter((h) => percentStated(h.latest.percent) == null).length;
+  const atOrAbove = hs.length - below - noPercent;
+  const parts: string[] = [];
+  if (atOrAbove) parts.push(`${nf(atOrAbove)} ${atOrAbove === 1 ? "reports" : "report"} ${THRESHOLD_PERCENT}% or more of a class of shares`);
+  if (below) parts.push(`${nf(below)} ${below === 1 ? "reports" : "report"} less than ${THRESHOLD_PERCENT}%`);
+  if (noPercent) parts.push(`${nf(noPercent)} ${noPercent === 1 ? "states" : "state"} no percentage`);
+  return `${name} is the filer of an ownership statement (Schedule 13D or 13G) about ${many(hs.length, "company", "companies")} this site tracks, filed with the SEC since ${RECORD_START_LABEL}. Of the newest statement about each, ${parts.join(", ")}.`;
+}
+
+/** What the filer's-side section says under the summary. One wording, so the verifier can require it. */
+export const HOLDINGS_CAVEAT =
+  "Each row is the newest statement on record under this filer's SEC number about that company and gives what the filer says it owned on the event date. It is not a report of a trade, and the holding may have changed since. " +
+  `A row under ${THRESHOLD_PERCENT}% is a notice that the filer is no longer above that mark. A statement can name several reporting persons, who each report the group's combined holding, so the rows are not to be added together. ` +
+  `This is not a full list of what the filer owns: only holdings above ${THRESHOLD_PERCENT}% of a class are reported this way, and only companies this site tracks are listed. None of these figures is in any buy or sell total, chart or trade map on this site.`;

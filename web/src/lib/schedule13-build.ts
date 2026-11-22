@@ -3,6 +3,7 @@
 import type { Flagship } from "./flagship-core";
 import { personPath, companyPath } from "./flagship-core";
 import { caughtUp } from "./coverage-stored";
+import { siteCompanyByCik } from "./form144-build";
 import { emptySchedule13, sortStatements, type Schedule13Data, type Statement } from "./schedule13";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,4 +76,26 @@ export function holderPath(m: Flagship, s: Statement): string | null {
     memo.set(m, map);
   }
   return s.filerCik ? map.get(s.filerCik) ?? null : null;
+}
+
+const filerMemo = new WeakMap<Schedule13Data, Map<string, Statement[]>>();
+/**
+ * The statements filed under one SEC number about OTHER companies with a page here, newest
+ * first: the same statements the company pages and the CSV file hold, seen from the filer's side.
+ */
+export function statementsFiledBy(m: Flagship, cik: string | null | undefined): Statement[] {
+  const k = pad(cik);
+  if (!k || !m.schedule13.shown) return [];
+  let map = filerMemo.get(m.schedule13);
+  if (!map) {
+    map = new Map();
+    const cos = siteCompanyByCik(m);
+    for (const [issuer, xs] of m.schedule13.byCik) {
+      if (!cos.has(issuer)) continue;
+      for (const s of xs) { if (!s.filerCik || s.filerCik === issuer) continue; const ys = map.get(s.filerCik); if (ys) ys.push(s); else map.set(s.filerCik, [s]); }
+    }
+    for (const [f, xs] of map) map.set(f, sortStatements(xs));
+    filerMemo.set(m.schedule13, map);
+  }
+  return map.get(k) ?? [];
 }

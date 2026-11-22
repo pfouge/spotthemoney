@@ -3803,3 +3803,49 @@ SEC filings go first. The plan, the rules and the later stages are in the Projec
   way is held back (HMH Holding: 30,560 a share with no net income row; the old limit there was
   100,000). **Lesson kept from Form 144: read the outlier query again on the first production
   build of a section, not only before building it.**
+
+### Notices and ownership statements from the filer's side (2026-11-22, interactive session) — queue items (h2) and (h3)
+
+- **What.** Two sections that show the filings already on company pages from the other side.
+  - **Insider pages:** "Planned sales: Form 144 notices this filer submitted"
+    (`web/src/components/FiledNotices.astro`, `section[data-filed-notices]`, `#filed-notices`):
+    the notices submitted under the person's SEC number in the last 365 days about companies with
+    a page here, newest first, 25 rows: filed, company (linked), class, shares, stated market
+    value (the over-$1,000,000-a-share rule applies), sale date, plan date, the notice. The seller
+    a notice names is printed in small type only when it is not the person (a trust, a family
+    entity).
+  - **Insider and company pages:** "Large holdings this filer reports: Schedules 13D and 13G"
+    (`ReportedHoldings.astro`, `section[data-reported-holdings]`, `#reported-holdings`): the
+    filer's newest statement about each OTHER company with a page here, largest stated percent
+    first, 25 rows. On company pages it sits before "Financials" (NVIDIA about CoreWeave).
+  - Jump links on both page types. No new file, no migration, no data job change, no CSV change.
+- **Rules.** Nothing new is read from the database: the sections index what the company-side
+  sections hold (`model.form144.byCik`, `model.schedule13.byCik`) by the submission's filer
+  number (`noticesFiledBy` in `form144-build.ts`, `statementsFiledBy` in `schedule13-build.ts`,
+  memoised), so they exist only while those loads are current (the 10-day test) and only for
+  companies this site tracks. About 8% of the notices people here file, and three quarters of
+  their Schedule 13 statements, are about companies outside the tracked set and are NOT listed:
+  the sections, the methodology and the guides say "companies this site tracks", and the holdings
+  caveat says it is not a list of everything the filer owns. `holdingsOf` (in `schedule13.ts`)
+  groups by issuer; a statement a company files about itself is left out. Counts only in the
+  summaries (`filerSentence`, `holdingsSentence`); nothing is added up.
+- **Build log** prints two more lines: `[web] planned sales by filer: N notices in the last 365
+  days on P insider pages; most on one page M; K pages with more than 25` and `[web] large
+  holdings by filer: N filer and company pairs on P insider pages and C company pages; most on
+  one page M`. SQL: `form144_notices n join site_people p on lpad(p.cik,10,'0') = n.filer_cik`
+  (people with a slug), issuers among `site_companies` with a slug, `filed_at >= current_date -
+  365`; and the same join for `schedule13_filings`, distinct `(filer_cik, issuer_cik)`, plus
+  filers that are companies with a slug.
+- **Verifier:** `node scripts/verify-filers.mjs <base-url> [--sample N]` (no browser; the
+  twenty-fourth). Oracles: the two existing CSV files, grouped by `seller_sec_number` and
+  `holder_sec_number` with the script's own copy of the window, the cap and the order. It finds a
+  filer's page through the link the company page gives its seller or holder. `deploy.yml`'s
+  warning-only step runs it on the production build: read its line (`verify-filers: N checks
+  pass; planned sales on ... insider pages ...`). An empty `data-v` is written with no value by
+  the page compiler: read it as "" in a verifier.
+- Guides `what-is-form-4` (`#form-144`) and `ten-percent-owners-and-joint-filings`
+  (`#large-holders`) each gained a paragraph; methodology `#form-144` and `#schedule-13` each two
+  sentences.
+- Not done: notices and statements about companies outside the tracked set; the same sections on
+  the on-demand pages; a page for a holder that is neither an insider nor a tracked company
+  (most 13G filers are funds with no page here).

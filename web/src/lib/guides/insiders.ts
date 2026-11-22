@@ -65,7 +65,8 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>A Form 144 is a notice of a planned sale. Under the SEC's Rule 144, an affiliate of a company (an officer, a director or a large holder) who intends to sell restricted or control shares files one with the SEC when the sale in any three months is to be more than 5,000 shares or more than $50,000. It is filed when the order is placed with a broker, and it has been filed electronically since 2023, so it is public the same day.</p>
 <p>The difference from a Form 4 matters. A Form 4 reports a trade that has happened: the date, the shares and the price. A Form 144 reports an intention. The sale it describes may happen that day, later, in part or not at all, and the form's dollar figure is the market value the filer states for the shares, not what anyone was paid. When an officer or director does sell, that sale appears on a Form 4 in the usual way. Some sellers who file a Form 144 never file a Form 4 at all, because they are not officers, directors or 10% owners.</p>
 <p>On this site, a stock's page and its company's page have a section titled "Planned sales: Form 144 notices" when a notice about the company was filed in the last 12 months. It lists the ${c.form144Rows} newest: the filing date, the seller and the relationship to the company in the filer's own words, the class and number of shares, the stated market value, the approximate sale date, the date a Rule 10b5-1 plan was adopted when the notice gives one, and a link to the notice at the SEC. Notices are shown for the companies this site tracks, from notices filed on or after ${c.form4Floor}. The figures are printed as filed, with one exception: forms are typed by hand and now and then a market value is plainly wrong for the number of shares, so a stated value of more than $${c.form144ValueMaxPerShare} a share reads "not shown" on the page. The figure as filed is still in the CSV file, marked, and on the notice itself.</p>
-<p>Three rules keep the notices apart from the trades. No figure from a notice is in any buy or sell total, chart, feed or trade map here. An amended notice (144/A) is listed as its own row; it repeats the notice it corrects and the form does not say which one, so the rows are not added together and the section counts notices and sellers only. And nothing is read into a notice: it carries no flag or label. All notices are in one file on the <a href="/downloads/">downloads page</a>.</p>` }] : []),
+<p>Three rules keep the notices apart from the trades. No figure from a notice is in any buy or sell total, chart, feed or trade map here. An amended notice (144/A) is listed as its own row; it repeats the notice it corrects and the form does not say which one, so the rows are not added together and the section counts notices and sellers only. And nothing is read into a notice: it carries no flag or label. All notices are in one file on the <a href="/downloads/">downloads page</a>.</p>
+<p>An insider's own page shows the same notices from the filer's side, under "Planned sales: Form 144 notices this filer submitted": the notices sent in under that person's SEC number in the last 12 months, each with the company, the figures as filed and the seller the notice names, which is sometimes a trust or a family entity and not the person.</p>` }] : []),
     ],
     faqs: [
       ...(c.financialsShown ? [{ q: "Where do the financial figures on a company's page come from?", a: "From the company's own annual and quarterly reports to the SEC (forms 10-K, 10-Q, 20-F and 40-F). The figures are shown as filed, in the currency the company reports in, each column with a link to the report. Nothing is estimated." }] : []),
@@ -86,7 +87,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
     ],
     related: ["form-4-transaction-codes", "rule-10b5-1-trading-plans", "insider-buying-vs-insider-selling", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Stocks with insider activity", href: "/stocks/" }],
-    covers: ["web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/issuer.ts", "web/src/lib/industries.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/lib/server/od.ts", "web/src/components/OdPageView.astro", "web/src/lib/market.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro", "web/src/lib/form144.ts", "web/src/components/PlannedSales.astro", "web/src/lib/financials.ts", "web/src/components/Financials.astro"],
+    covers: ["web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/issuer.ts", "web/src/lib/industries.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/lib/server/od.ts", "web/src/components/OdPageView.astro", "web/src/lib/market.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro", "web/src/lib/form144.ts", "web/src/components/PlannedSales.astro", "web/src/lib/financials.ts", "web/src/components/Financials.astro", "web/src/components/FiledNotices.astro"],
     ui: [{ text: "Guides for this page", on: "/stocks/aapl/" }, { text: "Related stocks", on: "/stocks/aapl/" }, { text: "Companies by industry", on: "/industries/" }, { text: "Financials, as filed", on: "/stocks/aapl/" }],
     facts: ["foreignInsiders"],
   }),
@@ -301,7 +302,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: c.schedule13Shown ? "2026-11-20" : "2026-11-16",
+    slug: "ten-percent-owners-and-joint-filings", group: "insiders", updated: c.schedule13Shown ? "2026-11-22" : "2026-11-16",
     title: "10% owners and joint filings",
     seoTitle: ["10% Owners and Joint Form 4 Filings: One Trade, Many Forms", "10% Owners and Joint Form 4 Filings"],
     description: ["Funds that own over 10% of a company file Form 4 like executives, and related funds often each report the same trade. How to read them without double counting.", "Funds owning over 10% of a company file Form 4 too, and related funds often report the same trade. How to avoid double counting."],
@@ -336,6 +337,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <li><strong>A row marked "below ${c.holderThreshold}%" is an exit notice.</strong> It is the holder reporting that it is no longer above the mark, sometimes with nothing left. It stays listed so that an older, larger figure is not left standing as the last word.</li>
 <li><strong>Rows are not to be added together.</strong> Related entities often file one statement together, and each reports the whole group's holding. The row shows the largest figure any one of them states, and the name of the first, "with 3 other reporting persons". Two rows can also describe overlapping shares, for example a fund manager and its parent company.</li>
 </ul>
+<p>The same statements can be read from the filer's side. When the filer of a statement is an insider or a company with a page here, that page has a section titled "Large holdings this filer reports: Schedules 13D and 13G": its newest statement about each other company this site tracks. It is not a list of everything the filer owns, because only holdings above ${c.holderThreshold}% of a class are reported on these schedules.</p>
 <p>None of these figures enters any buy or sell total, chart or the trade map. The rules are written out in the <a href="/methodology/#schedule-13">methodology</a>.</p>` }] : []),
     ],
     faqs: [
@@ -351,7 +353,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["what-is-form-4", "insider-buying-vs-insider-selling", "insider-options-and-derivatives", "how-to-use-the-trade-map"],
     seeLive: [{ label: "Insider map by role", href: "/insiders/" }, { label: "How values are computed", href: "/methodology/#values" }],
-    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/components/LargeHolders.astro"],
+    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/components/LargeHolders.astro", "web/src/components/ReportedHoldings.astro"],
     ui: [{ text: "10% owners", on: "/insiders/" }, { text: "Officers", on: "/insiders/" }, { text: "Directors", on: "/insiders/" }, ...(c.schedule13Shown ? [{ text: "Large holders: Schedules 13D and 13G", on: "/stocks/nvda/" }] : [])],
     facts: [],
   }),

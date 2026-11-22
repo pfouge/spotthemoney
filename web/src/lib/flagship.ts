@@ -12,9 +12,9 @@
 // Everything is null-safe: with no DATABASE_URL, or empty tables, the model is empty and the
 // pages render their empty-state reason lines instead of blank tables.
 
-import { emptyForm144, form144Log } from "./form144";
-import { loadForm144, siteCompanyCiks } from "./form144-build";
-import { emptySchedule13, schedule13Log } from "./schedule13";
+import { emptyForm144, form144Log, filerLog } from "./form144";
+import { loadForm144, siteCompanyCiks, siteCompanyByCik, sitePersonCiks } from "./form144-build";
+import { emptySchedule13, schedule13Log, holdingsLog } from "./schedule13";
 import { loadSchedule13 } from "./schedule13-build";
 import { emptyFinancials, financialsLog } from "./financials";
 import { loadFinancials } from "./financials-build";
@@ -368,6 +368,7 @@ async function load(): Promise<Flagship> {
       const ciks = siteCompanyCiks(model);
       model.form144 = await loadForm144(sql, builtAt, ciks);
       console.log(`[web] ${form144Log(model.form144, builtAt, ciks)}`);
+      console.log(`[web] ${filerLog(model.form144, builtAt, sitePersonCiks(model), new Set(siteCompanyByCik(model).keys()))}`);
     } catch (err) {
       console.warn("[web] Form 144 notices skipped:", (err as Error).message);
     }
@@ -380,6 +381,7 @@ async function load(): Promise<Flagship> {
       const ciks = siteCompanyCiks(model);
       model.schedule13 = await loadSchedule13(sql, builtAt, ciks);
       console.log(`[web] ${schedule13Log(model.schedule13, builtAt, ciks)}`);
+      console.log(`[web] ${holdingsLog(model.schedule13, builtAt, sitePersonCiks(model), new Set(siteCompanyByCik(model).keys()))}`);
     } catch (err) {
       console.warn("[web] Schedule 13 statements skipped:", (err as Error).message);
     }

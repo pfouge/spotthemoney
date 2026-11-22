@@ -1,0 +1,68 @@
+---
+// "Large holdings this filer reports: Schedules 13D and 13G" on insider and company pages: the
+// statements on the company pages, seen from the filer's side (lib/schedule13.ts has the rules).
+// Renders nothing unless the Schedule 13 load is current and a statement filed under this SEC
+// number about another company with a page here is on record. One row per company: the filer's
+// newest statement about it. A statement is what the filer says it owned on a date, never a trade.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import { num, companyPath } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { holdingsOf, holdingsSentence, cleanText, sharesStated, percentStated, percentLabel, belowThreshold, HOLDINGS_CAVEAT, HOLDER_ROWS, THRESHOLD_PERCENT } from "../lib/schedule13";
+import { statementsFiledBy } from "../lib/schedule13-build";
+import { siteCompanyByCik } from "../lib/form144-build";
+import DownloadCsv from "./DownloadCsv.astro";
+
+interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
+const { model, cik, name, file } = Astro.props;
+const holdings = holdingsOf(statementsFiledBy(model, cik), model.builtAt);
+const shown = holdings.slice(0, HOLDER_ROWS);
+const cos = siteCompanyByCik(model);
+const heads = [
+  { label: "Company", type: "text", cls: "" }, { label: "Percent of class", type: "num", cls: "num" }, { label: "Shares stated", type: "num", cls: "num" },
+  { label: "Class", type: "text", cls: "" }, { label: "As of (event date)", type: "num", cls: "" }, { label: "Filed", type: "num", cls: "" },
+];
+const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
+const attrText = (t: string) => t.toLowerCase().replace(/[<>"]/g, "");
+---
+{holdings.length > 0 && (
+  <section aria-labelledby="reported-holdings" data-reported-holdings data-cik={cik!.trim().padStart(10, "0")} data-companies={holdings.length}>
+    <h2 id="reported-holdings">Large holdings this filer reports: Schedules 13D and 13G</h2>
+    <p data-rh-summary>{holdingsSentence(name, holdings)}</p>
+    <p class="rh-note" data-rh-caveat>{HOLDINGS_CAVEAT} <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">What Schedules 13D and 13G are</a>.</p>
+    <DownloadCsv file={file} label="Download all statements (CSV)" note="every tracked company" />
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      <th>Source</th>
+    </tr></thead><tbody>
+      {shown.map((h) => {
+        const st = h.latest;
+        const co = cos.get(st.issuerCik)!;
+        const others = st.reporterCount > 1 ? st.reporterCount - 1 : 0;
+        const cls = cleanText(st.securityClass, 60);
+        const pct = percentLabel(st.percent);
+        const sh = sharesStated(st.shares);
+        const label = `Schedule ${st.schedule}${st.isAmendment ? "/A (amendment)" : ""}`;
+        return (
+          <tr data-statement={st.accession}>
+            <td class="wrap rh-co" data-v={attrText(co.name)} data-rh-company={st.issuerCik}><a href={companyPath(co)!}>{co.name}</a>{others > 0 && <span class="rh-sub" data-rh-others>statement names {num(others)} other reporting {others === 1 ? "person" : "persons"}</span>}</td>
+            <td class="num" data-v={percentStated(st.percent) ?? ""} data-rh-percent>{pct ?? "—"}{belowThreshold(st) && <span class="rh-sub" data-rh-below>below {THRESHOLD_PERCENT}%</span>}</td>
+            <td class="num" data-v={sh != null ? Math.round(sh) : ""} data-rh-shares>{sh != null ? num(sh) : "—"}</td>
+            <td class="wrap rh-class" data-v={attrText(cls ?? "")}>{cls ?? "—"}</td>
+            <td class="mono" data-v={dayNum(st.eventDate)} data-rh-event>{st.eventDate ? formatDate(st.eventDate) : "—"}</td>
+            <td class="mono" data-v={dayNum(st.filedAt)} data-rh-filed>{formatDate(st.filedAt)}</td>
+            <td data-rh-source>{st.sourceUrl ? <a href={st.sourceUrl} rel="noopener nofollow" target="_blank">{label} ↗</a> : label}</td>
+          </tr>
+        );
+      })}
+    </tbody></table></div>
+    {holdings.length > HOLDER_ROWS && <p class="rh-note" data-rh-more>The {HOLDER_ROWS} companies with the largest stated percentages, of {num(holdings.length)}, are shown. The rest are in the CSV file.</p>}
+  </section>
+)}
+<style>
+  .rh-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .rh-co { min-width: 13rem; }
+  .rh-class { min-width: 8rem; }
+  @media (max-width: 640px) { .rh-co { min-width: 10rem; } .rh-class { min-width: 7rem; } }
+  .rh-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+</style>

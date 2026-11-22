@@ -172,3 +172,39 @@ export function form144Log(d: Form144Data, builtAt: string, companyCiks: Readonl
   }
   return `planned sales (Form 144): shown; ${rows} notices for ${issuers} companies on the site (${amend} amendments), newest ${newest || "none"}; ${inWindow} filed in the last ${NOTICE_WINDOW_DAYS} days for ${issuersInWindow} companies; ${capped} companies with more than ${NOTICE_ROWS}; largest stated value ${Math.round(maxValue)}; ${held} stated values not shown (over ${VALUE_MAX_PER_SHARE} dollars a share)`;
 }
+
+/** A second build-log line: the filer's side (insider pages). `people` = 10-digit CIK of each person with a page; `issuers` = companies with a page. */
+export function filerLog(d: Form144Data, builtAt: string, people: ReadonlySet<string>, issuers: ReadonlySet<string>): string {
+  if (!d.shown) return "planned sales by filer: not shown";
+  const by = new Map<string, number>();
+  let rows = 0;
+  for (const [cik, xs] of d.byCik) {
+    if (!issuers.has(cik)) continue;
+    for (const n of noticesInWindow(xs, builtAt)) { if (!n.filerCik || !people.has(n.filerCik)) continue; rows++; by.set(n.filerCik, (by.get(n.filerCik) ?? 0) + 1); }
+  }
+  let most = 0, capped = 0;
+  for (const v of by.values()) { if (v > most) most = v; if (v > NOTICE_ROWS) capped++; }
+  return `planned sales by filer: ${rows} notices in the last ${NOTICE_WINDOW_DAYS} days on ${by.size} insider pages; most on one page ${most}; ${capped} pages with more than ${NOTICE_ROWS}`;
+}
+
+// ── the filer's side: notices one person filed (insider pages) ──────────────────────────────
+export interface FilerSummary { notices: number; amendments: number; companies: number; withPlan: number }
+
+/** Counts over the notices one filer filed (the window's). Nothing is added up across notices. */
+export function filerSummary(xs: readonly Notice[]): FilerSummary {
+  return {
+    notices: xs.length, amendments: xs.filter(isAmendment).length,
+    companies: new Set(xs.map((n) => n.issuerCik)).size, withPlan: xs.filter((n) => isDate(n.planAdoptionDate)).length,
+  };
+}
+
+/** The sentence above the table on a filer's page. `name` is the person as the page names them. */
+export function filerSentence(name: string, s: FilerSummary): string {
+  if (!s.notices) return "";
+  const plan = s.withPlan ? ` ${many(s.withPlan, "notice states", "notices state")} the date a Rule 10b5-1 trading plan was adopted.` : "";
+  const amend = s.amendments ? `, ${many(s.amendments, "of them an amendment", "of them amendments")}` : "";
+  return `${name} is the filer of ${many(s.notices, "Form 144 notice", "Form 144 notices")} submitted to the SEC in the last 12 months about ${many(s.companies, "company", "companies")} this site tracks${amend}.${plan}`;
+}
+
+/** Said under the summary on a filer's page, after NOTICE_CAVEAT. */
+export const FILER_NOTE = "The person named as seller on a notice can be a trust or a family entity; the notices listed are those submitted under this filer's SEC number.";

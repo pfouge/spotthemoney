@@ -7,6 +7,12 @@ import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
+import FiledNotices from "../../components/FiledNotices.astro";
+import ReportedHoldings from "../../components/ReportedHoldings.astro";
+import { noticesInWindow } from "../../lib/form144";
+import { noticesFiledBy } from "../../lib/form144-build";
+import { holdingsOf } from "../../lib/schedule13";
+import { statementsFiledBy } from "../../lib/schedule13-build";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Follow from "../../components/Follow.astro";
@@ -47,8 +53,12 @@ const years = yearRows(txns);
 const peers = colleagues(model, p);
 const lastTrade = txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const uniqueTickers = [...new Map(tickers.map((s) => [s.ticker, s])).values()];
+// Form 144 notices and Schedule 13 statements submitted under this person's SEC number (empty until those loads are current).
+const filedN = noticesInWindow(noticesFiledBy(model, p.cik), model.builtAt).length;
+const holdingsN = holdingsOf(statementsFiledBy(model, p.cik), model.builtAt).length;
 const jump: [string, string][] = txns.length === 0 ? [] : [
-  ["#by-type", "By type"], ["#by-year", "By year"], ["#transactions", "Transactions"], ["#filings", "Filings"],
+  ["#by-type", "By type"], ["#by-year", "By year"], ["#transactions", "Transactions"],
+  ...(filedN ? [["#filed-notices", "Planned sales"] as [string, string]] : []), ...(holdingsN ? [["#reported-holdings", "Large holdings"] as [string, string]] : []), ["#filings", "Filings"],
   ...(peers.length ? [["#colleagues", "Other insiders"] as [string, string]] : []),
   ["#sources", "Sources"],
 ];
@@ -129,6 +139,10 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
   <h2 id="transactions">Transactions</h2>
   <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
   <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet. The filings below may be amendments, holdings-only reports, or rows still under review." />
+
+  <FiledNotices model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
+
+  <ReportedHoldings model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
 
   <AdSlot label="Advertisement" show={txns.length > 0} />
 

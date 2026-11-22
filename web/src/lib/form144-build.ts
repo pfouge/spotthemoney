@@ -1,7 +1,7 @@
 // Form 144 notices: the database read and the one lookup that needs the model
 // (lib/form144.ts has the pure rules). Called once per build from lib/flagship.ts.
-import type { Flagship, Person } from "./flagship-core";
-import { personPath } from "./flagship-core";
+import type { Company, Flagship, Person } from "./flagship-core";
+import { companyPath, personPath } from "./flagship-core";
 import { caughtUp } from "./coverage-stored";
 import { emptyForm144, sortNotices, type Form144Data, type Notice } from "./form144";
 
@@ -79,4 +79,45 @@ export function sellerPath(m: Flagship, n: Notice): string | null {
   }
   const p = n.filerCik ? map.get(n.filerCik) : undefined;
   return p ? personPath(p) : null;
+}
+
+const siteCoMemo = new WeakMap<Flagship, Map<string, Company>>();
+/** Companies with a page here, by 10-digit CIK. */
+export function siteCompanyByCik(m: Flagship): Map<string, Company> {
+  let map = siteCoMemo.get(m);
+  if (!map) {
+    map = new Map();
+    for (const c of m.companies.values()) { const k = pad(c.cik); if (k && companyPath(c)) map.set(k, c); }
+    siteCoMemo.set(m, map);
+  }
+  return map;
+}
+
+const filerMemo = new WeakMap<Form144Data, Map<string, Notice[]>>();
+/**
+ * The notices submitted under one filer's SEC number, about companies with a page here, newest
+ * first: the same notices the company pages and the CSV file hold, seen from the filer's side.
+ */
+export function noticesFiledBy(m: Flagship, cik: string | null | undefined): Notice[] {
+  const k = pad(cik);
+  if (!k || !m.form144.shown) return [];
+  let map = filerMemo.get(m.form144);
+  if (!map) {
+    map = new Map();
+    const cos = siteCompanyByCik(m);
+    for (const [issuer, xs] of m.form144.byCik) {
+      if (!cos.has(issuer)) continue;
+      for (const n of xs) { if (!n.filerCik) continue; const ys = map.get(n.filerCik); if (ys) ys.push(n); else map.set(n.filerCik, [n]); }
+    }
+    for (const [f, xs] of map) map.set(f, sortNotices(xs));
+    filerMemo.set(m.form144, map);
+  }
+  return map.get(k) ?? [];
+}
+
+/** 10-digit CIKs of the people with a static page here. */
+export function sitePersonCiks(m: Flagship): Set<string> {
+  const out = new Set<string>();
+  for (const p of m.people.values()) { const k = pad(p.cik); if (k && !p.od && personPath(p)) out.add(k); }
+  return out;
 }

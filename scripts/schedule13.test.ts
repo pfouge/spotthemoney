@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanText, sharesStated, percentStated, percentLabel, belowThreshold, scheduleLabel, sortStatements, holderKey, holdersOf, holderSummary, summarySentence, schedule13Log, emptySchedule13, HOLDER_CAVEAT, HOLDER_ROWS, THRESHOLD_PERCENT, type Statement } from "../web/src/lib/schedule13";
+import { cleanText, sharesStated, percentStated, percentLabel, belowThreshold, scheduleLabel, sortStatements, holderKey, holdersOf, holderSummary, summarySentence, schedule13Log, emptySchedule13, HOLDER_CAVEAT, HOLDER_ROWS, THRESHOLD_PERCENT, holdingsOf, holdingsSentence, holdingsLog, HOLDINGS_CAVEAT, type Statement } from "../web/src/lib/schedule13";
 import { caughtUp, catchingUp, emptyStored, schedule13Sentence } from "../web/src/lib/coverage-stored";
 
 const base: Statement = { accession: "0000000000-26-000001", formType: "SCHEDULE 13G", schedule: "13G", isAmendment: false, filedAt: "2026-11-10", eventDate: "2026-09-30",
@@ -102,4 +102,25 @@ test("schedule 13: the build log line and the coverage sentence follow the one d
     assert.ok(/not a trade/.test(s) && s.includes("2 on Schedule 13D") && s.includes("5 on Schedule 13G"));
   }
   assert.ok(schedule13Sentence({ ...src, lastFiled: "2026-11-18" }, built).includes("5 statements"));
+});
+
+test("schedule 13, the filer's side: one row per company, the filer's newest statement about it", () => {
+  const xs = [
+    st({ accession: "0000000000-26-000001", issuerCik: "0000000001", filedAt: "2026-02-01", percent: 9 }),
+    st({ accession: "0000000000-26-000002", issuerCik: "0000000001", filedAt: "2026-08-01", percent: 3, isAmendment: true }),
+    st({ accession: "0000000000-26-000003", issuerCik: "0000000002", filedAt: "2026-05-01", percent: 12.5 }),
+    st({ accession: "0000000000-26-000004", issuerCik: "0000000003", filedAt: "2026-05-01", percent: null, shares: 10 }),
+    st({ accession: "0000000000-27-000001", issuerCik: "0000000004", filedAt: "2027-01-01" }), // after the build day
+  ];
+  const hs = holdingsOf(xs, built);
+  assert.deepEqual(hs.map((h) => [h.latest.issuerCik, h.latest.accession, h.statements]), [
+    ["0000000002", "0000000000-26-000003", 1], ["0000000001", "0000000000-26-000002", 2], ["0000000003", "0000000000-26-000004", 1]]);
+  const text = holdingsSentence("Fund One LP", hs);
+  assert.equal(text, "Fund One LP is the filer of an ownership statement (Schedule 13D or 13G) about 3 companies this site tracks, filed with the SEC since October 2025. Of the newest statement about each, 1 reports 5% or more of a class of shares, 1 reports less than 5%, 1 states no percentage.");
+  assert.equal(holdingsSentence("X", []), "");
+  for (const t of [text, HOLDINGS_CAVEAT]) { assert.doesNotMatch(t, /\b(activist|bought|sold|stake grab|bullish|bearish)\b/i); assert.ok(!t.includes("\u2014")); }
+  const d = emptySchedule13(); d.shown = true;
+  d.byCik.set("0000000001", [xs[0]!, xs[1]!, st({ accession: "0000000000-26-000020", filerCik: "0000000001" })]); // a company about itself: left out
+  d.byCik.set("0000000002", [xs[2]!, st({ accession: "0000000000-26-000021", issuerCik: "0000000002", filerCik: "0000000001" })]);
+  assert.equal(holdingsLog(d, built, new Set(["0000000101"]), new Set(["0000000001", "0000000002"])), "large holdings by filer: 3 filer and company pairs on 1 insider pages and 1 company pages; most on one page 2");
 });
