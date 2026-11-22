@@ -6,6 +6,8 @@ import { getFlagship, personPath, securityPath, companyPath } from "../../lib/fl
 import { buildCommittees, COMMITTEES_PATH } from "../../lib/committees";
 import { buildIssues, ISSUES_PATH } from "../../lib/lobbyissues";
 import { siteIndustries } from "../../lib/industries-build";
+import { siteFinScreen } from "../../lib/finscreen-build";
+import { FIN_SCREENER_PATH } from "../../lib/finscreen";
 import { INDUSTRIES_PATH } from "../../lib/industries";
 import { getGuides, guidePath, GROUPS } from "../../lib/guides";
 
@@ -43,6 +45,7 @@ export const GET: APIRoute = async () => {
   const industries = siteIndustries(m).divisions;
   if (industries.length) rows.push(["Page", "Companies by industry", "Companies grouped by the SEC's industry code", INDUSTRIES_PATH, 0]);
   for (const d of industries) rows.push(["Industry", d.name, `${d.companies.length} companies, ${d.codes.length} industry codes`, d.path, 0]);
+  if (siteFinScreen(m).all.length) rows.push(["Page", "Company financials screener", "Filter companies by revenue, net income and total assets, as filed with the SEC", FIN_SCREENER_PATH, 0]);
   // Guides are found by their title and by the questions they answer.
   for (const g of await getGuides()) rows.push(["Guide", g.title, GROUPS.find((x) => x.key === g.group)?.label ?? "Guide", guidePath(g.slug), 0]);
   return new Response(JSON.stringify(rows), { headers: { "content-type": "application/json; charset=utf-8" } });

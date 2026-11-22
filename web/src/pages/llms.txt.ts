@@ -47,6 +47,7 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [Stocks](${SITE_URL}/stocks/): one page per ticker with insider and congressional activity (${num(c.securities ?? 0)} tickers).
 - [Companies](${SITE_URL}/companies/): insiders, contracts and lobbying per company (${num(c.companies ?? 0)} companies).
 - [Companies by industry](${SITE_URL}/industries/): the companies grouped by the division of the industry code (SIC) the SEC assigns to each, with counts of open-market insider purchases and sales and of congressional trades disclosed in the last 12 months. The classification is the SEC's and is a label only.
+- [Company financials screener](${SITE_URL}/company-financials/): the newest fiscal year or quarter of each tracked company in one table, as filed with the SEC (revenue, net income, diluted earnings per share, total assets, equity); filters for industry, currency, revenue, net income above or below zero and total assets. Figures as filed, in the company's own currency; nothing is converted, scored or ranked.
 - [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
 - [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
 - [Newest disclosures](${SITE_URL}/disclosures/): one feed across every source, newest first.

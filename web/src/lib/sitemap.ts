@@ -11,6 +11,8 @@ import { getGuides, guidePath } from "./guides";
 import { buildCommittees, COMMITTEES_PATH } from "./committees";
 import { buildIssues, ISSUES_PATH } from "./lobbyissues";
 import { siteIndustries } from "./industries-build";
+import { siteFinScreen } from "./finscreen-build";
+import { FIN_SCREENER_PATH } from "./finscreen";
 import { INDUSTRIES_PATH } from "./industries";
 import { MARKETS_PATH, WFE } from "./worldmarkets";
 import { getMarketIndexable, SITEMAP_URL_LIMIT } from "./market";
@@ -65,6 +67,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/companies/", lastmod: built, changefreq: "daily", priority: 0.7 },
     ...(industries.length ? [{ loc: INDUSTRIES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
     ...industries.map((d) => ({ loc: d.path, lastmod: built, changefreq: "daily" as const, priority: 0.5 })),
+    // The company financials screener is indexable only when it has rows (pages/company-financials.astro).
+    ...(siteFinScreen(model).all.length ? [{ loc: FIN_SCREENER_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/donations/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/lobbying/", lastmod: built, changefreq: "daily", priority: 0.7 },

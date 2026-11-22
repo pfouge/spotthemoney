@@ -3849,3 +3849,71 @@ SEC filings go first. The plan, the rules and the later stages are in the Projec
 - Not done: notices and statements about companies outside the tracked set; the same sections on
   the on-demand pages; a page for a holder that is neither an insider nor a tracked company
   (most 13G filers are funds with no page here).
+
+### Company financials screener (2026-11-22, scheduled parity run) — queue item A1, stage 3
+
+- **What.** New page `/company-financials/` (`web/src/pages/company-financials.astro`): one row per
+  tracked company with a fiscal year or a quarter on file, showing its NEWEST fiscal year (the
+  view the page opens on) or its NEWEST quarter filed on its own: revenue, net income, diluted
+  earnings per share, total assets, shareholders' equity, the last day of the period, the industry
+  division and a link to the newest report used (its form; the filing date is in the link's title and in the download). A search box (company or ticker) and seven
+  filters: period, industry division, reporting currency, revenue at least, revenue at most, net
+  income above or below zero, total assets at least. Seven sortable columns, pages of 25, 50 or
+  100 (opens on 50, by revenue, largest first), a count line, Reset, "Download these rows (CSV)".
+  The view is in the URL hash (`#division=manufacturing&rmin=1000000000&ni=pos`); a hash without
+  one of the screener's keys is a jump link. In the `pages` sitemap, the search index, `llms.txt`
+  and the data catalogue. Links in: `/industries/` and every division page
+  (`p[data-finscreen-link][data-n]`, the number is what the screener opens on), `/companies/`, and
+  one sentence in the "Financials, as filed" section of every stock and company page. Two new
+  files in the deploy. No migration, no data job change, nothing stored in the browser (so the
+  privacy page is unchanged): saved screens were left out on purpose.
+- **How it is built.** `siteFinScreen(model)` in `web/src/lib/finscreen-build.ts` (memoised) takes
+  `financialsOf` for every company with a page, keeps `years[0]` and `quarters[0]`, packs them
+  (`packFinScreen`) and reads them back through the packed form, so the page prints exactly what
+  `/data/financials-screener.json` holds (`pages/data/financials-screener.json.ts`). The page
+  prints the first 50 rows itself; `web/src/scripts/finscreen.ts` loads the file and filters,
+  sorts and pages in the browser with the same functions.
+- **Rules** (`web/src/lib/finscreen.ts`, pure; tests `scripts/finscreen.test.ts`):
+  - Every figure is the filed one, by the rules of `lib/financials.ts`. No ratio, score, rating
+    or ranking by quality; a column sorts by the figure it holds. The verifier fails verdict wording.
+  - A figure the company page holds back is held back here: `null` in the data file with a bit
+    in the period's mask, "not shown" in the cell (linked to methodology `#financials`), passes no
+    filter on its column, sorts last. The site-wide CSV still has the filed figure.
+  - **Currencies are never compared.** `usd(row, concept)` is the one reader for the revenue and
+    total-assets filters and for sorting by an amount: a company that reports in another currency
+    passes neither dollar filter and sorts after the dollar figures (with empty cells), in both
+    directions. The net-income filter goes by sign and covers every currency; zero is neither.
+  - A view holds only companies that have that period (`rowsFor`), so the totals differ between
+    "Newest fiscal year" and "Newest quarter". Periods in one view end on different days (fiscal
+    years differ); each row states its own, and the page says so.
+  - Steps: `REV_MIN_STEPS` $100M, $1B, $10B, $100B; `REV_MAX_STEPS` $100M, $1B, $10B;
+    `ASSET_MIN_STEPS` $1B, $10B, $100B. Empty values go last; ties fall back to name, then CIK.
+- **A new hash key goes in three places:** `finscreen.ts` (`FS_KEYS`, `parseFinHash`,
+  `toFinHash`), `FIN_KEYS` in `scripts/verify-links.mjs`, and `KEYS` plus the `offered` object in
+  `scripts/verify-finscreen.mjs`. A change to the data file's top-level keys also needs the `top`
+  list in `datafiles.ts`.
+- **Build log** prints `[web] financials screener: C companies, Y with a fiscal year, Q with a
+  quarter; U not in dollars; fiscal year: revenue in dollars R, at least 100000000 n, ..., at most
+  100000000 n; net income above zero P, below zero N; total assets at least 100000000000 A;
+  figures not shown H (fiscal year), H (quarter); newest fiscal year ends D to D; by division: ...`
+  for comparison with SQL.
+- **Verifier:** `node scripts/verify-finscreen.mjs <base-url> [--no-browser]` (the twenty-fifth).
+  Oracle: `company-financials.csv` (newest `fiscal_year` and `quarter` row per company, `not_shown`
+  for the held figures, the first entry of `reports`) and `companies.csv` (division), with its own
+  copies of the filter, sort and printing rules. Without a browser: the data file figure by
+  figure, the rows printed without JavaScript cell for cell, the counts beside the links from the
+  industry pages, sitemap, `llms.txt`, search, catalogue, wording. With Playwright: every option of
+  every filter in both periods, nine combined views paged through company by company, sorting by
+  clicks, the address and a reload, Reset, a jump link, junk values, search, the empty state, the
+  download, nothing written to browser storage, no request while filtering, no JavaScript, 390 px.
+  `deploy.yml`'s warning-only step runs it on the production build (it finds no browser there and
+  says so): **read its line after a deploy** (`verify-finscreen: N checks pass: ...`).
+  `verify-a11y` includes the page.
+- Guide `what-is-form-4`: a paragraph in `#financials`, one FAQ, two labels, covers
+  `finscreen.ts` and the page. `how-to-cite-and-reuse` re-read (it covers `datafiles.ts`),
+  unchanged. Methodology `#financials-screener`.
+- The seed has five companies with financials, so paging is covered by the unit tests only; the
+  verifier pages through whatever a build holds (about 920 companies on production).
+- Not done: saved screens (needs the privacy page first and its own localStorage key); ratios of
+  filed figures (A1-b); long-term debt (A1-a); a filter by SIC code or by fiscal-year end; cash,
+  liabilities and cash flow as columns; market-only companies; a link from the Congress screener.

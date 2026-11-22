@@ -12,6 +12,8 @@ import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import { siteIndustries } from "../../lib/industries-build";
 import { INDUSTRIES_PATH } from "../../lib/industries";
+import { siteFinScreen } from "../../lib/finscreen-build";
+import { finScreenerHref } from "../../lib/finscreen";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -23,6 +25,8 @@ const model = await getFlagship();
 const x = siteIndustries(model);
 const d = x.divisions.find((v) => v.code === code)!;
 const built = model.builtAt.slice(0, 10);
+// Companies of this division with a fiscal year on file: what the link into the financials screener opens on.
+const finCount = siteFinScreen(model).counts.division.get(d.slug) ?? 0;
 const others = x.divisions.filter((v) => v.code !== d.code);
 const two = (n: number) => String(n).padStart(2, "0");
 const range = d.from === d.to ? `${two(d.from)}` : `${two(d.from)} to ${two(d.to)}`;
@@ -78,6 +82,7 @@ const heads: { label: string; type: "text" | "num" | "date"; cls?: string }[] = 
   <section aria-labelledby="companies" data-industry-companies>
     <h2 id="companies">Companies</h2>
     <p class="section-note">By industry code, then by name. The three counts are rows disclosed in the 12 months to {formatDate(built)}: open-market purchases and sales reported by insiders on Form 4, and rows of House and Senate reports in the company's stock. Click a column title to sort.</p>
+    {finCount > 0 && <p class="section-note" data-finscreen-link data-n={finCount}><a href={finScreenerHref({ division: d.slug })}>Open the {plural(finCount, "company", "companies")} in this division with a fiscal year on file in the financials screener</a>: revenue, net income and total assets as each company filed them with the SEC.</p>}
     <div class="tablewrap"><table class="data" data-sortable>
       <thead><tr>
         {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}

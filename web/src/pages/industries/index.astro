@@ -11,6 +11,8 @@ import { getFlagship, num, plural } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import { siteIndustries } from "../../lib/industries-build";
+import { siteFinScreen } from "../../lib/finscreen-build";
+import { finScreenerHref } from "../../lib/finscreen";
 import { INDUSTRIES_PATH, industryLogLine } from "../../lib/industries";
 
 const model = await getFlagship();
@@ -44,6 +46,7 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
     <section aria-labelledby="list" data-industries-list data-built={built}>
       <h2 id="list">Industry divisions</h2>
       <p class="section-note">One row for each division of the SIC manual with a company on this site. The last three columns count companies with at least one such trade disclosed in the 12 months to {formatDate(built)}. Click a column title to sort.</p>
+      {siteFinScreen(model).counts.total > 0 && <p class="section-note" data-finscreen-link data-n={siteFinScreen(model).counts.total}><a href={finScreenerHref({})}>Open the {plural(siteFinScreen(model).counts.total, "company", "companies")} with a fiscal year on file in the financials screener</a>, which can be narrowed to one division.</p>}
       <div class="tablewrap"><table class="data" data-sortable>
         <thead><tr>
           {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}

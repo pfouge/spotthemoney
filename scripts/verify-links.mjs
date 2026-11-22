@@ -87,7 +87,12 @@ await pool(plain, 8, async (t) => {
 // not the code's: web/src/lib/screener.ts KEYS).
 const SCREENER = "/congress-trades/";
 const SCREEN_KEYS = ["q", "chamber", "party", "state", "committee", "side", "min", "max", "owner", "asset", "w", "tw", "late", "hist", "member", "ticker", "sort", "dir", "page", "per"];
-const isScreenView = (path, hash) => path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key));
+// The company financials screener's views (its own list too: web/src/lib/finscreen.ts FS_KEYS).
+// scripts/verify-finscreen.mjs recounts the number beside each link into it.
+const FIN_SCREENER = "/company-financials/";
+const FIN_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "sort", "dir", "page", "per"];
+const isFinView = (path, hash) => path === FIN_SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => FIN_KEYS.includes(key));
+const isScreenView = (path, hash) => isFinView(path, hash) || (path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key)));
 for (const k of [...targets.keys()].filter((x) => x.includes("#"))) {
   const [path, hash] = [k.slice(0, k.indexOf("#")), k.slice(k.indexOf("#") + 1)];
   if (isScreenView(path, hash)) continue;   // checked under SCREEN below
