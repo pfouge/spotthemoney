@@ -1,0 +1,116 @@
+# Institutional holdings from the SEC "Form 13F Data Sets" (2026-11-22). Loads what 13F filers report
+# holding of the companies this site tracks into inst_holdings (migration 0038). Stored only: no
+# page, file or feed reads it yet, so this workflow never calls deploy.
+#
+# The SEC publishes one ZIP per three-month window (2024 on: DDmonYYYY-DDmonYYYY_form13f.zip; earlier:
+# YYYYqN_form13f.zip). This workflow downloads and unzips; the source (sec_13f_holdings) reads the
+# folders and has no network of its own. Sets already loaded are skipped, so a monthly run only
+# loads what is new. The SEC lists the newest sets under one of two directory roots, so both are tried.
+#
+# Start it from the Actions tab (Run workflow) with the set names, or let the monthly schedule run it
+# with the default (the newest sets). The source stops itself on a time budget and prints "(partial)"
+# when more is left; the last job then starts the next run with `remaining` counted down.
+#
+# The SEC asks automated clients to identify themselves. Set the secret or variable
+# SEC_EDGAR_USER_AGENT (same name the ingest code reads) to a descriptive value with a contact;
+# without it a generic one that names this site's contact page is sent.
+
+name: form13f-bulk
+
+on:
+  schedule:
+    - cron: "23 7 20 * *"
+  workflow_dispatch:
+    inputs:
+      sets:
+        description: "Data sets to load (space-separated: YYYYqN or DDmonYYYY-DDmonYYYY, e.g. 01mar2026-31may2026)"
+        required: false
+        default: "01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026"
+      remaining:
+        description: "How many more times this may restart itself"
+        required: false
+        default: "6"
+
+concurrency:
+  group: form13f-bulk
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    outputs:
+      more: ${{ steps.run.outputs.more }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SETS: ${{ github.event.inputs.sets || '01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026' }}
+      SEC_UA: ${{ secrets.SEC_EDGAR_USER_AGENT || vars.SEC_EDGAR_USER_AGENT || 'spotthemoney.com ingest (+https://spotthemoney.com/contact/)' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: |
+          set -o pipefail
+          npm ci --no-audit --no-fund
+      - name: Apply migrations
+        run: node db/migrate.mjs
+
+      - name: Download the data sets
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/sec13f"
+          mkdir -p "$root"
+          base1="https://www.sec.gov/files/structureddata/data/form-13f-data-sets"
+          base2="https://www.sec.gov/files/datastandardsinnovation/data/form-13f-data-sets"
+          for q in $SETS; do
+            if ! echo "$q" | grep -Eq '^([0-9]{4}q[1-4]|[0-9]{2}[a-z]{3}[0-9]{4}-[0-9]{2}[a-z]{3}[0-9]{4})$'; then echo "bad data set name: $q" >&2; exit 1; fi
+            zip="$root/${q}_form13f.zip"
+            got=0
+            for base in "$base1" "$base2"; do
+              sleep 1   # at most one request per second
+              code=$(curl -sS -L -A "$SEC_UA" -o "$zip" -w '%{http_code}' "$base/${q}_form13f.zip" || true)
+              if [ "$code" = "200" ] && [ "$(head -c 2 "$zip")" = "PK" ]; then got=1; echo "downloaded $q from $base ($(stat -c %s "$zip") bytes)"; break; fi
+              echo "$q not available from $base (HTTP $code)"
+              rm -f "$zip"
+            done
+            if [ "$got" != "1" ]; then echo "::error::neither SEC directory returned a ZIP for $q"; exit 1; fi
+            mkdir -p "$root/${q}_form13f"
+            unzip -q -o -j "$zip" -d "$root/${q}_form13f"
+            rm -f "$zip"
+            ls "$root/${q}_form13f" | head -20
+          done
+
+      - name: Load institutional holdings
+        id: run
+        env:
+          INST_13F_DIR: ${{ runner.temp }}/sec13f
+          INST_MAX_MINUTES: "40"
+        run: |
+          set -o pipefail
+          npm run ingest -- sec_13f_holdings 2>&1 | tee run.log
+          if grep -q "sec_13f_holdings: .*(partial)" run.log; then echo "more=true" >> "$GITHUB_OUTPUT"; fi
+
+  # Start the next run while the source reports more to load. A failed load is NOT retried here:
+  # a red run stops the chain so the cause gets looked at.
+  again:
+    needs: [load]
+    if: needs.load.result == 'success' && needs.load.outputs.more == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REMAINING: ${{ github.event.inputs.remaining || '6' }}
+      SETS: ${{ github.event.inputs.sets || '01dec2025-28feb2026 01mar2026-31may2026 01jun2026-31aug2026' }}
+    steps:
+      - name: Restart
+        run: |
+          left=$(( ${REMAINING:-0} - 1 ))
+          if [ "$left" -lt 0 ]; then echo "restart limit reached; the load is still partial" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          echo "starting the next run (restarts left: $left)" >> "$GITHUB_STEP_SUMMARY"
+          gh workflow run form13f-bulk.yml --repo "${{ github.repository }}" --ref "${{ github.ref_name }}" -f sets="$SETS" -f remaining="$left"
