@@ -3788,3 +3788,18 @@ SEC filings go first. The plan, the rules and the later stages are in the Projec
   Apple (one quarter), the SWAP trust.
 - Not done: nothing on the on-demand pages or insider pages; no fundamentals screener (A1 stage
   3); no ratios; no chart; long-term debt; a fourth quarter or cash-flow quarter by difference.
+- **First production build (PR #69, deploy 45044960062, 16:39 UTC on 2026-11-22): build log equal
+  to SQL.** `112788 rows read for 938 companies, newest filing 2026-11-20; 938 companies with a
+  table (22 not in dollars); 2911 fiscal years and 10402 quarters on file; on pages: 21 figures not
+  shown (balance 5, cash_over_assets 2, implied_shares 14), 225 filed under a changed tag; 325 rows
+  in a second currency left out`. Wrangler read 38,284 files (one more). The deploy step's
+  `verify-financials` printed 24 failures of 98,663 checks, all one fault of the verifier itself
+  (it read two dashes side by side as a "long-term debt line"); fixed in the follow-up.
+- **Follow-up the same hour, after reading the production figures:** (1) the earnings-per-share
+  check is not always a mistake: a few very small companies (after reverse splits) really have
+  fewer than 100,000 shares, so the note, the methodology, the guide and the CSV dictionary say
+  "usually a mistake ... now and then real"; such a figure is still held back and is in the CSV.
+  (2) With no net income filed for the period, EPS beyond `MAX_EPS_WITHOUT_INCOME` (10,000) either
+  way is held back (HMH Holding: 30,560 a share with no net income row; the old limit there was
+  100,000). **Lesson kept from Form 144: read the outlier query again on the first production
+  build of a section, not only before building it.**

@@ -25,7 +25,7 @@ const FIGS = ["revenue", "net_income", "eps_diluted", "operating_cash_flow", "ca
 const ANNUAL_ONLY = new Set(["operating_cash_flow", "capex"]);
 const LABEL = { revenue: "Revenue", net_income: "Net income", eps_diluted: "Diluted earnings per share", operating_cash_flow: "Cash from operations", capex: "Capital expenditure", cash: "Cash and equivalents", assets: "Total assets", liabilities: "Total liabilities", equity: "Shareholders' equity" };
 const COLUMNS = ["company", "ticker", "cik", "period", "period_start", "period_end", "currency", ...FIGS, "liabilities_and_equity", "not_shown", "on_page", "reports", "page_url"];
-const YEARS = 3, QUARTERS = 4, Q = [80, 100], Y = [350, 380], MIN_SHARES = 100000, TOL = 0.005, DAY = 86400000;
+const YEARS = 3, QUARTERS = 4, Q = [80, 100], Y = [350, 380], MIN_SHARES = 100000, MAX_EPS_ALONE = 10000, TOL = 0.005, DAY = 86400000;
 
 let failures = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { failures++; if (failures <= 60) console.log(`✗ ${msg}`); } };
@@ -71,7 +71,7 @@ function heldOf(r) {
   const held = {};
   const eps = num(r.eps_diluted), ni = num(r.net_income), assets = num(r.assets), le = num(r.liabilities_and_equity), cash = num(r.cash);
   if (eps != null && eps !== 0) {
-    if (ni != null ? ni !== 0 && Math.abs(ni / eps) < MIN_SHARES : Math.abs(eps) > MIN_SHARES) held.eps_diluted = "implied_shares";
+    if (ni != null ? ni !== 0 && Math.abs(ni / eps) < MIN_SHARES : Math.abs(eps) > MAX_EPS_ALONE) held.eps_diluted = "implied_shares";
   }
   if (assets != null && le != null && Math.abs(assets - le) > TOL * Math.max(Math.abs(assets), 1)) held.assets = "balance";
   if (assets != null && cash != null && cash > assets * 1.001) { held.cash = "cash_over_assets"; if (!held.assets) held.assets = "cash_over_assets"; }
@@ -212,7 +212,7 @@ function compare(where, sec, rows) {
   const words = text(sec.body);
   ok(/as filed/.test(words) && /not advice/.test(words), `${where}: the section does not say the figures are as filed and not advice`);
   ok(!/\b(undervalued|overvalued|cheap|expensive|bullish|bearish|outperform|price target|rating|score|recommend|should buy|should sell)\b/i.test(words), `${where}: advice or verdict wording in the section`);
-  ok(!/long-term debt/i.test(words) && !words.includes("——"), `${where}: a long-term debt line`);
+  ok(!/long-term debt/i.test(words), `${where}: a long-term debt line`);
   return held;
 }
 
