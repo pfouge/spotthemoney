@@ -3643,3 +3643,36 @@ on the site, in the guides or on the privacy page changed.
   in that run. The migration was tested on the local copy and shipped through `deploy.yml`.
   Production figures in the change note come from read-only queries made before that point and
   from the build log.
+
+### Ticker owners, same day: the first live list, and an earlier registrant's rows (2026-11-22)
+
+- **First live run of `sec_company_tickers`** (ingest run 45023651684): 10,399 tickers for 7,992
+  filers; 1,029 of 1,228 active equities are on the list. The repair moved 8 securities to the
+  company the SEC lists (BABA, GOOG, GOOGN, IP, SATS, SONY, STRC, SUPN) and cleared 2 main
+  tickers (SATS, SUPN). Six of the eight were securities with no company or a stale one. Two were
+  tickers that moved between SEC registrants, and they are two different cases:
+  - **SATS changed hands.** The SEC lists it under Strive, Inc. (its filings stated ASST before);
+    EchoStar's securities include an ECHO. EchoStar's rows that state SATS are not Strive's.
+  - **SUPN moved to a new registrant of the same stock.** The SEC lists it under filer 1625297
+    ("Supernus, Inc.", earlier filings state INDV); the 345 rows of the earlier registrant,
+    SUPERNUS PHARMACEUTICALS, INC., state SUPN and came off `/stocks/supn/` under the first rule.
+- **Rule as it stands** (`foreignIssuerRows` in `web/src/lib/issuer.ts`): a Form 4 row whose
+  filing's company is not the ticker's company comes off the ticker, EXCEPT when the filing
+  itself states that ticker as its issuer's trading symbol (`filings.payload.issuer.ticker`,
+  read as `issuer_symbol`; `statedSymbols`, `statesTicker`) AND the issuer has no ticker of its
+  own in the SEC's list (`sec_tickers`, read at build time in its own try/catch). Such a row is
+  an earlier registrant's and stays on the stock page (it is not put on the issuer's company
+  page as well: company pages list rows through the security). An issuer that IS listed under
+  another ticker loses the rows (the symbol changed hands). With no list on file nothing is
+  kept. A filing with no symbol on record is left alone.
+- **Build log** now reads `[web] ticker owners: N Form 4 rows in F filings are off the ticker
+  they were stored under (the issuer is another company); ticker (owner) rows from issuers: ...;
+  of them C state the ticker but their issuer has a ticker of its own: ...; K rows of an earlier
+  registrant stay on the ticker their filing states: ...; no ticker is the main ticker of more
+  than one company`. **Read the "stay" list after a deploy: a fund or trust appearing there
+  (KKR, IVZ, PRU ...) means a filer typed its sponsor's symbol, and the rule needs a look.**
+- **Known gaps.** A company that lost a main ticker keeps none, although the SEC may list
+  another for it (EchoStar is ECHO, Strive was ASST, Arbutus ABUS): setting it, and activating
+  that security, changes which stock pages exist and belongs with the write-path work. A
+  company's own rows stored under its old symbol stay on its current ticker (same company).
+  The on-demand pages apply none of this.
