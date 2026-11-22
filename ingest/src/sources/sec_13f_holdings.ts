@@ -285,7 +285,7 @@ export async function ingestSec13fHoldings(): Promise<IngestRunResult> {
   const minutes = Number(process.env.INST_MAX_MINUTES ?? 40);
   const budgetMs = Number.isFinite(minutes) && minutes > 0 ? minutes * 60_000 : null;
   const overBudget = () => budgetMs != null && Date.now() - startedAt > budgetMs;
-  const keepN = Math.max(1, Math.floor(Number(process.env.INST_KEEP_PERIODS ?? 4)) || 4);
+  const keepN = Math.max(1, Math.floor(Number(process.env.INST_KEEP_PERIODS ?? 2)) || 2);
   const reload = process.env.INST_RELOAD === "1";
 
   const map = buildCusipMap(await sql`
