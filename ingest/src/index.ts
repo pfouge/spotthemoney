@@ -16,6 +16,7 @@ import { ingestSenateLda, ingestSenateLdaHistory } from "./sources/senate_lda.js
 import { ingestSenateLdaContributions } from "./sources/senate_lda_contributions.js";
 import { ingestUsaspending } from "./sources/usaspending.js";
 import { ingestUsaspendingDetails } from "./sources/usaspending_details.js";
+import { ingestUsaspendingAssistance } from "./sources/usaspending_assistance.js";
 import { ingestFecScheduleA } from "./sources/fec_schedule_a.js";
 import { ingestFecScheduleAHistory } from "./sources/fec_schedule_a_history.js";
 import { ingestFecIndependentExpenditures } from "./sources/fec_independent_expenditures.js";
@@ -61,6 +62,7 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   usaspending: { label: "USAspending Contract Awards", cadence: "daily", daily: true, run: ingestUsaspending },
   // Fills description, sub-agency and end date for awards the searches no longer return, by award id.
   usaspending_details: { label: "USAspending award details by award id (fills blanks)", cadence: "daily", daily: true, run: ingestUsaspendingDetails },
+  usaspending_assistance: { label: "USAspending federal financial assistance (grants, loans, direct payments; stored, not yet shown)", cadence: "daily", daily: true, run: ingestUsaspendingAssistance },
   fec_committees: { label: "FEC committee universe (members + top PACs)", cadence: "weekly", daily: true, run: ingestFecCommittees },
   fec_schedule_a: { label: "FEC Schedule A Contributions", cadence: "daily", daily: true, run: ingestFecScheduleA },
   fec_independent_expenditures: { label: "FEC Schedule E independent expenditures (current cycle)", cadence: "daily", daily: true, run: ingestFecIndependentExpenditures },
