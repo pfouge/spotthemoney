@@ -13,6 +13,8 @@ import { emptyInst } from "../inst13f";
 import { emptyFinancials } from "../financials";
 import { emptyEvents } from "../events8k";
 import { emptyPay } from "../execpay";
+import { emptyVotes } from "../votes";
+import { emptyOutside } from "../outsidespending";
 import { insiderRows, codeRows, yearRows, insiderPeriods, isOpenBuy, isOpenSale, type InsiderRow, type CodeRow, type YearRow, type PeriodSummary } from "../entity";
 
 export type OdKind = "insider" | "stock" | "company";
@@ -85,6 +87,7 @@ export function buildOd(doc: OdDoc, now: Date = new Date()): OdPage {
     lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [], donationWindowDays: 0, counts: {}, latestByPath: new Map(),
     issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(), market: emptyMarket() };
     issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), market: emptyMarket() };
+    issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), market: emptyMarket(), votes: emptyVotes(), outside: emptyOutside() };
 
   // companies the page can name: the entity's own, its siblings' securities', the roles'
   const addCompany = (c: { id: number; name: string; slug: string | null; cik: string | null; ticker: string | null }) => {

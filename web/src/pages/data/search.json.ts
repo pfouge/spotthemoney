@@ -12,6 +12,8 @@ import { siteEventsHub } from "../../lib/events8k-build";
 import { sitePayHub } from "../../lib/execpay-build";
 import { EVENTS_PATH } from "../../lib/events8k";
 import { PAY_PATH } from "../../lib/execpay";
+import { VOTES_PATH } from "../../lib/votes";
+import { OUTSIDE_PATH } from "../../lib/outsidespending";
 import { INDUSTRIES_PATH } from "../../lib/industries";
 import { INST_HUB_PATH, instHubShown } from "../../lib/inst13f-hub";
 import { plannedShown } from "../../lib/plannedsales-build";
@@ -57,6 +59,8 @@ export const GET: APIRoute = async () => {
   if (plannedShown(m)) rows.push(["Page", "Planned sales (Form 144)", "Notices of planned sales filed in the last 12 months, as filed with the SEC", PLANNED_PATH, 0]);
   if (largeShown(m)) rows.push(["Page", "Large holders (13D and 13G)", "Holders that report more than 5% of a company, by newest statement", LARGE_PATH, 0]);
   if (instHubShown(m)) rows.push(["Page", "Institutional holders", "Which companies the most Form 13F managers report, and the largest managers", INST_HUB_PATH, 0]);
+  if (m.votes.shown) rows.push(["Page", "Roll call votes", "Every recorded House and Senate roll call, with how each member voted", VOTES_PATH, 0]);
+  if (m.outside.shown) rows.push(["Page", "Outside spending", "Independent expenditures in federal races, by candidate and by spender", OUTSIDE_PATH, 0]);
   if (siteFinScreen(m).all.length) rows.push(["Page", "Company financials screener", "Filter companies by revenue, net income and total assets, as filed with the SEC", FIN_SCREENER_PATH, 0]);
   if (siteEventsHub(m).data.rows.length) rows.push(["Page", "Company events (Form 8-K)", "The newest Form 8-K reports from companies on this site, by item", EVENTS_PATH, 0]);
   if (sitePayHub(m).data.rows.length) rows.push(["Page", "Executive pay", "Pay Versus Performance figures as companies filed them", PAY_PATH, 0]);

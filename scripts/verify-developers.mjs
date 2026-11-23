@@ -131,6 +131,7 @@ for (const o of cat.other ?? []) ok((await get(o.path)).status === 200, `${o.pat
 const layouts = new Map();
 for (const w of cat.workingFiles ?? []) {
   ok(w.stable === false, `${w.path} is not marked as unstable`);
+  if (w.pattern) { ok(/\{/.test(w.path), `${w.path} is marked a pattern without braces`); layouts.set(w.path, "*"); continue; }
   const r = await get(w.path);
   ok(r.status === 200, `${w.path} answers ${r.status}`);
   let j = null; try { j = JSON.parse(r.text); } catch { /* reported below */ }
@@ -166,7 +167,7 @@ ok(work.length === (cat.workingFiles ?? []).length, `the page lists ${work.lengt
 for (const li of work) {
   const p = attr(li, "data-working");
   ok(layouts.has(p), `${p} is on the page and not in the catalogue`);
-  ok(layouts.get(p) === attr(li, "data-top"), `${p}: the page states the top level "${attr(li, "data-top")}", the file has "${layouts.get(p)}"`);
+  ok(layouts.get(p) === "*" || layouts.get(p) === attr(li, "data-top"), `${p}: the page states the top level "${attr(li, "data-top")}", the file has "${layouts.get(p)}"`);
 }
 const words = text((html.match(/<main[\s\S]*?<\/main>/) ?? [html])[0]);
 ok(/<main/.test(html), "the page has no main element");

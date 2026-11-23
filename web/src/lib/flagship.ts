@@ -24,6 +24,10 @@ import { emptyEvents, eventsLog } from "./events8k";
 import { loadEvents } from "./events8k-build";
 import { emptyPay, payLog } from "./execpay";
 import { loadPay } from "./execpay-build";
+import { emptyVotes, votesLog } from "./votes";
+import { loadVotes } from "./votes-build";
+import { emptyOutside, outsideLog } from "./outsidespending";
+import { loadOutside } from "./outsidespending-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -79,6 +83,8 @@ async function load(): Promise<Flagship> {
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+    votes: emptyVotes(), outside: emptyOutside(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -168,6 +174,8 @@ async function load(): Promise<Flagship> {
 
     const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay() };
     const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+      votes: emptyVotes(), outside: emptyOutside() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -430,6 +438,19 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${payLog(model.execPay, ciks)}`);
     } catch (err) {
       console.warn("[web] executive pay skipped:", (err as Error).message);
+    // Roll-call votes and independent expenditures for the member pages and their hubs. Each in
+    // its own try/catch: a missing table leaves its sections out and nothing else.
+    try {
+      model.votes = await loadVotes(sql, model, builtAt);
+      console.log(`[web] ${votesLog(model.votes)}`);
+    } catch (err) {
+      console.warn("[web] roll-call votes skipped:", (err as Error).message);
+    }
+    try {
+      model.outside = await loadOutside(sql, model, builtAt);
+      console.log(`[web] ${outsideLog(model.outside)}`);
+    } catch (err) {
+      console.warn("[web] outside spending skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

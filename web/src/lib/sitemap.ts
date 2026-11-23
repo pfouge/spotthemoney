@@ -17,6 +17,8 @@ import { siteEventsHub } from "./events8k-build";
 import { sitePayHub } from "./execpay-build";
 import { EVENTS_PATH } from "./events8k";
 import { PAY_PATH } from "./execpay";
+import { VOTES_PATH } from "./votes";
+import { OUTSIDE_PATH } from "./outsidespending";
 import { INDUSTRIES_PATH } from "./industries";
 import { INST_HUB_PATH, instHubShown } from "./inst13f-hub";
 import { plannedShown } from "./plannedsales-build";
@@ -70,6 +72,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/congress/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     ...(congressMembers ? [{ loc: "/congress-members/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.7 }] : []),
     ...(congressTrades ? [{ loc: "/congress-trades/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.8 }] : []),
+    ...(model.votes.shown ? [{ loc: VOTES_PATH, lastmod: day(model.votes.rolls[0]?.date ?? null, built), changefreq: "daily" as const, priority: 0.7 }] : []),
     ...(committees.length ? [{ loc: COMMITTEES_PATH, lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     ...committees.map((c) => ({ loc: c.path, lastmod: day(c.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },
@@ -89,6 +92,7 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/donations/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/lobbying/", lastmod: built, changefreq: "daily", priority: 0.7 },
+    ...(model.outside.shown ? [{ loc: OUTSIDE_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.7 }] : []),
     ...(issues.length ? [{ loc: ISSUES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
     ...issues.map((i) => ({ loc: i.path, lastmod: day(i.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
     { loc: "/contracts/", lastmod: built, changefreq: "daily", priority: 0.7 },

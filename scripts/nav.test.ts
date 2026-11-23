@@ -25,7 +25,7 @@ test("descriptions are short and carry no dash punctuation", () => {
 test("items that are not live stay out of liveItems", () => {
   for (const g of NAV) for (const i of liveItems(g)) assert.equal(i.live, true);
   assert.ok(NAV.some((g) => g.items.some((i) => !i.live)));
-  assert.ok(!liveItems(NAV[0]!).some((i) => i.href === "/congress-votes/"));
+  assert.ok(liveItems(NAV[0]!).some((i) => i.href === "/congress-votes/"));   // live since the roll call page shipped
 });
 
 test("group order and footer links", () => {

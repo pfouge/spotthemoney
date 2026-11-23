@@ -9,6 +9,8 @@ import type { InstData } from "./inst13f";
 import type { FinancialsData } from "./financials";
 import type { EventsData } from "./events8k";
 import type { PayData } from "./execpay";
+import type { VotesModel } from "./votes";
+import type { OutsideData } from "./outsidespending";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -142,6 +144,10 @@ export interface Flagship {
   events: EventsData;
   /** Pay Versus Performance figures by 10-digit CIK (lib/execpay.ts). Empty when the table cannot be read. */
   execPay: PayData;
+  /** Roll-call votes (lib/votes.ts). Empty when the tables cannot be read or hold nothing. */
+  votes: VotesModel;
+  /** Independent expenditures (lib/outsidespending.ts). Empty likewise. */
+  outside: OutsideData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

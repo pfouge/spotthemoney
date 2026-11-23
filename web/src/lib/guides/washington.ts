@@ -10,7 +10,7 @@ export const washingtonGuides: ((c: GuideCtx) => Guide)[] = [
   (c) => {
     const f = c.facts.fecLimits;
     return {
-      slug: "campaign-donations-fec-data", group: "washington", updated: U,
+      slug: "campaign-donations-fec-data", group: "washington", updated: "2026-11-23",
       title: "Campaign donations: how to read FEC data",
       seoTitle: ["Campaign Donations Explained: How to Read FEC Data", "How to Read FEC Campaign Donation Data"],
       description: [`Federal campaigns must list every donor who gives over ${c.usd(f.itemizeOverUsd)}. What FEC records show, why companies cannot donate, and what an "employer" total means.`, "What FEC campaign donation records show, why companies cannot donate directly, and what an employer total means."],
@@ -43,6 +43,11 @@ ${table(["Type", "What it is"], [
 <p>Conduits matter when reading totals: the same dollar can appear once at the conduit and again at the campaign that finally received it.</p>` },
         { id: "lag", h: "How current is the data?", html: `
 <p>Not very. House and Senate campaigns report quarterly, due on the 15th of April, July and October and at the end of January, with extra reports close to an election. Many PACs and parties report monthly. A gift made at the start of a quarter can take about three and a half months to become public.</p>` },
+        { id: "independent-expenditures", h: "What is an independent expenditure?", html: `
+<p>An independent expenditure is money a person or group spends on a communication that expressly advocates the election or defeat of a clearly identified federal candidate, and that is not made in concert or cooperation with the candidate or at the candidate's request (the legal definition is in ${ext("https://www.law.cornell.edu/cfr/text/11/100.16", "11 CFR 100.16")}, and ${ext("https://www.law.cornell.edu/uscode/text/52/30101", "52 U.S.C. 30101")}). Typical examples are television ads, mailers and digital ads bought by a super PAC.</p>
+<p>The candidate does not receive this money. It is not a donation and it does not appear in the candidate's own receipts. The spender reports it as a disbursement and says whether it supports or opposes the named candidate.</p>
+<p>Spenders report independent expenditures on short-notice reports when the spending is close to an election: a 24-hour report once spending on an election reaches $1,000 in the days just before it, and a 48-hour report earlier in the cycle once it reaches $10,000 (${ext("https://www.fec.gov/help-candidates-and-committees/filing-pac-reports/24-hour-reports/", "FEC: 24-hour reports")}, ${ext("https://www.fec.gov/help-candidates-and-committees/filing-pac-reports/48-hour-reports", "FEC: 48-hour reports")}). The same spending is reported again on the spender's next regular report, so the FEC's raw file lists many expenditures twice.</p>
+<p>This site counts each expenditure once, by one rule: a line from a regular report always counts, and a line from a short-notice report counts only when it was spent after the newest expenditure in that same committee's regular reports. Totals add the dollars for support and the dollars for opposition separately, and never net them. Rows with no amount, or with no stated side, are listed and left out of totals. The <a href="/outside-spending/">outside spending page</a> and each member's page follow this rule, and the CSV file has a <code>counted</code> column that shows which rows count.</p>` },
         { id: "here", h: "What does this site show?", html: `
 <p>Receipts of the main campaign committee of every current member of Congress and of the 200 largest PACs, summed by committee, by donor employer and by state. The <a href="/donations/">donations page</a> covers the last ${c.donationWindowDays} days of receipts on file and says so on the page; it is a recent sample, not a campaign's lifetime total.</p>
 <p>The site never lists individual donors. Federal law forbids using contributor details from FEC reports to ask for money or for commercial purposes (${ext("https://www.fec.gov/updates/sale-or-use-contributor-information/", "FEC guidance")}), and names of private citizens add nothing to the question this site asks, which is where the money comes from in aggregate. If you need an individual record, the FEC's own search has it.</p>` },
@@ -51,10 +56,14 @@ ${table(["Type", "What it is"], [
         { q: "Can corporations donate to members of Congress?", a: "No. Corporations and unions may not give their own funds to federal candidates. They can sponsor a PAC funded by voluntary gifts from employees and shareholders, and company totals on donation sites are sums of gifts from people who work there.", on: ["washington"] },
         { q: "How much can an individual donate to a federal candidate?", a: `For ${f.cycle}, ${c.usd(f.perElectionToCandidateUsd)} per election to a candidate, with the primary and the general counted separately.`, on: ["washington"] },
         { q: "Why does a donation take months to show up?", a: "Because campaigns report on a schedule. House and Senate campaigns file quarterly, so a gift made early in a quarter can become public about three and a half months later." },
+        { q: "Is independent expenditure money given to the candidate?", a: "No. An independent expenditure is spent by an outside person or group on a communication about a candidate, without coordination with the candidate. The candidate does not receive it, and it is not a donation." },
+        { q: "Why do notices and regular reports overlap in independent expenditure data?", a: "Spenders file a 24-hour or 48-hour notice when they spend near an election, and then report the same spending again on their next regular report. This site counts the expenditure once: regular-report lines always count, and a notice counts only when it was spent after that committee's newest regular-report expenditure." },
         { q: "Does Spot the Money show individual donors?", a: "No. It shows totals by committee, by donor employer and by state. Individual records are available from the FEC's own search." },
       ],
       sources: [
         { name: "FEC campaign finance data", url: "https://www.fec.gov/data/" },
+        { name: "11 CFR 100.16, independent expenditure", url: "https://www.law.cornell.edu/cfr/text/11/100.16" },
+        { name: "FEC: 24-hour reports of independent expenditures", url: "https://www.fec.gov/help-candidates-and-committees/filing-pac-reports/24-hour-reports/" },
         { name: "FEC contribution limits", url: f.source },
         { name: "FEC: who can and can't contribute", url: "https://www.fec.gov/help-candidates-and-committees/candidate-taking-receipts/who-can-and-cant-contribute/" },
         { name: "FEC: how individual contributions are reported", url: "https://www.fec.gov/help-candidates-and-committees/filing-reports/individual-contributions/" },
@@ -63,9 +72,9 @@ ${table(["Type", "What it is"], [
         { name: "FEC 2026 quarterly reporting dates", url: "https://www.fec.gov/help-candidates-and-committees/dates-and-deadlines/2026-reporting-dates/2026-quarterly-filers/" },
       ],
       related: ["lobbying-disclosure-reports", "federal-contracts-usaspending", "what-disclosure-data-cannot-tell-you"],
-      seeLive: [{ label: "Campaign donations", href: "/donations/" }, { label: "Washington overview", href: "/washington/" }],
-      covers: ["web/src/pages/donations/index.astro", "ingest/src/sources/fec_committees.ts"],
-      ui: [{ text: "By donor employer", on: "/donations/" }],
+      seeLive: [{ label: "Campaign donations", href: "/donations/" }, { label: "Outside spending", href: "/outside-spending/" }, { label: "Washington overview", href: "/washington/" }],
+      covers: ["web/src/pages/donations/index.astro", "ingest/src/sources/fec_committees.ts", "web/src/lib/outsidespending.ts", "web/src/components/OutsideSpending.astro"],
+      ui: [{ text: "By donor employer", on: "/donations/" }, { text: "Largest spenders", on: "/outside-spending/" }],
       facts: ["fecLimits"],
     };
   },

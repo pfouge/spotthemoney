@@ -1,9 +1,11 @@
 {
   "campaign-donations-fec-data": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-22",
     "covers": {
       "web/src/pages/donations/index.astro": "ffa79d5bc4a5dd87",
-      "ingest/src/sources/fec_committees.ts": "cc44ff73d4057cf9"
+      "ingest/src/sources/fec_committees.ts": "cc44ff73d4057cf9",
+      "web/src/lib/outsidespending.ts": "b4c9fa00fc85caa5",
+      "web/src/components/OutsideSpending.astro": "dc91169124acf3b6"
     }
   },
   "congress-stock-trading-rules": {
@@ -75,12 +77,12 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "c8b162fe5eb3b738",
+      "web/src/lib/downloads.ts": "5f8f49221541d810",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "895c23555e249813",
+      "web/src/pages/downloads/index.astro": "cd5f80e450727ed6",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "e87838bb0f64fc85",
-      "web/src/pages/developers.astro": "ad02755c67844e81"
+      "web/src/lib/datafiles.ts": "4f5cb1ca8e3f5fa3",
+      "web/src/pages/developers.astro": "e510fa2eeeaaf48f"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
@@ -109,7 +111,7 @@
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "0311ce878572ffe1",
+      "web/src/pages/congress/[slug].astro": "77eb9ba4c0320bd6",
       "web/src/lib/directory.ts": "0466a663969706ab",
       "web/src/pages/congress-members.astro": "bf0dc59073a99673",
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
@@ -224,12 +226,12 @@
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
-      "web/src/lib/server/od.ts": "588d14184701083d",
+      "web/src/lib/server/od.ts": "e5bc2acbded1f948",
       "web/src/components/OdPageView.astro": "5a94f9549888f514",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "c888d5ce84af0be2",
+      "web/src/pages/stocks/[ticker].astro": "e038cc5f546a77e0",
       "web/src/pages/insiders/[slug].astro": "f0ad9f2febae04a5",
-      "web/src/pages/companies/[slug].astro": "4f457d3edcc0383a",
+      "web/src/pages/companies/[slug].astro": "1d69505d91ce5360",
       "web/src/lib/form144.ts": "5792da219a57b938",
       "web/src/components/PlannedSales.astro": "cecc243987af144c",
       "web/src/lib/financials.ts": "5ac8828e6d9e5b2c",
@@ -247,6 +249,14 @@
       "web/src/lib/inst13f.ts": "156ecec5730acd97",
       "web/src/lib/inst13f-build.ts": "3c7f374b016abc92",
       "web/src/components/InstHolders.astro": "21746908838ac1bd"
+    }
+  },
+  "how-to-read-a-roll-call-vote": {
+    "reviewed": "2026-11-23",
+    "covers": {
+      "web/src/lib/votes.ts": "9b0a82a4ee0565c5",
+      "web/src/components/MemberVotes.astro": "d74bd8398bee09aa",
+      "web/src/pages/congress-votes.astro": "d1dca2323351bf61"
     }
   }
 }

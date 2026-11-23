@@ -29,6 +29,8 @@ import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, ty
 import { EVENT_CSV_COLUMNS, sortEvents, type EventCsvRow } from "./events8k";
 import { PAY_CSV_COLUMNS, sortYears, type PayCsvRow } from "./execpay";
 import { filingFolderUrl, cleanName as instName } from "./inst13f";
+import { CSV_COLUMNS as VOTE_COLUMNS, newestFirst as voteNewestFirst } from "./votes";
+import { CSV_COLUMNS as OUTSIDE_COLUMNS } from "./outsidespending";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -45,6 +47,7 @@ export interface DownloadFile {
   updated: string | null;  // newest date in the file
   kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets";
   kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -422,6 +425,23 @@ async function build(): Promise<Downloads> {
   }
   add(file({ name: "company-events.csv", group: "insiders", kind: "events", title: "Company events: Form 8-K reports", about: "One row per Form 8-K report (or 8-K/A amendment) filed by a company this site has a page for: filing and event dates, the item numbers the report names with the SEC's heading for each, and a link to the report. The text of a report is not included.", updated: newest(evRows.map((r) => r.e.filed)) }, EVENT_CSV_COLUMNS, evRows));
   add(file({ name: "executive-pay.csv", group: "insiders", kind: "execpay", title: "Executive pay, as filed (Pay Versus Performance)", about: "One row per company and fiscal year: the principal executive officer's total and compensation actually paid, and the average for the other named executive officers, in dollars as the company tagged them. No person is named.", updated: newest(payRows.map((r) => r.y.fiscalYearEnd)) }, PAY_CSV_COLUMNS, payRows));
+  // Roll-call votes (lib/votes.ts): one row per roll call. No per-member positions file: the
+  // positions are in the monthly working files listed on /developers/.
+  if (m.votes.shown) {
+    const rolls = [...m.votes.rolls].sort(voteNewestFirst);
+    add(file({ name: "congress-votes.csv", group: "congress", kind: "votes", title: "Roll-call votes of the House and the Senate", about: "One row per recorded roll call: the question, the result and the official totals. Members' positions are not in this file.", updated: newest(rolls.map((r) => r.date)) }, VOTE_COLUMNS, rolls));
+  }
+  // Independent expenditures (lib/outsidespending.ts): every row, with the column that says
+  // whether it counts. Split by quarter of the spending date only if one file would pass 15 MB.
+  if (m.outside.shown) {
+    const pageOf = (id: number) => { const p = m.people.get(id); const path = p ? personPath(p) : null; return path ? SITE_URL + path : null; };
+    const cols = OUTSIDE_COLUMNS(pageOf);
+    const rows = [...m.outside.rows].sort((a, b) => (a.spentAt ?? "") < (b.spentAt ?? "") ? 1 : (a.spentAt ?? "") > (b.spentAt ?? "") ? -1 : a.subId < b.subId ? -1 : 1);
+    const meta = { group: "washington" as const, kind: "outside" as const };
+    const whole = file({ ...meta, name: "independent-expenditures.csv", title: "Independent expenditures in federal races", about: "One row per expenditure as the spender reported it, with a column that says whether the row counts or repeats another report of the same spending.", updated: newest(rows.map((r) => r.spentAt)) }, cols, rows);
+    if (rows.length && Buffer.byteLength(whole.body(), "utf8") <= 15_000_000) add(whole);
+    else for (const piece of splitByPeriod(rows, (r) => r.spentAt)) add(file({ ...meta, name: `independent-expenditures-${piece.period}.csv`, title: `Independent expenditures, ${piece.label}`, about: `Expenditures spent in ${piece.label}, as reported.`, updated: newest(piece.rows.map((r) => r.spentAt)) }, cols, piece.rows));
+  }
 
   // Rates
   for (const f of await rateFiles()) add(f);

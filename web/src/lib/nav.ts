@@ -13,8 +13,8 @@ export const NAV: NavGroup[] = [
     { href: "/congress-trades/", label: "Trade screener", desc: "Every disclosed trade, filtered your way", live: true },
     { href: "/congress-members/", label: "Members", desc: "Each member, party, seat and activity", live: true },
     { href: "/congress-committees/", label: "Committees", desc: "Committee members and their disclosed trades", live: true },
-    { href: "/congress-votes/", label: "Votes", desc: "Recorded floor votes by member", live: false },
-    { href: "/outside-spending/", label: "Outside spending", desc: "Independent spending in federal races", live: false },
+    { href: "/congress-votes/", label: "Votes", desc: "Recorded floor votes by member", live: true },
+    { href: "/outside-spending/", label: "Outside spending", desc: "Independent spending in federal races", live: true },
   ] },
   { key: "insiders", label: "Insiders", href: "/insiders/", items: [
     { href: "/insiders/", label: "Overview and trade map", desc: "Corporate insiders buying and selling", live: true },

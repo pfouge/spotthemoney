@@ -1,0 +1,142 @@
+---
+// Roll-call votes of the House and the Senate: /congress-votes/. One row per recorded roll call
+// with the official totals, filters (search, chamber, result, window, and one member from a link
+// on a member page) and sortable columns; "Positions" opens each roll call in place to show who
+// voted which way. Rules are in lib/votes.ts (unit-tested). The page prints the first rows
+// itself; scripts/congressvotes.ts loads /data/congress-votes.json and the monthly position files
+// and takes over, so without JavaScript the first rows are still here and the controls are hidden.
+// Not under /congress/: every /congress/<x>/ address is a member page.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, num, plural } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { datasetLd } from "../lib/seo";
+import { screen, summaryLine, DEFAULT_VIEW, DEFAULT_PER, PER_PAGE, WINDOWS, WINDOW_LABEL, VOTES_DATA, VOTES_CAVEAT, CHAMBER_LABEL, rollLabel, rollTitle } from "../lib/votes";
+
+const model = await getFlagship();
+const v = model.votes;
+const built = v.builtAt || model.builtAt.slice(0, 10);
+const first = screen(v.rolls, DEFAULT_VIEW, built);
+const house = v.rolls.filter((r) => r.chamber === "house").length, senate = v.rolls.length - house;
+const newest = v.rolls.map((r) => r.date).sort().at(-1) ?? null;
+const oldest = v.rolls.map((r) => r.date).sort()[0] ?? null;
+const results = (() => { const m = new Map<string, number>(); for (const r of v.rolls) if (r.result) m.set(r.result, (m.get(r.result) ?? 0) + 1); return [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])); })();
+const answer = !v.shown
+  ? "No roll call votes are on file here yet. They are added as the Clerk of the House and the Secretary of the Senate publish them."
+  : `${plural(v.rolls.length, "roll call")} of the House (${num(house)}) and the Senate (${num(senate)}) are on file, from ${formatDate(oldest)} to ${formatDate(newest)}. Each is listed with its official totals, and each opens to show how every member voted, as recorded.`;
+const description = "Every recorded roll call vote of the House and the Senate on file, with the question, result and totals, and how each member voted, as the chambers recorded it.";
+const csv = (await getDownloads()).files.find((f) => f.name === "congress-votes.csv");
+const ld = datasetLd({ downloads: [csv?.path], name: "Roll call votes of the House of Representatives and the Senate", path: "/congress-votes/", description, dateModified: (newest ?? built).slice(0, 10), keywords: ["roll call votes", "House votes", "Senate votes", "Congress"], sources: [{ name: "Clerk of the House: roll call votes", url: "https://clerk.house.gov/Votes" }, { name: "Senate: roll call vote lists", url: "https://www.senate.gov/legislative/common/generic/roll_call_lists.htm" }], parentCatalogPath: "/" });
+const heads: { k: string; label: string; cls?: string }[] = [
+  { k: "date", label: "Date" }, { k: "chamber", label: "Chamber" }, { k: "roll", label: "Roll call" }, { k: "bill", label: "Bill" }, { k: "question", label: "Question" }, { k: "result", label: "Result" },
+  { k: "yeas", label: "Yea", cls: "num" }, { k: "nays", label: "Nay", cls: "num" }, { k: "present", label: "Present", cls: "num" }, { k: "notVoting", label: "Not voting", cls: "num" },
+];
+const sortable = new Set(["date", "chamber", "bill", "result", "yeas", "nays", "present", "notVoting"]);
+---
+<BaseLayout title={["Roll Call Votes: House and Senate Votes by Member", "Roll Call Votes: House and Senate"]} description={description} section="Congress" noindex={!v.shown}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: "Roll call votes", path: "/congress-votes/" }]} />
+  <h1>Roll call votes</h1>
+  <p class="lede">Every recorded vote of the House and the Senate on file, with the question put, the result and the official totals. Open a roll call to see how each member voted.</p>
+
+  <Answer text={answer} updated={newest ?? built} sourceNote="Source: Clerk of the House and Secretary of the Senate" />
+
+  {!v.shown ? <p class="empty-reason">No roll call votes on file yet.</p> : (
+    <div class="votes-hub" data-votes-hub data-src={VOTES_DATA} data-total={first.all}>
+      <div class="controls vt-controls" role="group" aria-label="Filter roll calls">
+        <div class="ctl"><label class="lbl" for="vt-q">Bill or question</label><input id="vt-q" class="hm-input" data-vt="q" type="search" placeholder="Bill or question" autocomplete="off" maxlength="60" /></div>
+        <div class="ctl"><span class="lbl">Chamber</span>
+          <select data-vt="chamber" aria-label="Chamber"><option value="">Both chambers</option><option value="house">House</option><option value="senate">Senate</option></select>
+        </div>
+        <div class="ctl"><span class="lbl">Result</span>
+          <select data-vt="result" aria-label="Result of the vote, as the chamber states it"><option value="">Any result</option>{results.map(([r, n]) => <option value={r}>{r} ({num(n)})</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Voted</span>
+          <select data-vt="w" aria-label="When the vote was held">{WINDOWS.map((w) => <option value={w} selected={w === DEFAULT_VIEW.f.w}>{WINDOW_LABEL[w]}</option>)}</select>
+        </div>
+      </div>
+      <p class="section-note" data-vt="pins" hidden></p>
+      <p class="section-note vt-count"><span data-vt="count" aria-live="polite">{summaryLine(first)}</span> <button type="button" class="linklike" data-vt="reset" hidden>Reset filters</button></p>
+      <DownloadCsv file={csv} note="every roll call on file, not only the rows filtered here" />
+      <p class="dl-row vt-dl"><button type="button" class="dl" data-vt="download">Download these rows (CSV)</button> <span class="dl-meta">The roll calls that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+
+      <div class="tablewrap"><table class="data vt-table">
+        <thead><tr>
+          {heads.map((x) => sortable.has(x.k)
+            ? <th class={x.cls ?? ""} aria-sort={x.k === DEFAULT_VIEW.sort ? "descending" : "none"} data-sort={x.k}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true">{x.k === DEFAULT_VIEW.sort ? "▼" : ""}</span></button></th>
+            : <th class={x.cls ?? ""}>{x.label}</th>)}
+          <th data-vt="poshead" hidden>Position</th>
+          <th>Positions</th>
+        </tr></thead>
+        <tbody data-vt="rows">
+          {first.rows.map((r) => (
+            <tr data-roll={r.id}>
+              <td class="mono">{formatDate(r.date)}</td>
+              <td>{CHAMBER_LABEL[r.chamber]}</td>
+              <td>{r.url ? <a href={r.url} rel="noopener nofollow" target="_blank" title={rollTitle(r)}>{r.roll} ↗</a> : <span title={rollTitle(r)}>{r.roll}</span>}</td>
+              <td>{r.bill ?? "—"}</td>
+              <td class="wrap vt-q">{r.question ?? "—"}</td>
+              <td class="wrap">{r.result ?? "—"}</td>
+              <td class="num">{r.yeas == null ? "—" : num(r.yeas)}</td>
+              <td class="num">{r.nays == null ? "—" : num(r.nays)}</td>
+              <td class="num">{r.present == null ? "—" : num(r.present)}</td>
+              <td class="num">{r.notVoting == null ? "—" : num(r.notVoting)}</td>
+              <td><button type="button" class="chip vt-open" data-vt="open" aria-expanded="false" aria-label={`Show positions on ${rollLabel(r)}, ${formatDate(r.date)}`}>Positions</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p class="empty-reason" data-vt="empty" hidden>No roll call matches these filters. <button type="button" class="linklike" data-vt="reset2">Clear the filters</button></p>
+      <div class="vt-pager" data-vt="pager">
+        <button type="button" class="chip" data-vt="prev" disabled>Previous</button>
+        <span data-vt="pageinfo" class="soft">Page 1 of {num(first.pages)}</span>
+        <button type="button" class="chip" data-vt="next" disabled={first.pages <= 1}>Next</button>
+        <label class="vt-per soft">Rows per page <select data-vt="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
+      </div>
+      <noscript><p class="section-note">These are the first {num(first.rows.length)} roll calls of the last 90 days. The filters and the member positions need JavaScript; the CSV file above has every roll call.</p></noscript>
+    </div>
+  )}
+
+  <h2 id="about">What this page shows</h2>
+  <p>One row for each roll call on file: a vote in which the chamber recorded each member's position by name. Voice votes and votes by unanimous consent record no positions and are not here. The totals are the official ones for the vote; "Positions" opens the roll call to list who voted yea, nay, present and not voting, grouped by party, each name linking to the member's page here when there is one. "Result" is the chamber's own wording, so filters group results only when the words are identical.</p>
+  <p>{VOTES_CAVEAT} What the terms mean, and what a roll call can and cannot show: <a href="/guides/how-to-read-a-roll-call-vote/">how to read a roll call vote</a>. How the page is built: <a href="/methodology/#votes">methodology</a>.</p>
+  <p>To see one member's positions on every roll call of their chamber, use the link in the "Recorded votes" section of their page. The "Position" column then appears here.</p>
+  <AdSlot />
+
+  <p class="disclaimer"><strong>Not investment advice.</strong> Positions are shown as the chambers recorded them; nothing here scores a vote or says why a member voted as they did.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+
+<style>
+  .vt-controls .hm-input { width: 200px; }
+  .vt-controls select { max-width: 290px; }
+  .vt-count { margin: 0 0 0.25rem; }
+  .vt-dl { margin-top: 0; }
+  .vt-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
+  .vt-dl button.dl:hover { background: var(--chip); }
+  .vt-dl button.dl:disabled { opacity: 0.45; cursor: default; }
+  :global(html:not(.js)) .vt-dl { display: none; }
+  .vt-q { min-width: 16rem; }
+  :global(.vt-open) { font: inherit; font-size: 13.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 30px; padding: 0 12px; cursor: pointer; }
+  :global(html:not(.js) .vt-open) { display: none; }
+  .vt-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
+  .vt-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
+  .vt-pager button.chip:disabled { opacity: 0.45; cursor: default; }
+  .vt-pager[hidden] { display: none; }
+  .vt-per { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  :global(.linklike) { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+  .votes-hub[data-loading] .vt-table { opacity: 0.6; }
+  :global(table.data .vt-detail td:first-child) { position: static; max-width: none; overflow: visible; box-shadow: none; background: var(--chip); white-space: normal; padding: 0.6rem 8px; }
+  :global(.vt-detail-in) { position: sticky; left: 0; width: min(100%, calc(100vw - 3rem)); white-space: normal; }
+  :global(.vt-detail .vt-group) { margin: 0 0 0.8rem; }
+  :global(.vt-detail h3) { margin: 0.2rem 0; font-size: 15px; }
+  :global(.vt-detail .vt-party) { margin: 0.2rem 0; font-size: 14px; line-height: 1.5; }
+  :global(html:not(.js)) .vt-controls, :global(html:not(.js)) .vt-pager { display: none; }
+</style>
+<script>
+  import "../scripts/congressvotes";
+</script>
