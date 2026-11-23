@@ -9,6 +9,7 @@
 // (shared/src/sic.ts). The figures are counts of filed rows. An industry is a label: no page
 // ranks industries, adds dollars across them or says what a count means.
 import type { Company, Flagship, Txn } from "./flagship-core";
+import { mainTicker } from "./flagship-core";
 import { SIC_DIVISIONS, cleanSicCode, sicDivision } from "@stm/shared";
 
 export const INDUSTRIES_PATH = "/industries/";
@@ -93,7 +94,7 @@ export function buildIndustries(m: Flagship, today: string, paths: IndustryPaths
       } else if (inWindow(t)) congress++;
     }
     const row: IndustryCompany = {
-      id: c.id, name: c.name, path: paths.company(c), ticker: c.primaryTicker, tickerPath: c.primaryTicker ? paths.ticker(c.primaryTicker) : null,
+      id: c.id, name: c.name, path: paths.company(c), ticker: mainTicker(c), tickerPath: mainTicker(c) ? paths.ticker(mainTicker(c)!) : null,
       sic, description: e.description?.trim() || null, buys, sells, congress, latest,
     };
     const list = by.get(d.code); if (list) list.push(row); else by.set(d.code, [row]);

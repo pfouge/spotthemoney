@@ -383,7 +383,10 @@ insert into companies (name, cik, primary_ticker, slug) values
   ('SEED SWAPPED PARENT CORP', '0009996702', 'SWAP', 'seed-swapped-parent-corp'),
   ('SEED SWAPPED TRUST', '0009996703', 'SWAP', 'seed-swapped-trust');
 insert into securities (ticker, type, name, company_id) values
-  ('SWAP', 'equity', 'Seed Swapped', (select id from companies where cik = '0009996703'));
+  ('SWAP', 'equity', 'Seed Swapped', (select id from companies where cik = '0009996703')),
+  -- A second share class of the parent: it has no page of its own, its row is on /stocks/swap/
+  -- and /stocks/swap.b/ redirects there (web/src/lib/onepage.ts).
+  ('SWAP.B', 'equity', 'Seed Swapped Class B', (select id from companies where cik = '0009996702'));
 insert into people (full_name, slug, cik) values
   ('Seed Parent Officer', 'seed-parent-officer', '0001100101'),
   ('Seed Trust Trustee', 'seed-trust-trustee', '0001100102'),
@@ -398,6 +401,7 @@ insert into person_roles (person_id, role_kind, company_id, officer_title, is_di
 create temp table seed_owner (accession text, person_cik text, company_cik text, ticker text, filed date, txn date, code text, shares numeric, price numeric, stated text);
 insert into seed_owner values
   ('0009996702-26-000001', '0001100101', '0009996702', 'SWAP', current_date - 9,  current_date - 10, 'P', 1000, 20.00, 'SWAP'),
+  ('0009996702-26-000002', '0001100101', '0009996702', 'SWAP.B', current_date - 6, current_date - 7, 'P', 500, 21.00, 'SWAP.B'),
   ('0009996703-26-000001', '0001100102', '0009996703', 'SWAP', current_date - 8,  current_date - 9,  'S', 400,  25.00, 'NONE'),
   ('0009996703-26-000002', '0001100102', '0009996703', 'SWAP', current_date - 20, current_date - 21, 'P', 600,  24.00, 'SWAP'),
   ('0009996601-26-000001', '0001100103', '0009996601', 'NVDA', current_date - 11, current_date - 12, 'P', 250,  10.00, 'N/A');

@@ -48,6 +48,8 @@ export interface Company {
   id: number; name: string; cik: string | null; slug: string | null; primaryTicker: string | null;
   sector: string | null;
   securityIds: number[];
+  /** The company's tickers in the SEC's list, in the list's order (its main listing first). Empty when it has none. */
+  secTickers?: string[];
   insiders: Person[];          // people with an insider role at this company
   txns: Txn[];
   contracts: ContractRow[];    // name-matched USAspending awards
@@ -63,6 +65,10 @@ export interface Security {
   insiderTxns: Txn[]; congressTxns: Txn[];
   underReview: boolean;
   od?: true;
+  /** Set when this ticker has no page of its own: the page of the company's main ticker shows it (lib/onepage.ts). */
+  pagePath?: string | null;
+  /** On a company's main ticker: the lower-case tickers of its other share classes shown on the same page. */
+  classTickers?: string[];
 }
 export interface Filing {
   id: number; source: string; externalId: string | null; personId: number | null; companyId: number | null;
@@ -175,7 +181,9 @@ export function personPath(p: Person): string | null {
 }
 /** Where a company is shown: its ticker page when it has one (lib/onepage.ts), otherwise /companies/<slug>/. */
 export function companyPath(c: Company): string | null { return c.stockPath ?? (c.slug ? `/companies/${c.slug}/` : null); }
-export function securityPath(s: Security): string { return `/stocks/${s.ticker.toLowerCase()}/`; }
+/** The ticker a company is shown under: the ticker of its page when it has one (lib/onepage.ts), else its main ticker as stored. */
+export function mainTicker(c: Company): string | null { return c.stockPath?.match(/^\/stocks\/([^/]+)\/$/)?.[1].toUpperCase() ?? c.primaryTicker; }
+export function securityPath(s: Security): string { return s.pagePath ?? `/stocks/${s.ticker.toLowerCase()}/`; }
 
 export function sum(xs: (number | null | undefined)[]): number { return xs.reduce<number>((a, b) => a + (b ?? 0), 0); }
 export function avg(xs: (number | null | undefined)[]): number | null {

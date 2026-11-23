@@ -220,7 +220,14 @@ async function load(): Promise<Flagship> {
     // with no list, no row of another issuer is kept on a ticker.
     const listedCiks = new Set<string>();
     try {
-      for (const r of await sql<{ cik: string }[]>`select distinct cik from sec_tickers`) listedCiks.add(r.cik.padStart(10, "0"));
+      const byCik = new Map<string, string[]>();
+      for (const r of await sql<{ cik: string; ticker: string }[]>`select cik, ticker from sec_tickers order by rank, ticker`) {
+        const cik = r.cik.padStart(10, "0");
+        listedCiks.add(cik);
+        const a = byCik.get(cik); if (a) a.push(r.ticker.toUpperCase()); else byCik.set(cik, [r.ticker.toUpperCase()]);
+      }
+      // The order decides which of a company's share classes its page is addressed by (lib/onepage.ts).
+      for (const c of model.companies.values()) c.secTickers = c.cik ? byCik.get(c.cik.padStart(10, "0")) ?? [] : [];
     } catch (err) {
       console.warn(`[web] the SEC ticker list could not be read (${err instanceof Error ? err.message : String(err)}); rows are kept on a ticker only for its own company`);
     }
