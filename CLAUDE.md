@@ -4093,3 +4093,42 @@ it in the pull request that changes a cell.**
   union merge, run the changed workflow step's shell through `bash -n`.
 - Not done: the seven datasets on the on-demand pages of untracked companies (waits for the one-page-per-company work on
   those pages).
+
+### Long-term debt in "Financials, as filed": one heading or no line (2026-11-23, scheduled parity run) — queue item A1-a
+
+- **What.** The Financials section of stock and company pages can have a last line for long-term debt, in both tables,
+  and `company-financials.csv` gained `long_term_debt` and `long_term_debt_heading` (the XBRL tag without its prefix).
+  No migration, no data job change (the figures were stored since stage 1), no new file.
+- **Rule** (`web/src/lib/financials.ts`: `DEBT_CONCEPT`, `DEBT_LABEL`, `debtLabel`, `debtShown`, `applyDebtRule`,
+  `NO_LINE_REASON`, `DEBT_NOTE`; tests in `scripts/financials.test.ts`): the four stored headings measure different things
+  (LongTermDebt = all of it; LongTermDebtNoncurrent = not counting the part due within a year;
+  LongTermDebtAndCapitalLeaseObligations = with lease obligations; ifrs Borrowings). A company has a debt line **only when
+  every fiscal year and quarter on file (the rows of the CSV, in its own currency) gives the figure under ONE heading**,
+  and the line is named after that heading (`data-debt="<tag>"` on the section). More than one heading: no line, a
+  sentence under the tables (`p[data-fin-debt-note]`, `data-debt="several"`), every debt cell marked
+  `several_headings` (in the CSV's `not_shown`; NOT counted as a doubted figure by `heldCount` or the page note, and its
+  report is not listed as a source). No debt figure on file: no line, no sentence. A debt figure above total liabilities
+  on the same date reads "not shown" (`debt_over_liabilities`; none on production today).
+- **Why so strict (production, SQL, 2026-11-23):** 746 of 938 companies have a debt figure; 529 under one heading
+  (LongTermDebt 323, Noncurrent 113, with leases 81, Borrowings 12), 217 under several. Of 137 companies with both
+  LongTermDebt and LongTermDebtNoncurrent on file, 18 state a "total" below 90% of the "part due after a year" (11 below
+  half; Domino's is one), so the headings are not always used as defined and two headings cannot share a row. The same
+  misuse by a one-heading company cannot be detected; the methodology (`#long-term-debt`) says so. Debt above total
+  ASSETS is real for some companies and is not a check.
+- **Not in the financials screener, on purpose:** a column would sort and compare unlike measures. If wanted later, it
+  needs a heading filter beside it.
+- **Build log** line `[web] financials (SEC XBRL): ...` now ends `long-term debt: F figures in the periods on file, A
+  companies with a line (<heading> n, ...), B with several headings and no line, C with none on file`, and its
+  "rows read" now includes the debt rows (SQL: drop the `concept <> 'long_term_debt'` condition).
+- **Verifier.** `verify-financials` has its own copy of the rule and the line names: headings recounted per company from
+  the CSV, `not_shown` against it, the line present and named only for one heading, the sentence only for several, no
+  mention of debt for a company with none; it always reads one company of each case. Its last line counts the three.
+- The seed: NVIDIA one heading (one figure above liabilities), Palantir two headings, Microsoft IFRS borrowings in CNY
+  with a dollar row left out, the SWAP trust debt with leases, Apple none. **`scripts/seed-local.sql` cannot be run twice
+  on one database (`inst_holdings` is not truncated): drop and recreate the local database to re-seed.**
+- The taxonomy's own definitions were not read from the source in this run (written from knowledge of the element
+  names); the labels stay close to the element names for that reason.
+- Guides `what-is-form-4` (a paragraph in `#financials`) and `how-to-cite-and-reuse` re-read and accepted.
+- Not done: ratios of filed figures (A1-b); debt on the on-demand pages; a per-table rule that would show the 147
+  companies whose annual reports use one heading and quarterly reports another (possible with a label per table, but it
+  needs a way to catch the Domino's case first).

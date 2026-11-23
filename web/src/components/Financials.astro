@@ -6,7 +6,7 @@ import type { Flagship } from "../lib/flagship";
 import type { DownloadFile } from "../lib/downloads";
 import { formatDate } from "../lib/format";
 import { financialsOf } from "../lib/financials-build";
-import { SHOWN_CONCEPTS, shownYears, shownQuarters, sourceFilings, filingUrl, cellText, summarySentence, heldCount, tagChangeCount, FIN_CAVEAT, HELD_TEXT, type Period, type HeldReason } from "../lib/financials";
+import { SHOWN_CONCEPTS, shownYears, shownQuarters, sourceFilings, filingUrl, cellText, summarySentence, heldCount, tagChangeCount, debtShown, debtLabel, FIN_CAVEAT, HELD_TEXT, DEBT_CONCEPT, DEBT_NOTE, NO_LINE_REASON, type Period, type HeldReason } from "../lib/financials";
 import DownloadCsv from "./DownloadCsv.astro";
 
 interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
@@ -17,7 +17,11 @@ const years = f ? shownYears(f) : [];
 const quarters = f ? shownQuarters(f) : [];
 const all = [...years, ...quarters];
 const held = heldCount(all);
-const reasons = [...new Set(all.flatMap((p) => SHOWN_CONCEPTS.map((sc) => p.cells[sc.key]?.held).filter(Boolean) as HeldReason[]))];
+const reasons = [...new Set(all.flatMap((p) => SHOWN_CONCEPTS.map((sc) => p.cells[sc.key]?.held).filter(Boolean) as HeldReason[]))].filter((r) => r !== NO_LINE_REASON);
+// Long-term debt: a line only when every period on file gives it under one heading; the line is named after it.
+const debtLine = f ? debtShown(f) : false;
+const debtSeveral = f ? f.debtTags.length > 1 : false;
+const lineLabel = (key: string, label: string) => (key === DEBT_CONCEPT && f ? debtLabel(f.debtTags[0]) : label);
 const changed = tagChangeCount(all);
 const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Period[]; head: (p: Period) => string }[] = [
   { kind: "year", id: "financials-years", title: "Fiscal years", cols: years, head: (p) => `Year to ${formatDate(p.end)}` },
@@ -25,7 +29,7 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
 ];
 ---
 {f && all.length > 0 && (
-  <section aria-labelledby="financials" data-financials data-cik={cik10} data-unit={f.unit} data-years={years.length} data-quarters={quarters.length}>
+  <section aria-labelledby="financials" data-financials data-cik={cik10} data-unit={f.unit} data-years={years.length} data-quarters={quarters.length} data-debt={debtLine ? f.debtTags[0] : debtSeveral ? "several" : ""}>
     <h2 id="financials">Financials, as filed</h2>
     <p data-fin-summary>{summarySentence(name, f)}</p>
     <p class="fin-note" data-fin-caveat>{FIN_CAVEAT} <a href="/methodology/#financials">How these figures are read</a>. The newest figures of every tracked company are side by side in the <a href="/company-financials/">company financials screener</a>.</p>
@@ -37,9 +41,9 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
           <th scope="col">Figure</th>
           {t.cols.map((p) => <th scope="col" class="num" data-fin-col={p.end} data-start={p.start ?? ""}>{t.head(p)}</th>)}
         </tr></thead><tbody>
-          {SHOWN_CONCEPTS.filter((sc) => !(t.kind === "quarter" && sc.annualOnly)).map((sc) => (
+          {SHOWN_CONCEPTS.filter((sc) => !(t.kind === "quarter" && sc.annualOnly) && (sc.key !== DEBT_CONCEPT || debtLine)).map((sc) => (
             <tr data-fin-row={sc.key}>
-              <th scope="row">{sc.label}{!sc.flow && <span class="fin-sub">at the end of the period</span>}</th>
+              <th scope="row">{lineLabel(sc.key, sc.label)}{!sc.flow && <span class="fin-sub">at the end of the period</span>}</th>
               {t.cols.map((p) => {
                 const c = p.cells[sc.key];
                 if (!c) return <td class="num" data-fin={sc.key} data-v="">—</td>;
@@ -60,6 +64,7 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
       </>
     ))}
     {held > 0 && <p class="fin-note" data-fin-held-note data-held={held}>{held === 1 ? "One figure is" : `${held} figures are`} not shown because {reasons.map((r) => HELD_TEXT[r]).join("; or ")}. That is usually a mistake in the filed data or two different things filed under one heading; now and then it is real, for a company with very few shares. The CSV file has the figure as filed.</p>}
+    {debtSeveral && <p class="fin-note" data-fin-debt-note>{DEBT_NOTE}</p>}
     {changed > 0 && <p class="fin-note" data-fin-tag-note data-changed={changed}><sup>a</sup> Filed under a different heading (XBRL tag) than the same line in the newest column, so the two may not measure exactly the same thing.</p>}
   </section>
 )}

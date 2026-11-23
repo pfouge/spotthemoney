@@ -5,15 +5,18 @@
 //
 // No browser. The oracle is /downloads/company-financials.csv (written by lib/downloads.ts; one
 // row per company and period, the figures as filed). This script has its own copy of the rules
-// (period lengths, the three checks that hold a figure back, the number of columns, the way an
-// amount is printed) and checks:
+// (period lengths, the checks that hold a figure back, the long-term debt rule, the number of
+// columns, the way an amount is printed) and checks:
 //   - the file: columns, period lengths, order, no two periods of a kind too close together,
 //     the `not_shown` and `on_page` columns against its own recount;
 //   - sampled company pages and the stock page of each one's ticker: the section's columns are
 //     the periods marked on_page, every cell is the file's figure (or a dash, or "not shown"),
 //     the printed amount, the report links, the notes;
 //   - a company with no row in the file has no section;
-//   - wording: figures "as filed", no advice, no long-term debt line;
+//   - long-term debt: a line only for a company whose rows in the file all carry one heading,
+//     named after that heading; a sentence and no line when they carry several; no line and no
+//     sentence when the file has no debt figure for it;
+//   - wording: figures "as filed", no advice;
 //   - the methodology and the guide have their sections.
 // With no such file in the catalogue (an empty database), no page may carry the section.
 // Works against the live site too.
@@ -21,10 +24,13 @@ const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:/.test(a)) ?? "http://127.0.0.1:4321").replace(/\/$/, "");
 const SAMPLE = args.includes("--sample") && Number(args[args.indexOf("--sample") + 1]) > 0 ? Number(args[args.indexOf("--sample") + 1]) : 12;
 const FILE = "company-financials.csv";
-const FIGS = ["revenue", "net_income", "eps_diluted", "operating_cash_flow", "capex", "cash", "assets", "liabilities", "equity"];
+const DEBT = "long_term_debt";
+const FIGS = ["revenue", "net_income", "eps_diluted", "operating_cash_flow", "capex", "cash", "assets", "liabilities", "equity", DEBT];
+// This script's own list of what the debt line is called, by the heading in the file.
+const DEBT_LABEL = { LongTermDebt: "Long-term debt", LongTermDebtNoncurrent: "Long-term debt, not counting the part due within a year", LongTermDebtAndCapitalLeaseObligations: "Long-term debt and lease obligations", Borrowings: "Borrowings" };
 const ANNUAL_ONLY = new Set(["operating_cash_flow", "capex"]);
 const LABEL = { revenue: "Revenue", net_income: "Net income", eps_diluted: "Diluted earnings per share", operating_cash_flow: "Cash from operations", capex: "Capital expenditure", cash: "Cash and equivalents", assets: "Total assets", liabilities: "Total liabilities", equity: "Shareholders' equity" };
-const COLUMNS = ["company", "ticker", "cik", "period", "period_start", "period_end", "currency", ...FIGS, "liabilities_and_equity", "not_shown", "on_page", "reports", "page_url"];
+const COLUMNS = ["company", "ticker", "cik", "period", "period_start", "period_end", "currency", ...FIGS, "long_term_debt_heading", "liabilities_and_equity", "not_shown", "on_page", "reports", "page_url"];
 const YEARS = 3, QUARTERS = 4, Q = [80, 100], Y = [350, 380], MIN_SHARES = 100000, MAX_EPS_ALONE = 10000, TOL = 0.005, DAY = 86400000;
 
 let failures = 0, checks = 0;
@@ -66,9 +72,13 @@ function money(v, cur) {
 const perShare = (v, cur) => (v < 0 ? "−" : "") + (cur === "USD" ? "$" : cur + " ") + fix(Math.abs(v), 2);
 const printed = (fig, v, cur) => (fig === "eps_diluted" ? perShare(v, cur) : money(v, cur));
 
-/** The figures of a row a page must hold back, by this script's own copy of the three checks. */
-function heldOf(r) {
+/** The headings a company's debt figures carry across all its rows in the file. */
+const headingsOf = (rows) => [...new Set(rows.filter((r) => r[DEBT] !== "").map((r) => r.long_term_debt_heading))].sort();
+/** The figures of a row a page must hold back, by this script's own copy of the checks. `several` = the company's debt figures carry more than one heading. */
+function heldOf(r, several) {
   const held = {};
+  const debt = num(r[DEBT]), liab = num(r.liabilities);
+  if (debt != null) { if (several) held[DEBT] = "several_headings"; else if (liab != null && debt > liab * 1.001) held[DEBT] = "debt_over_liabilities"; }
   const eps = num(r.eps_diluted), ni = num(r.net_income), assets = num(r.assets), le = num(r.liabilities_and_equity), cash = num(r.cash);
   if (eps != null && eps !== 0) {
     if (ni != null ? ni !== 0 && Math.abs(ni / eps) < MIN_SHARES : Math.abs(eps) > MAX_EPS_ALONE) held.eps_diluted = "implied_shares";
@@ -128,7 +138,14 @@ const byCik = new Map();
 for (const r of csv.rows) { const xs = byCik.get(r.cik); if (xs) xs.push(r); else byCik.set(r.cik, [r]); }
 
 let heldRows = 0, heldFigures = 0, nonUsd = 0;
+let debtOne = 0, debtSeveral = 0, debtNone = 0;
+const several = new Map();
 for (const [cik, rows] of byCik) {
+  const hs = headingsOf(rows);
+  several.set(cik, hs.length > 1);
+  if (hs.length === 1) debtOne++; else if (hs.length > 1) debtSeveral++; else debtNone++;
+  ok(hs.every((h) => DEBT_LABEL[h]), `${rows[0].company}: a debt heading this script does not know: ${hs.join(",")}`);
+  ok(rows.every((r) => (r[DEBT] === "") === (r.long_term_debt_heading === "")), `${rows[0].company}: a debt figure without a heading, or a heading without a figure`);
   ok(/^\d{10}$/.test(cik), `cik "${cik}" is not ten digits`);
   ok(new Set(rows.map((r) => r.currency)).size === 1 && /^[A-Z]{3}$/.test(rows[0].currency), `${rows[0].company}: more than one currency, or an odd one`);
   ok(new Set(rows.map((r) => r.page_url)).size === 1 && /\/(companies|stocks)\/[^/]+\/$/.test(rows[0].page_url), `${rows[0].company}: page_url`);
@@ -142,9 +159,10 @@ for (const [cik, rows] of byCik) {
       ok((r.on_page === "true") === (i < (kind === "quarter" ? QUARTERS : YEARS)), `${r.company} ${kind} to ${r.period_end}: on_page is ${r.on_page} at position ${i + 1}`);
       if (kind === "quarter") ok(r.operating_cash_flow === "" && r.capex === "", `${r.company} quarter to ${r.period_end} carries a cash-flow figure`);
       ok(FIGS.some((f) => r[f] !== ""), `${r.company} ${kind} to ${r.period_end}: a row with no figure`);
-      const want = heldText(heldOf(r));
+      const want = heldText(heldOf(r, several.get(cik)));
       ok(r.not_shown === want, `${r.company} ${kind} to ${r.period_end}: not_shown is "${r.not_shown}", this script works out "${want}"`);
-      if (want) { heldRows++; heldFigures += want.split("; ").length; }
+      const doubted = want ? want.split("; ").filter((x) => !x.endsWith(":several_headings")).length : 0;
+      if (doubted) { heldRows++; heldFigures += doubted; }
       ok(r.reports !== "" && r.reports.split("; ").every((x) => /^\S+ \d{4}-\d{2}-\d{2} \S+$/.test(x)), `${r.company} ${kind} to ${r.period_end}: reports "${r.reports}"`);
     });
   }
@@ -156,7 +174,10 @@ const sizeOf = (cik) => byCik.get(cik).length;
 const ciks = [...byCik.keys()];
 const pick = new Set();
 const add = (c) => { if (c) pick.add(c); };
-for (const [cik, rows] of byCik) if (rows.some((r) => r.on_page === "true" && r.not_shown)) add(cik);     // every company with a held figure on its page
+for (const [cik, rows] of byCik) if (rows.some((r) => r.on_page === "true" && r.not_shown.split("; ").some((x) => x && !x.endsWith(":several_headings")))) add(cik);     // every company with a doubted figure on its page
+add(ciks.find((c) => several.get(c)));                                                   // one with several debt headings (no line, a sentence)
+for (const h of Object.keys(DEBT_LABEL)) add(ciks.find((c) => !several.get(c) && headingsOf(byCik.get(c))[0] === h)); // one per heading
+add(ciks.find((c) => headingsOf(byCik.get(c)).length === 0));                            // one with no debt figure
 add(ciks.find((c) => byCik.get(c)[0].currency !== "USD"));
 add([...ciks].sort((a, b) => sizeOf(b) - sizeOf(a))[0]);
 add([...ciks].sort((a, b) => sizeOf(a) - sizeOf(b))[0]);
@@ -169,6 +190,10 @@ function compare(where, sec, rows) {
   const cur = rows[0].currency;
   ok(attr(sec.tag, "data-unit") === cur, `${where}: the section says ${attr(sec.tag, "data-unit")}, the file ${cur}`);
   let held = 0, changedSeen = 0;
+  const hs = headingsOf(rows), sev = hs.length > 1, debtLine = hs.length === 1;
+  const dd = attr(sec.tag, "data-debt") ?? "";
+  ok(debtLine ? dd.endsWith(":" + hs[0]) : dd === (sev ? "several" : ""), `${where}: data-debt is "${dd}" for headings ${hs.join(",") || "none"}`);
+  ok(sev === /data-fin-debt-note/.test(sec.body), `${where}: ${sev ? "several debt headings and no sentence saying so" : "a sentence about debt headings, and the file has " + hs.length}`);
   for (const [kind, key] of [["year", "fiscal_year"], ["quarter", "quarter"]]) {
     const want = rows.filter((r) => r.period === key && r.on_page === "true");
     const t = sec.tables[kind];
@@ -178,16 +203,17 @@ function compare(where, sec, rows) {
     ok(t.cols.map((c) => c.end).join() === want.map((r) => r.period_end).join(), `${where} ${kind}: columns end ${t.cols.map((c) => c.end).join()}, the file says ${want.map((r) => r.period_end).join()}`);
     ok(t.cols.every((c, i) => c.start === (want[i]?.period_start ?? "")), `${where} ${kind}: a column's first day differs from the file`);
     ok(t.cols.every((c) => new RegExp(`^${kind === "year" ? "Year" : "Quarter"} to [A-Z][a-z]+ \\d{1,2}, \\d{4}$`).test(c.text)), `${where} ${kind}: column titles ${t.cols.map((c) => c.text).join(" | ")}`);
-    const figs = FIGS.filter((f) => !(kind === "quarter" && ANNUAL_ONLY.has(f)));
+    const figs = FIGS.filter((f) => !(kind === "quarter" && ANNUAL_ONLY.has(f)) && (f !== DEBT || debtLine));
     ok(Object.keys(t.rows).join() === [...figs, "source"].join(), `${where} ${kind}: lines are ${Object.keys(t.rows).join()}`);
     for (const f of figs) {
       const line = t.rows[f];
       if (!line) continue;
-      ok(line.head.startsWith(LABEL[f]), `${where} ${kind}: line "${line.head}" for ${f}`);
+      if (f === DEBT) ok(line.head === DEBT_LABEL[hs[0]] + "at the end of the period" || line.head === DEBT_LABEL[hs[0]] + " at the end of the period", `${where} ${kind}: the debt line reads "${line.head}" for heading ${hs[0]}`);
+      else ok(line.head.startsWith(LABEL[f]), `${where} ${kind}: line "${line.head}" for ${f}`);
       want.forEach((r, i) => {
         const c = line.cells[i];
         if (!c) { ok(false, `${where} ${kind} ${f}: no cell for ${r.period_end}`); return; }
-        const v = num(r[f]), h = heldOf(r)[f];
+        const v = num(r[f]), h = heldOf(r, sev)[f];
         if (v == null) ok(c.text === "—" && attr(c.tag, "data-v") === "", `${where} ${kind} ${f} ${r.period_end}: "${c.text}" where the file has no figure`);
         else if (h) { held++; ok(c.text === "not shown" && attr(c.tag, "data-held") === h && attr(c.tag, "data-v") === "" && !c.html.includes(String(v)), `${where} ${kind} ${f} ${r.period_end}: a figure the checks hold back reads "${c.text}"`); }
         else {
@@ -212,7 +238,7 @@ function compare(where, sec, rows) {
   const words = text(sec.body);
   ok(/as filed/.test(words) && /not advice/.test(words), `${where}: the section does not say the figures are as filed and not advice`);
   ok(!/\b(undervalued|overvalued|cheap|expensive|bullish|bearish|outperform|price target|rating|score|recommend|should buy|should sell)\b/i.test(words), `${where}: advice or verdict wording in the section`);
-  ok(!/long-term debt/i.test(words), `${where}: a long-term debt line`);
+  if (!debtLine && !sev) ok(!/long-term debt|borrowings/i.test(words), `${where}: long-term debt is mentioned, and the file has no debt figure for the company`);
   return held;
 }
 
@@ -254,6 +280,7 @@ for (const c of companiesCsv.filter((c) => c.cik && !byCik.has(c.cik.padStart(10
 const meth = await get("/methodology/");
 ok(/id="financials"/.test(meth.text), "methodology has no #financials paragraph");
 ok(/fewer than 100,000 shares/.test(text(meth.text)), "methodology does not state the earnings-per-share check");
+ok(/more than one heading/.test(text(meth.text)) && /larger than total liabilities/.test(text(meth.text)), "methodology does not state the long-term debt rule");
 const guide = await get("/guides/what-is-form-4/");
 ok(/id="financials"/.test(guide.text), "guide what-is-form-4 has no #financials section");
 const dl = await get("/downloads/");
@@ -261,5 +288,5 @@ ok(dl.text.includes(`/downloads/${FILE}`) && /data-dict="financials"/.test(dl.te
 
 console.log(failures
   ? `verify-financials: ${failures} of ${checks} checks failed`
-  : `verify-financials: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} rows in the file for ${byCik.size} companies, ${nonUsd} not in dollars; ${heldFigures} figures in ${heldRows} rows held back by the checks, ${heldOnPages} of them on a page read; ${without} companies without figures have no section)`);
+  : `verify-financials: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} rows in the file for ${byCik.size} companies, ${nonUsd} not in dollars; ${heldFigures} figures in ${heldRows} rows held back by the checks, ${heldOnPages} of them on a page read; long-term debt: ${debtOne} companies with one heading, ${debtSeveral} with several, ${debtNone} with none; ${without} companies without figures have no section)`);
 process.exit(failures ? 1 : 0);

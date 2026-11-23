@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   periodKind, companyUnit, companyFinancials, shownYears, shownQuarters, filingUrl, sourceFilings, finMoney, finPerShare,
   heldList, heldCount, tagChangeCount, csvRows, summarySentence, financialsLog, emptyFinancials, FIN_CAVEAT, HELD_TEXT,
-  SHOWN_CONCEPTS, LOADED_CONCEPTS, MAX_EPS_WITHOUT_INCOME, type FinRow,
+  SHOWN_CONCEPTS, LOADED_CONCEPTS, MAX_EPS_WITHOUT_INCOME, debtShown, debtLabel, DEBT_LABEL, DEBT_NOTE, type FinRow,
 } from "../web/src/lib/financials";
 
 let n = 0;
@@ -40,7 +40,7 @@ test("years and quarters, newest first, with balance-sheet figures on the period
     row({ start: "2026-01-01", end: "2026-03-31", concept: "operating_cash_flow", value: 9, form: "10-Q", filed: "2026-05-01" }),
     row({ start: "2026-01-01", end: "2026-06-30", value: 170, form: "10-Q", filed: "2026-08-01" }), // year to date: ignored
     row({ start: "2026-04-01", end: "2026-06-30", value: 90, form: "10-Q", filed: "2026-08-01" }),
-    row({ concept: "long_term_debt", tag: "us-gaap:LongTermDebt", start: null, value: 5 }), // stored, never shown
+    row({ concept: "long_term_debt", tag: "us-gaap:LongTermDebt", start: null, value: 5 }),
   ];
   const f = companyFinancials(rows)!;
   assert.equal(f.unit, "USD");
@@ -53,13 +53,14 @@ test("years and quarters, newest first, with balance-sheet figures on the period
   assert.equal(y.cells["assets"]!.value, 1000);
   assert.equal(y.cells["cash"]!.value, 10);
   assert.equal(y.cells["liabilities"], undefined);
-  assert.equal(y.cells["long_term_debt"], undefined);
+  assert.equal(y.cells["long_term_debt"]!.value, 5);
+  assert.deepEqual(f.debtTags, ["us-gaap:LongTermDebt"]);
   assert.equal(y.cells["eps_diluted"]!.held, null);
   // cash flow is in the fiscal-year table only
   assert.equal(y.cells["operating_cash_flow"]!.value, 40);
   assert.equal(f.quarters[1]!.cells["operating_cash_flow"], undefined);
   assert.equal(f.quarters[0]!.cells["revenue"]!.value, 90);
-  assert.ok(!SHOWN_CONCEPTS.some((c) => c.key === "long_term_debt") && !LOADED_CONCEPTS.includes("long_term_debt"));
+  assert.ok(SHOWN_CONCEPTS.some((c) => c.key === "long_term_debt") && LOADED_CONCEPTS.includes("long_term_debt"));
 });
 
 test("the newest filing states a period; a restated figure replaces the original", () => {
@@ -167,4 +168,45 @@ test("build log line counts what the pages show", () => {
   assert.match(line, /4 rows read for 3 companies/);
   assert.match(line, /2 companies with a table \(1 not in dollars\)/);
   assert.match(line, /1 figures not shown \(implied_shares 1\)/);
+});
+
+test("long-term debt: one heading gives a line named after it; several give none", () => {
+  const debt = (end: string, tag: string, value: number, o: Partial<FinRow> = {}) => row({ concept: "long_term_debt", tag, start: null, end, value, ...o });
+  const base = [yr(2025), yr(2024), row({ start: "2026-01-01", end: "2026-03-31", form: "10-Q", filed: "2026-05-01" })];
+  // one heading
+  const one = companyFinancials([...base, debt("2025-12-31", "us-gaap:LongTermDebtNoncurrent", 70), debt("2026-03-31", "us-gaap:LongTermDebtNoncurrent", 60)])!;
+  assert.ok(debtShown(one));
+  assert.equal(debtLabel(one.debtTags[0]), DEBT_LABEL["us-gaap:LongTermDebtNoncurrent"]);
+  assert.equal(one.years[0]!.cells["long_term_debt"]!.held, null);
+  assert.equal(one.years[1]!.cells["long_term_debt"], undefined); // a dash in that column
+  assert.equal(heldList(one.years[0]!), null);
+  // two headings: every debt figure is marked, there is no line, and nothing else changes
+  const two = companyFinancials([...base, debt("2025-12-31", "us-gaap:LongTermDebt", 14), debt("2026-03-31", "us-gaap:LongTermDebtNoncurrent", 4900)])!;
+  assert.ok(!debtShown(two));
+  assert.deepEqual(two.debtTags, ["us-gaap:LongTermDebt", "us-gaap:LongTermDebtNoncurrent"]);
+  assert.equal(two.years[0]!.cells["long_term_debt"]!.held, "several_headings");
+  assert.equal(two.quarters[0]!.cells["long_term_debt"]!.held, "several_headings");
+  assert.equal(heldList(two.years[0]!), "long_term_debt:several_headings");
+  assert.equal(heldCount([...two.years, ...two.quarters]), 0); // not counted as a doubted figure
+  assert.equal(two.years[0]!.cells["long_term_debt"]!.value, 14); // the CSV keeps it as filed
+  // a heading used only at a date that ends no period on file does not count
+  const stray = companyFinancials([...base, debt("2025-12-31", "us-gaap:LongTermDebt", 14), debt("2025-11-15", "us-gaap:LongTermDebtNoncurrent", 1)])!;
+  assert.ok(debtShown(stray));
+  // a figure in another currency than the company's is left out before the rule
+  const cur = companyFinancials([...base, debt("2025-12-31", "us-gaap:LongTermDebt", 14), debt("2024-12-31", "ifrs-full:Borrowings", 9, { unit: "CNY", filed: "2020-01-01" })])!;
+  assert.deepEqual(cur.debtTags, ["us-gaap:LongTermDebt"]);
+  // none on file
+  const none = companyFinancials(base)!;
+  assert.ok(!debtShown(none) && none.debtTags.length === 0);
+  // larger than total liabilities on the same date: held back, and counted
+  const over = companyFinancials([...base, debt("2025-12-31", "us-gaap:LongTermDebt", 500), pt("2025-12-31", "liabilities", 400), debt("2024-12-31", "us-gaap:LongTermDebt", 300), pt("2024-12-31", "liabilities", 400)])!;
+  assert.equal(over.years[0]!.cells["long_term_debt"]!.held, "debt_over_liabilities");
+  assert.equal(over.years[1]!.cells["long_term_debt"]!.held, null);
+  assert.equal(heldCount(over.years), 1);
+  assert.ok(debtShown(over));
+  // the report of a line that is not shown is not listed as a source
+  const src = companyFinancials([yr(2025), debt("2025-12-31", "us-gaap:LongTermDebt", 14, { accession: "0000000009-26-000001" }), row({ start: "2026-01-01", end: "2026-03-31", form: "10-Q", filed: "2026-05-01" }), debt("2026-03-31", "ifrs-full:Borrowings", 4, { accession: "0000000009-26-000002" })])!;
+  assert.ok(!sourceFilings(src.years[0]!).some((x) => x.accession === "0000000009-26-000001"));
+  assert.equal(debtLabel("us-gaap:Unknown"), "Long-term debt");
+  assert.ok(/more than one heading/.test(DEBT_NOTE) && !/\u2014/.test(DEBT_NOTE));
 });

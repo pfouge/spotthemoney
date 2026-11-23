@@ -26,7 +26,7 @@ import { rowIssues } from "./lobbyissues";
 import { cleanDescription } from "./contracts";
 import { naicsTitle } from "./naics";
 import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOutOfRange, VALUE_MAX_PER_SHARE, type Notice } from "./form144";
-import { SHOWN_CONCEPTS, CHECK_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
+import { SHOWN_CONCEPTS, CHECK_CONCEPT, DEBT_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
 import { financialsOf } from "./financials-build";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
 import { EVENT_CSV_COLUMNS, sortEvents, type EventCsvRow } from "./events8k";
@@ -400,6 +400,7 @@ async function build(): Promise<Downloads> {
     operating_cash_flow: "Net cash from operating activities. Fiscal years only: quarterly reports give it for the year to date.", capex: "Payments for property, plant and equipment. Fiscal years only.",
     cash: "Cash and cash equivalents on the last day of the period.", assets: "Total assets on the last day of the period.", liabilities: "Total liabilities on the last day of the period. Empty when the report gives no such total.",
     equity: "Shareholders' equity on the last day of the period.",
+    long_term_debt: "Long-term debt on the last day of the period, under the heading named in long_term_debt_heading. The headings measure different things, so compare figures only when the heading is the same.",
   };
   const finCols: Column<FinCsvRow>[] = [
     { key: "company", about: "The company, as this site names it.", get: (r) => fco(r)?.name },
@@ -410,13 +411,14 @@ async function build(): Promise<Downloads> {
     { key: "period_end", about: "Last day of the period (YYYY-MM-DD).", get: (r) => r.period.end },
     { key: "currency", about: "The currency the company reports in. Every amount in the row is in this currency; nothing is converted.", get: (r) => r.unit },
     ...SHOWN_CONCEPTS.map((sc): Column<FinCsvRow> => ({ key: sc.key, about: `${FIN_ABOUT[sc.key]} As filed.`, get: (r) => r.period.cells[sc.key]?.value })),
+    { key: "long_term_debt_heading", about: "The heading (XBRL tag) the long-term debt figure was filed under: LongTermDebt (all long-term debt), LongTermDebtNoncurrent (not counting the part due within a year), LongTermDebtAndCapitalLeaseObligations (with lease obligations) or the IFRS heading Borrowings. Blank when the row has no debt figure.", get: (r) => r.period.cells[DEBT_CONCEPT]?.tag.replace(/^.*:/, "") },
     { key: CHECK_CONCEPT, about: "Total liabilities and equity on the last day of the period, as filed. Not shown on pages; used to check total assets.", get: (r) => r.period.cells[CHECK_CONCEPT]?.value },
-    { key: "not_shown", about: `Figures of this row a page does not print, each with the reason: implied_shares (the earnings per share would mean fewer than ${MIN_IMPLIED_SHARES.toLocaleString("en-US")} shares: usually a figure in the wrong scale, now and then real for a very small company), balance (total assets do not equal liabilities and equity), cash_over_assets. The figure in its column is still the one filed.`, get: (r) => heldList(r.period) },
+    { key: "not_shown", about: `Figures of this row a page does not print, each with the reason: implied_shares (the earnings per share would mean fewer than ${MIN_IMPLIED_SHARES.toLocaleString("en-US")} shares: usually a figure in the wrong scale, now and then real for a very small company), balance (total assets do not equal liabilities and equity), cash_over_assets, debt_over_liabilities (long-term debt larger than total liabilities), several_headings (the company's periods on file give long-term debt under more than one heading, so its page has no debt line). The figure in its column is still the one filed.`, get: (r) => heldList(r.period) },
     { key: "on_page", about: `true for the periods the company's page shows: the ${YEARS_SHOWN} newest fiscal years and the ${QUARTERS_SHOWN} newest quarters.`, get: (r) => onPage.has(r.period) },
     { key: "reports", about: "The reports the figures were taken from: form, filing date and address at the SEC, separated by semicolons. The newest report that states a period is used, so a restated figure replaces the original.", get: (r) => sourceFilings(r.period).map((s) => `${s.form} ${s.filed} ${filingUrl(r.cik, s.accession) ?? s.accession}`).join("; ") || null },
     { key: "page_url", about: "The company's page on this site.", get: (r) => { const c = fco(r); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
   ];
-  add(file({ name: "company-financials.csv", group: "insiders", kind: "financials", title: "Company financials, as filed with the SEC", about: "One row per company and period: revenue, net income, earnings per share, cash flow and balance-sheet totals from annual and quarterly reports, for the companies this site tracks. Figures as filed, in the company's own currency.", updated: finRows.reduce<string | null>((a, r) => { const d = sourceFilings(r.period)[0]?.filed ?? null; return d && (!a || d > a) ? d : a; }, null) }, finCols, finRows));
+  add(file({ name: "company-financials.csv", group: "insiders", kind: "financials", title: "Company financials, as filed with the SEC", about: "One row per company and period: revenue, net income, earnings per share, cash flow, balance-sheet totals and long-term debt from annual and quarterly reports, for the companies this site tracks. Figures as filed, in the company's own currency.", updated: finRows.reduce<string | null>((a, r) => { const d = sourceFilings(r.period)[0]?.filed ?? null; return d && (!a || d > a) ? d : a; }, null) }, finCols, finRows));
 
 
   // Company events (Form 8-K): every report on record for a company with a page, one row per report

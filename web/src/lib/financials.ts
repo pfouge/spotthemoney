@@ -12,15 +12,21 @@
 //     own, so it has no column; cash-flow figures are filed year-to-date in quarterly reports,
 //     so they are in the fiscal-year table only.
 //   - A missing figure is a dash, never a guess.
-//   - Three checks hold a figure back ("not shown") when the filed data looks wrong as stored:
+//   - Checks hold a figure back ("not shown") when the filed data looks wrong as stored:
 //     earnings per share that imply fewer than MIN_IMPLIED_SHARES shares (usually a figure filed
 //     in the wrong scale; now and then real, for a very small company after a reverse split:
 //     seen on production, so the wording never says "mistake" outright); total assets
 //     that differ from "liabilities and equity" on the same date by more than BALANCE_TOLERANCE;
 //     cash larger than total assets. The CSV file keeps the figure as filed and names the check.
 //   - No ratio that needs a market price, no score, rating or ranking, no forecast.
-//   - Long-term debt is stored but NOT shown: companies tag debt under several names and the
-//     stored figure is not always the total (seen on production, 2026-11-22).
+//   - Long-term debt is shown only for a company whose fiscal years and quarters on file all give
+//     it under ONE heading (XBRL tag), and the line is named after that heading, because the
+//     headings measure different things (all long-term debt; the part due after a year; debt
+//     with lease obligations; borrowings). A company whose reports use more than one heading has
+//     no line and a sentence saying so: on production (2026-11-23) 18 of 137 companies with both
+//     "LongTermDebt" and "LongTermDebtNoncurrent" on file state a total smaller than the part
+//     due after a year, so the two cannot be put in one row. A debt figure larger than total
+//     liabilities on the same date is held back.
 //
 // Pure: lib/financials-build.ts runs the query and passes rows in. Tests: scripts/financials.test.ts.
 
@@ -68,18 +74,34 @@ export const SHOWN_CONCEPTS: readonly ShownConcept[] = [
   { key: "assets", label: "Total assets", flow: false },
   { key: "liabilities", label: "Total liabilities", flow: false },
   { key: "equity", label: "Shareholders' equity", flow: false },
+  { key: "long_term_debt", label: "Long-term debt", flow: false },
 ];
+/** The debt line: shown under one heading per company, named after it (DEBT_LABEL). */
+export const DEBT_CONCEPT = "long_term_debt";
+/** What the line is called, by the heading (XBRL tag) the company filed it under. */
+export const DEBT_LABEL: Readonly<Record<string, string>> = {
+  "us-gaap:LongTermDebt": "Long-term debt",
+  "us-gaap:LongTermDebtNoncurrent": "Long-term debt, not counting the part due within a year",
+  "us-gaap:LongTermDebtAndCapitalLeaseObligations": "Long-term debt and lease obligations",
+  "ifrs-full:Borrowings": "Borrowings",
+};
+export const debtLabel = (tag: string | null | undefined) => (tag && DEBT_LABEL[tag]) || "Long-term debt";
 /** Read with the shown concepts because a check needs it; in the CSV, not on pages. */
 export const CHECK_CONCEPT = "liabilities_and_equity";
 /** Every concept the loader reads. */
 export const LOADED_CONCEPTS: readonly string[] = [...SHOWN_CONCEPTS.map((c) => c.key), CHECK_CONCEPT];
 
-export type HeldReason = "implied_shares" | "balance" | "cash_over_assets";
+export type HeldReason = "implied_shares" | "balance" | "cash_over_assets" | "debt_over_liabilities" | "several_headings";
+/** Not a doubt about one figure: the company has no debt line at all, and the page says so in a sentence of its own. */
+export const NO_LINE_REASON: HeldReason = "several_headings";
 export const HELD_TEXT: Record<HeldReason, string> = {
   implied_shares: `the earnings per share as stored would mean the company has fewer than ${MIN_IMPLIED_SHARES.toLocaleString("en-US")} shares`,
   balance: "total assets as stored do not equal liabilities plus equity on the same date",
   cash_over_assets: "cash as stored is larger than total assets on the same date",
+  debt_over_liabilities: "long-term debt as stored is larger than total liabilities on the same date",
+  several_headings: "the company's reports give long-term debt under more than one heading",
 };
+export const DEBT_NOTE = "Long-term debt is not shown for this company: its reports give it under more than one heading, and the headings do not measure the same thing. The CSV file has each figure with its heading.";
 
 export interface Cell {
   value: number;
@@ -105,6 +127,11 @@ export interface CompanyFinancials {
   quarters: Period[];  // every quarter filed on its own, newest first
   /** Rows on file in another currency than `unit`, left out. */
   otherUnitRows: number;
+  /**
+   * Long-term debt: the headings (XBRL tags) it is filed under across every fiscal year and
+   * quarter on file. One heading: the line is shown, named after it. Several: no line.
+   */
+  debtTags: string[];
 }
 
 const DAY = 86_400_000;
@@ -151,7 +178,18 @@ function applyChecks(p: Period, le: FinRow | undefined): void {
   const assets = c["assets"], cash = c["cash"];
   if (assets && le && Math.abs(assets.value - le.value) > BALANCE_TOLERANCE * Math.max(Math.abs(assets.value), 1)) assets.held = "balance";
   if (assets && cash && cash.value > assets.value * 1.001) { cash.held = "cash_over_assets"; if (!assets.held) assets.held = "cash_over_assets"; }
+  const debt = c[DEBT_CONCEPT], liab = c["liabilities"];
+  if (debt && liab && debt.value > liab.value * 1.001) debt.held = "debt_over_liabilities";
 }
+
+/** The headings long-term debt is filed under in the periods given; with more than one, every debt figure is marked and no line is shown. */
+function applyDebtRule(periods: Period[]): string[] {
+  const tags = [...new Set(periods.map((p) => p.cells[DEBT_CONCEPT]?.tag).filter((t): t is string => !!t))].sort();
+  if (tags.length > 1) for (const p of periods) { const c = p.cells[DEBT_CONCEPT]; if (c) c.held = NO_LINE_REASON; }
+  return tags;
+}
+/** True when the company has a long-term debt line: figures on file, all under one heading. */
+export const debtShown = (f: CompanyFinancials) => f.debtTags.length === 1;
 
 /**
  * A company's fiscal years and quarters, newest first, from its stored rows. Rows in another
@@ -208,10 +246,11 @@ export function companyFinancials(rows: readonly FinRow[]): CompanyFinancials | 
     return out;
   };
   const years = build("year"), quarters = build("quarter");
+  const debtTags = applyDebtRule([...years, ...quarters]);
   markTagChanges(years.slice(0, YEARS_SHOWN));
   markTagChanges(quarters.slice(0, QUARTERS_SHOWN));
   if (!years.length && !quarters.length) return null;
-  return { unit, years, quarters, otherUnitRows: rows.length - rows.filter((r) => baseUnit(r.unit) === unit).length };
+  return { unit, years, quarters, otherUnitRows: rows.length - rows.filter((r) => baseUnit(r.unit) === unit).length, debtTags };
 }
 
 /** Marks, within the columns of one table, a figure filed under another tag than the newest column's. */
@@ -236,7 +275,7 @@ export interface SourceFiling { form: string; filed: string; accession: string }
 /** The distinct reports a period's printed figures came from, newest first. */
 export function sourceFilings(p: Period): SourceFiling[] {
   const seen = new Map<string, SourceFiling>();
-  for (const sc of SHOWN_CONCEPTS) { const c = p.cells[sc.key]; if (c && !seen.has(c.accession)) seen.set(c.accession, { form: c.form, filed: c.filed, accession: c.accession }); }
+  for (const sc of SHOWN_CONCEPTS) { const c = p.cells[sc.key]; if (c && c.held !== NO_LINE_REASON && !seen.has(c.accession)) seen.set(c.accession, { form: c.form, filed: c.filed, accession: c.accession }); }
   return [...seen.values()].sort((a, b) => b.filed.localeCompare(a.filed) || b.accession.localeCompare(a.accession));
 }
 
@@ -270,7 +309,7 @@ export function summarySentence(name: string, f: CompanyFinancials): string {
 
 export function heldCount(cols: readonly Period[]): number {
   let n = 0;
-  for (const p of cols) for (const sc of SHOWN_CONCEPTS) if (p.cells[sc.key]?.held) n++;
+  for (const p of cols) for (const sc of SHOWN_CONCEPTS) { const h = p.cells[sc.key]?.held; if (h && h !== NO_LINE_REASON) n++; }
   return n;
 }
 export function tagChangeCount(cols: readonly Period[]): number {
@@ -294,6 +333,8 @@ export function heldList(p: Period): string | null {
 /** One line for the build log, for comparison with SQL. */
 export function financialsLog(d: FinancialsData, siteCiks: ReadonlySet<string>): string {
   let rows = 0, withTables = 0, years = 0, quarters = 0, held = 0, nonUsd = 0, tagChanged = 0, otherUnit = 0;
+  let debtOne = 0, debtSeveral = 0, debtNone = 0, debtFigures = 0;
+  const debtBy: Record<string, number> = {};
   const heldBy: Record<string, number> = {};
   for (const [cik, rs] of d.byCik) {
     if (!siteCiks.has(cik)) continue;
@@ -306,8 +347,13 @@ export function financialsLog(d: FinancialsData, siteCiks: ReadonlySet<string>):
     years += f.years.length; quarters += f.quarters.length;
     const cols = [...shownYears(f), ...shownQuarters(f)];
     tagChanged += tagChangeCount(cols);
-    for (const p of cols) for (const sc of SHOWN_CONCEPTS) { const h = p.cells[sc.key]?.held; if (h) { held++; heldBy[h] = (heldBy[h] ?? 0) + 1; } }
+    for (const p of cols) for (const sc of SHOWN_CONCEPTS) { const h = p.cells[sc.key]?.held; if (h && h !== NO_LINE_REASON) { held++; heldBy[h] = (heldBy[h] ?? 0) + 1; } }
+    if (f.debtTags.length === 1) { debtOne++; debtBy[f.debtTags[0]!.replace(/^.*:/, "")] = (debtBy[f.debtTags[0]!.replace(/^.*:/, "")] ?? 0) + 1; }
+    else if (f.debtTags.length > 1) debtSeveral++;
+    else debtNone++;
+    for (const p of [...f.years, ...f.quarters]) if (p.cells[DEBT_CONCEPT]) debtFigures++;
   }
+  const db = Object.entries(debtBy).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, n]) => `${k} ${n}`).join(", ");
   const hb = Object.entries(heldBy).sort().map(([k, n]) => `${k} ${n}`).join(", ");
-  return `financials (SEC XBRL): ${rows} rows read for ${d.byCik.size} companies, newest filing ${d.newestFiled ?? "none"}; ${withTables} companies with a table (${nonUsd} not in dollars); ${years} fiscal years and ${quarters} quarters on file; on pages: ${held} figures not shown${hb ? ` (${hb})` : ""}, ${tagChanged} filed under a changed tag; ${otherUnit} rows in a second currency left out`;
+  return `financials (SEC XBRL): ${rows} rows read for ${d.byCik.size} companies, newest filing ${d.newestFiled ?? "none"}; ${withTables} companies with a table (${nonUsd} not in dollars); ${years} fiscal years and ${quarters} quarters on file; on pages: ${held} figures not shown${hb ? ` (${hb})` : ""}, ${tagChanged} filed under a changed tag; ${otherUnit} rows in a second currency left out; long-term debt: ${debtFigures} figures in the periods on file, ${debtOne} companies with a line${db ? ` (${db})` : ""}, ${debtSeveral} with several headings and no line, ${debtNone} with none on file`;
 }

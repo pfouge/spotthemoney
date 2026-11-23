@@ -450,8 +450,11 @@ select repair_ticker_owners();
 -- tag in one year (marked), a year with no total liabilities (a dash), a loss, and earnings per
 -- share with a scale mistake (not shown). Microsoft reports in CNY here, with older dollar rows
 -- that are left out. Palantir: assets that do not equal liabilities and equity, and cash above
--- assets (both not shown). Lockheed has balance-sheet dates only and Apple one quarter. Long-term
--- debt and year-to-date rows are stored and never shown.
+-- assets (both not shown). Lockheed has balance-sheet dates only and Apple one quarter.
+-- Year-to-date rows are stored and never shown. Long-term debt: NVIDIA files it under one heading
+-- (a line, with one figure above total liabilities, not shown); Palantir under two (no line, a
+-- sentence); Microsoft as IFRS borrowings in CNY with an older dollar row that is left out; the
+-- SWAP trust as debt with lease obligations; Apple has none.
 truncate company_financials, company_financials_checked;
 insert into company_financials (cik, concept, tag, unit, period_start, period_end, value, form, filed, accession) values
   ('0001045810', 'revenue', 'us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax', 'USD', '2025-01-27', '2026-01-25', 216000000000, '10-K', '2026-02-25', '0001045810-26-000021'),
@@ -577,6 +580,15 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
   ('0009996703', 'assets', 'us-gaap:Assets', 'USD', null, '2025-12-31', 48000000, '10-K', '2026-03-02', '0009996703-26-000002'),
   ('0009996703', 'liabilities_and_equity', 'us-gaap:LiabilitiesAndStockholdersEquity', 'USD', null, '2025-12-31', 48000000, '10-K', '2026-03-02', '0009996703-26-000002'),
   ('0009996703', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2025-12-31', 20000000, '10-K', '2026-03-02', '0009996703-26-000002');
+insert into company_financials (cik, concept, tag, unit, period_start, period_end, value, form, filed, accession) values
+  ('0001045810', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2025-01-26', 8460000000, '10-K', '2025-02-26', '0001045810-25-000023'),
+  ('0001045810', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2026-10-25', 60000000000, '10-Q', '2026-11-18', '0001045810-26-000180'),
+  ('0001045810', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2026-07-26', 8400000000, '10-Q', '2026-08-26', '0001045810-26-000140'),
+  ('0001321655', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2025-12-31', 200000000, '10-K', '2026-02-18', '0001321655-26-000011'),
+  ('0001321655', 'long_term_debt', 'us-gaap:LongTermDebtNoncurrent', 'USD', null, '2026-09-30', 180000000, '10-Q', '2026-11-03', '0001321655-26-000060'),
+  ('0000789019', 'long_term_debt', 'ifrs-full:Borrowings', 'CNY', null, '2025-12-31', 1200000000, '20-F', '2026-04-20', '0000789019-26-000004'),
+  ('0000789019', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2023-12-31', 90000000, '20-F', '2024-04-18', '0000789019-24-000003'),
+  ('0009996703', 'long_term_debt', 'us-gaap:LongTermDebtAndCapitalLeaseObligations', 'USD', null, '2025-12-31', 5000000, '10-K', '2026-03-02', '0009996703-26-000002');
 insert into company_financials_checked (cik, checked_at, status, rows, newest_filed)
 select cik, now(), 'ok', count(*), max(filed) from company_financials group by cik;
 
