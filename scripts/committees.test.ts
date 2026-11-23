@@ -1,7 +1,7 @@
 // Committee pages (web/src/lib/committees.ts): members, counts by disclosure date, slugs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildCommittees, committeeSlug, committeeLogLine } from "../web/src/lib/committees";
+import { buildCommittees, committeeSlug, committeeLogLine, committeeLobbyContrib, COMMITTEE_LOBBY_CAVEAT } from "../web/src/lib/committees";
 
 const TODAY = "2026-11-16";
 let nextId = 1;
@@ -76,4 +76,18 @@ test("slugs", () => {
 
 test("build-log line names the totals", () => {
   assert.match(committeeLogLine(cs), /^committees: 3 pages, 5 seats, 4 members seated, 2 of them with trades, 1 committees with no trades/);
+});
+
+test("lobbyist contributions: members with at least one item, most items first, counts only", () => {
+  const rec: Record<number, any> = {
+    1: { years: [{ items: 3, filers: 2 }, { items: 4, filers: 3 }], items: [{ date: "2026-02-01" }, { date: null }, { date: "2026-05-09" }] },
+    2: { years: [{ items: 7, filers: 1 }], items: [{ date: null }] },
+    3: { years: [{ items: 0, filers: 0 }], items: [] },
+  };
+  const rows = committeeLobbyContrib(get("HSAG"), (id) => rec[id], true);
+  assert.deepEqual(rows.map((r) => r.id), [1, 2]); // 7 items each: ties go by name
+  assert.deepEqual(rows.map((r) => [r.items, r.filers, r.newest]), [[7, 3, "2026-05-09"], [7, 1, null]]);
+  assert.equal(committeeLobbyContrib(get("HSAG"), (id) => rec[id], false).length, 0, "hidden when lobbyist data is not shown");
+  assert.equal(committeeLobbyContrib(get("SSAF"), (id) => rec[id], true).length, 0, "no member named, no rows");
+  assert.ok(!/[\u2013\u2014]/.test(COMMITTEE_LOBBY_CAVEAT) && /context/.test(COMMITTEE_LOBBY_CAVEAT));
 });

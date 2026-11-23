@@ -5,7 +5,7 @@
 // anywhere and nothing is stored in the browser.
 import { h } from "./dom";
 import {
-  unpackFinScreen, finScreen, fsSummaryLine, fsViewCsv, fsViewCsvName, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, firstFsDir, fsCellText, fsShortDate, reportUrl, divisionPagePath,
+  unpackFinScreen, finScreen, fsSummaryLine, fsViewCsv, fsViewCsvName, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, firstFsDir, fsCellText, fsPayText, fsShortDate, reportUrl, divisionPagePath,
   NO_FS_FILTER, DEFAULT_FS_VIEW, DEFAULT_PER, FS_CONCEPTS, FIN_SCREENER_DATA, type FinScreenData, type FsRow, type FsView, type FsFilter, type FsSortKey,
 } from "../lib/finscreen";
 
@@ -43,13 +43,13 @@ async function start(root: HTMLElement): Promise<void> {
   const pick = (s: HTMLSelectElement | null, v: string, fallback = "") => { if (s) s.value = has(s, v) ? v : fallback; };
   const readFilter = (): FsFilter => ({
     q: q?.value ?? "", period: sel("period")?.value === "quarter" ? "quarter" : "year", division: sel("division")?.value ?? "", unit: sel("unit")?.value ?? "",
-    rmin: Number(sel("rmin")?.value ?? 0), rmax: Number(sel("rmax")?.value ?? 0), ni: (sel("ni")?.value ?? "") as FsFilter["ni"], amin: Number(sel("amin")?.value ?? 0),
+    rmin: Number(sel("rmin")?.value ?? 0), rmax: Number(sel("rmax")?.value ?? 0), ni: (sel("ni")?.value ?? "") as FsFilter["ni"], amin: Number(sel("amin")?.value ?? 0), pay: sel("pay")?.value === "1" ? 1 : 0,
   });
   const writeControls = (v: FsView): void => {
     const f = v.f;
     if (q) q.value = f.q;
     pick(sel("period"), f.period, "year"); pick(sel("division"), f.division); pick(sel("unit"), f.unit);
-    pick(sel("rmin"), String(f.rmin), "0"); pick(sel("rmax"), String(f.rmax), "0"); pick(sel("ni"), f.ni); pick(sel("amin"), String(f.amin), "0");
+    pick(sel("rmin"), String(f.rmin), "0"); pick(sel("rmax"), String(f.rmax), "0"); pick(sel("ni"), f.ni); pick(sel("amin"), String(f.amin), "0"); pick(sel("pay"), String(f.pay), "0");
     pick(per, String(v.per), String(DEFAULT_PER));
   };
 
@@ -64,6 +64,8 @@ async function start(root: HTMLElement): Promise<void> {
         if (r.p.held[c.key]) return h("td", { class: "num", "data-held": "" }, heldHref ? h("a", { class: "soft", href: heldHref }, text) : h("span", { class: "soft" }, text));
         return h("td", { class: `num${c.key === "revenue" ? " strong" : ""}` }, text);
       }),
+      h("td", { class: "num", "data-pay": "" }, fsPayText(r.c)),
+      h("td", { class: "mono", "data-payyear": "" }, r.c.pay ? fsShortDate(r.c.pay.fye) : ""),
       h("td", { class: "mono" }, url ? h("a", { href: url, rel: "noopener nofollow", target: "_blank", title: `Filed ${fsShortDate(r.p.filed)}` }, `${r.p.form} ↗`) : r.p.form),
     );
   };

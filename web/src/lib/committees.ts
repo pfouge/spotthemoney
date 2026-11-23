@@ -152,3 +152,36 @@ export function committeeLogLine(cs: Committee[]): string {
   const pick = (code: string) => { const c = cs.find((x) => x.code === code); return c ? `${code} ${c.members.length}/${c.withTrades}/${c.trades}/${c.trades12m}` : `${code} none`; };
   return `committees: ${cs.length} pages, ${cs.reduce((n, c) => n + c.members.length, 0)} seats, ${seated.size} members seated, ${trading.size} of them with trades, ${cs.filter((c) => c.withTrades === 0).length} committees with no trades; members/with trades/trades/12 months: ${["HSBA", "SSBK", "HSAS", "SLIN"].map(pick).join(", ")}`;
 }
+
+// ── lobbyist contributions of a committee's members ──────────────────────────────────────────
+// The member pages' own per-member data (lib/lobbygifts.ts, matched by memberForItem), listed for
+// the members who sit on one committee. Counts only: items, filers and the newest date. Nothing is
+// added across members, because one contribution can name several people.
+/** Fixed words under the section. A seat is context; the verifier checks this text is on the page. */
+export const COMMITTEE_LOBBY_CAVEAT =
+  "A contribution report names an honoree as the filer typed it, and the match to a member is by name. A committee seat is context only: nothing here ties a contribution to the committee's work, to a vote or to a trade.";
+export interface CommitteeLobbyMember { id: number; name: string; path: string; items: number; filers: number; newest: string | null }
+/** The part of a member's lobbyist-contribution record this section reads (a Subject from lobbygifts.ts). */
+export interface LobbySubjectLike { years: { items: number; filers: number }[]; items: { date: string | null }[] }
+
+/**
+ * Members of the committee named as honoree in at least one counted LD-203 item, most items first.
+ * `items` is the member page's total over every year on record; `filers` is the largest number of
+ * distinct filers in any one reporting year (the years' filers cannot be added: one filer reports
+ * every year); `newest` is the date of the newest dated item. `lookup` reads the member's record by
+ * person id and returns undefined when the member has none. Empty when lobbyist data is not shown.
+ */
+export function committeeLobbyContrib(c: Committee, lookup: (personId: number) => LobbySubjectLike | undefined, shown: boolean): CommitteeLobbyMember[] {
+  if (!shown) return [];
+  const out: CommitteeLobbyMember[] = [];
+  for (const m of c.members) {
+    if (!m.path) continue;
+    const s = lookup(m.id);
+    if (!s) continue;
+    const items = s.years.reduce((n, y) => n + y.items, 0);
+    if (items <= 0) continue;
+    const newest = s.items.map((i) => i.date).filter((d): d is string => !!d).sort().at(-1) ?? null;
+    out.push({ id: m.id, name: m.name, path: m.path, items, filers: s.years.reduce((n, y) => Math.max(n, y.filers), 0), newest });
+  }
+  return out.sort((a, b) => b.items - a.items || a.name.localeCompare(b.name) || a.id - b.id);
+}
