@@ -25,6 +25,7 @@ import TxnTable from "../../components/TxnTable.astro";
 import PlannedSales from "../../components/PlannedSales.astro";
 import { noticesInWindow } from "../../lib/form144";
 import LargeHolders from "../../components/LargeHolders.astro";
+import InstHolders from "../../components/InstHolders.astro";
 import Financials from "../../components/Financials.astro";
 import CompanyEvents from "../../components/CompanyEvents.astro";
 import ExecutivePay from "../../components/ExecutivePay.astro";
@@ -76,6 +77,9 @@ const primarySec = c.primaryTicker ? tickerPages(model).get(c.primaryTicker.toLo
 const plannedN = c.cik ? noticesInWindow(model.form144.byCik.get(c.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 // Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
 const holdersN = c.cik ? holdersOf(model.schedule13.byCik.get(c.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
+// Managers with a Form 13F position in the company (empty until that load is recent).
+const instC = c.cik && model.inst.shown ? model.inst.byCik.get(c.cik.padStart(10, "0")) ?? null : null;
+const instN = instC?.managers ?? 0;
 // Figures from the company's annual and quarterly reports (lib/financials.ts); null when none are on file.
 const fin = financialsOf(model, c.cik);
 const finYears = fin ? shownYears(fin) : [];
@@ -91,11 +95,13 @@ const companyShown = finShown || evRows.length > 0 || payShownYears(payYears).le
 const holdingsN = holdingsOf(statementsFiledBy(model, c.cik), model.builtAt).length;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
 const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || companyShown || plannedN > 0 || holdersN > 0 || holdingsN > 0;
+const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || finShown || plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0;
 const latestInsider = txns.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 const glance = [
   ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
+  ...(instN ? [{ label: "Institutional holders", value: num(instN), note: `as of ${formatDate(model.inst.period!)}`, href: "#institutional-holders" }] : []),
   ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
   ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
@@ -107,6 +113,8 @@ const groupList = hasData ? [
   { id: "trading", label: "Trading" },
   ...(holdersN || holdingsN ? [{ id: "ownership", label: "Ownership" }] : []),
   ...(companyShown ? [{ id: "company", label: "Company" }] : []),
+  ...(holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []),
+  ...(finShown ? [{ id: "company", label: "Company" }] : []),
   { id: "washington", label: "Washington" },
   { id: "record", label: "About this record" },
 ] : [];
@@ -190,9 +198,11 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 
   <AdSlot label="Advertisement" />
 
-  {(holdersN > 0 || holdingsN > 0) && (
+  {(holdersN > 0 || holdingsN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
       <LargeHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+
+      <InstHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "inst")} />
 
       <ReportedHoldings model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
     </PageGroup>

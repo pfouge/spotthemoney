@@ -9,6 +9,7 @@ import { buildTxn, jointMap, type RawTxn, type FilingFacts } from "../txnbuild";
 import { cleanFootnotes } from "../footnotes";
 import { emptyForm144 } from "../form144";
 import { emptySchedule13 } from "../schedule13";
+import { emptyInst } from "../inst13f";
 import { emptyFinancials } from "../financials";
 import { emptyEvents } from "../events8k";
 import { emptyPay } from "../execpay";
@@ -83,6 +84,7 @@ export function buildOd(doc: OdDoc, now: Date = new Date()): OdPage {
   const model: Flagship = { builtAt: now.toISOString(), connected: true, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(), txns: [],
     lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [], donationWindowDays: 0, counts: {}, latestByPath: new Map(),
     issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(), market: emptyMarket() };
+    issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), market: emptyMarket() };
 
   // companies the page can name: the entity's own, its siblings' securities', the roles'
   const addCompany = (c: { id: number; name: string; slug: string | null; cik: string | null; ticker: string | null }) => {

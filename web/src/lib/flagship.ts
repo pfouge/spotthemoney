@@ -16,6 +16,8 @@ import { emptyForm144, form144Log, filerLog } from "./form144";
 import { loadForm144, siteCompanyCiks, siteCompanyByCik, sitePersonCiks } from "./form144-build";
 import { emptySchedule13, schedule13Log, holdingsLog } from "./schedule13";
 import { loadSchedule13 } from "./schedule13-build";
+import { emptyInst, instLog } from "./inst13f";
+import { loadInst } from "./inst13f-build";
 import { emptyFinancials, financialsLog } from "./financials";
 import { loadFinancials } from "./financials-build";
 import { emptyEvents, eventsLog } from "./events8k";
@@ -76,6 +78,7 @@ async function load(): Promise<Flagship> {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -164,6 +167,7 @@ async function load(): Promise<Flagship> {
     ]);
 
     const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -388,6 +392,16 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${holdingsLog(model.schedule13, builtAt, sitePersonCiks(model), new Set(siteCompanyByCik(model).keys()))}`);
     } catch (err) {
       console.warn("[web] Schedule 13 statements skipped:", (err as Error).message);
+    }
+
+    // Form 13F institutional holdings for the stock and company pages: set-based queries only
+    // (lib/inst13f.ts, lib/inst13f-build.ts). Optional; read only while the load is recent.
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.inst = await loadInst(sql, builtAt, ciks);
+      console.log(`[web] ${instLog(model.inst, builtAt, ciks.size)}`);
+    } catch (err) {
+      console.warn("[web] Form 13F holdings skipped:", (err as Error).message);
     }
 
     // Figures from companies' annual and quarterly reports (SEC XBRL), for the "Financials, as

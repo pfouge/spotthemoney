@@ -611,6 +611,60 @@ insert into exec_pay (cik, measure, tag, fiscal_year_end, value, accession, fram
   ('0000936468', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2025-12-31', 8000000,   '0000936468-26-000011', 'CY2025'),
   ('0000936468', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2025-12-31', 9100000,   '0000936468-26-000011', 'CY2025'),
   ('0009999001', 'peo_total',              'PeoTotalCompAmt',                 '2025-12-31', 10000000,  '0009999001-26-000001', 'CY2025');
+-- Form 13F institutional holdings (inst_managers, inst_holdings). Newer quarter 2026-09-30 has 1,201
+-- managers, the older quarter 2026-06-30 has 1,010, so both clear the 1,000-manager test.
+-- NVIDIA: 1,150 managers newer, 1,000 older. Palantir: 30 newer. Microsoft: 3 newer (managers 1-3),
+-- 3 older (1, 2 and 9, so manager 3 has no older row and manager 9 only an older one).
+-- Manager 1 also has a second NVIDIA class, Put and Call rows, a bond (PRN) row and a row for an
+-- issuer that is not on the site. Manager 0001100000 is the CIK of a seed person with a page.
+insert into inst_managers (cik, name)
+select '0002' || lpad(n::text, 6, '0'), 'Seed Capital Manager ' || n || case when n % 97 = 0 then ' & Co <LP>' else '' end
+from generate_series(1, 1200) n
+on conflict (cik) do nothing;
+insert into inst_managers (cik, name) values ('0001100000', 'Seed Huang Family Office')
+on conflict (cik) do nothing;
+
+-- NVIDIA, newer quarter (1..1150) and older quarter (1..1000)
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-09-30', '0002' || lpad(n::text, 6, '0'), '0001045810', '67066G104', 'COM', '', 'SH',
+       1000000 + n * 1500, (1000000 + n * 1500) * 180.5,
+       '0001000000-26-' || lpad(n::text, 6, '0'), date '2026-11-03' + (n % 12)
+from generate_series(1, 1150) n;
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-06-30', '0002' || lpad(n::text, 6, '0'), '0001045810', '67066G104', 'COM', '', 'SH',
+       900000 + n * 1400, (900000 + n * 1400) * 150.25,
+       '0001000000-26-' || lpad((n + 5000)::text, 6, '0'), date '2026-08-05' + (n % 12)
+from generate_series(1, 1000) n;
+-- Palantir newer (1..30), older (1001..1010 only, so the older quarter has 1,010 managers)
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-09-30', '0002' || lpad(n::text, 6, '0'), '0001321655', '69608A108', 'CL A', '', 'SH',
+       200000 + n * 900, (200000 + n * 900) * 42.1,
+       '0001000000-26-' || lpad(n::text, 6, '0'), date '2026-11-03' + (n % 12)
+from generate_series(1, 30) n;
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-06-30', '0002' || lpad(n::text, 6, '0'), '0001321655', '69608A108', 'CL A', '', 'SH',
+       150000 + n * 100, (150000 + n * 100) * 30.0,
+       '0001000000-26-' || lpad((n + 5000)::text, 6, '0'), date '2026-08-05' + (n % 12)
+from generate_series(1001, 1010) n;
+-- Microsoft
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed) values
+  ('2026-09-30', '0002000001', '0000789019', '594918104', 'COM', '', 'SH', 500000, 500000 * 410.0, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000002', '0000789019', '594918104', 'COM', '', 'SH', 750000, 750000 * 410.0, '0001000000-26-000002', '2026-11-06'),
+  ('2026-09-30', '0002000003', '0000789019', '594918104', 'COM', '', 'SH', 250000, 250000 * 410.0, '0001000000-26-000003', '2026-11-07'),
+  ('2026-06-30', '0002000001', '0000789019', '594918104', 'COM', '', 'SH', 480000, 480000 * 400.0, '0001000000-26-005001', '2026-08-06'),
+  ('2026-06-30', '0002000002', '0000789019', '594918104', 'COM', '', 'SH', 700000, 700000 * 400.0, '0001000000-26-005002', '2026-08-07'),
+  ('2026-06-30', '0002000009', '0000789019', '594918104', 'COM', '', 'SH', 100000, 100000 * 400.0, '0001000000-26-005009', '2026-08-08');
+-- Manager 1 special rows: a second NVIDIA class, Put and Call rows, a bond row, an issuer not on the site
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed) values
+  ('2026-09-30', '0002000001', '0001045810', '67066G999', 'CL B', '', 'SH', 40000, 40000 * 180.5, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000001', '0001045810', '67066G104', 'COM', 'Put', 'SH', 90000, 90000 * 180.5, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000001', '0001045810', '67066G104', 'COM', 'Call', 'SH', 70000, 70000 * 180.5, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000002', '0001045810', '67066G104', 'COM', 'Put', 'SH', 10000, 10000 * 180.5, '0001000000-26-000002', '2026-11-06'),
+  ('2026-09-30', '0002000001', '0001045810', '67066GAA1', 'NOTE', '', 'PRN', 3000000, 3000000, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000001', '0009999999', '99999X999', 'COM', '', 'SH', 123456, 123456 * 10, '0001000000-26-000001', '2026-11-05');
+-- A manager that is also a person with a page (CIK of a seed insider)
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed) values
+  ('2026-09-30', '0001100000', '0001045810', '67066G104', 'COM', '', 'SH', 12345, 12345 * 180.5, '0001000000-26-009999', '2026-11-09');
 
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
