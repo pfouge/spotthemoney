@@ -90,7 +90,8 @@ for (const [p, rs] of [...withSection, ...entries.filter(([, rs]) => !wantShown(
   const t = text(sec);
   ok(!FORBIDDEN.test(t), `${p}: no forbidden wording${FORBIDDEN.exec(t) ? ` (${FORBIDDEN.exec(t)[0]})` : ""}`);
   ok(!/donor name|contributor name/i.test(t), `${p}: no donor names`);
-  ok(/id="campaign-committee"/.test(sec) && new RegExp(`href="#campaign-committee"`).test(pg.text), `${p}: jump link to the section`);
+  // The at-a-glance tiles are capped, so the section's own tile can be left out; the Washington group link always reaches it.
+  ok(/id="campaign-committee"/.test(sec) && /href="#(campaign-committee|washington)"/.test(pg.text), `${p}: jump link to the section or its group`);
 }
 // a member with no linked committee has no section
 const dir = parseCsv((await get("/downloads/congress-members.csv")).text).rows;
@@ -100,12 +101,13 @@ if (none) { const pg = await get(new URL(none.page_url).pathname); if (pg.status
 // /donations/: a committee names its member only when the CSV links them
 const don = await get("/donations/");
 ok(don.status === 200, "/donations/ opens");
-const csvByName = new Map(); for (const r of rows) csvByName.set(r.committee, csvByName.has(r.committee) ? null : r);
+// Two committees can share a name (a member's House and Senate committees): keep every row of a name.
+const csvByName = new Map(); for (const r of rows) csvByName.set(r.committee, [...(csvByName.get(r.committee) ?? []), r]);
 let linkedRows = 0;
 for (const m of don.text.matchAll(/<tr[^>]*><td[^>]*>([^<]*)(?:<span class="cc-member"[^>]*> · <a href="([^"]*)"[^>]*>[^<]*<\/a><\/span>)?<\/td>/g)) {
   const name = attr(m[1]).trim(), href = m[2];
   const r = csvByName.get(name);
-  if (href) { linkedRows++; ok(!!r && new URL(r.member_page_url).pathname === href, `/donations/: ${name} links ${href} as the CSV does`); }
+  if (href) { linkedRows++; ok(!!r && r.some((x) => new URL(x.member_page_url).pathname === href), `/donations/: ${name} links ${href} as the CSV does`); }
   else if (r) ok(false, `/donations/: ${name} is linked in the CSV but shows no member link`);
 }
 ok(linkedRows > 0 || rows.every((r) => Number(r.receipts_held) === 0), "/donations/ links at least one committee to its member");
