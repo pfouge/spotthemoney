@@ -815,6 +815,18 @@ insert into lobby_contribution_items (filing_uuid, seq, contribution_type, contr
   ('seed-c13', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'MARSH VICTORY FUND', 'Elena Marsh', 2000, current_date - 480),
   ('seed-c14', 1, 'FECA', 'SELF', 'NO NAME COMMITTEE', 'Dr. Jordan Whitfield <"friend"> & guests', 600, current_date - 95);
 
+-- The pages show roll-call votes, outside spending and lobbyist contributions only once the
+-- first load of each has finished (a run that says so in ingest_runs). The seed says so too.
+insert into sources (code, label) values
+  ('congress_votes', 'Congress roll-call votes'),
+  ('fec_independent_expenditures', 'FEC independent expenditures'),
+  ('senate_lda_contributions', 'Senate LDA lobbyist contribution reports')
+on conflict (code) do nothing;
+insert into ingest_runs (source_id, started_at, finished_at, status, rows_seen, rows_changed, stats)
+select id, now() - interval '2 hours', now() - interval '1 hour', 'success', 0, 0, '{"catch_up_complete": true}'::jsonb
+  from sources where code in ('congress_votes', 'fec_independent_expenditures', 'senate_lda_contributions');
+
+
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
 -- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the

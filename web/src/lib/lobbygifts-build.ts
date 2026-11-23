@@ -58,6 +58,12 @@ export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, compa
   const tot = (await sql.unsafe(`select count(*)::int as n, (select count(*)::int from lobby_contribution_filings f join (${COUNTED}) c using (filing_uuid)) as counted,
         (select max(posted_at)::date::text from lobby_contribution_filings) as newest from lobby_contribution_filings`))[0] as { n: number; counted: number; newest: string | null };
   if (!tot.n) return out;
+  // Shown only once the first load has finished (the job walks about 50,000 filings over several
+  // runs and records catch_up_complete in its run stats): figures from part of the record would
+  // understate every filer and recipient.
+  const whole = (await sql`select 1 from ingest_runs r join sources s on s.id = r.source_id
+                            where s.code = 'senate_lda_contributions' and r.stats->>'catch_up_complete' = 'true' limit 1`) as unknown[];
+  if (!whole.length) { console.log("[web] lobbyist contributions: not shown yet (the first load has not finished)"); return out; }
   out.available = true; out.filingsAll = tot.n; out.filingsCounted = tot.counted; out.filingsSuperseded = tot.n - tot.counted; out.newestPosted = tot.newest;
 
   // Periods: one row per year and period, counted filings only.

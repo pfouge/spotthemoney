@@ -86,8 +86,7 @@ async function load(): Promise<Flagship> {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
-    votes: emptyVotes(), outside: emptyOutside(),
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(),
+    votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -176,8 +175,7 @@ async function load(): Promise<Flagship> {
     ]);
 
     const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
-      votes: emptyVotes(), outside: emptyOutside() };
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib() };
+      votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -454,6 +452,7 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${outsideLog(model.outside)}`);
     } catch (err) {
       console.warn("[web] outside spending skipped:", (err as Error).message);
+    }
     // Federal grants, loans and direct payments (migration 0037). Optional: a missing table leaves
     // the hub, the company section, the CSV and the guide section out (lib/assistance.ts).
     try {

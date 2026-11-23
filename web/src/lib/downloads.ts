@@ -48,8 +48,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside";
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "assistance" | "lobbycontrib" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside" | "assistance" | "lobbycontrib";
   /** Size in bytes when it is known without reading the text (files streamed to disk). */
   bytes?: number;
   columns: { key: string; about: string }[];
@@ -445,6 +444,7 @@ async function build(): Promise<Downloads> {
     const whole = file({ ...meta, name: "independent-expenditures.csv", title: "Independent expenditures in federal races", about: "One row per expenditure as the spender reported it, with a column that says whether the row counts or repeats another report of the same spending.", updated: newest(rows.map((r) => r.spentAt)) }, cols, rows);
     if (rows.length && Buffer.byteLength(whole.body(), "utf8") <= 15_000_000) add(whole);
     else for (const piece of splitByPeriod(rows, (r) => r.spentAt)) add(file({ ...meta, name: `independent-expenditures-${piece.period}.csv`, title: `Independent expenditures, ${piece.label}`, about: `Expenditures spent in ${piece.label}, as reported.`, updated: newest(piece.rows.map((r) => r.spentAt)) }, cols, piece.rows));
+  }
   // Federal grants, loans and direct payments that started in the last 180 days (lib/assistance.ts).
   const assistRows = m.assistance.rows;
   const assistCompany = new Map<number, Company>();

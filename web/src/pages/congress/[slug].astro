@@ -127,8 +127,7 @@ const glance = noindex ? [] : [
 ];
 const groupList = noindex ? [] : [
   { id: "trading", label: "Trading" },
-  ...(groups.length || hasVotes || hasOutside ? [{ id: "washington", label: "Washington" }] : []),
-  ...(groups.length || lcItems ? [{ id: "washington", label: "Washington" }] : []),
+  ...(groups.length || hasVotes || hasOutside || lcItems ? [{ id: "washington", label: "Washington" }] : []),
   { id: "record", label: "About this record" },
 ];
 ---
@@ -280,8 +279,7 @@ const groupList = noindex ? [] : [
 
   <AdSlot label="Advertisement" show={!noindex} />
 
-  {(groups.length > 0 || hasVotes || hasOutside) && (
-  {(groups.length > 0 || lcItems > 0) && (
+  {(groups.length > 0 || hasVotes || hasOutside || lcItems > 0) && (
     <PageGroup id="washington" label="Washington">
   <MemberVotes model={model} personId={p.id} slug={p.slug!} name={p.name} chamber={role.chamber === "senate" ? "senate" : "house"} />
   {groups.length > 0 && (
