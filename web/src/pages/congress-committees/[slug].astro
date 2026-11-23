@@ -152,7 +152,7 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   {lcMembers.length > 0 && (
     <section aria-labelledby="lobbyist-contributions" data-committee-lobbycontrib data-n={lcMembers.length}>
       <h2 id="lobbyist-contributions">Lobbyist contributions naming members</h2>
-      <p class="section-note" data-lcc-summary>{plural(lcMembers.length, "current member")} of the {n} on record {lcMembers.length === 1 ? "is" : "are"} named as honoree in at least one contribution item on a lobbyist's Form LD-203 report.</p>
+      <p class="section-note" data-lcc-summary>{plural(lcMembers.length, "current member")} of the {n} on record {lcMembers.length === 1 ? "is" : "are"} named as honoree, or have a campaign committee named as payee, in at least one contribution item on a lobbyist's Form LD-203 report.</p>
       <p class="section-note" data-lcc-caveat>{COMMITTEE_LOBBY_CAVEAT} <a href="/lobbyist-contributions/">All lobbyist contributions</a></p>
       <div class="tablewrap"><table class="data" data-sortable>
         <thead><tr>

@@ -130,7 +130,7 @@ for (const h of picked) {
   // Lobbyist contributions naming members: counts only, from the member pages' own data.
   if (d.lcc) {
     ok(int(d.lcc.n) === d.lcc.rows.length && d.lcc.rows.length > 0 && d.lcc.rows.length <= d.members.length, `${at}: lobbyist section says ${d.lcc.n}, has ${d.lcc.rows.length} rows, ${d.members.length} members`);
-    ok(new RegExp(`^${d.lcc.rows.length} current members? of the ${d.members.length} on record (is|are) named as honoree`).test(d.lcc.summary), `${at}: lobbyist summary reads "${d.lcc.summary}"`);
+    ok(new RegExp(`^${d.lcc.rows.length} current members? of the ${d.members.length} on record (is|are) named as honoree, or have a campaign committee named as payee`).test(d.lcc.summary), `${at}: lobbyist summary reads "${d.lcc.summary}"`);
     ok(d.lcc.caveat.includes("A committee seat is context only") && d.lcc.caveat.includes("nothing here ties a contribution"), `${at}: lobbyist caveat is missing`);
     ok(!/[$\u2013\u2014]/.test(d.lcc.text) && !BAD.test(d.lcc.text), `${at}: a dollar figure, a dash or conflict wording in the lobbyist section`);
     const names = new Set(d.members.map((m) => m.href));

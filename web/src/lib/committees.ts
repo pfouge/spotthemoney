@@ -159,7 +159,7 @@ export function committeeLogLine(cs: Committee[]): string {
 // added across members, because one contribution can name several people.
 /** Fixed words under the section. A seat is context; the verifier checks this text is on the page. */
 export const COMMITTEE_LOBBY_CAVEAT =
-  "A contribution report names an honoree as the filer typed it, and the match to a member is by name. A committee seat is context only: nothing here ties a contribution to the committee's work, to a vote or to a trade.";
+  "A contribution report names an honoree and a payee as the filer typed them. A member is matched by an honoree that is the member's name, or by a payee that is the exact name of the member's campaign committee. A committee seat is context only: nothing here ties a contribution to the committee's work, to a vote or to a trade.";
 export interface CommitteeLobbyMember { id: number; name: string; path: string; items: number; filers: number; newest: string | null }
 /** The part of a member's lobbyist-contribution record this section reads (a Subject from lobbygifts.ts). */
 export interface LobbySubjectLike { years: { items: number; filers: number }[]; items: { date: string | null }[] }
