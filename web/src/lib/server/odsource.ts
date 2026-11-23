@@ -71,6 +71,20 @@ export function soleTicker(doc: OdDoc): string | null {
   return tickers.length === 1 && /^[a-z0-9][a-z0-9._-]{0,20}$/.test(tickers[0]) ? tickers[0] : null;
 }
 
+const TICKER = /^[a-z0-9][a-z0-9._-]{0,20}$/;
+/** company: the ticker page that shows it (lower case), as the database names it (od_company "homeTicker"), else the one ticker all its securities carry. */
+export function companyTicker(doc: OdDoc): string | null {
+  if (doc.kind !== "company") return null;
+  const home = typeof doc.homeTicker === "string" ? doc.homeTicker.toLowerCase() : "";
+  return TICKER.test(home) ? home : soleTicker(doc);
+}
+/** stock: the ticker whose page shows this one (another ticker of the same company), or null when this is its own page. */
+export function stockTicker(doc: OdDoc): string | null {
+  if (doc.kind !== "stock") return null;
+  const to = typeof doc.movedTo === "string" ? doc.movedTo.toLowerCase() : "";
+  return TICKER.test(to) && to !== String(doc.entity.ticker ?? "").toLowerCase() ? to : null;
+}
+
 const SEG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/;
 /** The one path segment an on-demand route accepts (/insiders/<slug>/); anything else is a 404. */
 export function oneSegment(rest: string | undefined): string | null {

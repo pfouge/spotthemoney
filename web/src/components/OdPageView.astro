@@ -30,7 +30,9 @@ const secs = [...new Map(page.siblings.map((s) => [s.ticker, s])).values()];
 const tickers = kind === "insider" ? [...new Map(txns.map((t) => t.securityId).filter((x): x is number => x != null).map((id) => model.securities.get(id)).filter((s) => !!s).map((s) => [s!.ticker, s!])).values()] : secs;
 const cpath = company?.slug ? `/companies/${company.slug}/` : null;
 // One page per company: a company with one ticker has no page of its own (its address redirects here), so its name is not a link.
-const ownPage = kind === "stock" && !!company && (!company.primaryTicker || company.primaryTicker.toLowerCase() === sec!.ticker.toLowerCase());
+const ownPage = kind === "stock" && !!company && (page.home ?? (!company.primaryTicker || company.primaryTicker.toLowerCase() === sec!.ticker.toLowerCase()));
+// Other tickers on file for the same company (an older symbol, a second class): their rows are on this page and their addresses open it.
+const otherTickers = kind === "stock" ? secs.map((s) => s.ticker).filter((t) => t.toLowerCase() !== sec!.ticker.toLowerCase()) : [];
 const name = kind === "insider" ? person!.name : kind === "stock" ? (company?.name ?? sec?.name ?? sec?.ticker ?? "") : company!.name;
 const ticker = kind === "stock" ? sec!.ticker : company?.primaryTicker ?? null;
 const roleTitle = person ? roleLabel(person, model.companies) : "";
@@ -86,6 +88,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     {kind === "insider" && company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     {kind === "stock" && company && <div><dt>Company</dt><dd>{cpath && !ownPage ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     {kind === "stock" && <div><dt>Security</dt><dd>{sec!.type === "etf" ? "ETF" : sec!.type === "adr" ? "ADR" : sec!.type.charAt(0).toUpperCase() + sec!.type.slice(1)}</dd></div>}
+    {otherTickers.length > 0 && <div data-od-tickers><dt>Tickers on this page</dt><dd><span class="mono">{[sec!.ticker, ...otherTickers].join(", ")}</span></dd></div>}
     {kind !== "stock" && tickers.length > 0 && <div><dt>{tickers.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{tickers.slice(0, 4).map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}{tickers.length > 4 ? ` and ${tickers.length - 4} more` : ""}</dd></div>}
     {kind !== "insider" && <div><dt>{kind === "company" ? "Insiders on file" : "Insiders on record"}</dt><dd>{f.who.length ? <a href="#insiders">{num(page.insiderCount || f.who.length)}</a> : "0"}</dd></div>}
     {stats.firstFiledAt && <div><dt>First filing on record</dt><dd>{formatDate(stats.firstFiledAt)}</dd></div>}
@@ -94,6 +97,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
   </dl>
 
   <Answer text={answer} updated={page.lastUpdated} sourceNote="Source: SEC EDGAR Form 4 filings" />
+  {otherTickers.length > 0 && <p class="section-note" data-od-tickers-note>{company?.name ?? "This company"} has Form 4 filings on record under more than one ticker: <span class="mono">{[sec!.ticker, ...otherTickers].join(", ")}</span>. It is one company, so every row is on this one page. A ticker can differ because the symbol changed, because the company has more than one class of security, or because a filing states it differently.</p>}
 
   {jump.length > 0 && (
     <nav class="jump" aria-label="On this page">

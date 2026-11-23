@@ -4,7 +4,7 @@
 // static file exists. Keep this file free of imports of postgres, fs, flagship or db.
 export const prerender = false;
 import OdPageView from "../../components/OdPageView.astro";
-import { fetchOd, guideLinks, oneSegment, notFound, stockMovedTo } from "../../lib/server/odsource";
+import { fetchOd, guideLinks, oneSegment, notFound, stockMovedTo, stockTicker, parityAllowed } from "../../lib/server/odsource";
 
 const key = oneSegment(Astro.params.rest);
 // Another share class of a company: its rows are on the company's main ticker page.
@@ -13,6 +13,9 @@ if (movedTo) return new Response(null, { status: 301, headers: { location: moved
 const doc = key ? await fetchOd("stock", key!.toUpperCase(), Astro.url).catch(() => undefined) : null;
 if (doc === undefined) return new Response("Temporarily unavailable", { status: 503, headers: { "cache-control": "no-store", "retry-after": "60" } });
 if (!doc) return notFound(Astro.url);
+// Another ticker of a company outside the tracked set (an older symbol, a second class): its rows are on the company's home ticker page.
+const home = stockTicker(doc);
+if (home && !parityAllowed(Astro.url)) return new Response(null, { status: 301, headers: { location: `/stocks/${home}/`, "cache-control": "public, max-age=3600, s-maxage=86400" } });
 const guides = await guideLinks(Astro.url);
 Astro.response.headers.set("Cache-Control", "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800");
 ---
