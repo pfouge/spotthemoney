@@ -11,14 +11,15 @@
 //  - Names are as typed by the filer. Nothing is merged: the same recipient can appear under
 //    several spellings. An item is tied to a member of Congress only by memberForItem, which is
 //    deliberately narrow: no fuzzy matching, no surname-only matching, nothing for an honoree
-//    field that names several people.
+//    field that names several people. Two rules: the honoree field names the member, or the
+//    payee equals the name of a campaign committee linked to the member by ids (migration 0040).
 //  - A date in the future or missing: the item is listed without a date and counted in its
 //    filing's period.
 //  - Amounts are as reported. Nothing says a contribution was meant to change anything.
 import { normalizeOrgName } from "@stm/shared";
 
 export const LOBBY_CONTRIB_CAVEAT =
-  "These are contributions and payments that lobbyists and lobbying firms reported on Form LD-203 and whose honoree field names this member, as typed by the filer. A report by a lobbyist is not a statement by the member, other spellings of the name are not matched, and nothing here links a contribution to a vote, a trade or any action.";
+  "These are contributions and payments that lobbyists and lobbying firms reported on Form LD-203 and whose honoree field names this member, or whose payee is the member's campaign committee, as typed by the filer. A report by a lobbyist is not a statement by the member, other spellings of the name are not matched, and nothing here links a contribution to a vote, a trade or any action.";
 export const LOBBY_CONTRIB_FILER_CAVEAT =
   "These are contributions and payments that this company's lobbying filings report on Form LD-203, as typed by the filer. The company is matched to the filer by exact name only, so reports under a subsidiary or a differently spelled name are not included. A report is not a statement by the recipient, and nothing here links a contribution to a vote, a trade or any action.";
 export const SENATE_NOTICE = "The Senate Office of Public Records cannot vouch for the data or for analyses derived from it.";
@@ -36,6 +37,8 @@ export interface ItemRow {
   registrant: string | null; lobbyist: string | null; year: number | null; period: string | null; posted: string | null; filingUuid: string; sourceUrl: string | null;
   /** The page of the member the item names, by memberForItem; null otherwise. */
   memberSlug: string | null;
+  /** True when the member was found through the payee (a campaign committee), not the honoree field. */
+  viaPayee: boolean;
 }
 export interface PeriodStat { year: number; period: string; label: string; filings: number; withContributions: number; items: number; amount: number }
 export interface TypeRow { type: string; items: number; amount: number }
@@ -140,8 +143,10 @@ export function buildMemberIndex(members: MemberName[]): MemberIndex {
  * The member an item names, or null. Two ways, nothing else:
  *  (b) the honoree text (titles and bracket tags removed) equals a member's full name as on the
  *      roster, or equals first name plus last name where exactly one member has that pair;
- *  (a) the payee's name equals the name of a member's FEC committee. Not available: the committees
- *      table has no link to a member, so `committees` is left out and (a) never applies.
+ *  (a) the payee's name (normalised, see normalizeOrgName) equals the name of a campaign committee
+ *      that is linked to a member by ids. `committees` maps that normalised name to the member's
+ *      slug; a name two members' committees share is left out of the map. Rule (b) is tried first,
+ *      so an honoree that names a member wins over the payee.
  * An honoree field that names several people matches nobody; so does a surname alone.
  */
 export function memberForItem(item: { honoree: string | null; payee?: string | null }, idx: MemberIndex, committees?: Map<string, string>): string | null {
@@ -190,7 +195,7 @@ export const CSV_COLUMNS: { key: string; about: string }[] = [
   { key: "date", about: "Date of the item. Empty when missing, not a real date, or in the future." },
   { key: "posted", about: "Day the Senate posted the filing." },
   { key: "counted", about: "true when the filing counts on this site; false when a later filing for the same registrant, lobbyist, year and period replaces it." },
-  { key: "member_page_url", about: "The page of the member of Congress the honoree field names, when it names exactly one by the rule on the methodology page. Empty otherwise." },
+  { key: "member_page_url", about: "The page of the member of Congress the item is tied to, when it is tied to exactly one by the two rules on the methodology page (the honoree field names the member, or the payee is the member's campaign committee). Empty otherwise." },
   { key: "filing_uuid", about: "The Senate's id of the filing." },
   { key: "source_url", about: "Link to the filing." },
 ];

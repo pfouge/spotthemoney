@@ -1,9 +1,11 @@
 {
   "campaign-donations-fec-data": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-23",
     "covers": {
-      "web/src/pages/donations/index.astro": "ffa79d5bc4a5dd87",
-      "ingest/src/sources/fec_committees.ts": "cc44ff73d4057cf9",
+      "web/src/pages/donations/index.astro": "ea0b33b7e5071c22",
+      "ingest/src/sources/fec_committees.ts": "8c61e370f5ab8cc3",
+      "web/src/lib/campaign.ts": "9318bf48159367b1",
+      "web/src/components/CampaignCommittee.astro": "32fe7ec24784857c",
       "web/src/lib/outsidespending.ts": "b4c9fa00fc85caa5",
       "web/src/components/OutsideSpending.astro": "dc91169124acf3b6"
     }
@@ -87,9 +89,9 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "1c543211107ca22c",
+      "web/src/lib/downloads.ts": "afcce9907c009a02",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "4b305ceedac23583",
+      "web/src/pages/downloads/index.astro": "c173e267d4ad4553",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
       "web/src/lib/datafiles.ts": "cfe6f4d2ea734abb",
       "web/src/pages/developers.astro": "894d62cf74c9c95f"
@@ -121,7 +123,7 @@
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "115524dbad951803",
+      "web/src/pages/congress/[slug].astro": "ba23075a153684eb",
       "web/src/lib/directory.ts": "0466a663969706ab",
       "web/src/pages/congress-members.astro": "bf0dc59073a99673",
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
@@ -185,15 +187,15 @@
     }
   },
   "lobbying-disclosure-reports": {
-    "reviewed": "2026-11-22",
+    "reviewed": "2026-11-23",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
       "web/src/pages/lobbying/index.astro": "663e97f26df53b0c",
       "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
       "web/src/pages/lobbying-issues/index.astro": "a33c2d2d4f48fb57",
       "web/src/pages/lobbying-issues/[slug].astro": "0bc35da024ab951a",
-      "web/src/lib/lobbygifts.ts": "2b47abf131ca7740",
-      "web/src/pages/lobbyist-contributions/index.astro": "84421b4f27337718"
+      "web/src/lib/lobbygifts.ts": "d356e64ec82f69be",
+      "web/src/pages/lobbyist-contributions/index.astro": "681c4001828adee5"
     }
   },
   "rule-10b5-1-trading-plans": {
@@ -246,7 +248,7 @@
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
-      "web/src/lib/server/od.ts": "38ed428f32a1153c",
+      "web/src/lib/server/od.ts": "d8e3c2adc0dd6a8d",
       "web/src/components/OdPageView.astro": "5a94f9549888f514",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
       "web/src/pages/stocks/[ticker].astro": "7b84112ae4d43879",

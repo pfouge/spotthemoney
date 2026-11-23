@@ -26,6 +26,8 @@ import { formatDate } from "../../lib/format";
 import { buildCommittees } from "../../lib/committees";
 import MemberVotes from "../../components/MemberVotes.astro";
 import OutsideSpending from "../../components/OutsideSpending.astro";
+import CampaignCommittee from "../../components/CampaignCommittee.astro";
+import { shownFor } from "../../lib/campaign";
 import { windowTotal } from "../../lib/votes";
 import VizPerson from "../../components/VizPerson.astro";
 import LobbyContrib from "../../components/LobbyContrib.astro";
@@ -62,6 +64,9 @@ const groups = seatGroups(seats);
 const committeePaths = new Map(buildCommittees(model, today, personPath).map((c) => [c.code, c.path]));
 const votes = model.votes.shown ? model.votes.byPerson.get(p.id) : undefined;
 const outside = model.outside.shown ? model.outside.byPerson.get(p.id) : undefined;
+const campaign = shownFor(model.campaign, p.slug);
+const hasCampaign = campaign.length > 0;
+const campaignFile = hasCampaign ? downloads.files.find((f) => f.kind === "campaign") : undefined;
 const hasVotes = !!votes && votes.rows.length > 0;
 const hasOutside = !!outside && outside.countedRows > 0;
 const outsideFile = hasOutside ? downloads.files.find((f) => f.kind === "outside") : undefined;
@@ -120,6 +125,7 @@ const glance = noindex ? [] : [
   { label: "Reported late", value: num(late.length), note: `After ${CONGRESS_DEADLINE_DAYS} days`, href: "#trades" },
   ...(hasVotes ? [{ label: "Recorded votes", value: num(windowTotal(votes!)), note: votes!.newest ? `Newest ${formatDate(votes!.newest)}` : "Last 12 months", href: "#votes" }] : []),
   ...(hasOutside ? [{ label: "Outside spending", value: num(outside!.totals.spenders), note: model.outside.cycle ? `Spenders, ${model.outside.cycle} cycle` : "Spenders", href: "#outside-spending" }] : []),
+  ...(hasCampaign ? [{ label: "Campaign receipts held", value: num(campaign.reduce((a, c) => a + c.held, 0)), note: "Itemized, a sample", href: "#campaign-committee" }] : []),
   ...(groups.length ? [{ label: "Committees", value: num(groups.length), note: "Listed for context", href: "#committees" }] : []),
   ...(lcItems ? [{ label: "Lobbyist contributions", value: num(lcNewest?.items ?? 0), note: `Items in ${lcNewest?.year}`, href: "#lobbyist-contributions" }] : []),
   ...(p.filings.length ? [{ label: "Filings", value: num(p.filings.length), note: "Periodic transaction reports", href: "#filings" }] : []),
@@ -127,7 +133,7 @@ const glance = noindex ? [] : [
 ];
 const groupList = noindex ? [] : [
   { id: "trading", label: "Trading" },
-  ...(groups.length || hasVotes || hasOutside || lcItems ? [{ id: "washington", label: "Washington" }] : []),
+  ...(groups.length || hasVotes || hasOutside || hasCampaign || lcItems ? [{ id: "washington", label: "Washington" }] : []),
   { id: "record", label: "About this record" },
 ];
 ---
@@ -279,7 +285,7 @@ const groupList = noindex ? [] : [
 
   <AdSlot label="Advertisement" show={!noindex} />
 
-  {(groups.length > 0 || hasVotes || hasOutside || lcItems > 0) && (
+  {(groups.length > 0 || hasVotes || hasOutside || hasCampaign || lcItems > 0) && (
     <PageGroup id="washington" label="Washington">
   <MemberVotes model={model} personId={p.id} slug={p.slug!} name={p.name} chamber={role.chamber === "senate" ? "senate" : "house"} />
   {groups.length > 0 && (
@@ -302,6 +308,7 @@ const groupList = noindex ? [] : [
     </section>
   )}
   <OutsideSpending model={model} personId={p.id} name={p.name} file={outsideFile} />
+  <CampaignCommittee model={model} slug={p.slug} file={campaignFile} />
   <LobbyContrib model={model} slug={p.slug} file={lcFile} />
     </PageGroup>
   )}

@@ -125,7 +125,7 @@ jobs:
       - name: Check planned sales, large holders, financials, company events and executive pay against their files (warning only)
         run: |
           curl -fsS -o /dev/null http://127.0.0.1:4321/ || { (cd web/dist/client && python3 -m http.server 4321 --bind 127.0.0.1 >/dev/null 2>&1 &); sleep 2; }
-          for v in form144 schedule13 financials filers finscreen events execpay inst votes outside assistance lobbycontrib; do
+          for v in form144 schedule13 financials filers finscreen events execpay inst votes outside assistance lobbycontrib campaign; do
             if node scripts/verify-$v.mjs http://127.0.0.1:4321 --sample 12 > "verify-$v.log" 2>&1; then
               echo "verify-$v: $(tail -n 2 "verify-$v.log" | tr '\n' ' ')"
             else
