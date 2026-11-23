@@ -9,6 +9,7 @@ import { ASSISTANCE_WINDOW_DAYS } from "./assistance";
 import { siteEventsHub } from "./events8k-build";
 import { sitePlanned } from "./plannedsales-build";
 import { siteLarge } from "./largeholders-build";
+import { siteCompanyByCik } from "./form144-build";
 import { unpackHub } from "./events8k";
 import { rollLabel } from "./votes";
 import { usdFull, SIDE_LABEL } from "./outsidespending";
@@ -157,11 +158,13 @@ export function weekCounts(m: Flagship): WeekTile[] {
   const ev = unpackHub(siteEventsHub(m).data);
   const pl = sitePlanned(m).all, lh = siteLarge(m).all;
   const lc = m.lobbyContrib;
+  const siteCos = new Set([...siteCompanyByCik(m).entries()].filter(([, c]) => c.slug).map(([cik]) => cik));
   return weekTiles({
     events: ev.length > 0 ? countInWindow(ev.map((r) => r.e.filed), built) : null,
     votes: m.votes.shown ? countInWindow(m.votes.rolls.map((r) => r.date), built) : null,
     outside: m.outside.shown ? countInWindow(m.outside.rows.filter((r) => r.counted).map((r) => r.spentAt), built) : null,
-    holders: lh.length > 0 ? countInWindow(lh.map((r) => r.filed), built) : null,
+    // Every statement filed, not only each holder's newest one: the count is of filings, as the tile says and as the download lists them.
+    holders: lh.length > 0 ? countInWindow([...m.schedule13.byCik.entries()].flatMap(([cik, xs]) => (siteCos.has(cik) ? xs.map((x) => x.filedAt) : [])), built) : null,
     planned: pl.length > 0 ? countInWindow(pl.map((r) => r.filed), built) : null,
     lobbycontrib: lc.available && lc.periods.length > 0 ? lc.postedRecent.filter((r) => inWindow(r.date, built, WEEK_DAYS)).reduce((a, r) => a + r.filings, 0) : null,
     grants: m.assistance.rows.length > 0 ? countInWindow(m.assistance.rows.map((r) => r.startDate), built) : null,

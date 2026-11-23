@@ -4065,3 +4065,31 @@ it in the pull request that changes a cell.**
 - `verify-a11y` reads `/stocks/` and takes its sample company page from the list's second table.
 - **Still open:** market companies with several tickers (158) keep a company page and their ticker
   pages (needs `od_stock` to return every class).
+
+### Washington hub, week in filings, campaign committees, small joins (2026-11-23, interactive session) — PRs #85 to #87
+
+- **`/washington/`** is a hub: one tile per dataset SHOWN in the build (`article[data-wtile]`; order lobbying, lobbyist
+  contributions, contracts, grants, donations, outside spending, votes), each with the figures its own hub prints, the
+  newest date and three newest items. **Home page:** `section[data-week]` "This week in filings", counts for the 7 days up
+  to the build day (8-K reports, roll calls, outside spending, 13D/13G statements, Form 144 notices, LD-203 reports posted,
+  grants started); a hidden dataset has no tile; the row needs 3 tiles. Rules in `web/src/lib/washhub.ts`
+  (+`washhub-build.ts`); the large-holder count is every statement filed, not each holder's newest. Verifier
+  `verify-hubs`. Methodology `#week-in-filings`.
+- **Migration 0040**: `committees.candidate_fec_id`, `committees.person_id`. `fec_committees` fills them for members'
+  principal committees through the roster's FEC candidate ids and the Bioguide ID (never by name; `coalesce`, so a failed
+  roster fetch keeps stored links). Next free migration number: 0041.
+- **Member pages:** "Campaign committee" (`CampaignCommittee.astro`, `section[data-campaign]`, in the Washington group):
+  itemized receipts held for the member's linked committee (90 days and the record since 2025-10-01), largest donor
+  employers and states, FEC link. Never "raised" or a total: the site holds what it loaded, and for a large committee that
+  is a sample. `web/src/lib/campaign.ts`, `campaign-build.ts`, download `campaign-committees.csv`, verifier
+  `verify-campaign`, methodology `#campaign-committee`. `/donations/` links a linked committee to its member.
+- **LD-203 payee rule is on:** an item matches a member by the honoree (as before) or by a payee that is the exact
+  normalised name of the member's linked committee (a name two members' committees share matches nobody).
+- **Financials screener:** columns "CEO pay, as reported" and "Pay year", filter hash key `pay=1` (oracle
+  `executive-pay.csv`). **Insider pages:** `p[data-insider-events]` links to the company's 8-K section. **Committee
+  pages:** `section[data-committee-lobbycontrib]`, members named in LD-203 items (counts only).
+- **Merging parallel branches:** the union merge left two `for` lines in `deploy.yml`'s warning-only step (lines that
+  differ by one word are not caught by a duplicate-line scan) and deploy 45105043117 failed before uploading. After a
+  union merge, run the changed workflow step's shell through `bash -n`.
+- Not done: the seven datasets on the on-demand pages of untracked companies (waits for the one-page-per-company work on
+  those pages).
