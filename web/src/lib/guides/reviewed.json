@@ -87,12 +87,12 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "1686ff1ace53018e",
+      "web/src/lib/downloads.ts": "12458bedacead585",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "0dd0f86f9fb8dc5b",
+      "web/src/pages/downloads/index.astro": "4b305ceedac23583",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "2e6787a6687f9d77",
-      "web/src/pages/developers.astro": "ad02755c67844e81"
+      "web/src/lib/datafiles.ts": "cfe6f4d2ea734abb",
+      "web/src/pages/developers.astro": "e510fa2eeeaaf48f"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {

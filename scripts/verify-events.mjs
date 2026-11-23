@@ -106,7 +106,7 @@ for (const r of csv.rows) {
   ok(heads.length === items.length, `${r.accession}: ${items.length} items, ${heads.length} headings`);
   items.forEach((i, k) => { if (HEAD[i]) ok(heads[k] === HEAD[i], `${r.accession}: heading for ${i} is "${heads[k]}"`); });
   ok(r.source_url === "" || /^https:\/\/www\.sec\.gov\//.test(r.source_url), `${r.accession}: source_url ${r.source_url}`);
-  ok(/^https:\/\/spotthemoney\.com\/companies\/[a-z0-9-]+\/$/.test(r.page_url), `${r.accession}: page_url ${r.page_url}`);
+  ok(/^https:\/\/spotthemoney\.com\/(companies\/[a-z0-9-]+|stocks\/[a-z0-9.-]+)\/$/.test(r.page_url), `${r.accession}: page_url ${r.page_url}`);
   const xs = byCik.get(r.cik) ?? []; xs.push({ ...r, itemList: items }); byCik.set(r.cik, xs);
 }
 const end = t0(built);

@@ -104,7 +104,7 @@ for (const r of csv.rows) {
   ok(r.marked === String(want), `${r.company} ${r.fiscal_year_end}: marked is ${r.marked}, this script says ${want}`);
   if (want) markedRows++;
   ok(r.source_url === (r.accession ? folder(r.cik, r.accession) : ""), `${r.company} ${r.fiscal_year_end}: source_url ${r.source_url}`);
-  ok(/^https:\/\/spotthemoney\.com\/companies\/[a-z0-9-]+\/$/.test(r.page_url), `${r.company}: page_url ${r.page_url}`);
+  ok(/^https:\/\/spotthemoney\.com\/(companies\/[a-z0-9-]+|stocks\/[a-z0-9.-]+)\/$/.test(r.page_url), `${r.company}: page_url ${r.page_url}`);
   const xs = byCik.get(r.cik) ?? []; xs.push(r); byCik.set(r.cik, xs);
 }
 for (const xs of byCik.values()) xs.sort((a, b) => (a.fiscal_year_end < b.fiscal_year_end ? 1 : -1));
