@@ -6,6 +6,8 @@ export const prerender = false;
 import OdPageView from "../../components/OdPageView.astro";
 import { fetchOd, guideLinks, oneSegment, notFound, companyMovedTo, soleTicker, parityAllowed } from "../../lib/server/odsource";
 
+// The list of companies is the list of stocks (pages/stocks/index.astro): one list, as one page per company.
+if (!Astro.params.rest) return new Response(null, { status: 301, headers: { location: "/stocks/", "cache-control": "public, max-age=3600, s-maxage=86400" } });
 const key = oneSegment(Astro.params.rest);
 // A tracked company that is now shown on its ticker page: one page per company (lib/onepage.ts).
 const movedTo = key ? await companyMovedTo(key, Astro.url) : null;

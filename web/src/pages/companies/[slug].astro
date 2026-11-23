@@ -129,7 +129,7 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   sameAs: c.cik ? [`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${c.cik}`] : [] });
 ---
 <BaseLayout title={[`${c.name} Insider Trades, Contracts & Lobbying`, `${c.name} Insider Trades & Contracts`, `${c.name} Insider Trades`]} description={description} section="Companies">
-  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: c.name, path }]} />
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks and companies", path: "/stocks/" }, { name: c.name, path }]} />
   <p class="eyebrow">Company{c.cik ? <> <span class="x">/</span> CIK {c.cik}</> : null}</p>
   <div class="title-row"><h1>{c.name}</h1><Follow kind="company" entity={c.slug!} label={c.name} /></div>
   <dl class="facts" data-entity-facts>

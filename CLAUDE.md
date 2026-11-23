@@ -4049,3 +4049,19 @@ it in the pull request that changes a cell.**
   noindex, canonical to the full page: not duplicate pages). Still open: one list in place of
   `/stocks/` and `/companies/`.
 
+
+### One page per company, stage 2c: one list (2026-11-23, interactive session)
+
+- **Rule.** `/stocks/` is the one list of stocks and companies. `/companies/` (the list) answers 301
+  to it (`companies/[...rest].astro`, empty `rest`); `pages/companies/index.astro` is gone, and the
+  address is out of the sitemap, `llms.txt`, the menus (`nav.ts`: "Stocks and companies") and every
+  breadcrumb.
+- **The list** (`pages/stocks/index.astro`): one row per ticker PAGE (folded share classes have no
+  row), with 12-month insider and congressional rows, value at reported prices and, when the ticker
+  page is the company's page, contract awards (180 days) and lobbying (year to date); sortable
+  (`table[data-stock-list]`). Below it, "Companies with no ticker here" (`section[data-company-only]`):
+  the companies that keep a `/companies/<slug>/` page. The links to `/industries/` and the financials
+  screener that the old company list carried are here now (`verify-industries` checks the first).
+- `verify-a11y` reads `/stocks/` and takes its sample company page from the list's second table.
+- **Still open:** market companies with several tickers (158) keep a company page and their ticker
+  pages (needs `od_stock` to return every class).

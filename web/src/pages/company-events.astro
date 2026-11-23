@@ -35,7 +35,7 @@ const csv = (await getDownloads()).files.find((f) => f.name === "company-events.
 const ld = datasetLd({ downloads: [csv?.path], name: "Company events: Form 8-K reports", path: "/company-events/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["Form 8-K", "company events", "SEC filings", "current reports"], sources: [{ name: "SEC EDGAR: Form 8-K", url: "https://www.sec.gov/search-filings" }], parentCatalogPath: "/" });
 ---
 <BaseLayout title="Company Events: Newest Form 8-K Reports" description={description} section="Companies" noindex={all.length === 0}>
-  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: "Company events", path: "/company-events/" }]} />
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks and companies", path: "/stocks/" }, { name: "Company events", path: "/company-events/" }]} />
   <h1>Company events</h1>
   <p class="lede">The Form 8-K reports that companies on this site filed with the SEC in the last 12 months, newest first, with the SEC's heading for each item a report names. Narrow the list by item, industry and date.</p>
 
