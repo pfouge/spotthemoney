@@ -72,7 +72,7 @@ export const congressGuides: ((c: GuideCtx) => Guide)[] = [
 
   // ───────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
-    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-11-22",
+    slug: "how-to-read-a-congressional-trade-report", group: "congress", updated: "2026-11-23",
     title: "How to read a congressional trade report",
     seoTitle: ["How to Read a Congressional Stock Trade Report (PTR)", "How to Read a Congressional Trade Report"],
     description: ["A periodic transaction report lists the asset, owner, type, trade date, filing date and a dollar range. What each column means, with the House and Senate codes.", "What each column of a congressional trade report means: owner, type, dates and the dollar range, with House and Senate codes."],
@@ -105,6 +105,8 @@ ${table(["Column", "What it tells you"], [
 <li><strong>Year by year, and whose trades.</strong> Trades counted by the year of the trade, and by the owner the report names: the member, the spouse, a dependent child or a joint holding.</li>
 <li><strong>How this record compares.</strong> The member's number of trades, median days from trade to report and share of trades reported after ${c.congressDeadlineDays} days, beside the same figures for every member with at least one trade on record here. Members who reported no trades are not part of the comparison.</li>
 <li><strong>Disclosed trades and filings.</strong> Every row with its link to the original report, then the list of reports themselves.</li>
+<li><strong>Recorded votes.</strong> The newest ${c.voteRows} roll calls with the member's recorded position, and counts of yea, nay, present and not voting over the last 12 months. Positions are as the House Clerk or the Senate recorded them, and "not voting" covers every reason. Nothing here compares a vote with a trade (see ${`<a href="/guides/how-to-read-a-roll-call-vote/">how to read a roll call vote</a>`}).</li>
+<li><strong>Outside spending.</strong> Independent expenditures that outside groups reported making to support or oppose the member, counted once and never netted. The member did not receive this money (see ${`<a href="/guides/campaign-donations-fec-data/#independent-expenditures">independent expenditures</a>`}).</li>
 <li><strong>Committee assignments.</strong> Current committees and subcommittees, with any leadership post. They are listed for context. This site does not match trades to committee business, and a seat on a committee is not evidence about any trade.</li>
 </ul>
 <p>The page ends with other members from the same state, members who traded the same tickers, and short answers to the questions people ask most about that member. All of it is counted from the same rows as the trade table.</p>` },
@@ -309,6 +311,71 @@ ${table(["", "House", "Senate"], [
     seeLive: [{ label: "Coverage by chamber", href: "/methodology/#coverage" }, { label: "Congress trades", href: "/congress/" }],
     covers: ["ingest/py/senate_import.py", "ingest/py/congress_ptr_job.py", "web/src/lib/coverage.ts"],
     ui: [],
+    facts: [],
+  }),
+  // ───────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "how-to-read-a-roll-call-vote", group: "congress", updated: "2026-11-23",
+    title: "How to read a roll call vote",
+    seoTitle: ["How to Read a Roll Call Vote: House and Senate Explained", "How to Read a Roll Call Vote"],
+    description: ["What a roll call vote is, what yea, nay, present and not voting mean, why numbering restarts each session, and where the official record is.", "What a roll call vote records, what yea, nay, present and not voting mean, and where the official record is."],
+    answer: "A roll call vote is a vote in which each member's own position is recorded by name, as yea (aye), nay (no) or present, with members who did not vote listed as not voting. Many decisions in Congress never get one: voice votes and unanimous consent record no individual positions.",
+    keyFacts: [
+      "Only a roll call (a recorded vote) names each member's position.",
+      "Not voting covers every reason for missing a vote: illness, travel, a conflict or a choice.",
+      "Roll call numbers restart every session, so a number means nothing without the chamber, congress and session.",
+      "The official records are kept by the Clerk of the House and the Secretary of the Senate.",
+      "This site shows positions as recorded. It does not score votes or link them to trades.",
+    ],
+    sections: [
+      { id: "what", h: "What is a roll call vote?", html: `
+<p>A roll call vote is a vote in which the chamber records how each member voted, by name. In the Senate a roll call happens when at least one-fifth of a quorum asks for the yeas and nays; the clerk then calls each senator's name (${ext("https://www.senate.gov/about/powers-procedures/voting.htm", "Senate: voting")}). The House uses an electronic voting system for its recorded votes, and publishes every one with its list of names (${ext("https://clerk.house.gov/Votes", "Clerk of the House: roll call votes")}).</p>
+<p>Each recorded vote gets a number within its chamber and session, plus the date, the question put to members, the totals and the result.</p>` },
+      { id: "not-roll-call", h: "What is not a roll call vote?", html: `
+<p>A voice vote: the presiding officer asks for the ayes and the nays and announces the result by ear, with no names and no tally. A vote by unanimous consent: a measure passes if no member objects, and nothing is counted. A division vote: members stand to be counted, again with no names.</p>
+<p>So a bill can pass with no member's position on record. A page of recorded votes is the part of the legislative record where positions are on file, not the whole of what Congress did.</p>` },
+      { id: "positions", h: "What do yea, nay, present and not voting mean?", html: `
+${table(["Position", "What the record says"], [
+  ["Yea (the Senate says yea; the House also uses aye)", "The member voted for the question put."],
+  ["Nay (the House also uses no)", "The member voted against it."],
+  ["Present", "The member was in the chamber and chose neither side. It counts toward a quorum and not toward the result."],
+  ["Not voting", "No vote was recorded. The record does not say why: a member may have been ill, travelling, at a family event, or may have chosen to skip the vote."],
+])}
+<p>Treat "not voting" as a record of no vote and nothing more. A percentage of missed votes mixes every reason together, which is why this site does not publish one.</p>` },
+      { id: "questions", h: "What are the different kinds of question?", html: `
+<p>The same bill can be voted on several times, and the question says which vote it was.</p>
+${table(["Question", "Plain meaning"], [
+  ["On passage", "The vote to approve the bill or resolution itself."],
+  ["On agreeing to the resolution or an amendment", "Approving a procedural resolution that sets the rules for debate, or a change to a bill's text."],
+  ["On the motion to proceed", "Whether to take up a measure for debate (a Senate step)."],
+  ["On the cloture motion", "Whether to end debate in the Senate. It usually needs 60 votes, not a simple majority."],
+  ["On the nomination", "Whether to confirm someone the President named (a Senate vote)."],
+  ["On the motion to recommit or to table", "Procedural moves. Their names say little about how members feel about the bill."],
+])}
+<p>A "nay" on a procedural question is not always a "nay" on the bill, and the reverse. Read the question before reading the position.</p>` },
+      { id: "numbering", h: "Why do roll call numbers start over?", html: `
+<p>Each chamber numbers its recorded votes from 1 at the start of every session of Congress, and a Congress has two sessions, one for each year. "House roll call 214" therefore exists in 2025 and again in 2026. The chamber, the congress and the session together identify one vote; this site's tables show the chamber and number, and the congress and session are in the title text and the CSV file.</p>` },
+      { id: "official", h: "Where is the official record?", html: `
+<p>Every roll call on this site links to its official page: the Clerk of the House for House votes (${ext("https://clerk.house.gov/Votes", "clerk.house.gov")}), and the Secretary of the Senate for Senate votes (${ext("https://www.senate.gov/legislative/common/generic/roll_call_lists.htm", "senate.gov roll call lists")}). If this site and the official page differ, the official page is right; please tell us on the <a href="/corrections/">corrections page</a>.</p>` },
+      { id: "here", h: "What does this site show, and what does it not?", html: `
+<p>A member's page lists the ${c.voteRows} newest roll calls with the member's recorded position and counts over the last 12 months. The <a href="/congress-votes/">roll call page</a> lists every roll call on record with its totals, and opens each one to show who voted which way, grouped by party.</p>
+<p>It does not score votes, rank members by attendance, say how often a member "voted with the party", or connect a vote to a trade or a contribution. Those would be claims about why someone acted, and a roll call record cannot support them.</p>` },
+    ],
+    faqs: [
+      { q: "What is the difference between a roll call vote and a voice vote?", a: "A roll call records how each member voted, by name. A voice vote is decided by ear and records no individual positions, so it never appears in roll call lists.", on: ["congress"] },
+      { q: "What does \"not voting\" mean on a roll call?", a: "It means no vote was recorded for that member. The record does not give a reason, so it covers illness, travel, family matters and a decision to skip the vote alike." },
+      { q: "Why does the same roll call number appear twice?", a: "Numbering restarts at 1 in every session of Congress and in each chamber. A vote is identified by its chamber, congress, session and number together." },
+      { q: "Where can I check a roll call vote officially?", a: "House votes are published by the Clerk of the House at clerk.house.gov, and Senate votes by the Senate at senate.gov. Each roll call on this site links to its official page." },
+    ],
+    sources: [
+      { name: "Senate: how the Senate votes", url: "https://www.senate.gov/about/powers-procedures/voting.htm" },
+      { name: "Senate: roll call vote lists", url: "https://www.senate.gov/legislative/common/generic/roll_call_lists.htm" },
+      { name: "Clerk of the House: roll call votes", url: "https://clerk.house.gov/Votes" },
+    ],
+    related: ["how-to-read-a-congressional-trade-report", "what-disclosure-data-cannot-tell-you", "house-and-senate-disclosure-differences"],
+    seeLive: [{ label: "Roll call votes", href: "/congress-votes/" }, { label: "Members of Congress", href: "/congress-members/" }],
+    covers: ["web/src/lib/votes.ts", "web/src/components/MemberVotes.astro", "web/src/pages/congress-votes.astro"],
+    ui: [{ text: "Roll call", on: "/congress-votes/" }, { text: "Positions", on: "/congress-votes/" }],
     facts: [],
   }),
 ];

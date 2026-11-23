@@ -26,6 +26,8 @@ import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOu
 import { SHOWN_CONCEPTS, CHECK_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
 import { financialsOf } from "./financials-build";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
+import { CSV_COLUMNS as VOTE_COLUMNS, newestFirst as voteNewestFirst } from "./votes";
+import { CSV_COLUMNS as OUTSIDE_COLUMNS } from "./outsidespending";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -40,7 +42,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -357,6 +359,24 @@ async function build(): Promise<Downloads> {
     { key: "page_url", about: "The company's page on this site.", get: (r) => { const c = fco(r); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
   ];
   add(file({ name: "company-financials.csv", group: "insiders", kind: "financials", title: "Company financials, as filed with the SEC", about: "One row per company and period: revenue, net income, earnings per share, cash flow and balance-sheet totals from annual and quarterly reports, for the companies this site tracks. Figures as filed, in the company's own currency.", updated: finRows.reduce<string | null>((a, r) => { const d = sourceFilings(r.period)[0]?.filed ?? null; return d && (!a || d > a) ? d : a; }, null) }, finCols, finRows));
+
+  // Roll-call votes (lib/votes.ts): one row per roll call. No per-member positions file: the
+  // positions are in the monthly working files listed on /developers/.
+  if (m.votes.shown) {
+    const rolls = [...m.votes.rolls].sort(voteNewestFirst);
+    add(file({ name: "congress-votes.csv", group: "congress", kind: "votes", title: "Roll-call votes of the House and the Senate", about: "One row per recorded roll call: the question, the result and the official totals. Members' positions are not in this file.", updated: newest(rolls.map((r) => r.date)) }, VOTE_COLUMNS, rolls));
+  }
+  // Independent expenditures (lib/outsidespending.ts): every row, with the column that says
+  // whether it counts. Split by quarter of the spending date only if one file would pass 15 MB.
+  if (m.outside.shown) {
+    const pageOf = (id: number) => { const p = m.people.get(id); const path = p ? personPath(p) : null; return path ? SITE_URL + path : null; };
+    const cols = OUTSIDE_COLUMNS(pageOf);
+    const rows = [...m.outside.rows].sort((a, b) => (a.spentAt ?? "") < (b.spentAt ?? "") ? 1 : (a.spentAt ?? "") > (b.spentAt ?? "") ? -1 : a.subId < b.subId ? -1 : 1);
+    const meta = { group: "washington" as const, kind: "outside" as const };
+    const whole = file({ ...meta, name: "independent-expenditures.csv", title: "Independent expenditures in federal races", about: "One row per expenditure as the spender reported it, with a column that says whether the row counts or repeats another report of the same spending.", updated: newest(rows.map((r) => r.spentAt)) }, cols, rows);
+    if (rows.length && Buffer.byteLength(whole.body(), "utf8") <= 15_000_000) add(whole);
+    else for (const piece of splitByPeriod(rows, (r) => r.spentAt)) add(file({ ...meta, name: `independent-expenditures-${piece.period}.csv`, title: `Independent expenditures, ${piece.label}`, about: `Expenditures spent in ${piece.label}, as reported.`, updated: newest(piece.rows.map((r) => r.spentAt)) }, cols, piece.rows));
+  }
 
   // Rates
   for (const f of await rateFiles()) add(f);

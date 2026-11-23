@@ -1,0 +1,77 @@
+---
+// "Outside spending: independent expenditures" on a member's page (lib/outsidespending.ts has
+// the rules). Renders nothing when no counted expenditure names the member. The member did not
+// receive this money, and support and oppose are never added together.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import DownloadCsv from "./DownloadCsv.astro";
+import { formatDate } from "../lib/format";
+import { num } from "../lib/flagship";
+import { memberOutsideSentence, usdFull, fecCommitteeUrl, SIDE_LABEL, OUTSIDE_CAVEAT, OUTSIDE_ROWS, DESCRIPTION_SHOWN, cleanOutsideText } from "../lib/outsidespending";
+
+interface Props { model: Flagship; personId: number; name: string; file?: DownloadFile | null }
+const { model, personId, name, file } = Astro.props;
+const o = model.outside.shown ? model.outside.byPerson.get(personId) : undefined;
+const heads = [{ label: "Date", type: "num" }, { label: "Spender", type: "text" }, { label: "Support or oppose", type: "text" }, { label: "Amount", type: "num" }, { label: "Purpose, as reported", type: "text" }];
+const sides = o ? [{ key: "S", label: "Reported in support", rows: o.supportBy }, { key: "O", label: "Reported in opposition", rows: o.opposeBy }].filter((s) => s.rows.length) : [];
+---
+{o && o.countedRows > 0 && (
+  <section aria-labelledby="outside-spending" data-outside-spending data-counted={o.countedRows} data-support={Math.round(o.totals.support)} data-oppose={Math.round(o.totals.oppose)}>
+    <h2 id="outside-spending">Outside spending: independent expenditures</h2>
+    <p data-os-summary>{memberOutsideSentence(name, model.outside.cycle, o.totals)}</p>
+    <p class="os-note" data-os-caveat>{OUTSIDE_CAVEAT} <a href="/guides/campaign-donations-fec-data/#independent-expenditures">What an independent expenditure is</a>.</p>
+    <p class="os-note"><a href="/outside-spending/">All outside spending, by candidate and by spender</a></p>
+    <DownloadCsv file={file} label="Download all expenditures (CSV)" note="every candidate" />
+    {sides.length > 0 && (
+      <div class="os-sides" data-os-by-spender>
+        {sides.map((s) => (
+          <div>
+            <h3>{s.label}: largest spenders</h3>
+            <div class="tablewrap"><table class="data" data-sortable data-side={s.key}><thead><tr>
+              <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by spender">Spender<span class="arr" aria-hidden="true"></span></button></th>
+              <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by amount">Amount<span class="arr" aria-hidden="true"></span></button></th>
+              <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by expenditures">Expenditures<span class="arr" aria-hidden="true"></span></button></th>
+            </tr></thead><tbody>
+              {s.rows.map((r) => {
+                const u = fecCommitteeUrl(r.committeeId);
+                return (
+                  <tr data-spender={r.committeeId ?? ""}>
+                    <td class="wrap" data-v={r.name.toLowerCase().replace(/[<>"]/g, "")}>{u ? <a href={u} rel="noopener nofollow" target="_blank">{r.name}</a> : r.name}</td>
+                    <td class="num" data-v={Math.round(r.amount)} data-os-amount>{usdFull(r.amount)}</td>
+                    <td class="num" data-v={r.rows}>{num(r.rows)}</td>
+                  </tr>
+                );
+              })}
+            </tbody></table></div>
+          </div>
+        ))}
+      </div>
+    )}
+    <h3>Newest expenditures</h3>
+    <div class="tablewrap"><table class="data" data-sortable data-os-rows><thead><tr>
+      {heads.map((h) => <th class={h.type === "num" && h.label === "Amount" ? "num" : ""} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      <th>Filing</th>
+    </tr></thead><tbody>
+      {o.newest.map((r) => {
+        const u = fecCommitteeUrl(r.committeeId);
+        const desc = cleanOutsideText(r.description, DESCRIPTION_SHOWN);
+        return (
+          <tr data-expenditure={r.subId}>
+            <td class="mono" data-v={(r.spentAt ?? "").replaceAll("-", "")}>{r.spentAt ? formatDate(r.spentAt) : "—"}</td>
+            <td class="wrap" data-v={r.committeeName.toLowerCase().replace(/[<>"]/g, "")}>{u ? <a href={u} rel="noopener nofollow" target="_blank">{r.committeeName}</a> : r.committeeName}</td>
+            <td data-v={r.side ?? ""}>{r.side ? SIDE_LABEL[r.side] : "Not stated"}</td>
+            <td class="num" data-v={r.amount ?? ""}>{r.amount != null ? usdFull(r.amount) : "—"}</td>
+            <td class="wrap os-desc" data-v={(desc ?? "").toLowerCase().replace(/[<>"]/g, "")}>{desc ?? "—"}</td>
+            <td>{r.url ? <a href={r.url} rel="noopener nofollow" target="_blank">Filing ↗</a> : "—"}</td>
+          </tr>
+        );
+      })}
+    </tbody></table></div>
+    {o.countedRows > OUTSIDE_ROWS && <p class="os-note" data-os-more>The {OUTSIDE_ROWS} newest of {num(o.countedRows)} counted expenditures are shown. The rest are in the CSV file.</p>}
+  </section>
+)}
+<style>
+  .os-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .os-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; }
+  .os-desc { min-width: 12rem; }
+</style>

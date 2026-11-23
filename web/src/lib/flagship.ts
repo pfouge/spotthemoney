@@ -18,6 +18,10 @@ import { emptySchedule13, schedule13Log, holdingsLog } from "./schedule13";
 import { loadSchedule13 } from "./schedule13-build";
 import { emptyFinancials, financialsLog } from "./financials";
 import { loadFinancials } from "./financials-build";
+import { emptyVotes, votesLog } from "./votes";
+import { loadVotes } from "./votes-build";
+import { emptyOutside, outsideLog } from "./outsidespending";
+import { loadOutside } from "./outsidespending-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -72,6 +76,7 @@ async function load(): Promise<Flagship> {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+    votes: emptyVotes(), outside: emptyOutside(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -159,7 +164,8 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+      votes: emptyVotes(), outside: emptyOutside() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -395,6 +401,21 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${financialsLog(model.financials, ciks)}`);
     } catch (err) {
       console.warn("[web] company financials skipped:", (err as Error).message);
+    }
+
+    // Roll-call votes and independent expenditures for the member pages and their hubs. Each in
+    // its own try/catch: a missing table leaves its sections out and nothing else.
+    try {
+      model.votes = await loadVotes(sql, model, builtAt);
+      console.log(`[web] ${votesLog(model.votes)}`);
+    } catch (err) {
+      console.warn("[web] roll-call votes skipped:", (err as Error).message);
+    }
+    try {
+      model.outside = await loadOutside(sql, model, builtAt);
+      console.log(`[web] ${outsideLog(model.outside)}`);
+    } catch (err) {
+      console.warn("[web] outside spending skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

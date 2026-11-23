@@ -93,7 +93,11 @@ const SCREEN_KEYS = ["q", "chamber", "party", "state", "committee", "side", "min
 const FIN_SCREENER = "/company-financials/";
 const FIN_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "sort", "dir", "page", "per"];
 const isFinView = (path, hash) => path === FIN_SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => FIN_KEYS.includes(key));
-const isScreenView = (path, hash) => isFinView(path, hash) || (path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key)));
+// The roll call hub's views (web/src/lib/votes.ts KEYS).
+const VOTES_HUB = "/congress-votes/";
+const VOTE_KEYS = ["q", "chamber", "result", "w", "member", "sort", "dir", "page", "n"];
+const isVoteView = (path, hash) => path === VOTES_HUB && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => VOTE_KEYS.includes(key));
+const isScreenView = (path, hash) => isVoteView(path, hash) || isFinView(path, hash) || (path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key)));
 for (const k of [...targets.keys()].filter((x) => x.includes("#"))) {
   const [path, hash] = [k.slice(0, k.indexOf("#")), k.slice(k.indexOf("#") + 1)];
   if (isScreenView(path, hash)) continue;   // checked under SCREEN below

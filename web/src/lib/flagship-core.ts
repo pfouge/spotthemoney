@@ -6,6 +6,8 @@
 import type { Form144Data } from "./form144";
 import type { Schedule13Data } from "./schedule13";
 import type { FinancialsData } from "./financials";
+import type { VotesModel } from "./votes";
+import type { OutsideData } from "./outsidespending";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -133,6 +135,10 @@ export interface Flagship {
   schedule13: Schedule13Data;
   /** Figures from companies' annual and quarterly reports, by 10-digit CIK (lib/financials.ts). Empty when the table cannot be read. */
   financials: FinancialsData;
+  /** Roll-call votes (lib/votes.ts). Empty when the tables cannot be read or hold nothing. */
+  votes: VotesModel;
+  /** Independent expenditures (lib/outsidespending.ts). Empty likewise. */
+  outside: OutsideData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

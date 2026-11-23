@@ -550,6 +550,76 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
 insert into company_financials_checked (cik, checked_at, status, rows, newest_filed)
 select cik, now(), 'ok', count(*), max(filed) from company_financials group by cik;
 
+-- Roll-call votes (migration 0035). 30 House and 14 Senate roll calls over the last 15 months, in
+-- two sessions so that numbering restarts; positions for every seeded member of Congress, with
+-- person_id set, plus six position rows with no person; every position value is used. One House
+-- roll call has no bill, one has a 400-character question, the oldest ones are more than 12
+-- months old. Dates are relative to the day the seed is loaded, so the 12-month window is exercised
+-- whenever it runs.
+insert into congress_votes (chamber, congress, session, roll_number, voted_at, vote_time, question, vote_type, result, bill, description, source_url)
+select c.chamber, 119, c.session, row_number() over (partition by c.chamber, c.session order by c.d, c.i), c.d, to_char(time '09:30' + (c.i * 7) * interval '1 minute', 'HH24:MI'),
+       case when c.chamber = 'house' and c.i = 9 then 'On Agreeing to the Amendment: ' || repeat('an amendment to the bill that changes the schedule of payments ', 7)
+            when c.i % 5 = 0 then 'On Motion to Recommit' when c.i % 4 = 0 then 'On the Nomination' when c.i % 3 = 0 then 'On the Cloture Motion' else 'On Passage' end,
+       case when c.i % 3 = 0 then 'RECORDED VOTE' else 'YEA-AND-NAY' end,
+       case when c.i % 5 = 0 then 'Failed' when c.i % 4 = 0 then 'Confirmed' else 'Passed' end,
+       case when c.chamber = 'house' and c.i = 7 then null when c.chamber = 'house' then 'H R ' || (100 + c.i) else 'S. ' || (200 + c.i) end,
+       'Seeded roll call ' || c.i,
+       case when c.chamber = 'senate' and c.i = 3 then null
+            when c.chamber = 'house' then 'https://clerk.house.gov/Votes/seed' || c.i else 'https://www.senate.gov/legislative/seed' || c.i end
+  from (
+    select 'house' as chamber, i, (current_date - (i * 15)) as d, case when extract(year from current_date - (i * 15)) = extract(year from current_date) then 2 else 1 end as session from generate_series(1, 30) i
+    union all
+    select 'senate', i, (current_date - (i * 31) - 4), case when extract(year from current_date - (i * 31) - 4) = extract(year from current_date) then 2 else 1 end from generate_series(1, 14) i
+  ) c;
+
+insert into congress_vote_positions (vote_id, member_key, person_id, name, party, state, position)
+select v.id, m.key, p.id, m.name, m.party, m.state,
+       (array['yea', 'nay', 'present', 'not_voting'])[1 + ((v.id + m.k) % 4)::int]
+  from congress_votes v
+  join (values ('house', 'W000001', 'Whitfield, Jordan', 'R', 'TX', 'Jordan Whitfield', 0), ('house', 'M000001', 'Marsh, Elena', 'D', 'CA', 'Elena Marsh', 1),
+               ('house', 'O000001', 'Okafor, Samuel', 'D', 'OH', 'Samuel Okafor', 2), ('house', 'D000001', 'Delacroix, Marcus', 'D', 'AK', 'Marcus Delacroix', 3),
+               ('senate', 'S0001', 'Lindqvist (I-TX)', 'I', 'TX', 'Priya Lindqvist', 1), ('senate', 'S0002', 'Abara (R-OH)', 'R', 'OH', 'Walter Abara Jr.', 2)) as m(chamber, key, name, party, state, fullname, k)
+    on m.chamber = v.chamber
+  left join people p on p.full_name = m.fullname;
+-- Six members with no match to a person (no page): a few House roll calls.
+insert into congress_vote_positions (vote_id, member_key, person_id, name, party, state, position)
+select v.id, x.key, null, x.name, x.party, x.state, x.pos
+  from (select id from congress_votes where chamber = 'house' order by voted_at desc limit 2) v
+  cross join (values ('X000001', 'Unmatched, Alex', 'R', 'FL', 'yea'), ('X000002', 'Unmatched, Bea', 'D', 'WA', 'nay'), ('X000003', 'Unmatched, Cal', 'R', 'KS', 'not_voting')) as x(key, name, party, state, pos);
+update congress_votes v set
+  yeas = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'yea'),
+  nays = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'nay'),
+  present = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'present'),
+  not_voting = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'not_voting');
+
+-- Independent expenditures (migration 0036): 60 rows in the current cycle. Committee A has regular
+-- rows and later notices (the later ones count); B has notices only; C has notices that are all
+-- older than its regular rows (none counts). Rows name two seeded members, a candidate with no
+-- person, a presidential candidate, a null amount, a null side and one dated in the future (the
+-- ingest stores such a date as null); descriptions carry quotes and angle brackets.
+insert into independent_expenditures (sub_id, committee_fec_id, committee_name, candidate_fec_id, candidate_name, candidate_office, candidate_state, candidate_district, candidate_party, person_id, support_oppose, amount, spent_at, disseminated_at, description, payee_name, is_notice, source_url)
+select 'SEED-IE-' || lpad(n::text, 3, '0'), c.id, c.name, k.id, k.name, k.office, k.state, k.district, k.party,
+       (select p.id from people p where p.full_name = k.person), s.side, s.amount, s.d, s.d,
+       case n % 4 when 0 then 'Television ad "Plain Talk" <30 sec>' when 1 then 'Digital advertising' when 2 then 'Mailers & door hangers' else 'Radio ad, 60 seconds' end,
+       'Seed payee ' || n, s.notice, 'https://docquery.fec.gov/pdf/seed/' || n || '.pdf'
+  from (
+    -- committee A, regular reports: support Marsh
+    select n, 'A' as cm, 'M' as cand, 'S' as side, (5000 * (n))::numeric as amount, date '2026-03-01' + n as d, false as notice from generate_series(1, 14) n
+    union all select 14 + n, 'A', 'M', 'S', 1000 * n, d, true from (values (1, date '2026-03-05'), (2, date '2026-03-15'), (3, date '2026-03-21'), (4, date '2026-04-02')) t(n, d)
+    union all select 18 + n, 'B', 'M', 'O', 2000, date '2026-05-01' + n, true from generate_series(1, 8) n
+    union all select 26 + n, 'C', 'W', 'O', 3000, date '2026-07-01' + n, false from generate_series(1, 5) n
+    union all select 31 + n, 'C', 'W', 'S', 4000, date '2026-06-01' + n, true from generate_series(1, 4) n
+    union all select 35 + n, 'D', 'Z', 'S', 750, date '2026-08-01' + n, false from generate_series(1, 12) n
+    union all select 47 + n, 'A', 'P', 'O', 12000, date '2026-09-01' + n, false from generate_series(1, 9) n
+    union all select 57, 'A', 'M', 'S', null, date '2026-04-10', false
+    union all select 58, 'D', 'M', null, 900, date '2026-04-11', false
+    union all select 59, 'D', 'W', 'S', 1500, null, false
+    union all select 60, 'D', 'Z', 'O', 640, date '2026-08-20', false
+  ) s
+  join (values ('A', 'C00000001', 'ALPHA VICTORY PAC'), ('B', 'C00000002', 'BETA NOTICE FUND'), ('C', 'C00000003', 'GAMMA "EARLY" NOTICES'), ('D', 'C00000004', 'DELTA PRIORITIES <PAC>')) c(key, id, name) on c.key = s.cm
+  join (values ('M', 'H0CA00001', 'MARSH, ELENA', 'H', 'CA', '09', 'DEM', 'Elena Marsh'), ('W', 'H0TX00002', 'WHITFIELD, JORDAN', 'H', 'TX', '14', 'REP', 'Jordan Whitfield'),
+               ('Z', 'H0NY00003', 'ZETA, CANDIDATE', 'H', 'NY', '03', 'IND', null), ('P', 'P00000001', 'PRESIDENT, PERSON', 'P', 'US', null, 'NPA', null)) k(key, id, name, office, state, district, party, person) on k.key = s.cand;
+
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
 -- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the
