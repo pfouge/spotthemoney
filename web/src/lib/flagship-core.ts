@@ -54,6 +54,8 @@ export interface Company {
   lobbying: LobbyingRow[];     // name-matched LDA filings (as client)
   underReview: boolean;
   od?: true;
+  /** The ticker page this company is shown on (lib/onepage.ts); null or unset when it has a page of its own. */
+  stockPath?: string | null;
 }
 export interface Security {
   id: number; ticker: string; type: string; name: string | null; companyId: number | null;
@@ -171,7 +173,8 @@ export function personPath(p: Person): string | null {
   if (!p.slug) return null;
   return p.isCongress ? `/congress/${p.slug}/` : `/insiders/${p.slug}/`;
 }
-export function companyPath(c: Company): string | null { return c.slug ? `/companies/${c.slug}/` : null; }
+/** Where a company is shown: its ticker page when it has one (lib/onepage.ts), otherwise /companies/<slug>/. */
+export function companyPath(c: Company): string | null { return c.stockPath ?? (c.slug ? `/companies/${c.slug}/` : null); }
 export function securityPath(s: Security): string { return `/stocks/${s.ticker.toLowerCase()}/`; }
 
 export function sum(xs: (number | null | undefined)[]): number { return xs.reduce<number>((a, b) => a + (b ?? 0), 0); }

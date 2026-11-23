@@ -122,7 +122,7 @@ csv.rows.forEach((r, i) => {
   seen.add(r.accession);
   if (!FORMS.includes(r.form_type) || r.schedule !== r.form_type.slice(9, 12) || (r.amendment === "true") !== r.form_type.endsWith("/A")) badRows++;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(r.filed_date) || Date.parse(r.filed_date + "T00:00:00Z") > built + DAY) badRows++;
-  if (!/^\d{10}$/.test(r.issuer_cik) || !/^\/companies\/[a-z0-9-]+\/$/.test(path(r.page_url))) badRows++;
+  if (!/^\d{10}$/.test(r.issuer_cik) || !/^\/(?:companies\/[a-z0-9-]+|stocks\/[a-z0-9._-]+)\/$/.test(path(r.page_url))) badRows++;
   if (r.sec_url && !/^https:\/\/www\.sec\.gov\//.test(r.sec_url)) badRows++;
   if ((r.shares_stated && !(Number(r.shares_stated) >= 0)) || (r.percent_of_class && !(Number(r.percent_of_class) >= 0 && Number(r.percent_of_class) <= 100))) badRows++;
   if (r.purpose_as_filed.length > 1000 || (r.purpose_as_filed && r.schedule !== "13D")) badRows++;

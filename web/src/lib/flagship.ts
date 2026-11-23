@@ -12,6 +12,7 @@
 // Everything is null-safe: with no DATABASE_URL, or empty tables, the model is empty and the
 // pages render their empty-state reason lines instead of blank tables.
 
+import { assignCompanyPages, onePageLog } from "./onepage";
 import { emptyForm144, form144Log, filerLog } from "./form144";
 import { loadForm144, siteCompanyCiks, siteCompanyByCik, sitePersonCiks } from "./form144-build";
 import { emptySchedule13, schedule13Log, holdingsLog } from "./schedule13";
@@ -488,6 +489,9 @@ async function load(): Promise<Flagship> {
 
     // Market-scope Form 4 rows (stage 3b): own slice, own try/catch. Only the home feed reads it.
     model.market = await loadMarketSlice(sql, model);
+
+    // One page per company: a company with a ticker page of its own is shown there (lib/onepage.ts).
+    console.log(`[web] ${onePageLog(assignCompanyPages(model))}`);
 
     model.counts = {
       people: model.people.size, companies: model.companies.size, securities: model.securities.size, filings: model.filings.size,

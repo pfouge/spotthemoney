@@ -1,0 +1,58 @@
+---
+// Federal contracts and lobbying filings matched to a company by exact normalised name
+// (USAspending recipient, LDA client). One component for the two pages a company can have: its
+// ticker page (/stocks/<ticker>/) or, when it has no ticker page, /companies/<slug>/.
+import type { Company, Flagship } from "../lib/flagship";
+import { money } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { orgPath } from "../lib/links";
+import { shortDescription, subAgencyLabel } from "../lib/contracts";
+import { naicsLabel } from "../lib/naics";
+import IssueList from "./IssueList.astro";
+import { issueIndex } from "../lib/lobbyissues";
+import Assistance from "./Assistance.astro";
+import LobbyContribFiler from "./LobbyContribFiler.astro";
+import { getDownloads } from "../lib/downloads";
+
+interface Props { model: Flagship; company: Company }
+const { model, company: c } = Astro.props;
+const issueIdx = issueIndex(model.lobbying, model.issueNames);
+// Grants, loans and direct payments sit after contracts; contributions the company's own lobbying
+// filings report (Form LD-203) after lobbying. Each prints nothing when it has nothing.
+const dlFiles = (await getDownloads()).files;
+---
+<h2 id="contracts">Federal contracts (USAspending, awards started in the last 180 days)</h2>
+{c.contracts.length === 0 ? <p class="empty-reason">No contract award starting in the last 180 days was found for a recipient named exactly "{c.name}". Subsidiaries and differently-spelled recipients are not matched. Search <a href="/contracts/">contracts</a>.</p> : (
+  <div class="tablewrap">
+    <table class="data">
+      <thead><tr><th>Start date</th><th>Awarding agency</th><th class="num">Award value</th><th>Description, as reported</th><th>End date</th><th>Industry code (NAICS)</th><th>Source</th></tr></thead>
+      <tbody>
+        {c.contracts.slice(0, 50).map((r) => (
+          <tr data-award={r.sourceRef}><td class="mono">{formatDate(r.actionDate)}</td><td>{r.agency ?? "—"}{subAgencyLabel(r.agency, r.subAgency) && <span class="con-sub" data-sub>{subAgencyLabel(r.agency, r.subAgency)}</span>}</td><td class="num">{money(r.amount, { compact: false })}</td><td class="wrap con-desc" data-desc>{shortDescription(r.description) ?? "—"}</td><td class="mono" data-end>{r.endDate ? formatDate(r.endDate) : "—"}</td><td class="wrap con-naics" data-naics><span class="mono">{r.naics ?? "—"}</span>{naicsLabel(r.naics) && <span class="con-sub" data-naics-title>{naicsLabel(r.naics)}</span>}</td><td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
+<Assistance model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "assistance")} />
+
+<h2 id="lobbying">Lobbying (Senate LDA, as client)</h2>
+{c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing posted since October 2025 names "{c.name}" as the client. Filings under a subsidiary or trade-association name are not matched. Search <a href="/lobbying/">lobbying</a>.</p> : (
+  <div class="tablewrap">
+    <table class="data">
+      <thead><tr><th>Period</th><th>Registrant</th><th>Issues</th><th class="num">Amount</th><th>Source</th></tr></thead>
+      <tbody>
+        {c.lobbying.slice(0, 50).map((r) => (
+          <tr><td class="mono">{r.year ?? "—"}{r.quarter ? ` Q${r.quarter}` : ""}</td><td>{orgPath(model, r.registrant) ? <a href={orgPath(model, r.registrant)!}>{r.registrant}</a> : (r.registrant ?? "—")}</td><td><IssueList row={r} index={issueIdx} /></td><td class="num">{money(r.amount, { compact: false })}</td><td>{r.sourceRef ? <a href={r.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : "—"}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+<LobbyContribFiler model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "lobbycontrib")} />
+<style>
+  .con-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  td.con-naics { min-width: 150px; max-width: 230px; padding-top: 6px; padding-bottom: 6px; }
+  td.con-desc { min-width: 240px; max-width: 360px; font-size: 13px; line-height: 1.35; padding-top: 6px; padding-bottom: 6px; }
+</style>

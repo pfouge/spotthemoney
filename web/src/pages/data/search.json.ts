@@ -38,7 +38,8 @@ export const GET: APIRoute = async () => {
   for (const c of m.companies.values()) {
     const path = companyPath(c);
     if (!path) continue;
-    rows.push(["Company", c.name, c.primaryTicker ?? "", path, c.txns.length]);
+    // A company shown on its ticker page is found by name and lands there (one page per company).
+    rows.push(["Company", c.name, c.stockPath ? c.stockPath.replace(/^\/stocks\/|\/$/g, "").toUpperCase() : (c.primaryTicker ?? ""), path, c.txns.length]);
   }
   for (const [title, sub, url] of ([
     ["Congress trades", "Every disclosed trade by members", "/congress/"], ["Member directory", "Members of Congress by chamber, party, state, committee", "/congress-members/"], ["Congress trade screener", "Filter every disclosed trade by member, ticker, party, state, committee, amount", "/congress-trades/"], ["Insider trades", "Form 4 filings", "/insiders/"],

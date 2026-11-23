@@ -1,5 +1,8 @@
 ---
-// Ticker page: /stocks/<ticker>/ — insider and congressional activity in one security.
+// Ticker page: /stocks/<ticker>/. Insider and congressional activity in one security, and, when
+// this ticker is its company's page (lib/onepage.ts: `home`), everything the company page used to
+// show: federal contracts, lobbying, the holdings the company reports in others, and the
+// company's insider rows that are not in this ticker.
 import LearnMore from "../../components/LearnMore.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
@@ -20,7 +23,11 @@ import { eventsInWindow } from "../../lib/events8k";
 import { payOf } from "../../lib/execpay-build";
 import { payGlance, shownYears as payShownYears } from "../../lib/execpay";
 import { financialsOf } from "../../lib/financials-build";
-import { holdersOf } from "../../lib/schedule13";
+import { holdersOf, holdingsOf } from "../../lib/schedule13";
+import { statementsFiledBy } from "../../lib/schedule13-build";
+import ReportedHoldings from "../../components/ReportedHoldings.astro";
+import WashingtonRecords from "../../components/WashingtonRecords.astro";
+import { companyHasRecords } from "../../lib/onepage";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
@@ -34,7 +41,7 @@ import ScreenerLink from "../../components/ScreenerLink.astro";
 import { screenerCountsFor } from "../../lib/screener";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, securityPath, companyPath, personPath, withinDays, num, plural, money, sum, senateShown } from "../../lib/flagship";
-import { datasetLd, SOURCES, fitDescription } from "../../lib/seo";
+import { datasetLd, organizationLd, SOURCES, fitDescription } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import VizStock from "../../components/VizStock.astro";
 import TradingView from "../../components/TradingView.astro";
@@ -57,10 +64,20 @@ const s = model.securities.get(id)!;
 const siblings = [...model.securities.values()].filter((x) => x.ticker.toLowerCase() === s.ticker.toLowerCase());
 const txns = siblings.flatMap((x) => x.txns).sort((a, b) => (b.disclosedAt ?? "").localeCompare(a.disclosedAt ?? ""));
 const insider = txns.filter((t) => t.source === "sec_form4");
+const onTicker = new Set(txns.map((t) => t.id));
 const congress = txns.filter((t) => t.source !== "sec_form4");
 const path = securityPath(s);
 const company = s.companyId != null ? model.companies.get(s.companyId) : undefined;
 const cpath = company ? companyPath(company) : null;
+// One page per company: this ticker page is the company's page.
+const home = !!company && cpath === path;
+const contracts = home ? company!.contracts : [];
+const lobbying = home ? company!.lobbying : [];
+const contractsTotal = sum(contracts.map((r) => r.amount));
+const lobbyingYear = new Date().getUTCFullYear();
+const lobbyingYtd = lobbying.filter((r) => r.year === lobbyingYear);
+// Schedule 13 statements the company filed about other companies on the site.
+const holdingsN = home ? holdingsOf(statementsFiledBy(model, company!.cik), model.builtAt).length : 0;
 // Form 144 notices about the company, last 12 months (empty until that load has reached today).
 const plannedN = company?.cik ? noticesInWindow(model.form144.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 // Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
@@ -87,6 +104,9 @@ const members = new Set(yCon.map((t) => t.personId));
 const buys = yIns.filter((t) => t.code === "P").length;
 const sells = yIns.filter(isOpenSale).length;
 const underReview = siblings.some((x) => x.underReview);
+// The company's Form 4 rows that are not in this ticker: another class of its shares, or a row
+// whose filing names the company but no ticker of its own (lib/issuer.ts).
+const otherInsider = home ? company!.txns.filter((t) => t.source === "sec_form4" && !onTicker.has(t.id)) : [];
 const lastUpdated = txns[0]?.filedAt ?? model.builtAt;
 const name = company?.name ?? s.name ?? s.ticker;
 const downloads = await getDownloads();
@@ -105,22 +125,34 @@ const signed = (n: number, f: (x: number) => string) => (n === 0 ? f(0) : `${n >
 const tone = (n: number) => (n > 0 ? "num pos" : n < 0 ? "num neg" : "num");
 const anyUnpriced = periods.some((p) => p.unpriced > 0);
 const latestOf = (rows: { disclosedAt: string | null }[]) => rows.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
+// Company-level records with no ticker of their own (grants and loans, contributions the company's
+// lobbying filings report): on this page only when it is the company's page.
+const assistRows = home ? (model.assistance.byCompany.get(company!.id) ?? []) : [];
+const lcf = home ? model.lobbyContrib.companies.get(company!.id) : undefined;
+const lcfItems = lcf ? lcf.years.reduce((a, y) => a + y.items, 0) : 0;
 const glance = [
   ...(insider.length ? [{ label: "Insider transactions", value: num(insider.length), note: latestOf(insider) ? `Latest ${formatDate(latestOf(insider)!)}` : undefined, href: "#insider-transactions" }] : []),
   ...(congress.length ? [{ label: "Congress trades", value: num(congress.length), note: latestOf(congress) ? `Latest ${formatDate(latestOf(congress)!)}` : undefined, href: "#congress-trades" }] : []),
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
+  ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(instN ? [{ label: "Institutional holders", value: num(instN), note: `as of ${formatDate(model.inst.period!)}`, href: "#institutional-holders" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
   ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
   ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
+  ...(contracts.length ? [{ label: "Federal contracts", value: num(contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
+  ...(home && assistRows.length ? [{ label: "Grants and loans", value: num(assistRows.length), note: `Newest started ${formatDate(assistRows[0]!.startDate)}`, href: "#assistance" }] : []),
+  ...(lobbying.length ? [{ label: "Lobbying filings", value: num(lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
+  ...(home && lcfItems ? [{ label: "Lobbyist contributions", value: num(lcf!.years[0]?.items ?? 0), note: `Items in ${lcf!.years[0]?.year}, filed by the company`, href: "#filer-contributions" }] : []),
 ];
-const hasData = txns.length > 0;
-const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
+const hasData = txns.length > 0 || (home && (companyHasRecords(company!) || assistRows.length > 0 || lcfItems > 0));
+const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), ...(home ? [{ id: "washington", label: "Washington" }] : []), { id: "record", label: "About this record" }] : [];
+// Contracts and lobbying, one sentence, only on a company's own page.
+const washington = !home ? "" : ` ${contracts.length ? `USAspending shows ${plural(contracts.length, "federal contract award")} with a combined value of ${money(contractsTotal)} to a recipient named ${company!.name} that started in the last 180 days` : `No federal contract award that started in the last 180 days was found for a recipient named exactly ${company!.name}`}${lobbyingYtd.length ? `, and ${plural(lobbyingYtd.length, "lobbying filing")} naming it as client ${lobbyingYtd.length === 1 ? "reports" : "report"} ${money(sum(lobbyingYtd.map((r) => r.amount)))} in ${lobbyingYear}.` : "; no lobbying filing names it as client this year."}`;
 
 const answer = txns.length === 0
-  ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.`
-  : `${s.ticker} (${name}) has ${plural(yIns.length, "disclosed insider transaction")} from ${plural(insiders.size, "insider")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "open-market sale")}, about ${money(sum(yIns.map((t) => t.value)))} at reported prices) and ${plural(yCon.length, "congressional trade")} from ${plural(members.size, "member")} of Congress. The most recent disclosure was filed ${formatDate(txns[0]!.filedAt)}.`;
+  ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.${washington}`
+  : `${s.ticker} (${name}) has ${plural(yIns.length, "disclosed insider transaction")} from ${plural(insiders.size, "insider")} in the last 12 months (${plural(buys, "open-market buy")}, ${plural(sells, "open-market sale")}, about ${money(sum(yIns.map((t) => t.value)))} at reported prices) and ${plural(yCon.length, "congressional trade")} from ${plural(members.size, "member")} of Congress. The most recent disclosure was filed ${formatDate(txns[0]!.filedAt)}.${washington}`;
 
 const description = fitDescription([
   `${s.ticker} (${name}) insider trades and congressional stock trades: SEC Form 4 and STOCK Act disclosures on record, with dates, values and source links.`,
@@ -128,18 +160,24 @@ const description = fitDescription([
 ]);
 const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.path], name: `${s.ticker} insider and congressional transactions`, path, description, dateModified: lastUpdated.slice(0, 10),
   keywords: [s.ticker, name, "insider trading", "Form 4", "congressional stock trades", "STOCK Act"], sources: [SOURCES.edgar, SOURCES.house], parentCatalogPath: "/stocks/" });
+const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s.ticker, description,
+  identifier: company!.cik ? { name: "SEC CIK", value: company!.cik } : null,
+  sameAs: company!.cik ? [`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${company!.cik}`] : [] }) : null;
 ---
-<BaseLayout title={[`${s.ticker} Insider Trades & Congress Trades: ${name}`, `${s.ticker} Insider & Congress Trades: ${name}`, `${s.ticker} Insider Trades & Congress Trades`]} description={description} noindex={txns.length === 0} section="Stocks">
+<BaseLayout title={[`${s.ticker} Insider Trades & Congress Trades: ${name}`, `${s.ticker} Insider & Congress Trades: ${name}`, `${s.ticker} Insider Trades & Congress Trades`]} description={description} noindex={!hasData} section="Stocks">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }, { name: s.ticker, path }]} />
   <p class="eyebrow">Stock <span class="x">/</span> {s.type}</p>
   <div class="title-row"><h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1><Follow kind="stock" entity={s.ticker} label={s.ticker} /></div>
   <dl class="facts" data-entity-facts>
-    {company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
+    {company && <div><dt>Company</dt><dd>{cpath && !home ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     <div><dt>Security</dt><dd>{s.type === "etf" ? "ETF" : s.type === "adr" ? "ADR" : s.type.charAt(0).toUpperCase() + s.type.slice(1)}</dd></div>
     {industry && <div data-industry><dt>Industry, as the SEC classifies it</dt><dd>{industryLink ? <a href={industryLink}>{industry.label}</a> : industry.label}</dd></div>}
     {size && <div><dt>Size, estimated from filings</dt><dd>{size.label} ({size.range})</dd></div>}
     {insiderList.length > 0 && <div><dt>Insiders on record</dt><dd><a href="#insiders">{num(insiderList.length)}</a></dd></div>}
     {memberList.length > 0 && <div><dt>Members of Congress</dt><dd><a href="#members">{num(memberList.length)}</a></dd></div>}
+    {home && <div><dt>Federal contracts on record</dt><dd>{contracts.length ? <a href="#contracts">{plural(contracts.length, "award")}</a> : "none matched"}</dd></div>}
+    {home && <div><dt>Lobbying filings on record</dt><dd>{lobbying.length ? <a href="#lobbying">{num(lobbying.length)}</a> : "none matched"}</dd></div>}
+    {home && company!.cik && <div><dt>SEC filings</dt><dd><a href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${company!.cik}`} rel="noopener" target="_blank">EDGAR ↗</a></dd></div>}
     {lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(lastTrade)}</dd></div>}
   </dl>
 
@@ -238,6 +276,14 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
   <h2 id="insider-transactions">Insider transactions</h2>
   <TxnTable model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
 
+  {otherInsider.length > 0 && (
+    <section aria-labelledby="other-insider-rows" data-other-insider>
+      <h2 id="other-insider-rows">Other insider rows for {company!.name}</h2>
+      <p class="section-note">Form 4 rows filed for this company that are not in {s.ticker}: another class of its shares, or a filing that names the company without this ticker. They are not in the {s.ticker} figures above.</p>
+      <TxnTable model={model} txns={otherInsider} showPerson showSecurity emptyReason="" />
+    </section>
+  )}
+
   <h2 id="congress-trades">Congressional trades</h2>
   <ScreenerLink ticker={s.ticker} n={screenerCountsFor(model, personPath).ticker.get(s.ticker.toUpperCase()) ?? 0} of={`in ${s.ticker} by members of Congress`} />
   <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
@@ -246,12 +292,14 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
 
   </PageGroup>
 
-  <AdSlot label="Advertisement" show={txns.length > 0} />
+  <AdSlot label="Advertisement" show={hasData} />
 
-  {(holdersN > 0 || instN > 0) && (
+  {(holdersN > 0 || holdingsN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
       <LargeHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "holders")} />
       <InstHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "inst")} />
+
+      {home && <ReportedHoldings model={model} cik={company!.cik} name={company!.name} file={downloads.files.find((f) => f.kind === "holders")} />}
     </PageGroup>
   )}
 
@@ -260,6 +308,12 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
       <Financials model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "financials")} />
       <ExecutivePay model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "execpay")} />
       <CompanyEvents model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "events")} />
+    </PageGroup>
+  )}
+
+  {home && (
+    <PageGroup id="washington" label="Washington">
+      <WashingtonRecords model={model} company={company!} />
     </PageGroup>
   )}
 
@@ -276,15 +330,17 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
     </section>
   )}
 
-  <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
+  <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5).concat([...(contracts.length ? ["federal-contracts-usaspending"] : []), ...(lobbying.length ? ["lobbying-disclosure-reports"] : [])])} />
 
   <h2 id="sources">Sources and method</h2>
-  <SourcePanel model={model} txns={txns} edgarId={s.ticker} />
-  <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  <SourcePanel model={model} txns={txns} edgarId={s.ticker}
+    extra={home ? [{ name: "USAspending, federal contract awards", records: contracts.length, unit: contracts.length === 1 ? "award" : "awards", href: SOURCES.usaspending.url, linkLabel: "USAspending" }, { name: "Lobbying disclosure filings", records: lobbying.length, unit: lobbying.length === 1 ? "filing" : "filings", href: SOURCES.lda.url, linkLabel: "LDA.gov search" }] : undefined} />
+  <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress.{home && " Contracts and lobbying are matched by exact normalized name (suffixes like Inc. and Corp. ignored) to USAspending recipients and LDA clients, a conservative match that misses subsidiaries on purpose."} See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
   </PageGroup>
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures are shown as filed and may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
+  {orgLd && <JsonLd data={orgLd} />}
 </BaseLayout>
 
 <style>

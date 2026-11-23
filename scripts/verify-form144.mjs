@@ -120,7 +120,7 @@ csv.rows.forEach((r, i) => {
   seen.add(r.accession);
   if (!["144", "144/A"].includes(r.form_type) || (r.amendment === "true") !== (r.form_type === "144/A")) badRows++;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(r.filed_date) || Date.parse(r.filed_date + "T00:00:00Z") > built + DAY) badRows++;
-  if (!/^\d{10}$/.test(r.issuer_cik) || !/^\/companies\/[a-z0-9-]+\/$/.test(r.page_url.replace(/^https?:\/\/[^/]+/, ""))) badRows++;
+  if (!/^\d{10}$/.test(r.issuer_cik) || !/^\/(?:companies\/[a-z0-9-]+|stocks\/[a-z0-9._-]+)\/$/.test(r.page_url.replace(/^https?:\/\/[^/]+/, ""))) badRows++;
   if (r.sec_url && !/^https:\/\/www\.sec\.gov\//.test(r.sec_url)) badRows++;
   if ((r.shares_to_be_sold && !(Number(r.shares_to_be_sold) > 0)) || (r.stated_market_value && !(Number(r.stated_market_value) > 0))) badRows++;
   if (i && (csv.rows[i - 1].filed_date < r.filed_date)) order = false;

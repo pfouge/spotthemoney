@@ -87,12 +87,12 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "12458bedacead585",
+      "web/src/lib/downloads.ts": "1686ff1ace53018e",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "4b305ceedac23583",
+      "web/src/pages/downloads/index.astro": "0dd0f86f9fb8dc5b",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "cfe6f4d2ea734abb",
-      "web/src/pages/developers.astro": "e510fa2eeeaaf48f"
+      "web/src/lib/datafiles.ts": "2e6787a6687f9d77",
+      "web/src/pages/developers.astro": "ad02755c67844e81"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
@@ -121,7 +121,7 @@
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "ecaef8ae1ca32be5",
+      "web/src/pages/congress/[slug].astro": "0311ce878572ffe1",
       "web/src/lib/directory.ts": "0466a663969706ab",
       "web/src/pages/congress-members.astro": "bf0dc59073a99673",
       "web/src/lib/committees.ts": "c0071ad12b95f7f0",
@@ -236,7 +236,7 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-22",
+    "reviewed": "2026-11-23",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
@@ -246,12 +246,12 @@
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
-      "web/src/lib/server/od.ts": "b2539309b73d17e4",
+      "web/src/lib/server/od.ts": "43610fdee104e98d",
       "web/src/components/OdPageView.astro": "5a94f9549888f514",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "e038cc5f546a77e0",
+      "web/src/pages/stocks/[ticker].astro": "07fdf7340bea92f4",
       "web/src/pages/insiders/[slug].astro": "f0ad9f2febae04a5",
-      "web/src/pages/companies/[slug].astro": "056bfee9991aea0b",
+      "web/src/pages/companies/[slug].astro": "d97fa931602b0dc0",
       "web/src/lib/form144.ts": "5792da219a57b938",
       "web/src/components/PlannedSales.astro": "cecc243987af144c",
       "web/src/lib/financials.ts": "5ac8828e6d9e5b2c",

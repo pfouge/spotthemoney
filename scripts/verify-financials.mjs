@@ -131,7 +131,7 @@ let heldRows = 0, heldFigures = 0, nonUsd = 0;
 for (const [cik, rows] of byCik) {
   ok(/^\d{10}$/.test(cik), `cik "${cik}" is not ten digits`);
   ok(new Set(rows.map((r) => r.currency)).size === 1 && /^[A-Z]{3}$/.test(rows[0].currency), `${rows[0].company}: more than one currency, or an odd one`);
-  ok(new Set(rows.map((r) => r.page_url)).size === 1 && rows[0].page_url.includes("/companies/"), `${rows[0].company}: page_url`);
+  ok(new Set(rows.map((r) => r.page_url)).size === 1 && /\/(companies|stocks)\/[^/]+\/$/.test(rows[0].page_url), `${rows[0].company}: page_url`);
   if (rows[0].currency !== "USD") nonUsd++;
   for (const kind of ["fiscal_year", "quarter"]) {
     const ps = rows.filter((r) => r.period === kind);
