@@ -2,7 +2,7 @@
 // the current I-Bond rate from the database. A guide that quotes one of these can never
 // disagree with the site, because both read the same thing.
 import { NOTICE_ROWS, VALUE_MAX_PER_SHARE } from "../form144";
-import { YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES } from "../financials";
+import { YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, RATIOS } from "../financials";
 import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL } from "../schedule13";
 import { DESCRIPTION_SHOWN } from "../contracts";
 import { EVENT_ROWS, EVENT_WINDOW_DAYS } from "../events8k";
@@ -70,6 +70,8 @@ export interface GuideCtx {
   schedule13Shown: boolean; holderRows: number; holderThreshold: number; holderRecordStart: string;
   /** True when company financials are on file (lib/financials.ts); the fiscal years and quarters a page shows; the share count under which earnings per share are held back, as text. */
   financialsShown: boolean; finYears: number; finQuarters: number; finMinImpliedShares: string;
+  /** The limits beyond which a ratio is printed in words (lib/financials.ts RATIOS): net margin in percent, liabilities to equity. */
+  finMarginCap: string; finLeCap: string;
   /** True when Form 8-K reports are on file (lib/events8k.ts); the rows a company page prints and the window in days. */
   eventsShown: boolean; eventRows: number; eventWindowDays: number;
   /** True when executive pay figures are on file (lib/execpay.ts); the fiscal years a page shows; the size ("$1 billion", "$1,000") at which a figure is marked. */
@@ -123,6 +125,7 @@ async function build(): Promise<GuideCtx> {
     form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS, form144ValueMaxPerShare: VALUE_MAX_PER_SHARE.toLocaleString("en-US"),
     schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL,
     financialsShown: m.financials.byCik.size > 0, finYears: YEARS_SHOWN, finQuarters: QUARTERS_SHOWN, finMinImpliedShares: MIN_IMPLIED_SHARES.toLocaleString("en-US"),
+    finMarginCap: RATIOS[0]!.cap.toLocaleString("en-US"), finLeCap: RATIOS[1]!.cap.toLocaleString("en-US"),
     eventsShown: m.events.byCik.size > 0, eventRows: EVENT_ROWS, eventWindowDays: EVENT_WINDOW_DAYS,
     execPayShown: m.execPay.byCik.size > 0, payYears: PAY_YEARS, payLarge: `$${(PAY_LARGE / 1e9).toLocaleString("en-US")} billion`, paySmall: `$${PAY_SMALL.toLocaleString("en-US")}`,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),

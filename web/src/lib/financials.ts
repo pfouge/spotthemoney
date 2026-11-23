@@ -19,6 +19,15 @@
 //     that differ from "liabilities and equity" on the same date by more than BALANCE_TOLERANCE;
 //     cash larger than total assets. The CSV file keeps the figure as filed and names the check.
 //   - No ratio that needs a market price, no score, rating or ranking, no forecast.
+//   - Two ratios are worked out by this site (queue item A1-b), each from two lines printed in
+//     the SAME column, and labelled as this site's arithmetic with its two inputs named: net
+//     margin (net income ÷ revenue) and liabilities to equity (total liabilities ÷ shareholders'
+//     equity). A ratio exists only when both figures are printed (on file and not held back) and
+//     the figure divided by is above zero; otherwise the cell is a dash (a figure is missing) or
+//     "n/a" (the divisor is zero or negative). The two figures can come from different reports
+//     (equity is restated in three annual reports, total liabilities in two: on production 46%
+//     of pairs), so the rule is "the two figures printed above", not "one report". A ratio feeds
+//     no total, filter, sort order or ranking.
 //   - Long-term debt is shown only for a company whose fiscal years and quarters on file all give
 //     it under ONE heading (XBRL tag), and the line is named after that heading, because the
 //     headings measure different things (all long-term debt; the part due after a year; debt
@@ -132,6 +141,61 @@ export interface CompanyFinancials {
    * quarter on file. One heading: the line is shown, named after it. Several: no line.
    */
   debtTags: string[];
+}
+
+// ── ratios worked out from two printed lines ────────────────────────────────────────────────
+export interface RatioDef {
+  key: "net_margin" | "liabilities_to_equity";
+  /** CSV column. */
+  column: string;
+  label: string;
+  /** The two inputs, in words, printed under the label. */
+  inputs: string;
+  num: string; den: string;
+  /** Printed as a percentage (one decimal) or as a plain number (two decimals). */
+  percent: boolean;
+  /** Beyond this (either way for a percentage) the cell says so in words; the CSV keeps the number. */
+  cap: number;
+}
+export const RATIOS: readonly RatioDef[] = [
+  { key: "net_margin", column: "net_margin_pct", label: "Net margin", inputs: "net income ÷ revenue", num: "net_income", den: "revenue", percent: true, cap: 1000 },
+  { key: "liabilities_to_equity", column: "liabilities_to_equity", label: "Liabilities to equity", inputs: "total liabilities ÷ shareholders' equity", num: "liabilities", den: "equity", percent: false, cap: 100 },
+];
+/** ok: worked out. none: a figure it needs is missing or not shown. base: the figure divided by is zero or negative. */
+export type RatioStatus = "ok" | "none" | "base";
+export interface RatioCell { status: RatioStatus; value: number | null }
+export const RATIO_HEAD = "Worked out by this site from the lines above";
+export const RATIO_NA = "n/a";
+
+/** A ratio of two figures of one period, as a page prints it: a percentage rounded to one decimal, or a number rounded to two. */
+export function ratioOf(p: Period, r: RatioDef): RatioCell {
+  const a = p.cells[r.num], b = p.cells[r.den];
+  if (!a || !b || a.held || b.held || !Number.isFinite(a.value) || !Number.isFinite(b.value)) return { status: "none", value: null };
+  if (!(b.value > 0)) return { status: "base", value: null };
+  const raw = r.percent ? Math.round((a.value / b.value) * 1000) / 10 : Math.round((a.value / b.value) * 100) / 100;
+  return { status: "ok", value: raw === 0 ? 0 : raw };
+}
+/** "55.6%", "−12.4%", "over 1,000%", "under −1,000%"; "0.40", "over 100". */
+export function ratioText(r: RatioDef, v: number): string {
+  const cap = r.cap.toLocaleString("en-US");
+  if (r.percent) {
+    if (v > r.cap) return `over ${cap}%`;
+    if (v < -r.cap) return `under −${cap}%`;
+    return `${v < 0 ? "−" : ""}${trim(Math.abs(v), 1)}%`;
+  }
+  if (v > r.cap) return `over ${cap}`;
+  return `${v < 0 ? "−" : ""}${trim(Math.abs(v), 2)}`;
+}
+/** The ratios a table has a line for: at least one of its columns has a value or an "n/a". */
+export function shownRatios(cols: readonly Period[]): RatioDef[] {
+  return RATIOS.filter((r) => cols.some((p) => ratioOf(p, r).status !== "none"));
+}
+/** The sentence under the tables, naming the ratios shown. */
+export function ratioNote(shown: readonly RatioDef[]): string {
+  if (!shown.length) return "";
+  const names = shown.map((r) => `${r.label.toLowerCase()} (${r.inputs})`);
+  const caps = shown.map((r) => `${r.cap.toLocaleString("en-US")}${r.percent ? "% either way" : ""} for ${r.label.toLowerCase()}`);
+  return `${names.join(" and ").replace(/^./, (c) => c.toUpperCase())} ${shown.length === 1 ? "is" : "are"} this site's arithmetic on two lines of the same column, not ${shown.length === 1 ? "a figure" : "figures"} the company filed. A dash means one of the two figures is missing or not shown; "${RATIO_NA}" means the figure divided by is zero or negative, so the result would say nothing. Beyond ${caps.join(" and ")} the cell says so in words, and the CSV file has the number. A ratio describes one period of one company; it is not a verdict on the company and is used in no total, filter or sort order on this site.`;
 }
 
 const DAY = 86_400_000;
@@ -336,6 +400,7 @@ export function financialsLog(d: FinancialsData, siteCiks: ReadonlySet<string>):
   let debtOne = 0, debtSeveral = 0, debtNone = 0, debtFigures = 0;
   const debtBy: Record<string, number> = {};
   const heldBy: Record<string, number> = {};
+  const ratios: Record<string, { ok: number; base: number; capped: number; companies: number }> = {};
   for (const [cik, rs] of d.byCik) {
     if (!siteCiks.has(cik)) continue;
     rows += rs.length;
@@ -351,9 +416,14 @@ export function financialsLog(d: FinancialsData, siteCiks: ReadonlySet<string>):
     if (f.debtTags.length === 1) { debtOne++; debtBy[f.debtTags[0]!.replace(/^.*:/, "")] = (debtBy[f.debtTags[0]!.replace(/^.*:/, "")] ?? 0) + 1; }
     else if (f.debtTags.length > 1) debtSeveral++;
     else debtNone++;
-    for (const p of [...f.years, ...f.quarters]) if (p.cells[DEBT_CONCEPT]) debtFigures++;
+    for (const p of [...f.years, ...f.quarters]) {
+      if (p.cells[DEBT_CONCEPT]) debtFigures++;
+      for (const r of RATIOS) { const x = ratioOf(p, r); const e = (ratios[r.key] ??= { ok: 0, base: 0, capped: 0, companies: 0 }); if (x.status === "ok") { e.ok++; if (Math.abs(x.value!) > r.cap) e.capped++; } else if (x.status === "base") e.base++; }
+    }
+    for (const r of RATIOS) if ([...f.years, ...f.quarters].some((p) => ratioOf(p, r).status === "ok")) ratios[r.key]!.companies++;
   }
+  const rt = RATIOS.map((r) => { const e = ratios[r.key] ?? { ok: 0, base: 0, capped: 0, companies: 0 }; return `${r.label.toLowerCase()} worked out for ${e.ok} periods of ${e.companies} companies (${e.capped} beyond ${r.cap}${r.percent ? "%" : ""}), ${RATIO_NA} for ${e.base}`; }).join("; ");
   const db = Object.entries(debtBy).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, n]) => `${k} ${n}`).join(", ");
   const hb = Object.entries(heldBy).sort().map(([k, n]) => `${k} ${n}`).join(", ");
-  return `financials (SEC XBRL): ${rows} rows read for ${d.byCik.size} companies, newest filing ${d.newestFiled ?? "none"}; ${withTables} companies with a table (${nonUsd} not in dollars); ${years} fiscal years and ${quarters} quarters on file; on pages: ${held} figures not shown${hb ? ` (${hb})` : ""}, ${tagChanged} filed under a changed tag; ${otherUnit} rows in a second currency left out; long-term debt: ${debtFigures} figures in the periods on file, ${debtOne} companies with a line${db ? ` (${db})` : ""}, ${debtSeveral} with several headings and no line, ${debtNone} with none on file`;
+  return `financials (SEC XBRL): ${rows} rows read for ${d.byCik.size} companies, newest filing ${d.newestFiled ?? "none"}; ${withTables} companies with a table (${nonUsd} not in dollars); ${years} fiscal years and ${quarters} quarters on file; on pages: ${held} figures not shown${hb ? ` (${hb})` : ""}, ${tagChanged} filed under a changed tag; ${otherUnit} rows in a second currency left out; long-term debt: ${debtFigures} figures in the periods on file, ${debtOne} companies with a line${db ? ` (${db})` : ""}, ${debtSeveral} with several headings and no line, ${debtNone} with none on file; ratios in the periods on file: ${rt}`;
 }

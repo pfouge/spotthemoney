@@ -4132,3 +4132,36 @@ it in the pull request that changes a cell.**
 - Not done: ratios of filed figures (A1-b); debt on the on-demand pages; a per-table rule that would show the 147
   companies whose annual reports use one heading and quarterly reports another (possible with a label per table, but it
   needs a way to catch the Domino's case first).
+
+### Two ratios of filed figures in "Financials, as filed" (2026-11-23, scheduled parity run) — queue item A1-b, stage 1 (company pages and the CSV; not the screener)
+
+- **What.** At the foot of each table of the Financials section (stock and company pages), under a heading row "Worked
+  out by this site from the lines above" (`tr[data-fin-calc]`), up to two lines (`tr[data-fin-ratio]`): **Net margin**
+  (net income ÷ revenue, a percentage with one decimal) and **Liabilities to equity** (total liabilities ÷ shareholders'
+  equity, two decimals). A sentence under the tables (`p[data-fin-ratio-note]`) says they are this site's arithmetic, not
+  filed figures. `company-financials.csv` gained `net_margin_pct` and `liabilities_to_equity` (after
+  `liabilities_and_equity`). Methodology `#financial-ratios`; guide `what-is-form-4` (a paragraph in `#financials`, one
+  FAQ, one label). No migration, no data job change, no new file.
+- **Rules** (`RATIOS`, `ratioOf`, `ratioText`, `shownRatios`, `ratioNote` in `web/src/lib/financials.ts`; tests in
+  `scripts/financials.test.ts`): a ratio is of the two figures PRINTED in the same column. Worked out only when both are
+  on file and not held back and the figure divided by is above zero. Otherwise the cell is a dash (`data-status="none"`)
+  or "n/a" (`base`: revenue zero or below, equity zero or negative). A line exists in a table only when some column has a
+  value or an "n/a". Beyond the cap (1,000% either way; 100) the cell says "over 1,000%", "under −1,000%", "over 100";
+  the CSV keeps the number. **Not required: that both figures come from one report.** Tried on production first: equity
+  is restated in three annual reports and total liabilities in two, so 46% of liabilities and equity pairs (and 12% of
+  income and revenue pairs) come from different reports; the rule "the two lines above" is what a reader can check.
+  A ratio is in no total, filter, sort order or ranking.
+- **Why caps and "n/a" (production, SQL, 2026-11-23, dollar reporters):** of 12,578 income and revenue pairs 76 have
+  revenue of zero or below and 204 a margin beyond 1,000% (the extremes are −2,022,233% and +32,748%); of 9,978
+  liabilities and equity pairs 650 have equity of zero or below and 35 a figure above 100 (the largest 471,320).
+- **Build log** line `[web] financials (SEC XBRL): ...` now ends `ratios in the periods on file: net margin worked out for
+  N periods of C companies (K beyond 1000%), n/a for M; liabilities to equity worked out for ...`. `verify-financials`
+  prints the same four numbers per ratio from the CSV with its own arithmetic: **after a deploy the two lines must agree.**
+- **Verifier.** `verify-financials`: the two CSV columns on every row against its own arithmetic; on pages the lines, their
+  order (figures, heading row, ratio lines, Report), each cell's status, number and printed text, the sentence and its
+  `data-ratios`; it always reads a page with an "n/a", one beyond a cap, one with no line and one with a negative margin
+  per ratio. The seed's SWAP trust has a quarter with no revenue and negative equity and one beyond both caps.
+- **Not done (A1-b stage 2): ratio columns in the financials screener.** A sortable ratio column is closer to a ranking
+  than a sortable filed figure, and amounts in different currencies are no obstacle for a ratio, so it needs its own
+  decision and wording (and three places for any new hash key). Also not done: the ratios on the on-demand pages; other
+  ratios (anything with cash flow, debt or a price).
