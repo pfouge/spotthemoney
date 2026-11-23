@@ -10,7 +10,7 @@ import { industryOf } from "./entity";
 import { payOf } from "./execpay-build";
 import { sortYears } from "./execpay";
 import { divisionSlug } from "./industries";
-import { FS_STORED, packFinScreen, unpackFinScreen, finScreenCounts, finScreenLog, type FinScreenData, type FsCompany, type FsConcept, type FsPeriod } from "./finscreen";
+import { FS_STORED, packFinScreen, unpackFinScreen, finScreenCounts, finScreenLog, divisionLinkOf, divisionLinkLog, type DivisionLink, type FinScreenData, type FsCompany, type FsConcept, type FsPeriod } from "./finscreen";
 
 function toPeriod(p: Period | undefined): FsPeriod | null {
   if (!p) return null;
@@ -46,7 +46,7 @@ export function finScreenCompanies(m: Flagship): FsCompany[] {
   return out;
 }
 
-export interface SiteFinScreen { data: FinScreenData; all: FsCompany[]; counts: ReturnType<typeof finScreenCounts> }
+export interface SiteFinScreen { data: FinScreenData; all: FsCompany[]; counts: ReturnType<typeof finScreenCounts>; byCik: Map<string, FsCompany> }
 const memo = new WeakMap<object, SiteFinScreen>();
 export function siteFinScreen(m: Flagship): SiteFinScreen {
   let x = memo.get(m);
@@ -54,10 +54,18 @@ export function siteFinScreen(m: Flagship): SiteFinScreen {
     const data = packFinScreen(m.builtAt.slice(0, 10), finScreenCompanies(m));
     // Read back through the packed form, so the page prints exactly what the data file holds.
     const all = unpackFinScreen(data);
-    x = { data, all, counts: finScreenCounts(all) };
+    x = { data, all, counts: finScreenCounts(all), byCik: new Map(all.map((c) => [c.cik, c])) };
     memo.set(m, x);
     // Build log: the figures to compare with a direct count on the database.
     console.log(`[web] ${finScreenLog(all)}`);
+    console.log(`[web] ${divisionLinkLog(all, x.counts)}`);
   }
   return x;
+}
+
+/** The screener link a company's Financials section carries (lib/finscreen.ts divisionLinkOf). */
+export function finDivisionLink(m: Flagship, cik: string | null | undefined): DivisionLink | null {
+  if (!cik) return null;
+  const s = siteFinScreen(m);
+  return divisionLinkOf(s.byCik.get(cik.trim().padStart(10, "0")), s.counts);
 }

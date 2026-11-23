@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  packFinScreen, unpackFinScreen, rowsFor, finMatches, finScreen, sortFsRows, fsSummaryLine, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, finScreenCounts, finScreenerHref,
+  packFinScreen, unpackFinScreen, rowsFor, finMatches, finScreen, sortFsRows, fsSummaryLine, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, finScreenCounts, finScreenerHref, divisionLinkOf, divisionLinkLog,
   fsCellText, fsPayText, fsViewCsv, fsViewCsvName, finScreenLog, usd, stepLabel, revMinLabel,
   columnsOf, sortKeysOf, withCols, colsOf, fsRatio, fsRatioText, FS_STORED, FS_COLUMNS, RATIO_VIEW_NOTE,
   recentCutoff, isRecent, RECENT_DAYS, RECENT_OPTION,
@@ -116,6 +116,24 @@ test("what a link from an industry page opens on", () => {
   assert.equal(c.total, 5);
   assert.deepEqual([...c.division].sort(), [["manufacturing", 3], ["services", 1]]);
   assert.equal(finScreen(all, parseFinHash("#division=manufacturing")).total, c.division.get("manufacturing"));
+});
+
+test("the link a company's own Financials section carries: its division's view and that view's count", () => {
+  const c = finScreenCounts(all);
+  const withDiv = all.find((x) => x.division?.slug === "manufacturing" && x.year)!;
+  const l = divisionLinkOf(withDiv, c)!;
+  assert.deepEqual({ name: l.name, slug: l.slug, n: l.n, href: l.href, included: l.included }, { name: withDiv.division!.name, slug: "manufacturing", n: 3, href: "/company-financials/#division=manufacturing", included: true });
+  assert.equal(finScreen(all, parseFinHash(l.href.slice(l.href.indexOf("#")))).total, l.n);
+  // a company with quarters only still gets the link, and is not said to be among the companies
+  assert.equal(divisionLinkOf({ ...withDiv, year: null }, c)!.included, false);
+  // no division, an unknown company, or a division whose view would be empty: no link
+  assert.equal(divisionLinkOf({ ...withDiv, division: null }, c), null);
+  assert.equal(divisionLinkOf(undefined, c), null);
+  assert.equal(divisionLinkOf({ ...withDiv, division: { name: "Mining", slug: "mining" } }, c), null);
+  const log = divisionLinkLog(all, c);
+  const linked = all.filter((x) => divisionLinkOf(x, c)).length;
+  assert.ok(log.startsWith(`financials division links: ${linked} of ${all.length} companies`), log);
+  assert.ok(log.includes(`${all.length - linked} have no division`), log);
 });
 
 test("cells, labels and the file of the rows on screen", () => {

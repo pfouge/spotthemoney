@@ -4268,3 +4268,36 @@ it in the pull request that changes a cell.**
   `#financials-screener` gained a sentence.
 - Not done: a link from a company page's Financials section into the screener at its division; cash as
   an optional column; saved screens (privacy page first, key `stm.screens.financials`).
+
+### Financials section: a link to the screener at the company's industry division (2026-11-23, scheduled parity run) — small screener follow-up
+
+- **What.** The "Financials, as filed" section of stock and company pages has one more line under its
+  caveat (`p[data-fin-division-link]`, with `data-division` and `data-n`): "Open the N companies in
+  <division> with a fiscal year on file in the screener", followed by ", <company> among them" when the
+  company itself has a fiscal year in the screener, and a sentence saying the division comes from the
+  SEC's industry code and is a label only. The link is `/company-financials/#division=<slug>`. No
+  migration, no data job change, no new file, no hash key, nothing stored in the browser.
+- **Rule** (`divisionLinkOf`, `divisionLinkLog` in `web/src/lib/finscreen.ts`; test in
+  `scripts/finscreen.test.ts`; wired by `finDivisionLink(model, cik)` in `finscreen-build.ts`, which reads
+  the memoised `siteFinScreen`): a link exists when the company is in the screener, has a SIC division and
+  that division has at least one company with a fiscal year on file. N is `finScreenCounts().division`,
+  the number the industry pages print and the screener opens on. A company with quarters only still gets
+  the link (without "among them"). No division: no line.
+- **Kept inside `Financials.astro`** (used by both entity page files); neither page file changed. The
+  on-demand pages pass no financials, so they show nothing.
+- **Build log** prints `[web] financials division links: L of C companies in the screener link to their
+  division's view, Z have no division; by division: Manufacturing n, ...`. `verify-finscreen` prints the
+  same numbers from `company-financials.csv` and `companies.csv` in its last line (`division links: L of
+  C ... (Manufacturing n, ...), K links read on P company pages`): **the two must agree after a deploy.**
+  SQL: companies of `site_companies` (with a slug) that have a `company_financials` row 80 to 100 or 350
+  to 380 days long, joined to `company_sic`, grouped by the division of the code's first two digits.
+- **Verifier.** `verify-finscreen` reads the Financials section on every company with no division, the
+  first company of each division, up to three with quarters only and a spread of about 30 others
+  (`--all-companies` reads every one): one link or none, its address, `data-n` and the stated number
+  against the oracle's count for the division, "among them" against whether the company has a fiscal
+  year, and the "label only" wording. No browser needed, so the deploy's warning-only step runs it.
+- Guide `what-is-form-4` (one sentence in `#financials`) re-read and accepted; methodology
+  `#financials-screener` gained a sentence.
+- Not done: cash as an optional screener column; saved screens (privacy page first, key
+  `stm.screens.financials`); a link to the company's own row in the screener (the search box has no
+  exact-company key).

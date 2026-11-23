@@ -259,9 +259,9 @@
       "web/src/lib/inst13f.ts": "156ecec5730acd97",
       "web/src/components/PlannedSales.astro": "cecc243987af144c",
       "web/src/lib/financials.ts": "36e4ca7b62568223",
-      "web/src/components/Financials.astro": "a4b847afae55369c",
+      "web/src/components/Financials.astro": "5cb4d29618bacb6f",
       "web/src/components/FiledNotices.astro": "cc73065ceec3cc06",
-      "web/src/lib/finscreen.ts": "e94caa51ff01ce18",
+      "web/src/lib/finscreen.ts": "f279a40cad54b481",
       "web/src/pages/company-financials.astro": "b0a9c7f4c343c6c5"
     }
   }
