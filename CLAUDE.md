@@ -3917,3 +3917,31 @@ SEC filings go first. The plan, the rules and the later stages are in the Projec
 - Not done: saved screens (needs the privacy page first and its own localStorage key); ratios of
   filed figures (A1-b); long-term debt (A1-a); a filter by SIC code or by fiscal-year end; cash,
   liabilities and cash flow as columns; market-only companies; a link from the Congress screener.
+
+### One page per company, stage 1 (2026-11-22, interactive session) — Peter: "combine the two pages"
+
+- **Rule.** A company with a ticker has ONE page, at its main ticker's address (`/stocks/<ticker>/`).
+  `/companies/<slug>/` answers 301 to it. A company with no ticker page keeps `/companies/<slug>/`.
+- **Code.** `web/src/lib/onepage.ts` (pure; tests `scripts/onepage.test.ts`): `assignCompanyPages(model)`
+  sets `company.stockPath` (called in `flagship.ts`); `companyPath(c)` returns it first, so every link
+  to a company goes to the right page with no change at the call site. Home ticker = the company's
+  main ticker when that security is the company's; otherwise its own security with a page (equity,
+  then ADR, then most rows). `stocks/[ticker].astro` has `home` (this ticker page IS the company's
+  page): then it also shows contract and lobbying facts and tables (`WashingtonRecords.astro`, shared
+  with the company page), "Large holdings this filer reports", "Other insider rows for <company>"
+  (Form 4 rows of the company not in this ticker), Organization JSON-LD. `companies/[slug].astro`
+  builds only companies without `stockPath`.
+- **Redirect.** Build writes `/data/company-redirects.json` (slug to stock path). The Worker route
+  `companies/[...rest].astro` reads it through `ASSETS` (`companyMovedTo` in `server/odsource.ts`)
+  before the on-demand lookup. Not `_redirects`. The companies sitemap lists company-only pages.
+- **A section for a company goes in a component used by BOTH page files**, never in one of them.
+- **Build log:** `[web] one page per company: N companies, T on a ticker page, K keep a company
+  page; P ticker pages, Q with no company`.
+- Verifiers `financials`, `form144`, `schedule13`, `industries` accept either address for a company.
+  Guide `what-is-form-4` and methodology `#one-page` say it.
+- **Not done (stage 2):** a company's other share classes still have their own ticker pages
+  (GOOG beside GOOGL, 8 companies): fold them into the main ticker page and redirect; the same merge
+  for on-demand (market) companies; `/embed/stocks/`; one list in place of `/stocks/` and
+  `/companies/`. Watchlist company follows still store the slug and link `/companies/<slug>/`
+  (works through the redirect). `verify-accounts-db` fails 1 of 42 on main (seed date drift).
+

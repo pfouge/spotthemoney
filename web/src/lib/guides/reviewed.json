@@ -197,7 +197,7 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-22",
+    "reviewed": "2026-11-23",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
@@ -210,9 +210,9 @@
       "web/src/lib/server/od.ts": "43610fdee104e98d",
       "web/src/components/OdPageView.astro": "5a94f9549888f514",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "e038cc5f546a77e0",
+      "web/src/pages/stocks/[ticker].astro": "07fdf7340bea92f4",
       "web/src/pages/insiders/[slug].astro": "f0ad9f2febae04a5",
-      "web/src/pages/companies/[slug].astro": "1d69505d91ce5360",
+      "web/src/pages/companies/[slug].astro": "d97fa931602b0dc0",
       "web/src/lib/form144.ts": "5792da219a57b938",
       "web/src/components/PlannedSales.astro": "cecc243987af144c",
       "web/src/lib/financials.ts": "5ac8828e6d9e5b2c",
