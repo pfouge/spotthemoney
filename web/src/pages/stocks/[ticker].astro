@@ -145,7 +145,8 @@ const glance = [
   ...(lobbying.length ? [{ label: "Lobbying filings", value: num(lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
   ...(home && lcfItems ? [{ label: "Lobbyist contributions", value: num(lcf!.years[0]?.items ?? 0), note: `Items in ${lcf!.years[0]?.year}, filed by the company`, href: "#filer-contributions" }] : []),
 ];
-const hasData = txns.length > 0 || (home && (companyHasRecords(company!) || assistRows.length > 0 || lcfItems > 0));
+// A page with any tile has something to show (a company with financials and no trades, for one).
+const hasData = txns.length > 0 || glance.length > 0 || (home && companyHasRecords(company!));
 const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), ...(home ? [{ id: "washington", label: "Washington" }] : []), { id: "record", label: "About this record" }] : [];
 // Contracts and lobbying, one sentence, only on a company's own page.
 const washington = !home ? "" : ` ${contracts.length ? `USAspending shows ${plural(contracts.length, "federal contract award")} with a combined value of ${money(contractsTotal)} to a recipient named ${company!.name} that started in the last 180 days` : `No federal contract award that started in the last 180 days was found for a recipient named exactly ${company!.name}`}${lobbyingYtd.length ? `, and ${plural(lobbyingYtd.length, "lobbying filing")} naming it as client ${lobbyingYtd.length === 1 ? "reports" : "report"} ${money(sum(lobbyingYtd.map((r) => r.amount)))} in ${lobbyingYear}.` : "; no lobbying filing names it as client this year."}`;

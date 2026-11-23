@@ -179,7 +179,7 @@ if (!has("large-holders-13d-13g.csv")) {
     const sec = section(html, "data-reported-holdings");
     ok(!!sec, `${page}: no section, the file has statements by filer ${cik} about ${want0.length} other companies`);
     if (!sec) continue;
-    holdingPages++; if (page.startsWith("/companies/")) onCompanyPages++;
+    holdingPages++; if (!page.startsWith("/insiders/")) onCompanyPages++;
     ok(attr(sec.tag, "data-cik") === cik, `${page}: the section is for ${attr(sec.tag, "data-cik")}, expected ${cik}`);
     ok(Number(attr(sec.tag, "data-companies")) === want0.length, `${page}: ${attr(sec.tag, "data-companies")} companies stated, ${want0.length} in the file`);
     const want = want0.slice(0, ROWS);
