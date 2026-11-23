@@ -19,9 +19,9 @@ export const NAV: NavGroup[] = [
   { key: "insiders", label: "Insiders", href: "/insiders/", items: [
     { href: "/insiders/", label: "Overview and trade map", desc: "Corporate insiders buying and selling", live: true },
     { href: "/disclosures/", label: "Newest filings", desc: "The latest disclosures as they arrive", live: true },
-    { href: "/planned-sales/", label: "Planned sales", desc: "Form 144 notices of proposed sales", live: false },
-    { href: "/large-holders/", label: "Large holders", desc: "Owners of more than 5 percent of a company", live: false },
-    { href: "/institutional-holders/", label: "Institutional holders", desc: "What funds report holding each quarter", live: false },
+    { href: "/planned-sales/", label: "Planned sales", desc: "Form 144 notices of proposed sales", live: true },
+    { href: "/large-holders/", label: "Large holders", desc: "Owners of more than 5 percent of a company", live: true },
+    { href: "/institutional-holders/", label: "Institutional holders", desc: "What funds report holding each quarter", live: true },
   ] },
   { key: "companies", label: "Companies", href: "/companies/", items: [
     { href: "/stocks/", label: "Stocks", desc: "Insider and Congress activity by ticker", live: true },

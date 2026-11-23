@@ -49,7 +49,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>Three kinds of page hold the detail, and they link to one another:</p>
 <p>Stock, company, insider and member pages share one shape. A row of "At a glance" tiles near the top gives the main counts, and each tile opens its section. A bar under it jumps between the groups on the page, always in this order when they apply: Trading, Ownership, Company, Washington and About this record. A group appears only when the page has something to put in it, and a page with no records on file has no tiles and no bar. What each page type holds:</p>
 <ul>
-<li><strong>A stock's page</strong> lists the insiders who filed for that ticker and the members of Congress who traded it, each with the number of rows, open-market purchases and sales, and the latest date. Above that list, a table sums the insiders' open-market purchases and sales over the last 3 and 12 months: trades, people, shares, dollars, how many sales were made under a 10b5-1 plan, and bought minus sold. It counts code P and code S rows only, by the date each was disclosed. A folded table breaks the rows down by Form 4 code. Where members of Congress have traded the ticker, a link above their rows opens the ${`<a href="/congress-trades/">Congress trade screener</a>`} on that ticker alone, to filter, sort and download them. "Related stocks" are the tickers traded by the same people, ranked by the number of filers in common.${c.schedule13Shown ? ` When a holder of more than ${c.holderThreshold}% has an ownership statement on record, the page also has a section "Large holders: Schedules 13D and 13G", which lists positions, not trades; the guide to <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">10% owners and large holders</a> explains it.` : ""}</li>
+<li><strong>A stock's page</strong> lists the insiders who filed for that ticker and the members of Congress who traded it, each with the number of rows, open-market purchases and sales, and the latest date. Above that list, a table sums the insiders' open-market purchases and sales over the last 3 and 12 months: trades, people, shares, dollars, how many sales were made under a 10b5-1 plan, and bought minus sold. It counts code P and code S rows only, by the date each was disclosed. A folded table breaks the rows down by Form 4 code. Where members of Congress have traded the ticker, a link above their rows opens the ${`<a href="/congress-trades/">Congress trade screener</a>`} on that ticker alone, to filter, sort and download them. "Related stocks" are the tickers traded by the same people, ranked by the number of filers in common.${c.schedule13Shown ? ` When a holder of more than ${c.holderThreshold}% has an ownership statement on record, the page also has a section "Large holders: Schedules 13D and 13G", which lists positions, not trades; the guide to <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">10% owners and large holders</a> explains it.` : ""}${c.instShown ? ` When institutional managers report the company in their quarterly Form 13F, a section "Institutional holders: Form 13F" lists the largest of them; it too shows positions on one day, not trades, and the <a href="/guides/form-13f-institutional-holdings/">guide to Form 13F</a> explains it.` : ""}</li>
 <li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
 <li><strong>A company's page</strong> adds federal contracts and lobbying filings under the company's exact name, the members of Congress who traded its stock, and related companies.</li>
 </ul>
@@ -68,7 +68,8 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>The difference from a Form 4 matters. A Form 4 reports a trade that has happened: the date, the shares and the price. A Form 144 reports an intention. The sale it describes may happen that day, later, in part or not at all, and the form's dollar figure is the market value the filer states for the shares, not what anyone was paid. When an officer or director does sell, that sale appears on a Form 4 in the usual way. Some sellers who file a Form 144 never file a Form 4 at all, because they are not officers, directors or 10% owners.</p>
 <p>On this site, a stock's page and its company's page have a section titled "Planned sales: Form 144 notices" when a notice about the company was filed in the last 12 months. It lists the ${c.form144Rows} newest: the filing date, the seller and the relationship to the company in the filer's own words, the class and number of shares, the stated market value, the approximate sale date, the date a Rule 10b5-1 plan was adopted when the notice gives one, and a link to the notice at the SEC. Notices are shown for the companies this site tracks, from notices filed on or after ${c.form4Floor}. The figures are printed as filed, with one exception: forms are typed by hand and now and then a market value is plainly wrong for the number of shares, so a stated value of more than $${c.form144ValueMaxPerShare} a share reads "not shown" on the page. The figure as filed is still in the CSV file, marked, and on the notice itself.</p>
 <p>Three rules keep the notices apart from the trades. No figure from a notice is in any buy or sell total, chart, feed or trade map here. An amended notice (144/A) is listed as its own row; it repeats the notice it corrects and the form does not say which one, so the rows are not added together and the section counts notices and sellers only. And nothing is read into a notice: it carries no flag or label. All notices are in one file on the <a href="/downloads/">downloads page</a>.</p>
-<p>An insider's own page shows the same notices from the filer's side, under "Planned sales: Form 144 notices this filer submitted": the notices sent in under that person's SEC number in the last 12 months, each with the company, the figures as filed and the seller the notice names, which is sometimes a trust or a family entity and not the person.</p>` }] : []),
+<p>An insider's own page shows the same notices from the filer's side, under "Planned sales: Form 144 notices this filer submitted": the notices sent in under that person's SEC number in the last 12 months, each with the company, the figures as filed and the seller the notice names, which is sometimes a trust or a family entity and not the person.</p>
+<p>The <a href="/planned-sales/">planned sales page</a> puts every notice filed in the last 12 months about a company on this site in one table. It opens on the last 30 days and can be narrowed by company, seller, industry, notice or amendment, whether the notice states a Rule 10b5-1 plan date, the stated value and the filing window; a value shown as "not shown" passes no value filter, and the count line counts notices, companies and sellers and never adds up shares or dollars. "Download these rows (CSV)" saves the rows that match, made in your browser.</p>` }] : []),
     ],
     faqs: [
       ...(c.financialsShown ? [{ q: "Where do the financial figures on a company's page come from?", a: "From the company's own annual and quarterly reports to the SEC (forms 10-K, 10-Q, 20-F and 40-F). The figures are shown as filed, in the currency the company reports in, each column with a link to the report. Nothing is estimated." }] : []),
@@ -90,7 +91,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
     ],
     related: ["form-4-transaction-codes", "rule-10b5-1-trading-plans", "insider-buying-vs-insider-selling", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Stocks with insider activity", href: "/stocks/" }],
-    covers: ["web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/issuer.ts", "web/src/lib/industries.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/lib/server/od.ts", "web/src/components/OdPageView.astro", "web/src/lib/market.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro", "web/src/lib/form144.ts", "web/src/components/PlannedSales.astro", "web/src/lib/financials.ts", "web/src/components/Financials.astro", "web/src/components/FiledNotices.astro", "web/src/lib/finscreen.ts", "web/src/pages/company-financials.astro"],
+    covers: ["web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/issuer.ts", "web/src/lib/industries.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/lib/server/od.ts", "web/src/components/OdPageView.astro", "web/src/lib/market.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro", "web/src/lib/form144.ts", "web/src/lib/plannedsales.ts", "web/src/lib/inst13f.ts", "web/src/components/PlannedSales.astro", "web/src/lib/financials.ts", "web/src/components/Financials.astro", "web/src/components/FiledNotices.astro", "web/src/lib/finscreen.ts", "web/src/pages/company-financials.astro"],
     ui: [{ text: "Guides for this page", on: "/stocks/aapl/" }, { text: "Related stocks", on: "/stocks/aapl/" }, { text: "Companies by industry", on: "/industries/" }, { text: "Financials, as filed", on: "/stocks/aapl/" }, { text: "Company financials screener", on: "/company-financials/" }, { text: "Net income above zero", on: "/company-financials/" }],
     facts: ["foreignInsiders"],
   }),
@@ -341,6 +342,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <li><strong>Rows are not to be added together.</strong> Related entities often file one statement together, and each reports the whole group's holding. The row shows the largest figure any one of them states, and the name of the first, "with 3 other reporting persons". Two rows can also describe overlapping shares, for example a fund manager and its parent company.</li>
 </ul>
 <p>The same statements can be read from the filer's side. When the filer of a statement is an insider or a company with a page here, that page has a section titled "Large holdings this filer reports: Schedules 13D and 13G": its newest statement about each other company this site tracks. It is not a list of everything the filer owns, because only holdings above ${c.holderThreshold}% of a class are reported on these schedules.</p>
+<p>The <a href="/large-holders/">large holders page</a> puts every holder's newest statement about a company on this site in one table, newest filing first. It can be narrowed by company or holder, industry, schedule, the percent the statement states (${c.holderThreshold}% or more, 10% or more, or below ${c.holderThreshold}%) and the filing window. A statement that states no percent passes no percent filter, the count line counts holders and companies and never adds shares or percentages together, and "Download these rows (CSV)" saves the rows that match, made in your browser.</p>
 <p>None of these figures enters any buy or sell total, chart or the trade map. The rules are written out in the <a href="/methodology/#schedule-13">methodology</a>.</p>` }] : []),
     ],
     faqs: [
@@ -356,8 +358,73 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["what-is-form-4", "insider-buying-vs-insider-selling", "insider-options-and-derivatives", "how-to-use-the-trade-map"],
     seeLive: [{ label: "Insider map by role", href: "/insiders/" }, { label: "How values are computed", href: "/methodology/#values" }],
-    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/components/LargeHolders.astro", "web/src/components/ReportedHoldings.astro"],
+    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/lib/largeholders.ts", "web/src/components/LargeHolders.astro", "web/src/components/ReportedHoldings.astro"],
     ui: [{ text: "10% owners", on: "/insiders/" }, { text: "Officers", on: "/insiders/" }, { text: "Directors", on: "/insiders/" }, ...(c.schedule13Shown ? [{ text: "Large holders: Schedules 13D and 13G", on: "/stocks/nvda/" }] : [])],
+    facts: [],
+  }),
+  // ─────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "form-13f-institutional-holdings", group: "insiders", updated: "2026-11-22",
+    title: "Form 13F: what institutional managers report holding",
+    seoTitle: ["Form 13F Explained: Institutional Holdings Reports", "Form 13F: Institutional Holdings"],
+    description: ["Form 13F is the quarterly list of long positions held by large institutional managers. Who files, the $100 million rule, the 45-day delay and what it cannot show.", "Form 13F is the quarterly list of positions held by large institutional managers. Who files, the delay, and what it cannot show."],
+    answer: "A Form 13F is a quarterly report in which an institutional investment manager that oversees at least $100 million in covered securities lists its long positions on the last day of the quarter. It is filed up to 45 days later, so it is a snapshot of the past, not a record of trades, and it does not show short positions.",
+    keyFacts: [
+      "Filed by managers with $100 million or more in 13(f) securities, within 45 days of each quarter end.",
+      "Shows long positions on one day: no trade dates, no short positions, no options a manager wrote.",
+      "A manager can request confidential treatment, which delays a position from appearing.",
+      "Two managers can report the same shares, so sums across managers can count shares twice.",
+      "It is not a Form 4 (an insider's trade) or a Schedule 13D or 13G (a holder of more than 5%).",
+    ],
+    sections: [
+      { id: "who", h: "Who files a Form 13F?", html: `
+<p>An institutional investment manager files one when it uses the mails or interstate commerce and exercises investment discretion over $100 million or more in what the SEC calls Section 13(f) securities. The test is made on the last trading day of each month, and a manager that passes it files for the quarter. Mutual fund companies, banks, insurers, pension funds, hedge funds and investment advisers are the usual filers.</p>
+<p>The filer is the manager, not the fund. A large adviser can file one report covering the funds and accounts it runs, so the name on a 13F is often an adviser or a bank rather than a fund a retail investor would recognize.</p>` },
+      { id: "what", h: "What does a 13F list, and what is left out?", html: `
+<p>It lists long positions in 13(f) securities on the last day of the quarter: mainly U.S. exchange-traded stocks, closed-end funds and ETFs, plus certain convertible bonds, warrants and options. For each position it gives the issuer, the class, the number of shares or principal amount, and the value the manager reports.</p>
+<p>Several things are not in it:</p>
+<ul>
+<li><strong>Short positions.</strong> They are not reported and are not netted against long positions.</li>
+<li><strong>Trades.</strong> A 13F shows what was held on one day. It does not say when a position was bought or sold, or what happened between two quarter ends.</li>
+<li><strong>Most other assets.</strong> Bonds, cash, open-end mutual funds, foreign shares that do not trade on a U.S. exchange, and private holdings are outside the list.</li>
+<li><strong>Positions under confidential treatment.</strong> A manager can ask the SEC to keep a position out of public view for a period, so it appears later or in a changed filing.</li>
+</ul>
+<p>Put and call options a manager holds can be listed, and are marked as puts or calls in the filing. This site leaves them out of its share and value figures and says how many managers report them.</p>` },
+      { id: "timing", h: "How old is the information?", html: `
+<p>Up to 45 days older than the quarter, and often more. A filing is due within 45 days after the quarter ends, for example by mid-February for the fourth quarter. The positions are as of the last day of the quarter, so a report filed in mid-May describes March 31. A manager may have bought or sold a great deal since.</p>
+<p>That is why a 13F is read for the shape of a holding over several quarters and not for what a manager is doing now.</p>` },
+      { id: "vs", h: "How is a 13F different from Form 4 and Schedules 13D and 13G?", html: `
+<p>Each answers a different question. A <a href="/guides/what-is-form-4/">Form 4</a> reports a trade by one of a company's own insiders, within two business days. A Schedule 13D or 13G reports that a holder has passed ${c.holderThreshold}% of a company's voting shares, and states the size of the stake on a date; see <a href="/guides/ten-percent-owners-and-joint-filings/">10% owners and joint filings</a> for how this site lists them. A Form 13F covers a whole portfolio, quarterly, for managers of any size above the threshold, and reports every position it holds in covered securities, however small a share of the company.</p>
+<p>A manager can appear in all three: its 13F lists a position in a company, and the same company's Form 4s may show its own officers selling in the same quarter. The filings are separate records and say nothing about each other.</p>` },
+      { id: "double", h: "Why can adding up the managers count shares twice?", html: `
+<p>Because the same shares can be reported by more than one manager. An adviser that picks the investments and the fund company that holds them can each state the position, and a parent and its subsidiary can each file. Each report is correct as filed. Added together they overstate the total.</p>
+<p>For that reason this site never says what share of a company managers hold. It states, for each company, how many managers reported it, the shares and value each reported, and a sum labelled as a sum of what managers reported.</p>` },
+      ...(c.instShown ? [{ id: "on-site", h: "How does this site show Form 13F holdings?", html: `
+<p>A stock's page and its company's page have a section titled "Institutional holders: Form 13F" when a manager reported the company for the newest quarter loaded, ${c.instPeriod}. It states how many managers reported the company, the summed reported value, and how many report put or call options, and lists the ${c.instTop} managers with the largest reported value: shares, reported value, shares for the quarter before and the change when both quarters are on file, the filing date and a link to the manager's filing at the SEC. A manager with no row for the earlier quarter reads "not reported for" that quarter; it is not called new, because a manager can hold a position and not report it.</p>
+<p>The <a href="/institutional-holders/">institutional holders page</a> ranks the companies on this site by the number of managers reporting them and lists the largest managers by the value they report in these companies.</p>
+<ul>
+<li><strong>A quarter counts as loaded</strong> when at least ${c.instMinManagers} managers have filed for it, so a partial first week of filings is not shown as the whole.</li>
+<li><strong>A stalled load hides the sections.</strong> They appear only while the newest filing in the newest quarter is at most ${c.instShownDays} days old.</li>
+<li><strong>Only companies on this site</strong> are covered. A manager's figure here counts those companies, not its whole portfolio.</li>
+</ul>
+<p>The rules are written out in the <a href="/methodology/#institutional-holders">methodology</a>.</p>` }] : []),
+    ],
+    faqs: [
+      { q: "What is a Form 13F?", a: "A Form 13F is a quarterly report that an institutional investment manager with $100 million or more in covered securities files with the SEC, listing its long positions on the last day of the quarter. It is filed up to 45 days after the quarter ends.", on: ["insiders", "stocks"] },
+      { q: "Does a 13F show what a fund bought or sold?", a: "No. It shows what a manager held on one day. Comparing two quarters shows that a position grew or shrank, not when or at what price, and it says nothing about trades between those days.", on: ["insiders"] },
+      { q: "Why is a 13F always out of date?", a: "Because it is filed up to 45 days after the quarter ends and describes the last day of the quarter. A filing made in mid-May describes March 31.", on: ["stocks"] },
+      { q: "Are short positions in a 13F?", a: "No. Only long positions are reported, and they are not netted against short ones. Options a manager wrote are not reported either; put and call options it holds can be." },
+      { q: "Is the 13F total the share of a company that institutions own?", a: "No. Two managers can report the same shares, so a sum can count them twice, and managers under the $100 million threshold do not file. This site states what each manager reported and never a share of the company." },
+    ],
+    sources: [
+      { name: "SEC: Frequently asked questions about Form 13F", url: "https://www.sec.gov/divisions/investment/13ffaq" },
+      { name: "SEC: Official list of Section 13(f) securities", url: "https://www.sec.gov/rules-regulations/staff-guidance/official-list-section-13f-securities" },
+      { name: "SEC: Form 13F data sets", url: "https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets" },
+    ],
+    related: ["what-is-form-4", "ten-percent-owners-and-joint-filings", "insider-buying-vs-insider-selling", "what-disclosure-data-cannot-tell-you"],
+    seeLive: [{ label: "Institutional holders", href: "/institutional-holders/" }, { label: "How values are computed", href: "/methodology/#institutional-holders" }],
+    covers: ["web/src/lib/inst13f.ts", "web/src/lib/inst13f-build.ts", "web/src/components/InstHolders.astro"],
+    ui: c.instShown ? [{ text: "Institutional holders: Form 13F", on: "/stocks/nvda/" }] : [],
     facts: [],
   }),
 ];

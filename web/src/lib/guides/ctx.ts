@@ -5,6 +5,8 @@ import { NOTICE_ROWS, VALUE_MAX_PER_SHARE } from "../form144";
 import { YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES } from "../financials";
 import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL } from "../schedule13";
 import { DESCRIPTION_SHOWN } from "../contracts";
+import { INST_TOP, INST_MIN_MANAGERS, INST_SHOWN_DAYS, quarterDate as instQuarterDate } from "../inst13f";
+import { instHubShown } from "../inst13f-hub";
 import { feedDef } from "../feeds";
 import { ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS, FEED_NEW_MAX_AGE_DAYS } from "../account";
 import { WATCH_WINDOW_DAYS } from "../watchcards";
@@ -49,6 +51,8 @@ export interface GuideCtx {
   /** Characters of a contract description shown in a table cell (lib/contracts.ts). */
   contractDescriptionShown: number;
   /** True once Form 144 notices are shown on pages (lib/form144.ts), and the rows a page's table prints. */
+  /** True when Form 13F holders are shown on pages (lib/inst13f.ts); managers listed per company; managers a quarter needs to count as loaded; days a load may be old; the newer quarter end as text. */
+  instShown: boolean; instTop: number; instMinManagers: string; instShownDays: number; instPeriod: string;
   form144Shown: boolean; form144Rows: number;
   /** Dollars a share above which a notice's stated market value is not shown, as text ("1,000,000"). */
   form144ValueMaxPerShare: string;
@@ -98,6 +102,7 @@ async function build(): Promise<GuideCtx> {
     congressRecordStart: new Date(RECORD_START + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }), firstMinDays: FIRST_MIN_DAYS, runMin: RUN_MIN,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     contractDescriptionShown: DESCRIPTION_SHOWN,
+    instShown: instHubShown(m), instTop: INST_TOP, instMinManagers: INST_MIN_MANAGERS.toLocaleString("en-US"), instShownDays: INST_SHOWN_DAYS, instPeriod: m.inst.period ? instQuarterDate(m.inst.period) : "",
     form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS, form144ValueMaxPerShare: VALUE_MAX_PER_SHARE.toLocaleString("en-US"),
     schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL,
     financialsShown: m.financials.byCik.size > 0, finYears: YEARS_SHOWN, finQuarters: QUARTERS_SHOWN, finMinImpliedShares: MIN_IMPLIED_SHARES.toLocaleString("en-US"),

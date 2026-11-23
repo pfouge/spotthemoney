@@ -11,6 +11,7 @@ import DownloadCsv from "../../components/DownloadCsv.astro";
 import PlannedSales from "../../components/PlannedSales.astro";
 import { noticesInWindow } from "../../lib/form144";
 import LargeHolders from "../../components/LargeHolders.astro";
+import InstHolders from "../../components/InstHolders.astro";
 import Financials from "../../components/Financials.astro";
 import { financialsOf } from "../../lib/financials-build";
 import { holdersOf } from "../../lib/schedule13";
@@ -58,6 +59,9 @@ const cpath = company ? companyPath(company) : null;
 const plannedN = company?.cik ? noticesInWindow(model.form144.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 // Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
 const holdersN = company?.cik ? holdersOf(model.schedule13.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
+// Managers with a Form 13F position in the company (empty until that load is recent).
+const instC = company?.cik && model.inst.shown ? model.inst.byCik.get(company.cik.padStart(10, "0")) ?? null : null;
+const instN = instC?.managers ?? 0;
 // Figures from the company's annual and quarterly reports (lib/financials.ts); null when none are on file.
 const fin = financialsOf(model, company?.cik);
 const finYears = fin ? shownYears(fin) : [];
@@ -95,10 +99,11 @@ const glance = [
   ...(congress.length ? [{ label: "Congress trades", value: num(congress.length), note: latestOf(congress) ? `Latest ${formatDate(latestOf(congress)!)}` : undefined, href: "#congress-trades" }] : []),
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
+  ...(instN ? [{ label: "Institutional holders", value: num(instN), note: `as of ${formatDate(model.inst.period!)}`, href: "#institutional-holders" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
 ];
 const hasData = txns.length > 0;
-const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN ? [{ id: "ownership", label: "Ownership" }] : []), ...(finShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
+const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(finShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
 
 const answer = txns.length === 0
   ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.`
@@ -230,9 +235,10 @@ const ld = datasetLd({ downloads: [downloads.stock.get(s.ticker.toLowerCase())?.
 
   <AdSlot label="Advertisement" show={txns.length > 0} />
 
-  {holdersN > 0 && (
+  {(holdersN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
       <LargeHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "holders")} />
+      <InstHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "inst")} />
     </PageGroup>
   )}
 

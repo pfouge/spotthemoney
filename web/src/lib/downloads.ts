@@ -26,6 +26,7 @@ import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOu
 import { SHOWN_CONCEPTS, CHECK_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
 import { financialsOf } from "./financials-build";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
+import { filingFolderUrl, cleanName as instName } from "./inst13f";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -40,7 +41,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -322,6 +323,52 @@ async function build(): Promise<Downloads> {
     { key: "page_url", about: "The company's page on this site.", get: (x) => { const c = sco(x); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
   ];
   add(file({ name: "large-holders-13d-13g.csv", group: "insiders", kind: "holders", title: "Large holders: SEC Schedules 13D and 13G", about: "One row per ownership statement by a holder of more than 5% of a class of shares, or one reporting it has fallen below that, for the companies this site tracks. A statement says what the filer owned on a date; it is not a trade.", updated: newest(statements.map((x) => x.filedAt)) }, holderCols, statements));
+
+  // Institutional holders: SEC Form 13F positions in companies on the site (lib/inst13f.ts). The model
+  // holds nothing until the load is recent, so the files appear with the page sections. One file lists
+  // the largest managers of each company (as many as a page shows); the other has one row per company.
+  if (m.inst.shown && m.inst.period) {
+    const instPeriod = m.inst.period, instPrior = m.inst.prior;
+    interface InstCsvRow { cik: string; c: import("./inst13f").InstCompany; m: import("./inst13f").InstManagerRow }
+    const instRows: InstCsvRow[] = [];
+    const instCos: { cik: string; c: import("./inst13f").InstCompany }[] = [];
+    for (const [cik, c] of m.inst.byCik) {
+      if (!byCik.get(cik)?.slug) continue;
+      instCos.push({ cik, c });
+      for (const mg of c.top) instRows.push({ cik, c, m: mg });
+    }
+    const ico = (r: { cik: string }) => byCik.get(r.cik);
+    const instCols: Column<InstCsvRow>[] = [
+      { key: "company", about: "The company the position is in, as this site names it.", get: (r) => ico(r)?.name },
+      { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
+      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => ico(r)?.primaryTicker },
+      { key: "quarter_end", about: "The last day of the quarter the positions are as of (YYYY-MM-DD).", get: () => instPeriod },
+      { key: "manager", about: "The institutional manager that filed the Form 13F, as filed.", get: (r) => instName(r.m.name, 200) },
+      { key: "manager_sec_number", about: "The manager's SEC number (CIK), ten digits.", get: (r) => r.m.cik },
+      { key: "shares", about: "Shares the manager reports in this company on the quarter's last day, summed over its share rows. Options (puts and calls) and principal-amount rows are not included.", get: (r) => r.m.shares },
+      { key: "reported_value", about: "The value the manager reports for those shares, in US dollars as filed. Not a market price taken by this site.", get: (r) => r.m.value },
+      { key: "shares_prior_quarter", about: "The same manager's summed shares in the quarter before, blank when the manager reported none for it or that quarter is not loaded.", get: (r) => r.m.prevShares },
+      { key: "prior_quarter_end", about: "The quarter end the prior-quarter column is as of, blank when that quarter is not loaded.", get: () => instPrior },
+      { key: "accession", about: "The SEC's accession number of the manager's newest Form 13F for the quarter.", get: (r) => r.m.accession },
+      { key: "filed", about: "The day that Form 13F was filed (YYYY-MM-DD).", get: (r) => r.m.filed },
+      { key: "source_url", about: "Link to the manager's filing folder on the SEC's EDGAR system.", get: (r) => filingFolderUrl(r.m.cik, r.m.accession) },
+      { key: "page_url", about: "The company's page on this site.", get: (r) => { const c = ico(r); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
+    ];
+    add(file({ name: "institutional-holders.csv", group: "insiders", kind: "inst", title: "Institutional holders: SEC Form 13F", about: "The largest managers by reported value in each company this site tracks, from Form 13F. A 13F lists positions on one day a quarter; it is not a trade and not a share of the company.", updated: newest(instRows.map((r) => r.m.filed)) }, instCols, instRows));
+    const coCols: Column<{ cik: string; c: import("./inst13f").InstCompany }>[] = [
+      { key: "company", about: "The company, as this site names it.", get: (r) => ico(r)?.name },
+      { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
+      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => ico(r)?.primaryTicker },
+      { key: "quarter_end", about: "The last day of the quarter the positions are as of.", get: () => instPeriod },
+      { key: "managers", about: "Managers that report shares in the company for the quarter.", get: (r) => r.c.managers },
+      { key: "shares_summed", about: "Shares reported by all those managers added together. Two managers can report the same shares, so this can count shares twice and is not a share of the company.", get: (r) => r.c.shares },
+      { key: "value_summed", about: "The reported values added together, in US dollars as filed. Can count the same shares twice.", get: (r) => r.c.value },
+      { key: "managers_with_options", about: "Managers that also report put or call options in the company. Options are not in the other figures.", get: (r) => r.c.options },
+      { key: "prior_quarter_end", about: "The quarter end before, blank when that quarter is not loaded.", get: () => instPrior },
+      { key: "managers_prior_quarter", about: "Managers that reported shares in the company for the prior quarter, blank when that quarter is not loaded.", get: (r) => r.c.prevManagers },
+    ];
+    add(file({ name: "institutional-holders-by-company.csv", group: "insiders", kind: "inst", title: "Institutional holders by company: SEC Form 13F", about: "One row per company this site tracks: how many managers report it, and the summed reported figures.", updated: newest(instRows.map((r) => r.m.filed)) }, coCols, instCos));
+  }
 
   // Company financials: every fiscal year and quarter on file for the companies on the site, one
   // row per company and period, the figures as filed (lib/financials.ts). The page section shows

@@ -5,6 +5,9 @@ import { getFlagship, num } from "../lib/flagship";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import { getGuides, byGroup, guidePath } from "../lib/guides";
 import { getArticles, articleUrl } from "../lib/articles";
+import { INST_HUB_PATH, instHubShown } from "../lib/inst13f-hub";
+import { plannedShown } from "../lib/plannedsales-build";
+import { largeShown } from "../lib/largeholders-build";
 import { MARKETS_PATH, WFE, US_MILLIONS, EU_MILLIONS, CHINA_MILLIONS, COMMONWEALTH_MILLIONS, trillions } from "../lib/worldmarkets";
 
 export const GET: APIRoute = async () => {
@@ -48,7 +51,7 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [Companies](${SITE_URL}/companies/): insiders, contracts and lobbying per company (${num(c.companies ?? 0)} companies).
 - [Companies by industry](${SITE_URL}/industries/): the companies grouped by the division of the industry code (SIC) the SEC assigns to each, with counts of open-market insider purchases and sales and of congressional trades disclosed in the last 12 months. The classification is the SEC's and is a label only.
 - [Company financials screener](${SITE_URL}/company-financials/): the newest fiscal year or quarter of each tracked company in one table, as filed with the SEC (revenue, net income, diluted earnings per share, total assets, equity); filters for industry, currency, revenue, net income above or below zero and total assets. Figures as filed, in the company's own currency; nothing is converted, scored or ranked.
-- [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
+${plannedShown(m) ? `- [Planned sales](${SITE_URL}/planned-sales/): every SEC Form 144 notice filed in the last 12 months about a company on this site, with filters. A notice states a plan to sell, not a sale; nothing is added up.\n` : ""}${largeShown(m) ? `- [Large holders](${SITE_URL}/large-holders/): each holder's newest Schedule 13D or 13G statement about a company on this site, with filters. A statement is a position on a date, not a trade; nothing is added up.\n` : ""}${instHubShown(m) ? `- [Institutional holders](${SITE_URL}${INST_HUB_PATH}): the companies on this site ranked by how many institutional managers report them in SEC Form 13F, and the managers with the largest reported value. Positions on one day a quarter, as filed; sums can count shares twice, and no share of any company is stated.\n` : ""}- [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
 - [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
 - [Newest disclosures](${SITE_URL}/disclosures/): one feed across every source, newest first.
 

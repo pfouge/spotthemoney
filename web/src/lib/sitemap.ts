@@ -14,6 +14,11 @@ import { siteIndustries } from "./industries-build";
 import { siteFinScreen } from "./finscreen-build";
 import { FIN_SCREENER_PATH } from "./finscreen";
 import { INDUSTRIES_PATH } from "./industries";
+import { INST_HUB_PATH, instHubShown } from "./inst13f-hub";
+import { plannedShown } from "./plannedsales-build";
+import { largeShown } from "./largeholders-build";
+import { PLANNED_PATH } from "./plannedsales";
+import { LARGE_PATH } from "./largeholders";
 import { MARKETS_PATH, WFE } from "./worldmarkets";
 import { getMarketIndexable, SITEMAP_URL_LIMIT } from "./market";
 import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
@@ -69,6 +74,11 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     ...industries.map((d) => ({ loc: d.path, lastmod: built, changefreq: "daily" as const, priority: 0.5 })),
     // The company financials screener is indexable only when it has rows (pages/company-financials.astro).
     ...(siteFinScreen(model).all.length ? [{ loc: FIN_SCREENER_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
+    // Institutional holders (Form 13F): listed only while the load is recent and has companies.
+    ...(instHubShown(model) ? [{ loc: INST_HUB_PATH, lastmod: day(model.inst.lastFiled, built), changefreq: "weekly" as const, priority: 0.6 }] : []),
+    // Planned sales and large holders hubs: listed only while the Form 144 and Schedule 13 loads are current.
+    ...(plannedShown(model) ? [{ loc: PLANNED_PATH, lastmod: day(model.form144.lastFiled, built), changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...(largeShown(model) ? [{ loc: LARGE_PATH, lastmod: day(model.schedule13.lastFiled, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/donations/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/lobbying/", lastmod: built, changefreq: "daily", priority: 0.7 },

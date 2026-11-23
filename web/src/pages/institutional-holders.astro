@@ -1,0 +1,116 @@
+---
+// /institutional-holders/ — what institutional managers report holding in the companies on the
+// site, from SEC Form 13F (rules in lib/inst13f.ts). A static page: two sortable tables and a
+// small search box. No page per manager. Shown only while the 13F load is recent
+// (model.inst.shown); otherwise a noindex "being refreshed" page. Sums are labelled as sums of
+// what managers reported; no percentage of any company is ever printed.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, num } from "../lib/flagship";
+import { datasetLd } from "../lib/seo";
+import { formatDate } from "../lib/format";
+import { INST_CAVEAT, quarterDate, valueLabel } from "../lib/inst13f";
+import { INST_HUB_PATH, hubCompanies, hubManagers } from "../lib/inst13f-hub";
+
+const model = await getFlagship();
+const inst = model.inst;
+const d = await getDownloads();
+const csvCo = d.files.find((f) => f.name === "institutional-holders-by-company.csv");
+const csvAll = d.files.find((f) => f.name === "institutional-holders.csv");
+const companies = hubCompanies(model);
+const managers = hubManagers(model);
+const shown = inst.shown && !!inst.period && companies.length > 0;
+const hasPrior = shown && !!inst.prior && companies.some((c) => c.prev != null);
+const built = model.builtAt.slice(0, 10);
+const lastUpdated = (inst.lastFiled ?? built).slice(0, 10);
+const answer = shown
+  ? `${num(inst.managersInPeriod)} institutional managers filed a Form 13F for ${quarterDate(inst.period!)}, and ${num(companies.length)} companies on this site appear in at least one of them. Each company's page lists the largest managers; this page ranks companies by how many managers report them and lists the ${num(managers.length)} managers with the largest reported value in these companies.`
+  : "The Form 13F figures are being refreshed. This page returns when the newest quarter's filings are loaded.";
+const description = "Which companies the most institutional managers report holding, and the largest managers, from SEC Form 13F. Positions on one day a quarter, as filed.";
+const ld = shown ? datasetLd({ downloads: [csvCo?.path, csvAll?.path].filter(Boolean) as string[], name: "Institutional holders: SEC Form 13F positions in companies on Spot the Money", path: INST_HUB_PATH, description, dateModified: lastUpdated, keywords: ["Form 13F", "institutional holders", "13F-HR", "institutional investors"], sources: [{ name: "SEC EDGAR: Form 13F", url: "https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets" }], parentCatalogPath: "/insiders/" }) : null;
+const coHeads: { label: string; type: "text" | "num"; cls?: string }[] = [
+  { label: "Company", type: "text" }, { label: "Ticker", type: "text" }, { label: "Industry division", type: "text" },
+  { label: "Managers", type: "num", cls: "num" },
+  ...(hasPrior ? [{ label: "Managers, prior quarter", type: "num" as const, cls: "num" }] : []),
+  { label: "Summed reported value", type: "num", cls: "num" },
+];
+const mgHeads: { label: string; type: "text" | "num"; cls?: string }[] = [
+  { label: "Manager", type: "text" }, { label: "Companies on this site", type: "num", cls: "num" }, { label: "Summed reported value", type: "num", cls: "num" },
+];
+if (shown) console.log(`[web] institutional holders hub: ${companies.length} companies, ${managers.length} managers, quarter ${inst.period}, prior ${inst.prior ?? "none"}`);
+---
+<BaseLayout title={["Institutional Holders: Form 13F by Company", "Institutional Holders"]} description={description} section="Insiders" noindex={!shown}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Insiders", path: "/insiders/" }, { name: "Institutional holders", path: INST_HUB_PATH }]} />
+  <h1>Institutional holders</h1>
+  <p class="lede">What funds and other institutional managers report holding each quarter, from SEC Form 13F.</p>
+
+  <Answer text={answer} updated={inst.lastFiled ?? model.builtAt} sourceNote="Source: SEC EDGAR, Form 13F-HR filings" />
+
+  {!shown ? <p class="empty-reason">Form 13F figures are being refreshed. Check back after the next daily update.</p> : (
+    <>
+      <section aria-labelledby="by-company" data-ih-hub data-period={inst.period} data-prior={inst.prior ?? ""} data-companies={companies.length} data-managers-n={managers.length}>
+        <h2 id="by-company">Companies by number of 13F managers</h2>
+        <p class="section-note">One row for each company on this site that a manager reports, for {quarterDate(inst.period!)}{hasPrior ? <>, with the count for {quarterDate(inst.prior!)}</> : null}. Click a company for its largest managers. {INST_CAVEAT} <a href="/guides/form-13f-institutional-holdings/">What Form 13F is</a>.</p>
+        <DownloadCsv file={csvCo} label="Download companies (CSV)" />
+        <div class="ctl" data-ih-search-wrap hidden><label class="lbl" for="ih-q">Search</label><input id="ih-q" class="hm-input" data-ih-search type="search" placeholder="Search company, ticker or manager" autocomplete="off" maxlength="60" /></div>
+        <p class="section-note" data-ih-count aria-live="polite"></p>
+        <div class="tablewrap"><table class="data" data-sortable data-ih-companies>
+          <thead><tr>
+            {coHeads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          </tr></thead>
+          <tbody>
+            {companies.map((c) => (
+              <tr data-name={`${c.name} ${c.ticker ?? ""}`.toLowerCase()}>
+                <td data-v={c.name.toLowerCase()}><a href={`${c.path}#institutional-holders`}>{c.name}</a></td>
+                <td data-v={(c.ticker ?? "").toLowerCase()}>{c.ticker ?? ""}</td>
+                <td data-v={(c.division ?? "").toLowerCase()}>{c.division ?? ""}</td>
+                <td class="num" data-k="managers" data-v={c.managers}>{num(c.managers)}</td>
+                {hasPrior && <td class="num" data-k="prior" data-v={c.prev ?? -1}>{c.prev == null ? "" : num(c.prev)}</td>}
+                <td class="num" data-k="value" data-v={c.value}>{valueLabel(c.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+      </section>
+
+      <section aria-labelledby="by-manager" data-ih-managers>
+        <h2 id="by-manager">Largest managers by reported value in companies on this site</h2>
+        <p class="section-note">The {num(managers.length)} managers with the largest summed reported value across the companies on this site, for {quarterDate(inst.period!)}. The value is what each manager reported for those positions; this site takes no prices. Each manager's name opens its list of 13F filings at the SEC. A manager's figure counts only the companies listed here, not its whole portfolio.</p>
+        <div class="tablewrap"><table class="data" data-sortable data-ih-manager-table>
+          <thead><tr>
+            {mgHeads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+            <th>Source</th>
+          </tr></thead>
+          <tbody>
+            {managers.map((x) => (
+              <tr data-name={x.name.toLowerCase()} data-cik={x.cik}>
+                <td data-v={x.name.toLowerCase()}>{x.path ? <a href={x.path}>{x.name}</a> : x.name}</td>
+                <td class="num" data-k="companies" data-v={x.issuers}>{num(x.issuers)}</td>
+                <td class="num" data-k="value" data-v={x.value}>{valueLabel(x.value)}</td>
+                <td><a href={x.secUrl} rel="noopener">SEC filings</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+      </section>
+    </>
+  )}
+
+  <div class="prose">
+  <AdSlot />
+  <h2 id="about">What this page shows</h2>
+  <p>An institutional investment manager that oversees at least $100 million in covered securities files a Form 13F with the SEC each quarter, up to 45 days after the quarter ends. It lists the manager's long positions on the quarter's last day. This page counts, for each company on this site, the managers that list it, and adds up the values they report.</p>
+  <p>The figures are sums of what managers reported, as filed. An adviser and the fund it runs can report the same shares, so a sum can count shares twice, and this page never states what share of a company is held. Put and call options are left out of the share and value figures. A filing shows positions on one day, not trades during the quarter.</p>
+  <p>{shown ? <>The newest quarter loaded is {quarterDate(inst.period!)}, with filings up to {formatDate(inst.lastFiled ?? built)}.</> : null} The section on a company's page only appears while the newest quarter's filings are recent, so a stalled load hides it. See the <a href="/methodology/#institutional-holders">methodology</a> and the <a href="/guides/form-13f-institutional-holdings/">guide to Form 13F</a>.</p>
+  </div>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  {ld && <JsonLd data={ld} />}
+</BaseLayout>
+<script>
+  import "../scripts/insthub";
+</script>
