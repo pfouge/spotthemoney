@@ -397,6 +397,28 @@ export function finScreenCounts(all: readonly FsCompany[]): { total: number; div
   return { total: rows.length, division };
 }
 
+/** The link a company's own Financials section carries: the screener narrowed to the company's
+ *  SIC division, with the number of companies that view opens on (those of the division with a
+ *  fiscal year on file). Null when the company is not in the screener, has no division, or the
+ *  view would be empty. The company itself is among them only when it has a fiscal year on file
+ *  (`included`); a company with quarters only still gets the link. */
+export interface DivisionLink { name: string; slug: string; n: number; href: string; included: boolean }
+export function divisionLinkOf(c: FsCompany | undefined | null, counts: { division: Map<string, number> }): DivisionLink | null {
+  if (!c?.division) return null;
+  const n = counts.division.get(c.division.slug) ?? 0;
+  if (n <= 0) return null;
+  return { name: c.division.name, slug: c.division.slug, n, href: finScreenerHref({ division: c.division.slug }), included: !!c.year };
+}
+/** Build log: how many company sections carry the link, per division, to compare with SQL. */
+export function divisionLinkLog(all: readonly FsCompany[], counts: { division: Map<string, number> }): string {
+  const div = new Map<string, number>();
+  let none = 0;
+  for (const c of all) { const l = divisionLinkOf(c, counts); if (l) div.set(l.name, (div.get(l.name) ?? 0) + 1); else none++; }
+  const total = [...div.values()].reduce((s, v) => s + v, 0);
+  const divs = [...div].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, v]) => `${k} ${v}`).join(", ");
+  return `financials division links: ${total} of ${all.length} companies in the screener link to their division's view, ${none} have no division; by division: ${divs || "-"}`;
+}
+
 // ── the rows on screen as a CSV file ─────────────────────────────────────────────────────
 // Column names follow /downloads/company-financials.csv where the meaning is the same.
 const figure = (k: FsConcept) => (r: FsRow) => r.p.v[k];

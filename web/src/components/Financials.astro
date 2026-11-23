@@ -6,6 +6,8 @@ import type { Flagship } from "../lib/flagship";
 import type { DownloadFile } from "../lib/downloads";
 import { formatDate } from "../lib/format";
 import { financialsOf } from "../lib/financials-build";
+import { finDivisionLink } from "../lib/finscreen-build";
+import { plural } from "../lib/flagship";
 import { SHOWN_CONCEPTS, shownYears, shownQuarters, sourceFilings, filingUrl, cellText, summarySentence, heldCount, tagChangeCount, debtShown, debtLabel, FIN_CAVEAT, HELD_TEXT, DEBT_CONCEPT, DEBT_NOTE, NO_LINE_REASON, RATIOS, RATIO_HEAD, RATIO_NA, ratioOf, ratioText, shownRatios, ratioNote, type Period, type HeldReason } from "../lib/financials";
 import DownloadCsv from "./DownloadCsv.astro";
 
@@ -23,6 +25,8 @@ const debtLine = f ? debtShown(f) : false;
 const debtSeveral = f ? f.debtTags.length > 1 : false;
 const lineLabel = (key: string, label: string) => (key === DEBT_CONCEPT && f ? debtLabel(f.debtTags[0]) : label);
 const changed = tagChangeCount(all);
+// The screener narrowed to this company's SIC division, with the number of companies that view opens on.
+const divLink = f && all.length > 0 ? finDivisionLink(model, cik) : null;
 // Ratios: this site's arithmetic on two printed lines of one column (lib/financials.ts), in rows of their own.
 const ratioKeys = new Set([...shownRatios(years), ...shownRatios(quarters)].map((r) => r.key));
 const ratiosNamed = RATIOS.filter((r) => ratioKeys.has(r.key));
@@ -36,6 +40,7 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
     <h2 id="financials">Financials, as filed</h2>
     <p data-fin-summary>{summarySentence(name, f)}</p>
     <p class="fin-note" data-fin-caveat>{FIN_CAVEAT} <a href="/methodology/#financials">How these figures are read</a>. The newest figures of every tracked company are side by side in the <a href="/company-financials/">company financials screener</a>.</p>
+    {divLink && <p class="fin-note" data-fin-division-link data-division={divLink.slug} data-n={divLink.n}><a href={divLink.href}>Open the {plural(divLink.n, "company", "companies")} in {divLink.name} with a fiscal year on file in the screener</a>{divLink.included ? `, ${name} among them` : ""}. The division comes from the industry code the SEC assigns and is a label only.</p>}
     <DownloadCsv file={file} label="Download the figures (CSV)" note="every tracked company, every fiscal year and quarter on file" />
     {tables.filter((t) => t.cols.length > 0).map((t) => (
       <>

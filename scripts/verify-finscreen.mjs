@@ -8,7 +8,9 @@
 // filter may read, how a column sorts and how an amount is printed.
 // Without a browser: the data file against that oracle, company by company and figure by figure;
 // that no held-back figure is in the data file; the rows the page prints without JavaScript; the
-// counts beside the links from the industry pages; sitemap, llms.txt, search; wording.
+// counts beside the links from the industry pages; the link in each company's own Financials
+// section (its division's view and that view's count; none without a division), on every
+// company with no division and a spread of the others; sitemap, llms.txt, search; wording.
 // With a browser (Playwright; skipped with --no-browser or when it is not installed): every
 // option of every filter in both periods, combined filters paged through and compared company by
 // company, every sort key in both directions, the address and its reload, Reset, a jump link,
@@ -294,6 +296,39 @@ for (const p of ["/industries/", ...data.divisions.map((d) => `/industries/${d.s
   if (p !== "/industries/" && perDivision.get(p.split("/")[2])) ok(m.includes(`${PATH}#division=${p.split("/")[2]}`), `${p}: no link to its companies in the financials screener`);
 }
 
+// ── the link in each company's own Financials section ────────────────────────────────────
+// A company in the screener whose division has a company with a fiscal year on file carries, in
+// the Financials section of its page, a link to the screener narrowed to that division, with the
+// number that view opens on; a company with no division carries none. Every company with no
+// division is read, plus a spread of the others (all of them with --all-companies).
+const wantLink = (o) => { const s = o.division ? slugOf(o.division) : ""; const n = s ? perDivision.get(s) ?? 0 : 0; return n > 0 ? { slug: s, n } : null; };
+const linkTotals = { linked: oracle.filter((o) => wantLink(o)).length, none: oracle.filter((o) => !wantLink(o)).length };
+const linkByDiv = new Map();
+for (const o of oracle) { const w = wantLink(o); if (w) linkByDiv.set(o.division, (linkByDiv.get(o.division) ?? 0) + 1); }
+const withPath = oracle.filter((o) => o.path);
+const firstOfDiv = [...new Map(withPath.filter((o) => wantLink(o)).map((o) => [o.division, o])).values()];
+const step = Math.max(1, Math.floor(withPath.length / 30));
+const sample = args.includes("--all-companies") ? withPath : [...new Set([...withPath.filter((o) => !wantLink(o)), ...firstOfDiv, ...withPath.filter((o) => wantLink(o) && !o.year).slice(0, 3), ...withPath.filter((_, i) => i % step === 0)])];
+let divPages = 0, divLinks = 0;
+for (const o of sample) {
+  const res = await get(o.path);
+  if (!ok(res.status === 200, `${o.path}: the page of ${o.name} answered ${res.status}`)) continue;
+  const sec = (mainOf(res.text).match(/<section[^>]*data-financials[^>]*data-cik="(\d+)"[\s\S]*?<\/section>/) ?? [])[0] ?? "";
+  if (!ok(sec && sec.includes(`data-cik="${o.cik}"`), `${o.path}: no Financials section for ${o.name} (${o.cik})`)) continue;
+  divPages++;
+  const found = [...sec.matchAll(/<p[^>]*data-fin-division-link[^>]*>[\s\S]*?<\/p>/g)].map((x) => x[0]);
+  const want = wantLink(o);
+  if (!want) { ok(found.length === 0, `${o.path}: ${o.name} has no division in companies.csv but its Financials section links to one`); continue; }
+  if (!ok(found.length === 1, `${o.path}: expected one division link in the Financials section, found ${found.length}`)) continue;
+  divLinks++;
+  const p = found[0], href = unescape((p.match(/<a[^>]*href="([^"]+)"/) ?? [])[1] ?? ""), t = strip(p);
+  ok(href === `${PATH}#division=${want.slug}`, `${o.path}: the division link is ${href}, expected ${PATH}#division=${want.slug}`);
+  ok((p.match(/data-division="([^"]*)"/) ?? [])[1] === want.slug && Number((p.match(/data-n="(\d+)"/) ?? [])[1]) === want.n, `${o.path}: the division link's count or division differs from the oracle (${want.slug}, ${want.n})`);
+  ok(t.includes(`Open the ${want.n.toLocaleString("en-US")} ${want.n === 1 ? "company" : "companies"} in ${o.division} with a fiscal year on file`), `${o.path}: the division link does not state ${want.n} companies in ${o.division}: "${t.slice(0, 140)}"`);
+  ok(t.includes("among them") === !!o.year, `${o.path}: "among them" is ${t.includes("among them") ? "said" : "not said"} although ${o.name} ${o.year ? "has" : "has no"} fiscal year on file`);
+  ok(t.includes("is a label only"), `${o.path}: the division link does not say the division is a label only`);
+}
+
 // ── in a browser ─────────────────────────────────────────────────────────────────────────
 let browserNote = "no browser";
 let chromium = null;
@@ -537,5 +572,5 @@ if (chromium) {
 
 console.log(failures
   ? `verify-finscreen: ${failures} problem(s) in ${checks} checks`
-  : `✓ verify-finscreen: ${checks} checks pass: ${oracle.length} companies (${years.length} with a fiscal year, ${quarters.length} with a quarter) and ${figures} figures against company-financials.csv, ${heldSeen} held back; ended in the last ${RECENT_DAYS} days: ${recentN.year} of ${years.length} fiscal years, ${recentN.quarter} of ${quarters.length} quarters; ratios of the newest periods: ${ratioSeen.ok} worked out (${ratioSeen.capped} beyond a limit), ${ratioSeen.base} n/a, ${ratioCells} ratio cells read on screen; ${linksIn} links in from the industry pages; ${browserNote}`);
+  : `✓ verify-finscreen: ${checks} checks pass: ${oracle.length} companies (${years.length} with a fiscal year, ${quarters.length} with a quarter) and ${figures} figures against company-financials.csv, ${heldSeen} held back; ended in the last ${RECENT_DAYS} days: ${recentN.year} of ${years.length} fiscal years, ${recentN.quarter} of ${quarters.length} quarters; ratios of the newest periods: ${ratioSeen.ok} worked out (${ratioSeen.capped} beyond a limit), ${ratioSeen.base} n/a, ${ratioCells} ratio cells read on screen; ${linksIn} links in from the industry pages; division links: ${linkTotals.linked} of ${oracle.length} companies link to their division's view, ${linkTotals.none} have no division (${[...linkByDiv].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, v]) => `${k} ${v}`).join(", ") || "-"}), ${divLinks} links read on ${divPages} company pages; ${browserNote}`);
 process.exit(failures ? 1 : 0);
