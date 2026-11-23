@@ -106,6 +106,7 @@ ${table(["Column", "What it tells you"], [
 <li><strong>How this record compares.</strong> The member's number of trades, median days from trade to report and share of trades reported after ${c.congressDeadlineDays} days, beside the same figures for every member with at least one trade on record here. Members who reported no trades are not part of the comparison.</li>
 <li><strong>Disclosed trades and filings.</strong> Every row with its link to the original report, then the list of reports themselves.</li>
 <li><strong>Committee assignments.</strong> Current committees and subcommittees, with any leadership post. They are listed for context. This site does not match trades to committee business, and a seat on a committee is not evidence about any trade.</li>
+<li><strong>Lobbyist contributions.</strong> When a lobbyist's or lobbying firm's LD-203 report names the member in its honoree field, the item is listed with its filer, kind, amount as reported and a link to the filing. The match is narrow (see <a href="/guides/lobbying-disclosure-reports/#contributions">the guide to those reports</a>) and a report says what was paid, not why.</li>
 </ul>
 <p>The page ends with other members from the same state, members who traded the same tickers, and short answers to the questions people ask most about that member. All of it is counted from the same rows as the trade table.</p>` },
       { id: "directory", h: "How do I find a member, or all the members from one state or committee?", html: `

@@ -550,6 +550,87 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
 insert into company_financials_checked (cik, checked_at, status, rows, newest_filed)
 select cik, now(), 'ok', count(*), max(filed) from company_financials group by cik;
 
+-- ── federal assistance (migration 0037; web/src/lib/assistance.ts) ─────────────────────────
+-- 40 awards over 200 days: grants, loans (one with a negative subsidy cost), direct payments, two
+-- masked recipients, exact-name awards to NVIDIA (1) and Lockheed (2), a name nothing else shares,
+-- one that started 300 days ago (outside the 180-day window), a long description, and one with
+-- quotes and angle brackets.
+delete from assistance_awards;
+insert into assistance_awards (source_ref, award_id, kind, award_type, recipient, awarding_agency, awarding_sub_agency, amount, subsidy_cost, start_date, end_date, description, assistance_listing) values
+  ('ASST_NON_SEED01', 'SEED01', 'grant', 'Project Grant', 'NVIDIA CORP', 'National Science Foundation', 'Directorate for Computer and Information Science', 4200000, null, current_date - 20, current_date + 700, 'ADVANCED COMPUTING RESEARCH TESTBED', '47.070 Computer and Information Science and Engineering'),
+  ('ASST_NON_SEED02', 'SEED02', 'grant', 'Cooperative Agreement', 'LOCKHEED MARTIN CORP', 'Department of Energy', 'Office of Science', 9800000, null, current_date - 33, current_date + 400, 'FUSION MATERIALS IRRADIATION PROGRAM', '81.049 Office of Science Financial Assistance Program'),
+  ('ASST_LOA_SEED03', 'SEED03', 'loan', 'Guaranteed/Insured Loan', 'LOCKHEED MARTIN CORP', 'Department of Energy', 'Loan Programs Office', 650000000, 41000000, current_date - 61, current_date + 5000, 'ADVANCED TECHNOLOGY VEHICLES MANUFACTURING LOAN', '81.124 Advanced Technology Vehicles Manufacturing Loan Program'),
+  ('ASST_LOA_SEED04', 'SEED04', 'loan', 'Direct Loan', 'RIVERBEND ENERGY COOPERATIVE', 'Department of Agriculture', 'Rural Utilities Service', 120000000, -3400000, current_date - 14, current_date + 9000, 'ELECTRIC INFRASTRUCTURE LOAN, NEGATIVE SUBSIDY RATE', '10.850 Rural Electrification Loans and Loan Guarantees'),
+  ('ASST_DIR_SEED05', 'SEED05', 'direct_payment', 'Direct Payment for Specified Use', 'MULTIPLE RECIPIENTS', 'Department of Agriculture', 'Farm Service Agency', 88000000, null, current_date - 9, null, 'COUNTY AGGREGATED PAYMENTS', '10.112 Price Loss Coverage'),
+  ('ASST_DIR_SEED06', 'SEED06', 'direct_payment', 'Direct Payment with Unrestricted Use', 'REDACTED DUE TO PII', 'Social Security Administration', null, 31000000, null, current_date - 45, null, null, '96.001 Social Security Disability Insurance'),
+  ('ASST_NON_SEED07', 'SEED07', 'grant', 'Formula Grant', 'ZENITH COMMUNITY HEALTH CENTERS INC', 'Department of Health and Human Services', 'Health Resources and Services Administration', 1250000, null, current_date - 100, current_date + 265, 'HEALTH CENTER CLUSTER GRANT "PRIMARY CARE" <PHASE 2> & OUTREACH', '93.224 Health Center Program'),
+  ('ASST_NON_SEED08', 'SEED08', 'grant', 'Project Grant', 'OLD HARBOR RESEARCH INSTITUTE', 'Department of Defense', 'Department of the Navy', 2750000, null, current_date - 300, current_date - 20, 'OCEAN ACOUSTICS STUDY (STARTED OUTSIDE THE WINDOW)', '12.300 Basic and Applied Scientific Research'),
+  ('ASST_NON_SEED09', 'SEED09', 'grant', 'Block Grant', 'STATE OF OHIO', 'Department of Health and Human Services', 'Administration for Children and Families', 45000000, null, current_date - 7, current_date + 358,
+   'TEMPORARY ASSISTANCE FOR NEEDY FAMILIES BLOCK GRANT FOR THE STATE FISCAL YEAR, COVERING CASH ASSISTANCE, WORK ACTIVITIES, CHILD CARE TRANSFERS, EMERGENCY ASSISTANCE, ADMINISTRATIVE COSTS, TRAINING AND EVALUATION, PROGRAM INTEGRITY ACTIVITIES, TRIBAL COORDINATION AND RELATED STATE SUPPORT SERVICES UNDER THE APPROVED STATE PLAN', '93.558 Temporary Assistance for Needy Families');
+-- thirty-one more, spread over 200 days (some outside the window), three kinds, a few programs and agencies
+insert into assistance_awards (source_ref, award_id, kind, award_type, recipient, awarding_agency, awarding_sub_agency, amount, subsidy_cost, start_date, end_date, description, assistance_listing)
+select 'ASST_GEN_SEED' || lpad(i::text, 2, '0'), 'GEN' || i,
+       (array['grant','loan','direct_payment'])[1 + i % 3],
+       (array['Project Grant','Direct Loan','Direct Payment for Specified Use'])[1 + i % 3],
+       (array['COUNTY OF HARRIS','UNIVERSITY OF DALLAS','BLUE RIDGE TRANSIT AUTHORITY','NORTHERN PLAINS BROADBAND LLC','CITY OF PORTLAND','MERCY GENERAL HOSPITAL'])[1 + i % 6],
+       (array['Department of Transportation','Department of Education','Department of Agriculture','Department of Health and Human Services'])[1 + i % 4],
+       (array['Federal Transit Administration','Office of Postsecondary Education','Rural Utilities Service','Centers for Medicare and Medicaid Services'])[1 + i % 4],
+       (1000000 + i * 937000)::numeric,
+       case when i % 3 = 1 then (i * 31000 - 400000)::numeric else null end,
+       current_date - (i * 6 + 2), current_date + 100 + i,
+       'SEED AWARD ' || i,
+       (array['20.500 Federal Transit Capital Investment Grants','84.063 Federal Pell Grant Program','10.850 Rural Electrification Loans and Loan Guarantees','93.778 Medical Assistance Program'])[1 + i % 4]
+  from generate_series(1, 31) i;
+
+-- ── lobbyist contributions (migration 0033; web/src/lib/lobbygifts.ts) ───────────────────────
+-- 14 filings over two years and three periods, as the Senate API prints them: three with no
+-- contributions, an amended pair (the later posting counts), items that name seed members in
+-- exact form, with a title and with a bracket tag, a surname-only item and a two-people item
+-- (neither matches), a registrant equal to Lockheed, a future date and a null amount.
+delete from lobby_contribution_filings;
+insert into lobby_contribution_filings (filing_uuid, filing_type, filing_year, filing_period, filer_type, registrant_id, registrant_name, lobbyist_name, no_contributions, posted_at, source_url, item_count) values
+  ('seed-c01', 'Mid-Year Report', extract(year from current_date)::int - 1, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'PAT ELLIS', false, (current_date - 480)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c01/print/', 2),
+  ('seed-c02', 'Year-End Report', extract(year from current_date)::int - 1, 'Year-End (Jul 1 - Dec 31)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'PAT ELLIS', true, (current_date - 300)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c02/print/', 0),
+  ('seed-c03', 'Year-End Report', extract(year from current_date)::int - 1, 'Year-End (Jul 1 - Dec 31)', 'Registrant', 9002, 'LOCKHEED MARTIN CORP', null, false, (current_date - 298)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c03/print/', 3),
+  ('seed-c04', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9002, 'LOCKHEED MARTIN CORP', null, false, (current_date - 120)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c04/print/', 4),
+  ('seed-c05', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9003, 'BROWNSTEIN HYATT FARBER SCHRECK', 'DANA REYES', false, (current_date - 125)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c05/print/', 3),
+  -- the amended pair: seed-c06 is replaced by seed-c07 (same registrant, lobbyist, year and period)
+  ('seed-c06', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9004, 'INVARIANT LLC', 'SAM KOWAL', false, (current_date - 130)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c06/print/', 1),
+  ('seed-c07', 'Mid-Year Amendment', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9004, 'INVARIANT LLC', 'SAM KOWAL', false, (current_date - 110)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c07/print/', 2),
+  ('seed-c08', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9005, 'MICROSOFT CORP', 'LEE CHANG', true, (current_date - 118)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c08/print/', 0),
+  ('seed-c09', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'PAT ELLIS', false, (current_date - 115)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c09/print/', 4),
+  ('seed-c10', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'JO MARTINEZ', true, (current_date - 114)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c10/print/', 0),
+  ('seed-c11', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9006, 'PALANTIR TECHNOLOGIES INC.', null, false, (current_date - 100)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c11/print/', 2),
+  ('seed-c12', 'Year-End Report', extract(year from current_date)::int - 1, 'Year-End (Jul 1 - Dec 31)', 'Lobbyist', 9003, 'BROWNSTEIN HYATT FARBER SCHRECK', 'DANA REYES', false, (current_date - 299)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c12/print/', 2),
+  ('seed-c13', 'Mid-Year Report', extract(year from current_date)::int - 1, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9002, 'LOCKHEED MARTIN CORP', null, false, (current_date - 470)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c13/print/', 1),
+  ('seed-c14', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9007, 'ACME LOGISTICS LLC', 'RAY OKONKWO', false, (current_date - 90)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c14/print/', 1);
+insert into lobby_contribution_items (filing_uuid, seq, contribution_type, contributor_name, payee_name, honoree_name, amount, contributed_at) values
+  ('seed-c01', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 1000, current_date - 500),
+  ('seed-c01', 2, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Rep. Elena Marsh', 500, current_date - 490),
+  ('seed-c03', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'OKAFOR FOR OHIO', 'Samuel Okafor', 2500, current_date - 330),
+  ('seed-c03', 2, 'PIC', 'LOCKHEED MARTIN CORP', 'SEED PRESIDENTIAL LIBRARY FOUNDATION', 'Seed Library Foundation', 10000, current_date - 320),
+  ('seed-c03', 3, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'COMMITTEE TO ELECT PAT', 'Pat', 250, current_date - 310),
+  ('seed-c04', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'WHITFIELD FOR CONGRESS', 'The Honorable Jordan Whitfield', 5000, current_date - 150),
+  ('seed-c04', 2, 'HONORARY', 'LOCKHEED MARTIN CORP', 'GALA FOUNDATION', 'Elena Marsh [Leadership PAC]', 7500, current_date - 140),
+  ('seed-c04', 3, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'MARSH VICTORY FUND', 'Whitfield', 1500, current_date - 135),
+  ('seed-c04', 4, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'JOINT FUND', 'Samuel Okafor and Elena Marsh', 3000, current_date + 20),
+  ('seed-c05', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 2000, current_date - 160),
+  ('seed-c05', 2, 'FECA', 'SELF', 'SAMUEL OKAFOR FOR OHIO', 'Hon. Samuel Okafor', 1000, current_date - 155),
+  ('seed-c05', 3, 'MEETING', 'SELF', 'ANNUAL POLICY RETREAT', 'Priya Lindqvist', null, null),
+  ('seed-c06', 1, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Elena Marsh', 800, current_date - 170),
+  ('seed-c07', 1, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Elena Marsh', 800, current_date - 170),
+  ('seed-c07', 2, 'FECA', 'SELF', 'WALTER ABARA FOR SENATE', 'Walter Abara', 1200, current_date - 165),
+  ('seed-c09', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 3300, current_date - 140),
+  ('seed-c09', 2, 'FECA', 'SELF', 'LINDQVIST FOR SENATE', 'Priya Lindqvist', 1500, current_date - 138),
+  ('seed-c09', 3, 'HONORARY', 'SELF', 'CITY GALA', 'Senator Priya Lindqvist', 4000, current_date - 120),
+  ('seed-c09', 4, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Elena Marsh', 900, current_date - 118),
+  ('seed-c11', 1, 'FECA', 'PALANTIR PAC', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 5000, current_date - 110),
+  ('seed-c11', 2, 'FECA', 'PALANTIR PAC', 'OKAFOR FOR OHIO', 'Samuel Okafor', 2500, current_date - 105),
+  ('seed-c12', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 2700, current_date - 310),
+  ('seed-c12', 2, 'FECA', 'SELF', 'LEADERSHIP FUND', 'Marcus Delacroix', 1000, current_date - 305),
+  ('seed-c13', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'MARSH VICTORY FUND', 'Elena Marsh', 2000, current_date - 480),
+  ('seed-c14', 1, 'FECA', 'SELF', 'NO NAME COMMITTEE', 'Dr. Jordan Whitfield <"friend"> & guests', 600, current_date - 95);
+
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
 -- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the

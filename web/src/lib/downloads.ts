@@ -26,6 +26,9 @@ import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOu
 import { SHOWN_CONCEPTS, CHECK_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
 import { financialsOf } from "./financials-build";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
+import { isMasked, programLabel, splitListing, kindName as assistKind, type AssistanceRow } from "./assistance";
+import { CSV_COLUMNS as LOBBY_CSV_COLUMNS } from "./lobbygifts";
+import { readCsvFile } from "./lobbygifts-build";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -40,7 +43,9 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "assistance" | "lobbycontrib" | "rates" | "markets";
+  /** Size in bytes when it is known without reading the text (files streamed to disk). */
+  bytes?: number;
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -358,6 +363,39 @@ async function build(): Promise<Downloads> {
   ];
   add(file({ name: "company-financials.csv", group: "insiders", kind: "financials", title: "Company financials, as filed with the SEC", about: "One row per company and period: revenue, net income, earnings per share, cash flow and balance-sheet totals from annual and quarterly reports, for the companies this site tracks. Figures as filed, in the company's own currency.", updated: finRows.reduce<string | null>((a, r) => { const d = sourceFilings(r.period)[0]?.filed ?? null; return d && (!a || d > a) ? d : a; }, null) }, finCols, finRows));
 
+  // Federal grants, loans and direct payments that started in the last 180 days (lib/assistance.ts).
+  const assistRows = m.assistance.rows;
+  const assistCompany = new Map<number, Company>();
+  for (const [cid, xs] of m.assistance.byCompany) { const c = m.companies.get(cid); if (c) for (const r of xs) assistCompany.set(r.id, c); }
+  const assistCols: Column<AssistanceRow>[] = [
+    { key: "kind", about: "grant, loan, direct_payment or other. The kinds are never added together: a loan's amount is a face value.", get: (r) => r.kind },
+    { key: "award_type", about: "The award type as USAspending reports it, for example Project Grant.", get: (r) => r.awardType },
+    { key: "recipient", about: "The recipient as USAspending returns it. A masked name (individuals) is kept as returned.", get: (r) => r.recipient },
+    { key: "recipient_masked", about: "true when USAspending masks the recipient. A masked recipient is never matched to a company.", get: (r) => isMasked(r.recipient) },
+    { key: "awarding_agency", about: "The awarding agency.", get: (r) => r.agency },
+    { key: "awarding_sub_agency", about: "The awarding sub-agency, when it differs from the agency.", get: (r) => r.subAgency },
+    { key: "program_number", about: "Assistance listing (CFDA) number of the program.", get: (r) => splitListing(r.listing).number },
+    { key: "program_title", about: "Assistance listing title of the program.", get: (r) => splitListing(r.listing).title },
+    { key: "description", about: "The agency's description, as entered, white space collapsed, at most 1,000 characters.", get: (r) => r.description },
+    { key: "start_date", about: "Start date of the award (YYYY-MM-DD). For a loan, the date it was issued.", get: (r) => r.startDate },
+    { key: "end_date", about: "End date of the award, when the agency states one.", get: (r) => r.endDate },
+    { key: "amount", about: "Award value in dollars. For a loan or guarantee this is the face value of the loan, not money granted.", get: (r) => r.amount },
+    { key: "subsidy_cost", about: "Loans only: the government's own estimate of what the loan costs. Can be negative.", get: (r) => (r.kind === "loan" ? r.subsidyCost : null) },
+    { key: "award_id", about: "The award's own id (FAIN, URI or loan number).", get: (r) => r.awardId },
+    { key: "source_url", about: "Link to the award on USAspending.", get: (r) => (r.sourceRef ? `https://www.usaspending.gov/award/${r.sourceRef}/` : null) },
+    { key: "company_page_url", about: "The company's page on this site, when the recipient name matches a company here exactly.", get: (r) => { const c = assistCompany.get(r.id); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
+  ];
+  void assistKind; void programLabel;
+  add(file({ name: "federal-assistance.csv", group: "washington", kind: "assistance", title: "Federal grants, loans and direct payments", about: "One row per federal grant, loan or direct payment that started in the last 180 days, from USAspending. Not every award. A loan's amount is a face value.", updated: newest(assistRows.map((r) => r.startDate)) }, assistCols, assistRows));
+
+  // Lobbyist contributions (Form LD-203): files streamed to disk by lib/lobbygifts-build.ts.
+  for (const cf of m.lobbyContrib.csv) {
+    files.push({ path: `/downloads/${cf.name}`, name: cf.name, group: "washington", kind: "lobbycontrib",
+      title: `Lobbyist contributions, ${cf.year}${cf.period ? `, ${cf.period.replace(/_/g, " ")}` : ""}`,
+      about: `One row per item on the LD-203 reports lobbyists and lobbying firms filed for ${cf.year}${cf.period ? ` (${cf.period.replace(/_/g, " ")})` : ""}, names as typed by the filer. Earlier versions of an amended report are kept with counted = false.`,
+      rows: cf.rows, updated: cf.updated, bytes: cf.bytes, columns: LOBBY_CSV_COLUMNS.map((c) => ({ key: c.key, about: c.about })), body: () => readCsvFile(cf) });
+  }
+
   // Rates
   for (const f of await rateFiles()) add(f);
   add(marketFile());
@@ -452,4 +490,4 @@ export function getDownloads(): Promise<Downloads> { return (_downloads ??= buil
 export function sizeLabel(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : bytes >= 1024 ? `${Math.round(bytes / 1024)} KB` : `${bytes} bytes`;
 }
-export const byteSize = (f: DownloadFile) => Buffer.byteLength(f.body(), "utf8");
+export const byteSize = (f: DownloadFile) => f.bytes ?? Buffer.byteLength(f.body(), "utf8");

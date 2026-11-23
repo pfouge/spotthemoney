@@ -30,7 +30,7 @@ async function firstLink(page, index, prefix) {
   }, prefix);
 }
 const probe = await browser.newPage();
-const pages = ["/", "/congress/", "/congress-members/", "/congress-trades/", "/congress-committees/", "/insiders/", "/disclosures/", "/stocks/", "/companies/", "/industries/", "/industries/manufacturing/", "/company-financials/", "/washington/", "/donations/", "/lobbying/", "/lobbying-issues/", "/lobbying-issues/taxation-internal-revenue-code/", "/contracts/", "/rates/", "/methodology/", "/corrections/", "/about/", "/contact/", "/terms/", "/privacy/", "/writing/", "/guides/", "/faq/", "/downloads/", "/feeds/", "/developers/", "/watchlist/", "/guides/form-4-transaction-codes/", "/guides/how-to-use-the-trade-map/"];
+const pages = ["/", "/congress/", "/congress-members/", "/congress-trades/", "/congress-committees/", "/insiders/", "/disclosures/", "/stocks/", "/companies/", "/industries/", "/industries/manufacturing/", "/company-financials/", "/washington/", "/donations/", "/lobbying/", "/lobbying-issues/", "/lobbying-issues/taxation-internal-revenue-code/", "/contracts/", "/grants/", "/lobbyist-contributions/", "/rates/", "/methodology/", "/corrections/", "/about/", "/contact/", "/terms/", "/privacy/", "/writing/", "/guides/", "/faq/", "/downloads/", "/feeds/", "/developers/", "/watchlist/", "/guides/form-4-transaction-codes/", "/guides/how-to-use-the-trade-map/"];
 for (const [index, prefix] of [["/congress/", "/congress/"], ["/congress-committees/", "/congress-committees/"], ["/insiders/", "/insiders/"], ["/stocks/", "/stocks/"], ["/companies/", "/companies/"]]) {
   const p = await firstLink(probe, index, prefix);
   if (p) pages.push(p);

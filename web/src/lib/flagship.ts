@@ -18,6 +18,10 @@ import { emptySchedule13, schedule13Log, holdingsLog } from "./schedule13";
 import { loadSchedule13 } from "./schedule13-build";
 import { emptyFinancials, financialsLog } from "./financials";
 import { loadFinancials } from "./financials-build";
+import { emptyAssistance, assistanceLog } from "./assistance";
+import { loadAssistance } from "./assistance-build";
+import { emptyLobbyContrib, lobbyContribLog } from "./lobbygifts";
+import { loadLobbyContrib } from "./lobbygifts-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -71,7 +75,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -159,7 +163,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -395,6 +399,24 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${financialsLog(model.financials, ciks)}`);
     } catch (err) {
       console.warn("[web] company financials skipped:", (err as Error).message);
+    }
+
+    // Federal grants, loans and direct payments (migration 0037). Optional: a missing table leaves
+    // the hub, the company section, the CSV and the guide section out (lib/assistance.ts).
+    try {
+      model.assistance = await loadAssistance(sql, model.companies.values());
+      console.log(assistanceLog(model.assistance));
+    } catch (err) {
+      console.warn("[web] federal assistance skipped:", (err as Error).message);
+    }
+
+    // Lobbyist contributions, Form LD-203 (migration 0033). Aggregated in SQL; the CSV files are
+    // streamed to temporary files (lib/lobbygifts-build.ts). Optional.
+    try {
+      model.lobbyContrib = await loadLobbyContrib(sql, model.people.values(), model.companies.values());
+      console.log(lobbyContribLog(model.lobbyContrib));
+    } catch (err) {
+      console.warn("[web] lobbyist contributions skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

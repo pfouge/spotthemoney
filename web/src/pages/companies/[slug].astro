@@ -38,6 +38,8 @@ import { formatDate } from "../../lib/format";
 import IssueList from "../../components/IssueList.astro";
 import { issueIndex } from "../../lib/lobbyissues";
 import VizStock from "../../components/VizStock.astro";
+import Assistance from "../../components/Assistance.astro";
+import LobbyContribFiler from "../../components/LobbyContribFiler.astro";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -79,7 +81,11 @@ const finNewest = finYears[0] ?? finQuarters[0];
 // Schedule 13 statements this company filed about other companies on the site.
 const holdingsN = holdingsOf(statementsFiledBy(model, c.cik), model.builtAt).length;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
-const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || finShown || plannedN > 0 || holdersN > 0 || holdingsN > 0;
+const assistRows = model.assistance.byCompany.get(c.id) ?? [];
+const lcf = model.lobbyContrib.companies.get(c.id);
+const lcfItems = lcf ? lcf.years.reduce((a, y) => a + y.items, 0) : 0;
+const dlFiles = (await getDownloads()).files;
+const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || finShown || plannedN > 0 || holdersN > 0 || holdingsN > 0 || assistRows.length > 0 || lcfItems > 0;
 const latestInsider = txns.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 const glance = [
   ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
@@ -88,7 +94,9 @@ const glance = [
   ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
   ...(c.contracts.length ? [{ label: "Federal contracts", value: num(c.contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
+  ...(assistRows.length ? [{ label: "Grants and loans", value: num(assistRows.length), note: `Newest started ${formatDate(assistRows[0]!.startDate)}`, href: "#assistance" }] : []),
   ...(c.lobbying.length ? [{ label: "Lobbying filings", value: num(c.lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
+  ...(lcfItems ? [{ label: "Lobbyist contributions", value: num(lcf!.years[0]?.items ?? 0), note: `Items in ${lcf!.years[0]?.year}, filed by the company`, href: "#filer-contributions" }] : []),
 ];
 const groupList = hasData ? [
   { id: "trading", label: "Trading" },
@@ -206,6 +214,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </div>
   )}
 
+  <Assistance model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "assistance")} />
+
   <h2 id="lobbying">Lobbying (Senate LDA, as client)</h2>
   {c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing posted since October 2025 names "{c.name}" as the client. Filings under a subsidiary or trade-association name are not matched. Search <a href="/lobbying/">lobbying</a>.</p> : (
     <div class="tablewrap">
@@ -219,6 +229,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
       </table>
     </div>
   )}
+
+  <LobbyContribFiler model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "lobbycontrib")} />
 
   </PageGroup>
 

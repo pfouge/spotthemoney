@@ -50,6 +50,10 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [Company financials screener](${SITE_URL}/company-financials/): the newest fiscal year or quarter of each tracked company in one table, as filed with the SEC (revenue, net income, diluted earnings per share, total assets, equity); filters for industry, currency, revenue, net income above or below zero and total assets. Figures as filed, in the company's own currency; nothing is converted, scored or ranked.
 - [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
 - [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
+${m.assistance.rows.length ? `- [Grants and loans](${SITE_URL}/grants/): federal grants, loans and direct payments that started in the last 180 days, from USAspending, with agency and program. The three kinds are listed apart and not added together; a loan's amount is its face value.
+` : ""}
+${m.lobbyContrib.available && m.lobbyContrib.periods.length ? `- [Lobbyist contributions](${SITE_URL}/lobbyist-contributions/): contributions and payments that lobbyists and lobbying firms report on Form LD-203, with largest filers, most named recipients and newest items. Names are as typed by the filers; a report is not a statement by the recipient.
+` : ""}
 - [Newest disclosures](${SITE_URL}/disclosures/): one feed across every source, newest first.
 
 ## Free CSV downloads (no sign-up; same rows as the pages; column meanings on the page)

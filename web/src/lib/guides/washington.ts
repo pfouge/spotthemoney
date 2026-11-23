@@ -74,7 +74,7 @@ ${table(["Type", "What it is"], [
   (c) => {
     const l = c.facts.ldaThresholds;
     return {
-      slug: "lobbying-disclosure-reports", group: "washington", updated: "2026-11-16",
+      slug: "lobbying-disclosure-reports", group: "washington", updated: "2026-11-22",
       title: "Lobbying disclosure reports",
       seoTitle: ["Lobbying Disclosure Reports Explained (LD-2 Filings)", "Lobbying Disclosure Reports Explained"],
       description: ["Lobbyists must report who pays them, how much, and which issues they work on, every quarter. How to read a lobbying report and what it leaves out.", "Lobbyists report clients, amounts and issues every quarter. How to read a lobbying report and what it leaves out."],
@@ -111,8 +111,16 @@ ${table(["Type", "What it is"], [
 <p>A report can name several of the 79 general issue areas, and many do. Each row in a lobbying table here lists every issue area the filing names, the first ${c.issuesInline} when there are more, and each name opens that issue's page. The <a href="/lobbying-issues/">lobbying by issue</a> list has one row per issue area: the filings that name it this year, how many of them name no other issue, and the clients and registrants behind them. An issue's own page lists its ${c.issueTopRows} largest clients and registrants and the ${c.issueFilingRows} newest filings that name it.</p>
 <p>A report gives one amount for the quarter, not an amount for each issue. So the amount beside an issue is the total on the reports that name it, and a report that names three issues adds its whole amount to all three. The amounts of two issues overlap and cannot be added together, and none of them is what was spent on that issue alone. The chart on the lobbying page is different on purpose: it counts each report once, under its first issue, so that its tiles add up to the year's total.</p>
 <p>New filings are added once a day, newest first. If a daily run has to stop before it reaches filings it already has, it notes the gap, and the next run closes it, so a filing can occasionally appear a day late but should not stay missing.</p>` },
+        { id: "contributions", h: "What is a lobbyist contribution report (LD-203)?", html: `
+<p>Twice a year, every registered lobbying firm, every organization with in-house lobbyists and every individual lobbyist files a second kind of report, form LD-203. It is due 30 days after the end of each half of the year (${ext("https://www.law.cornell.edu/uscode/text/2/1604", "2 U.S.C. § 1604(d)")}). It lists contributions to federal candidates, officeholders, leadership PACs and party committees that add up to $200 or more for one recipient, payments for events that honor covered officials or for meetings they host, payments to entities named for or controlled by them, and payments to presidential library foundations and inaugural committees. A filer with nothing to list still files, and says so (${ext("https://lobbyingdisclosure.house.gov/ldaguidance.pdf", "House Clerk guidance")}).</p>
+<p>The <a href="/lobbyist-contributions/">lobbyist contributions page</a> totals the reports by period and type, lists the largest filers, the names that appear most and the newest items. Names are as the filers typed them, and nothing merges two spellings of one recipient. The Senate publishes the data and notes that its Office of Public Records cannot vouch for it.</p>
+<p>An amended report is a new filing that the Senate's data does not tie to the one it replaces. For the same registrant, lobbyist, year and period this site counts the version posted last and leaves the earlier ones out of every figure, though the CSV files keep them marked as not counted. An item with no date, or a date in the future, is listed without a date and counted in its report's period only.</p>
+<p>A member's page lists the items whose honoree field names that member. The match is deliberately narrow: titles such as "Rep." and bracketed tags are removed, and what is left must equal the member's full name, or equal first and last name where one member has that pair. A surname alone, or a field naming several people, matches nobody. A payee that is a member's campaign committee is not matched, because this site does not yet link committees to members, so the member sections count fewer items than the reports hold. A company page shows items from reports filed under the company's exact name, with the same caution.</p>
+<p>An LD-203 report is the filer's statement. It says that money went to a recipient, not why, and it is not a statement by the recipient. Nothing on this site connects a contribution to a vote, a trade or any other action.</p>` },
       ],
       faqs: [
+        { q: "What is an LD-203 contribution report?", a: "It is the report each lobbyist and lobbying firm files twice a year listing certain contributions and payments: gifts to federal candidates and party committees of $200 or more, payments for events honoring officials, and some others. It does not say why a contribution was made.", on: ["washington"] },
+        { q: "Why does a member's page list fewer lobbyist contributions than the reports hold?", a: "Because an item is tied to a member only when its honoree field is exactly the member's name, after titles are removed. A contribution to a campaign committee that does not name the member, a surname alone, or a field naming several people is not counted on the member's page. It is still on the lobbyist contributions page and in the CSV files." },
         { q: "How much was spent lobbying on one issue, such as taxation?", a: "The reports cannot say. A lobbying report gives one amount for the quarter and a list of issue areas, with no split between them. This site shows the total on the reports that name an issue, which also covers every other issue those reports name." },
         { q: "What is an LD-2 lobbying report?", a: "An LD-2 is the quarterly report a lobbying firm or an organisation with in-house lobbyists files under the Lobbying Disclosure Act. It names the client, the amount, the issues and the institutions contacted.", on: ["washington"] },
         { q: "Do lobbying reports say which lawmakers were lobbied?", a: "No. A report lists the House, the Senate or a federal agency as the body contacted. It does not name individual members of Congress or staff.", on: ["washington"] },
@@ -124,11 +132,12 @@ ${table(["Type", "What it is"], [
         { name: "House Clerk: lobbying disclosure, thresholds and deadlines", url: "https://lobbyingdisclosure.house.gov/" },
         { name: "Lobbying Disclosure Act guidance", url: "https://lobbyingdisclosure.house.gov/ldaguidance.pdf" },
         { name: "2 U.S.C. § 1604, reports by registered lobbyists", url: "https://www.law.cornell.edu/uscode/text/2/1604" },
+        { name: "Senate lobbying disclosure database (LDA.gov)", url: "https://lda.gov/" },
       ],
       related: ["campaign-donations-fec-data", "federal-contracts-usaspending", "what-disclosure-data-cannot-tell-you"],
-      seeLive: [{ label: "Lobbying filings", href: "/lobbying/" }, { label: "Lobbying by issue", href: "/lobbying-issues/" }, { label: "Washington overview", href: "/washington/" }],
-      covers: ["ingest/src/sources/senate_lda.ts", "web/src/pages/lobbying/index.astro", "web/src/lib/lobbyissues.ts", "web/src/pages/lobbying-issues/index.astro", "web/src/pages/lobbying-issues/[slug].astro"],
-      ui: [{ text: "Browse by issue", on: "/lobbying/" }, { text: "Only issue listed", on: "/lobbying-issues/" }, { text: "Reported on those filings", on: "/lobbying-issues/" }],
+      seeLive: [{ label: "Lobbying filings", href: "/lobbying/" }, { label: "Lobbying by issue", href: "/lobbying-issues/" }, { label: "Lobbyist contributions", href: "/lobbyist-contributions/" }, { label: "Washington overview", href: "/washington/" }],
+      covers: ["ingest/src/sources/senate_lda.ts", "web/src/pages/lobbying/index.astro", "web/src/lib/lobbyissues.ts", "web/src/pages/lobbying-issues/index.astro", "web/src/pages/lobbying-issues/[slug].astro", "web/src/lib/lobbygifts.ts", "web/src/pages/lobbyist-contributions/index.astro"],
+      ui: [{ text: "Browse by issue", on: "/lobbying/" }, { text: "Only issue listed", on: "/lobbying-issues/" }, { text: "Reported on those filings", on: "/lobbying-issues/" }, { text: "Most named recipients", on: "/lobbyist-contributions/" }],
       facts: ["ldaThresholds"],
     };
   },
@@ -137,7 +146,7 @@ ${table(["Type", "What it is"], [
   (c) => {
     const k = c.facts.contractLag;
     return {
-      slug: "federal-contracts-usaspending", group: "washington", updated: "2026-11-19",
+      slug: "federal-contracts-usaspending", group: "washington", updated: "2026-11-22",
       title: "Federal contracts: how to read USAspending data",
       seoTitle: ["Federal Contracts Explained: How to Read USAspending", "How to Read USAspending Contract Data"],
       description: ["USAspending.gov publishes every federal contract award. What award value, obligation and outlay mean, why Defense data runs 90 days behind, and what is shown here.", "What USAspending contract records show: award value, obligations, outlays, and why Defense data runs behind."],
@@ -172,6 +181,11 @@ ${table(["Term", "Meaning"], [
 <p>It is a six-digit code from the North American Industry Classification System (${ext("https://www.census.gov/naics/", "NAICS")}), the scheme federal statistics use to sort businesses by what they do. The contracting office picks the code that best fits the work being bought, and it also decides which size limit counts as a small business for that contract.</p>
 <p>The code describes the purchase, not the company. A large contractor wins awards under many codes, and the code on an award can differ from the industry the SEC lists for the same company on its <a href="/companies/">company page</a>, which comes from an older scheme with its own codes.</p>
 <p>This site prints the code as USAspending reports it and adds the Census Bureau's title for it, so 336411 reads "Aircraft Manufacturing". The classification is revised every five years and some codes are retired. Titles here come from the 2022 edition; when an award carries a code that edition no longer uses, the title is from the last edition that had it and the year follows in brackets. The <a href="/contracts/#naics">contracts page</a> adds up award values by code. Nothing else is worked out from a code.</p>` },
+        { id: "assistance", h: "What are grants, loans and direct payments?", html: `
+<p>Contracts are the government buying something. USAspending also records money it gives or lends. A <strong>grant</strong> is financial assistance for a public purpose that does not have to be repaid. A <strong>loan</strong> is money the recipient must repay, made directly or guaranteed by the government. A <strong>direct payment</strong> is a cash payment to a person, a company or another organization, such as a retirement or pension benefit (${ext("https://api.usaspending.gov/api/v2/references/glossary/", "USAspending glossary")}). The <a href="/grants/">grants and loans page</a> lists the largest awards of each kind that started in the last ${c.assistanceWindowDays} days, with the agency and the assistance program that made them.</p>
+<p>The three kinds are shown apart and never added together. A loan's amount here is its <strong>face value</strong>, the total lent or guaranteed. That is not money spent: the loan is meant to be repaid, and a guarantee only pays if the borrower defaults. The government's own estimate of what a loan or guarantee will cost, after expected repayments, is its <strong>subsidy cost</strong>; it is much smaller than the face value and can be negative when the government expects to earn money. USAspending's pages may headline a loan by either figure, so this site prints both columns and labels each.</p>
+<p>Some recipients are masked. For awards to individuals USAspending replaces the name, for example with "MULTIPLE RECIPIENTS", and groups the awards by area, to protect personal information. This site shows the name as returned, counts such awards, and never links one to a company. A company page lists an award only when the recipient name equals the company's name exactly, and a name two companies share matches neither.</p>
+<p>As with contracts, the page is not every award: it holds the largest of each kind that started in each 30-day stretch, plus awards to followed companies, and amounts are what agencies report and can be revised. An award to a company does not show that the company asked for it or that anyone influenced it.</p>` },
         { id: "lag", h: "How current is the data?", html: `
 <p>Civilian agencies must report a contract action within ${k.reportWithinBusinessDays} business days of the award (${ext(k.source, "federal acquisition rules")}), and it reaches USAspending shortly after. Department of Defense records are released after a ${k.defenseDelayDays}-day delay, so the newest three months of defence contracting are always missing.</p>
 <p>Records are also revised. An award's value changes as options are exercised or work is cancelled, so the same contract can show different figures on different days.</p>` },
@@ -188,6 +202,8 @@ ${table(["Term", "Meaning"], [
         { q: "Does Spot the Money list every federal contract?", a: "No. It shows the largest awards that started in each of the last six months and awards to companies it tracks, matched by exact name.", on: ["washington"] },
         { q: "Who writes the description of a federal contract award?", a: "The contracting office that records the award. It is free text, often abbreviated, and this site shows it as entered without drawing anything from it." },
         { q: "What does the NAICS code on a federal contract mean?", a: "It is the industry code the contracting office gave the work being bought. It describes the purchase, not the company that won the award, and one company can hold awards under many codes." },
+        { q: "What is the difference between a loan's face value and its subsidy cost?", a: "Face value is the total the government lends or guarantees, which is meant to be repaid and is not spending. Subsidy cost is the government's estimate of the loan's long-term cost after expected repayments and defaults. It is usually far smaller than the face value and can be negative." },
+        { q: "Why are some grant and loan recipients hidden on USAspending?", a: "Awards to individuals are aggregated and the recipient name is replaced, for example with MULTIPLE RECIPIENTS, to protect personal information. This site shows the name as returned and does not link such awards to any company." },
         { q: "Is a contract's award value the amount paid?", a: "No. The current award value is what has been committed so far, and the potential value is a ceiling. The amount actually paid is the outlay, which is often lower." },
       ],
       sources: [
@@ -196,11 +212,12 @@ ${table(["Term", "Meaning"], [
         { name: "Federal Acquisition Regulation, subpart 4.6 (contract reporting)", url: k.source },
         { name: "U.S. Census Bureau: North American Industry Classification System", url: "https://www.census.gov/naics/" },
         { name: "Federal Funding Accountability and Transparency Act of 2006", url: "https://www.govinfo.gov/content/pkg/PLAW-109publ282/html/PLAW-109publ282.htm" },
+        { name: "USAspending glossary (loans, grants, direct payments, masked recipients)", url: "https://api.usaspending.gov/api/v2/references/glossary/" },
       ],
       related: ["lobbying-disclosure-reports", "campaign-donations-fec-data", "what-disclosure-data-cannot-tell-you"],
-      seeLive: [{ label: "Federal contracts", href: "/contracts/" }, { label: "Companies", href: "/companies/" }],
-      covers: ["ingest/src/sources/usaspending.ts", "ingest/src/sources/usaspending_details.ts", "web/src/pages/contracts/index.astro", "web/src/lib/contracts.ts", "web/src/lib/naics.ts"],
-      ui: [{ text: "Description, as reported", on: "/contracts/" }, { text: "Awarding sub-agencies", on: "/contracts/" }, { text: "Industry code (NAICS)", on: "/contracts/" }, { text: "Awards by industry code", on: "/contracts/" }],
+      seeLive: [{ label: "Federal contracts", href: "/contracts/" }, { label: "Grants and loans", href: "/grants/" }, { label: "Companies", href: "/companies/" }],
+      covers: ["ingest/src/sources/usaspending.ts", "ingest/src/sources/usaspending_details.ts", "web/src/pages/contracts/index.astro", "web/src/lib/contracts.ts", "web/src/lib/naics.ts", "web/src/lib/assistance.ts", "web/src/pages/grants/index.astro"],
+      ui: [{ text: "Description, as reported", on: "/contracts/" }, { text: "Awarding sub-agencies", on: "/contracts/" }, { text: "Industry code (NAICS)", on: "/contracts/" }, { text: "Awards by industry code", on: "/contracts/" }, { text: "Largest grants", on: "/grants/" }],
       facts: ["contractLag"],
     };
   },

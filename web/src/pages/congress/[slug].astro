@@ -25,6 +25,7 @@ import { personLd, fitDescription, SITE_URL } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import { buildCommittees } from "../../lib/committees";
 import VizPerson from "../../components/VizPerson.astro";
+import LobbyContrib from "../../components/LobbyContrib.astro";
 import { ordinal, memberProfile, peerStats, sameState, sameStocks, seatGroups, seatTitle, memberQa, stateName, seatName, partyName } from "../../lib/profile";
 
 export async function getStaticPaths() {
@@ -99,18 +100,24 @@ const ld = {
 const faqLd = qa.length ? { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}${path}#questions`,
   mainEntity: qa.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) } : null;
 
+const lc = p.slug ? model.lobbyContrib.members.get(p.slug) : undefined;
+const lcItems = lc ? lc.years.reduce((a, y) => a + y.items, 0) : 0;
+const lcYear = model.lobbyContrib.newestYear;
+const lcNewest = lc ? (lc.years.find((y) => y.year === lcYear) ?? lc.years[0]) : undefined;
+const lcFile = (await getDownloads()).files.filter((f) => f.kind === "lobbycontrib")[0];
 const showCompare = txns.length > 0 && peers.members > 1;
 const glance = noindex ? [] : [
   { label: "Trades on record", value: num(txns.length), note: prof.lastTrade ? `Latest ${formatDate(prof.lastTrade)}` : undefined, href: "#trades" },
   ...(topStocks.length ? [{ label: "Stocks traded", value: num(prof.stocks.length), note: "Most traded listed first", href: "#stocks" }] : []),
   { label: "Reported late", value: num(late.length), note: `After ${CONGRESS_DEADLINE_DAYS} days`, href: "#trades" },
   ...(groups.length ? [{ label: "Committees", value: num(groups.length), note: "Listed for context", href: "#committees" }] : []),
+  ...(lcItems ? [{ label: "Lobbyist contributions", value: num(lcNewest?.items ?? 0), note: `Items in ${lcNewest?.year}`, href: "#lobbyist-contributions" }] : []),
   ...(p.filings.length ? [{ label: "Filings", value: num(p.filings.length), note: "Periodic transaction reports", href: "#filings" }] : []),
   ...(showCompare && rank ? [{ label: "Rank by trades", value: ordinal(rank), note: `Of ${num(peers.members)} members`, href: "#compare" }] : []),
 ];
 const groupList = noindex ? [] : [
   { id: "trading", label: "Trading" },
-  ...(groups.length ? [{ id: "washington", label: "Washington" }] : []),
+  ...(groups.length || lcItems ? [{ id: "washington", label: "Washington" }] : []),
   { id: "record", label: "About this record" },
 ];
 ---
@@ -262,7 +269,7 @@ const groupList = noindex ? [] : [
 
   <AdSlot label="Advertisement" show={!noindex} />
 
-  {groups.length > 0 && (
+  {(groups.length > 0 || lcItems > 0) && (
     <PageGroup id="washington" label="Washington">
   {groups.length > 0 && (
     <section aria-labelledby="committees" data-profile-committees>
@@ -283,6 +290,7 @@ const groupList = noindex ? [] : [
       <p class="section-note">Source: the public-domain <a href="https://github.com/unitedstates/congress-legislators" rel="noopener" target="_blank">congress-legislators</a> dataset, refreshed daily. Descriptions of a committee's remit are the dataset's own wording.</p>
     </section>
   )}
+  <LobbyContrib model={model} slug={p.slug} file={lcFile} />
     </PageGroup>
   )}
 

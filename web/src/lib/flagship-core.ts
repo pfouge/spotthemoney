@@ -6,6 +6,8 @@
 import type { Form144Data } from "./form144";
 import type { Schedule13Data } from "./schedule13";
 import type { FinancialsData } from "./financials";
+import type { AssistanceData } from "./assistance";
+import type { LobbyContribData } from "./lobbygifts";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -133,6 +135,10 @@ export interface Flagship {
   schedule13: Schedule13Data;
   /** Figures from companies' annual and quarterly reports, by 10-digit CIK (lib/financials.ts). Empty when the table cannot be read. */
   financials: FinancialsData;
+  /** Federal grants, loans and direct payments that started in the last 180 days (lib/assistance.ts). Empty when the table cannot be read. */
+  assistance: AssistanceData;
+  /** Contributions lobbyists report on Form LD-203 (lib/lobbygifts.ts). Aggregates and short lists only; never every item. */
+  lobbyContrib: LobbyContribData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */
