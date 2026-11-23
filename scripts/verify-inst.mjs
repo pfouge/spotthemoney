@@ -114,7 +114,7 @@ for (const c of sample) {
     if (Number(c.managers_with_options) > 0) ok(/put or call options/.test(tx), `${p}: names the managers with options`);
     for (const re of BAD) ok(!re.test(tx), `${p}: wording ${re}`);
     ok(!/%/.test(tx), `${p}: no percentage anywhere in the section`);
-    ok(!/\bnew\b/i.test(rowsOf(sec).map((x) => x.text ?? x.cells.map((c) => c.text).join(" ")).join(" ")), `${p}: no 'new' in the rows`);
+    ok(!/\bnew\b/i.test(rowsOf(sec).map((x) => x.cells.slice(1).map((c) => c.text).join(" ")).join(" ")), `${p}: no 'new' in the rows (the manager's own name aside)`);
     const trs = rowsOf(sec), list = byCik.get(c.cik) ?? [];
     ok(trs.length === list.length, `${p}: ${trs.length} rows vs ${list.length} in the file`);
     const hasPrior = !!c.prior_quarter_end && c.managers_prior_quarter !== "";
