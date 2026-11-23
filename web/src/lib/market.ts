@@ -30,18 +30,20 @@ export async function getMarketIndexable(): Promise<MarketIndexable> {
                    and (r.company_id is null or exists (select 1 from companies c where c.id = r.company_id and c.tracked))))
        group by p.slug having ${open} order by p.slug::text`;
     const stocks = await sql<{ k: string; d: string }[]>`
-      select lower(s.ticker::text) as k, ((max(f.filed_at)) at time zone 'UTC')::date::text as d
-        from securities s join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id
+      -- one page per company (migration 0041): a ticker is listed under the ticker whose page shows it
+      with sec as (select s.id, od_stock_page(s.ticker::text) as k from securities s
+                    where not exists (select 1 from securities a where lower(a.ticker::text) = lower(s.ticker::text) and a.is_active))
+      select sec.k, ((max(f.filed_at)) at time zone 'UTC')::date::text as d
+        from sec join transactions t on t.security_id = sec.id join filings f on f.id = t.filing_id
        where ${vis}
-         and not exists (select 1 from securities a where lower(a.ticker::text) = lower(s.ticker::text) and a.is_active)
-       group by lower(s.ticker::text) having ${open} order by 1`;
+       group by sec.k having ${open} order by 1`;
     const companies = await sql<{ k: string; d: string }[]>`
       select c.slug::text as k, ((max(f.filed_at)) at time zone 'UTC')::date::text as d
         from companies c join securities s on s.company_id = c.id join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id
        where c.slug is not null and not c.tracked and ${vis}
        group by c.slug
-      -- a company with one ticker is shown on that ticker's page (pages/companies/[...rest].astro redirects): not listed here
-      having ${open} and (select count(distinct lower(a.ticker::text)) from securities a where a.company_id = min(c.id)) > 1 order by c.slug::text`;
+      -- a company is shown on its home ticker's page (pages/companies/[...rest].astro redirects): listed here only when it has none
+      having ${open} and coalesce((select a.company_id from securities a where lower(a.ticker::text) = lower(od_home_ticker(min(c.id))) order by (a.type = 'equity') desc, a.id limit 1), -1) <> min(c.id) order by c.slug::text`;
     const m = (r: { k: string; d: string }[]) => r.map((x) => ({ key: x.k, lastmod: x.d }));
     return { insiders: m(insiders), stocks: m(stocks), companies: m(companies) };
   } catch (e) {

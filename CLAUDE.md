@@ -4207,3 +4207,31 @@ it in the pull request that changes a cell.**
   negative equity, so the newest-quarter view has an "n/a".
 - Not done: a filter on a ratio (on purpose); ratios on the on-demand pages; the ratio set without JavaScript; a
   saved choice of columns (the address carries it); cash and long-term debt as columns.
+
+### One page per company, stage 2d: companies outside the tracked set with several tickers (2026-11-23, interactive session)
+
+- **Rule.** Outside the tracked set too, a company has one page: its home ticker's. Filings can name
+  one company under several tickers (a symbol that changed, a second class, a unit or warrant, a
+  typing mistake). The other tickers and `/companies/<slug>/` answer 301 to the home ticker's page,
+  which lists the rows of every security of the company and says so ("Tickers on this page",
+  `div[data-od-tickers]`, and a note `p[data-od-tickers-note]`).
+- **Migration 0041** (no table change; next free number 0042). `od_home_ticker(company)`: the first
+  of the company's tickers in the SEC's list (`sec_tickers` by rank) that is one of its securities,
+  then its main ticker, then an equity, then the oldest security; null for a tracked company and
+  never a ticker with a static page. `od_stock_page(ticker)`: the ticker whose page shows a ticker;
+  a ticker stays its own page when its company's home ticker shows another company (no loops).
+  `od_stock` returns `movedTo` and `home` and folds the company's other securities into the home
+  ticker's answer; `siblings` now come in a fixed order, the page's own ticker first. `od_company`
+  returns `homeTicker`. Both keep 0023's first line and their settings. The helpers are closed to
+  the API roles and granted to `site_build` (the market sitemaps call them).
+- **Worker.** `companyTicker(doc)` and `stockTicker(doc)` in `server/odsource.ts`; the redirects are
+  in `companies/[...rest].astro` and `stocks/[...rest].astro` (not under the parity switch).
+  `OdPageView`: `page.home` decides whether the company name is a link.
+- **Sitemaps** (`market.ts`): a ticker is listed under the ticker whose page shows it; a company is
+  listed only when it has no home ticker.
+- **Verifier:** `node scripts/verify-od-fold.mjs <local-db>` (35 checks, a made-up set of companies
+  in a transaction it rolls back; `--keep` leaves them for `scripts/od-dev.mjs`). `verify-od`
+  follows the new rule.
+- **Production before the change (SQL, 2026-11-23):** 4,784 tickers outside the tracked set, 161 of
+  them move to another ticker's page (157 pages gain rows); 4,612 companies redirect; 3 keep a
+  company page (their home ticker's page shows another company).

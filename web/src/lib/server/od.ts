@@ -45,6 +45,12 @@ export interface OdDoc {
   siblings?: { id: number; ticker: string; type: string; name: string | null }[];
   company?: { id: number; name: string; slug: string | null; cik: string | null; ticker: string | null } | null;
   insiderCount?: number;
+  /** stock: the ticker (lower case) whose page shows this one, when it is not its own page (migration 0041). */
+  movedTo?: string | null;
+  /** stock: this ticker's page is its company's one page (the company's address redirects here). */
+  home?: boolean;
+  /** company: the ticker (lower case) whose page shows this company. */
+  homeTicker?: string | null;
 }
 
 export const COL = ["id", "filing_id", "person_id", "security_id", "side", "txn_code", "is_derivative", "txn_date", "disclosed_at",
@@ -80,6 +86,8 @@ export interface OdPage {
   lastUpdated: string;
   colleagues: { name: string; path: string; role: string; rows: number }[];
   insiderCount: number;
+  /** stock: this page is its company's one page; undefined when the database does not say (before migration 0041). */
+  home: boolean | undefined;
 }
 
 const EMPTY_STATS = { rowCount: 0, filingCount: 0, firstFiledAt: null, lastFiledAt: null, newestUrl: null };
@@ -170,7 +178,7 @@ export function buildOd(doc: OdDoc, now: Date = new Date()): OdPage {
   const stats = doc.stats ?? EMPTY_STATS;
   const colleagues = (doc.colleagues ?? []).filter((c) => c[2]).slice(0, COLLEAGUE_ROWS).map((c) => ({ name: c[1], path: `/insiders/${c[2]}/`, role: decodeEntities(c[3]) ?? (c[4] ? "Director" : "Insider"), rows: c[5] }));
   return { kind: doc.kind, model, txns, person, company, security, siblings, stats, truncated: doc.truncated, noindex: !openMarket,
-    lastUpdated: (stats.lastFiledAt ?? now.toISOString()).slice(0, 10), colleagues, insiderCount: doc.insiderCount ?? 0 };
+    lastUpdated: (stats.lastFiledAt ?? now.toISOString()).slice(0, 10), colleagues, insiderCount: doc.insiderCount ?? 0, home: doc.kind === "stock" && typeof doc.home === "boolean" ? doc.home : undefined };
 }
 
 // ── figures the three pages share ───────────────────────────────────────────────────────────

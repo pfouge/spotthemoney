@@ -118,13 +118,13 @@ for (const [kind, dir, key] of [["insider", "insiders", pi.k], ["stock", "stocks
 section("market entities from the bulk fixture");
 const SITE = (process.env.PUBLIC_SITE_URL ?? "http://127.0.0.1:4371").replace(/\/$/, "");
 const insiders = (await sql`select distinct p.slug::text k from people p join transactions t on t.person_id = p.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published order by 1`).map((r) => r.k);
-const stocks = (await sql`select distinct s.ticker::text k from securities s join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published order by 1`).map((r) => r.k);
-const allCompanies = await sql`select c.slug::text k, (select count(distinct lower(a.ticker::text))::int from securities a where a.company_id = c.id) n, (select min(lower(a.ticker::text)) from securities a where a.company_id = c.id) tk from companies c join securities s on s.company_id = c.id join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published and c.slug is not null and not c.tracked group by c.id, c.slug order by 1`;
-// One page per company: a market company with one ticker has no page; its address answers 301 to the ticker's page.
-const companies = allCompanies.filter((r) => r.n > 1).map((r) => r.k);
-for (const r of allCompanies.filter((x) => x.n === 1).slice(0, 5)) {
+const stocks = (await sql`select distinct s.ticker::text k from securities s join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published and od_stock_page(s.ticker::text) = lower(s.ticker::text) order by 1`).map((r) => r.k);
+const allCompanies = await sql`select c.slug::text k, (select count(distinct lower(a.ticker::text))::int from securities a where a.company_id = c.id) n, lower(od_home_ticker(c.id)) tk, (select a.company_id from securities a where lower(a.ticker::text) = lower(od_home_ticker(c.id)) order by (a.type = 'equity') desc, a.id limit 1) = c.id as home from companies c join securities s on s.company_id = c.id join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published and c.slug is not null and not c.tracked group by c.id, c.slug order by 1`;
+// One page per company (migration 0041): a market company has no page of its own; its address answers 301 to its home ticker's page.
+const companies = allCompanies.filter((r) => !r.home).map((r) => r.k);
+for (const r of [...allCompanies.filter((x) => x.home && x.n > 1).slice(0, 5), ...allCompanies.filter((x) => x.home && x.n === 1).slice(0, 5)]) {
   const res = await fetch(`${base}/companies/${r.k}/`, { redirect: "manual" });
-  ok(res.status === 301 && new URL(res.headers.get("location"), base).pathname === `/stocks/${r.tk}/`, `company ${r.k} (one ticker) redirects to /stocks/${r.tk}/`, `${res.status} ${res.headers.get("location")}`);
+  ok(res.status === 301 && new URL(res.headers.get("location"), base).pathname === `/stocks/${r.tk}/`, `company ${r.k} (${r.n} ticker${r.n === 1 ? "" : "s"}) redirects to /stocks/${r.tk}/`, `${res.status} ${res.headers.get("location")}`);
 }
 ok(insiders.length > 0 && stocks.length > 0 && allCompanies.length > 0, "the fixture gives market insiders, tickers and companies", `${insiders.length}/${stocks.length}/${companies.length}`);
 const openMarket = async (kind, key) => {
