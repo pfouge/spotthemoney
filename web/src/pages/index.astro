@@ -13,10 +13,14 @@ import { DEFAULT_STATE, CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, selectFeed, longDate
 import NotableFeed from "../components/NotableFeed.astro";
 import { formatPercent } from "../lib/format";
 import { dataCatalogLd, SITE_URL } from "../lib/seo";
+import { weekCounts } from "../lib/washhub-build";
+import { weekLog, WEEK_DAYS } from "../lib/washhub";
 import VizHome from "../components/VizHome.astro";
 
 const model = await getFlagship();
 const hasSenate = senateShown(model);
+const weekRow = weekCounts(model);
+console.log(weekLog(model.builtAt, weekRow));
 const pub = model.txns.filter((t) => t.isPublished);
 const { data: feed, top } = homeFeed(model);
 const lastDisclosed = pub.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
@@ -60,6 +64,18 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
   </section>
 
   <NotableFeed data={feed} />
+
+  {weekRow.length > 0 && (
+    <section data-week data-built={model.builtAt.slice(0, 10)} aria-labelledby="weekH">
+      <h2 id="weekH" class="nf-maph">This week in filings</h2>
+      <p class="soft small">Reports filed or held in the {WEEK_DAYS} days up to {longDate(model.builtAt.slice(0, 10))}, counted by each dataset's own date. Counts only; open a dataset for the records.</p>
+      <div class="datastrip wk-strip">
+        {weekRow.map((w) => (
+          <a class="cell wk-tile" data-wk={w.key} data-n={w.count} href={w.path}><div class="k">{w.label}</div><div class="v">{w.count.toLocaleString("en-US")}</div><div class="delta">{w.noun}</div></a>
+        ))}
+      </div>
+    </section>
+  )}
 
   <h2 id="heatmap" class="nf-maph">Trade map</h2>
   <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters, and covers about {num(mapCompanies)} companies (large companies and every stock a member of Congress has traded), not the whole market.</p>
