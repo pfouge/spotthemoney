@@ -70,7 +70,7 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - Member of Congress: ${SITE_URL}/congress/<slug>/: Person; PTR trades with ranges, owner, days-to-report, late flag, filing link.
 - Committee: ${SITE_URL}/congress-committees/<slug>/: Dataset; current members and their disclosed trades.
 - Ticker: ${SITE_URL}/stocks/<ticker>/: Dataset; insider and congressional rows for one security.
-- Company: ${SITE_URL}/companies/<slug>/: Organization; insiders, transactions, contracts and lobbying under the same name.
+- Company: a company with a ticker has one page, its stock page above, which also holds its contracts and lobbying; ${SITE_URL}/companies/<slug>/ redirects there. A company with no ticker keeps ${SITE_URL}/companies/<slug>/.
 
 ## Guides (plain-language explanations; each opens with a two-sentence answer and ends with primary sources)
 - [All guides](${SITE_URL}/guides/) · [All questions and answers](${SITE_URL}/faq/)
