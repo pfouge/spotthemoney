@@ -6,7 +6,7 @@ import type { Flagship } from "../lib/flagship";
 import type { DownloadFile } from "../lib/downloads";
 import { formatDate } from "../lib/format";
 import { financialsOf } from "../lib/financials-build";
-import { SHOWN_CONCEPTS, shownYears, shownQuarters, sourceFilings, filingUrl, cellText, summarySentence, heldCount, tagChangeCount, debtShown, debtLabel, FIN_CAVEAT, HELD_TEXT, DEBT_CONCEPT, DEBT_NOTE, NO_LINE_REASON, type Period, type HeldReason } from "../lib/financials";
+import { SHOWN_CONCEPTS, shownYears, shownQuarters, sourceFilings, filingUrl, cellText, summarySentence, heldCount, tagChangeCount, debtShown, debtLabel, FIN_CAVEAT, HELD_TEXT, DEBT_CONCEPT, DEBT_NOTE, NO_LINE_REASON, RATIOS, RATIO_HEAD, RATIO_NA, ratioOf, ratioText, shownRatios, ratioNote, type Period, type HeldReason } from "../lib/financials";
 import DownloadCsv from "./DownloadCsv.astro";
 
 interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
@@ -23,6 +23,9 @@ const debtLine = f ? debtShown(f) : false;
 const debtSeveral = f ? f.debtTags.length > 1 : false;
 const lineLabel = (key: string, label: string) => (key === DEBT_CONCEPT && f ? debtLabel(f.debtTags[0]) : label);
 const changed = tagChangeCount(all);
+// Ratios: this site's arithmetic on two printed lines of one column (lib/financials.ts), in rows of their own.
+const ratioKeys = new Set([...shownRatios(years), ...shownRatios(quarters)].map((r) => r.key));
+const ratiosNamed = RATIOS.filter((r) => ratioKeys.has(r.key));
 const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Period[]; head: (p: Period) => string }[] = [
   { kind: "year", id: "financials-years", title: "Fiscal years", cols: years, head: (p) => `Year to ${formatDate(p.end)}` },
   { kind: "quarter", id: "financials-quarters", title: "Quarters", cols: quarters, head: (p) => `Quarter to ${formatDate(p.end)}` },
@@ -52,6 +55,18 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
               })}
             </tr>
           ))}
+          {shownRatios(t.cols).length > 0 && <tr class="fin-calc" data-fin-calc><td colspan={t.cols.length + 1}>{RATIO_HEAD}</td></tr>}
+          {shownRatios(t.cols).map((r) => (
+            <tr data-fin-ratio={r.key}>
+              <th scope="row">{r.label}<span class="fin-sub">{r.inputs}</span></th>
+              {t.cols.map((p) => {
+                const x = ratioOf(p, r);
+                if (x.status === "none") return <td class="num" data-ratio={r.key} data-status="none" data-v="">—</td>;
+                if (x.status === "base") return <td class="num fin-na" data-ratio={r.key} data-status="base" data-v="">{RATIO_NA}</td>;
+                return <td class={`num${x.value! < 0 ? " fin-neg" : ""}`} data-ratio={r.key} data-status="ok" data-v={x.value}>{ratioText(r, x.value!)}</td>;
+              })}
+            </tr>
+          ))}
           <tr data-fin-row="source">
             <th scope="row">Report</th>
             {t.cols.map((p) => (
@@ -65,6 +80,7 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
     ))}
     {held > 0 && <p class="fin-note" data-fin-held-note data-held={held}>{held === 1 ? "One figure is" : `${held} figures are`} not shown because {reasons.map((r) => HELD_TEXT[r]).join("; or ")}. That is usually a mistake in the filed data or two different things filed under one heading; now and then it is real, for a company with very few shares. The CSV file has the figure as filed.</p>}
     {debtSeveral && <p class="fin-note" data-fin-debt-note>{DEBT_NOTE}</p>}
+    {ratioKeys.size > 0 && <p class="fin-note" data-fin-ratio-note data-ratios={ratiosNamed.map((r) => r.key).join(" ")}>{ratioNote(ratiosNamed)}</p>}
     {changed > 0 && <p class="fin-note" data-fin-tag-note data-changed={changed}><sup>a</sup> Filed under a different heading (XBRL tag) than the same line in the newest column, so the two may not measure exactly the same thing.</p>}
   </section>
 )}
@@ -74,6 +90,8 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
   table.fin th[scope="row"] { text-align: left; font-weight: 500; min-width: 11rem; white-space: normal; }
   table.fin thead th.num { white-space: normal; min-width: 7.5rem; }
   .fin-neg { color: var(--red-ink); }
+  .fin-na { color: var(--ink-soft); }
+  tr.fin-calc td { font-size: 12.5px; color: var(--ink-soft); text-align: left; padding-top: 0.9rem; white-space: normal; }
   .fin-held { color: var(--ink-soft); font-size: 13px; text-decoration: underline; white-space: nowrap; }
   .fin-mark { color: var(--ink-soft); margin-left: 2px; }
   .fin-src { font-size: 12.5px; white-space: normal; }

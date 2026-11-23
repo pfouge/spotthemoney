@@ -16,6 +16,10 @@
 //   - long-term debt: a line only for a company whose rows in the file all carry one heading,
 //     named after that heading; a sentence and no line when they carry several; no line and no
 //     sentence when the file has no debt figure for it;
+//   - ratios (net margin, liabilities to equity): the file's two ratio columns against this
+//     script's own arithmetic on the row's figures; on a page, a line only when some column has
+//     a value or an "n/a", every cell's status, number and printed text, the heading row above
+//     the lines and the sentence under the tables;
 //   - wording: figures "as filed", no advice;
 //   - the methodology and the guide have their sections.
 // With no such file in the catalogue (an empty database), no page may carry the section.
@@ -30,7 +34,12 @@ const FIGS = ["revenue", "net_income", "eps_diluted", "operating_cash_flow", "ca
 const DEBT_LABEL = { LongTermDebt: "Long-term debt", LongTermDebtNoncurrent: "Long-term debt, not counting the part due within a year", LongTermDebtAndCapitalLeaseObligations: "Long-term debt and lease obligations", Borrowings: "Borrowings" };
 const ANNUAL_ONLY = new Set(["operating_cash_flow", "capex"]);
 const LABEL = { revenue: "Revenue", net_income: "Net income", eps_diluted: "Diluted earnings per share", operating_cash_flow: "Cash from operations", capex: "Capital expenditure", cash: "Cash and equivalents", assets: "Total assets", liabilities: "Total liabilities", equity: "Shareholders' equity" };
-const COLUMNS = ["company", "ticker", "cik", "period", "period_start", "period_end", "currency", ...FIGS, "long_term_debt_heading", "liabilities_and_equity", "not_shown", "on_page", "reports", "page_url"];
+// This script's own copy of the two ratios: column in the file, the two figures, how it is printed.
+const RATIOS = [
+  { key: "net_margin", col: "net_margin_pct", num: "net_income", den: "revenue", pct: true, cap: 1000, label: "Net margin", inputs: "net income ÷ revenue" },
+  { key: "liabilities_to_equity", col: "liabilities_to_equity", num: "liabilities", den: "equity", pct: false, cap: 100, label: "Liabilities to equity", inputs: "total liabilities ÷ shareholders' equity" },
+];
+const COLUMNS = ["company", "ticker", "cik", "period", "period_start", "period_end", "currency", ...FIGS, "long_term_debt_heading", "liabilities_and_equity", ...RATIOS.map((r) => r.col), "not_shown", "on_page", "reports", "page_url"];
 const YEARS = 3, QUARTERS = 4, Q = [80, 100], Y = [350, 380], MIN_SHARES = 100000, MAX_EPS_ALONE = 10000, TOL = 0.005, DAY = 86400000;
 
 let failures = 0, checks = 0;
@@ -87,6 +96,18 @@ function heldOf(r, several) {
   if (assets != null && cash != null && cash > assets * 1.001) { held.cash = "cash_over_assets"; if (!held.assets) held.assets = "cash_over_assets"; }
   return held;
 }
+/** A ratio of a row, by this script's own arithmetic: { status: ok|none|base, value }. */
+function ratioOf(r, held, def) {
+  const a = num(r[def.num]), b = num(r[def.den]);
+  if (a == null || b == null || held[def.num] || held[def.den]) return { status: "none", value: null };
+  if (!(b > 0)) return { status: "base", value: null };
+  const v = def.pct ? Math.round((a / b) * 1000) / 10 : Math.round((a / b) * 100) / 100;
+  return { status: "ok", value: v === 0 ? 0 : v };
+}
+function ratioPrinted(def, v) {
+  if (def.pct) return v > def.cap ? "over 1,000%" : v < -def.cap ? "under −1,000%" : (v < 0 ? "−" : "") + fix(Math.abs(v), 1) + "%";
+  return v > def.cap ? "over 100" : (v < 0 ? "−" : "") + fix(Math.abs(v), 2);
+}
 const heldText = (h) => FIGS.filter((f) => h[f]).map((f) => `${f}:${h[f]}`).join("; ");
 
 function section(html) {
@@ -104,7 +125,12 @@ function section(html) {
     for (const r of t.matchAll(/<tr[^>]*data-fin-row="([^"]*)"[^>]*>([\s\S]*?)<\/tr>/g)) {
       rows[r[1]] = { head: text((r[2].match(/<th[^>]*>([\s\S]*?)<\/th>/) ?? [])[1] ?? ""), cells: [...r[2].matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)].map((c) => ({ tag: c[1], html: c[2], text: text(c[2]) })) };
     }
-    tables[m[1]] = { cols, rows };
+    const ratios = {};
+    for (const r of t.matchAll(/<tr[^>]*data-fin-ratio="([^"]*)"[^>]*>([\s\S]*?)<\/tr>/g)) {
+      ratios[r[1]] = { head: text((r[2].match(/<th[^>]*>([\s\S]*?)<\/th>/) ?? [])[1] ?? ""), cells: [...r[2].matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/g)].map((c) => ({ tag: c[1], html: c[2], text: text(c[2]) })) };
+    }
+    const calc = t.match(/<tr[^>]*data-fin-calc[^>]*>([\s\S]*?)<\/tr>/);
+    tables[m[1]] = { cols, rows, ratios, calc: calc ? text(calc[1]) : null, order: [...t.matchAll(/<tr[^>]*data-fin-(row|ratio|calc)(?:="([^"]*)")?/g)].map((x) => x[1] === "calc" ? "calc" : `${x[1]}:${x[2]}`) };
   }
   return { tag, body, tables };
 }
@@ -138,6 +164,7 @@ const byCik = new Map();
 for (const r of csv.rows) { const xs = byCik.get(r.cik); if (xs) xs.push(r); else byCik.set(r.cik, [r]); }
 
 let heldRows = 0, heldFigures = 0, nonUsd = 0;
+const ratioCount = Object.fromEntries(RATIOS.map((d) => [d.key, { ok: 0, base: 0, capped: 0, companies: new Set() }]));
 let debtOne = 0, debtSeveral = 0, debtNone = 0;
 const several = new Map();
 for (const [cik, rows] of byCik) {
@@ -161,6 +188,12 @@ for (const [cik, rows] of byCik) {
       ok(FIGS.some((f) => r[f] !== ""), `${r.company} ${kind} to ${r.period_end}: a row with no figure`);
       const want = heldText(heldOf(r, several.get(cik)));
       ok(r.not_shown === want, `${r.company} ${kind} to ${r.period_end}: not_shown is "${r.not_shown}", this script works out "${want}"`);
+      for (const d of RATIOS) {
+        const x = ratioOf(r, heldOf(r, several.get(cik)), d);
+        ok(x.status === "ok" ? r[d.col] !== "" && Number(r[d.col]) === x.value : r[d.col] === "", `${r.company} ${kind} to ${r.period_end}: ${d.col} is "${r[d.col]}", this script works out ${x.status === "ok" ? x.value : "no value (" + x.status + ")"}`);
+        const n = ratioCount[d.key];
+        if (x.status === "ok") { n.ok++; n.companies.add(cik); if (Math.abs(x.value) > d.cap) n.capped++; } else if (x.status === "base") n.base++;
+      }
       const doubted = want ? want.split("; ").filter((x) => !x.endsWith(":several_headings")).length : 0;
       if (doubted) { heldRows++; heldFigures += doubted; }
       ok(r.reports !== "" && r.reports.split("; ").every((x) => /^\S+ \d{4}-\d{2}-\d{2} \S+$/.test(x)), `${r.company} ${kind} to ${r.period_end}: reports "${r.reports}"`);
@@ -179,6 +212,13 @@ add(ciks.find((c) => several.get(c)));                                          
 for (const h of Object.keys(DEBT_LABEL)) add(ciks.find((c) => !several.get(c) && headingsOf(byCik.get(c))[0] === h)); // one per heading
 add(ciks.find((c) => headingsOf(byCik.get(c)).length === 0));                            // one with no debt figure
 add(ciks.find((c) => byCik.get(c)[0].currency !== "USD"));
+for (const d of RATIOS) {                                                                 // per ratio: a page with an "n/a", one beyond the cap, one with no line
+  const onPage = (c) => byCik.get(c).filter((r) => r.on_page === "true").map((r) => ratioOf(r, heldOf(r, several.get(c)), d));
+  add(ciks.find((c) => onPage(c).some((x) => x.status === "base")));
+  add(ciks.find((c) => onPage(c).some((x) => x.status === "ok" && Math.abs(x.value) > d.cap)));
+  add(ciks.find((c) => onPage(c).every((x) => x.status === "none")));
+  add(ciks.find((c) => onPage(c).some((x) => x.status === "ok" && x.value < 0)));
+}
 add([...ciks].sort((a, b) => sizeOf(b) - sizeOf(a))[0]);
 add([...ciks].sort((a, b) => sizeOf(a) - sizeOf(b))[0]);
 add(ciks.find((c) => !byCik.get(c).some((r) => r.period === "quarter")));
@@ -190,6 +230,7 @@ function compare(where, sec, rows) {
   const cur = rows[0].currency;
   ok(attr(sec.tag, "data-unit") === cur, `${where}: the section says ${attr(sec.tag, "data-unit")}, the file ${cur}`);
   let held = 0, changedSeen = 0;
+  const ratioLines = new Set();
   const hs = headingsOf(rows), sev = hs.length > 1, debtLine = hs.length === 1;
   const dd = attr(sec.tag, "data-debt") ?? "";
   ok(debtLine ? dd.endsWith(":" + hs[0]) : dd === (sev ? "several" : ""), `${where}: data-debt is "${dd}" for headings ${hs.join(",") || "none"}`);
@@ -224,6 +265,27 @@ function compare(where, sec, rows) {
         }
       });
     }
+    // ratios: a line only when some column has a value or an "n/a"; each cell by this script's arithmetic
+    const wantLines = [];
+    for (const d of RATIOS) {
+      const xs = want.map((r) => ratioOf(r, heldOf(r, sev), d));
+      const line = t.ratios[d.key];
+      if (xs.every((x) => x.status === "none")) { ok(!line, `${where} ${kind}: a ${d.key} line, and no column has both figures`); continue; }
+      wantLines.push(d.key); ratioLines.add(d.key);
+      ok(!!line, `${where} ${kind}: no ${d.key} line, and the file gives both figures for a column`);
+      if (!line) continue;
+      ok(line.head === d.label + d.inputs || line.head === d.label + " " + d.inputs, `${where} ${kind}: the ${d.key} line reads "${line.head}"`);
+      xs.forEach((x, i) => {
+        const c = line.cells[i], r = want[i];
+        if (!c) { ok(false, `${where} ${kind} ${d.key}: no cell for ${r.period_end}`); return; }
+        ok(attr(c.tag, "data-status") === x.status, `${where} ${kind} ${d.key} ${r.period_end}: status ${attr(c.tag, "data-status")}, this script works out ${x.status}`);
+        if (x.status === "ok") { ratioCells++; ok(Number(attr(c.tag, "data-v")) === x.value && attr(c.tag, "data-v") !== "" && c.text === ratioPrinted(d, x.value) && Number(r[d.col]) === x.value, `${where} ${kind} ${d.key} ${r.period_end}: "${c.text}" (${attr(c.tag, "data-v")}), expected "${ratioPrinted(d, x.value)}" (${x.value}); the file has ${r[d.col]}`); }
+        else ok(c.text === (x.status === "base" ? "n/a" : "—") && (attr(c.tag, "data-v") ?? "") === "", `${where} ${kind} ${d.key} ${r.period_end}: "${c.text}" for status ${x.status}`);
+      });
+    }
+    ok(Object.keys(t.ratios).join() === wantLines.join(), `${where} ${kind}: ratio lines are ${Object.keys(t.ratios).join() || "none"}, expected ${wantLines.join() || "none"}`);
+    ok(wantLines.length ? t.calc === "Worked out by this site from the lines above" : t.calc == null, `${where} ${kind}: the heading over the ratio lines reads ${JSON.stringify(t.calc)}`);
+    ok(t.order.join() === [...figs.map((f) => "row:" + f), ...(wantLines.length ? ["calc"] : []), ...wantLines.map((k) => "ratio:" + k), "row:source"].join(), `${where} ${kind}: the lines are in the order ${t.order.join()}`);
     const src = t.rows.source;
     if (src) want.forEach((r, i) => {
       const accs = [...(src.cells[i]?.html ?? "").matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
@@ -235,6 +297,13 @@ function compare(where, sec, rows) {
   const note = sec.body.match(/<p[^>]*data-fin-held-note[^>]*data-held="(\d+)"/) ?? sec.body.match(/<p[^>]*data-held="(\d+)"[^>]*data-fin-held-note/);
   ok(held === 0 ? !note : note && Number(note[1]) === held, `${where}: ${held} figures held back, the note says ${note ? note[1] : "nothing"}`);
   ok((changedSeen > 0) === /data-fin-tag-note/.test(sec.body), `${where}: the changed-label note and the marks do not agree`);
+  const rnote = sec.body.match(/<p[^>]*data-fin-ratio-note[^>]*>([\s\S]*?)<\/p>/);
+  ok(ratioLines.size ? !!rnote : !rnote, `${where}: ${ratioLines.size} ratio lines and ${rnote ? "a" : "no"} sentence about them`);
+  if (rnote) {
+    const rt = text(rnote[1]);
+    ok(attr(rnote[0], "data-ratios") === RATIOS.filter((d) => ratioLines.has(d.key)).map((d) => d.key).join(" "), `${where}: the ratio sentence is for "${attr(rnote[0], "data-ratios")}"`);
+    ok(/this site's arithmetic/.test(rt) && /not (a figure|figures) the company filed/.test(rt) && RATIOS.every((d) => ratioLines.has(d.key) === rt.toLowerCase().includes(d.inputs)), `${where}: the ratio sentence does not name its inputs or say it is this site's arithmetic: "${rt.slice(0, 120)}"`);
+  }
   const words = text(sec.body);
   ok(/as filed/.test(words) && /not advice/.test(words), `${where}: the section does not say the figures are as filed and not advice`);
   ok(!/\b(undervalued|overvalued|cheap|expensive|bullish|bearish|outperform|price target|rating|score|recommend|should buy|should sell)\b/i.test(words), `${where}: advice or verdict wording in the section`);
@@ -242,7 +311,7 @@ function compare(where, sec, rows) {
   return held;
 }
 
-let pages = 0, heldOnPages = 0, stockPages = 0;
+let pages = 0, heldOnPages = 0, stockPages = 0, ratioCells = 0;
 for (const cik of pick) {
   const rows = byCik.get(cik);
   const path = new URL(rows[0].page_url).pathname;
@@ -281,6 +350,7 @@ const meth = await get("/methodology/");
 ok(/id="financials"/.test(meth.text), "methodology has no #financials paragraph");
 ok(/fewer than 100,000 shares/.test(text(meth.text)), "methodology does not state the earnings-per-share check");
 ok(/more than one heading/.test(text(meth.text)) && /larger than total liabilities/.test(text(meth.text)), "methodology does not state the long-term debt rule");
+ok(/id="financial-ratios"/.test(meth.text) && /net income divided by revenue/.test(text(meth.text)) && /total liabilities divided by shareholders' equity/.test(text(meth.text)), "methodology does not state the two ratios (#financial-ratios)");
 const guide = await get("/guides/what-is-form-4/");
 ok(/id="financials"/.test(guide.text), "guide what-is-form-4 has no #financials section");
 const dl = await get("/downloads/");
@@ -288,5 +358,5 @@ ok(dl.text.includes(`/downloads/${FILE}`) && /data-dict="financials"/.test(dl.te
 
 console.log(failures
   ? `verify-financials: ${failures} of ${checks} checks failed`
-  : `verify-financials: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} rows in the file for ${byCik.size} companies, ${nonUsd} not in dollars; ${heldFigures} figures in ${heldRows} rows held back by the checks, ${heldOnPages} of them on a page read; long-term debt: ${debtOne} companies with one heading, ${debtSeveral} with several, ${debtNone} with none; ${without} companies without figures have no section)`);
+  : `verify-financials: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} rows in the file for ${byCik.size} companies, ${nonUsd} not in dollars; ${heldFigures} figures in ${heldRows} rows held back by the checks, ${heldOnPages} of them on a page read; long-term debt: ${debtOne} companies with one heading, ${debtSeveral} with several, ${debtNone} with none; ratios: ${RATIOS.map((d) => `${d.label.toLowerCase()} worked out for ${ratioCount[d.key].ok} periods of ${ratioCount[d.key].companies.size} companies (${ratioCount[d.key].capped} beyond ${d.cap}${d.pct ? "%" : ""}), n/a for ${ratioCount[d.key].base}`).join("; ")}, ${ratioCells} ratio cells read on pages; ${without} companies without figures have no section)`);
 process.exit(failures ? 1 : 0);

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   periodKind, companyUnit, companyFinancials, shownYears, shownQuarters, filingUrl, sourceFilings, finMoney, finPerShare,
   heldList, heldCount, tagChangeCount, csvRows, summarySentence, financialsLog, emptyFinancials, FIN_CAVEAT, HELD_TEXT,
-  SHOWN_CONCEPTS, LOADED_CONCEPTS, MAX_EPS_WITHOUT_INCOME, debtShown, debtLabel, DEBT_LABEL, DEBT_NOTE, type FinRow,
+  SHOWN_CONCEPTS, LOADED_CONCEPTS, MAX_EPS_WITHOUT_INCOME, debtShown, debtLabel, DEBT_LABEL, DEBT_NOTE, RATIOS, RATIO_HEAD, ratioOf, ratioText, shownRatios, ratioNote, type FinRow,
 } from "../web/src/lib/financials";
 
 let n = 0;
@@ -209,4 +209,56 @@ test("long-term debt: one heading gives a line named after it; several give none
   assert.ok(!sourceFilings(src.years[0]!).some((x) => x.accession === "0000000009-26-000001"));
   assert.equal(debtLabel("us-gaap:Unknown"), "Long-term debt");
   assert.ok(/more than one heading/.test(DEBT_NOTE) && !/\u2014/.test(DEBT_NOTE));
+});
+
+test("ratios: two printed lines of one column, labelled, or no value", () => {
+  const [margin, le] = [RATIOS[0]!, RATIOS[1]!];
+  const ni = (y: number, value: number) => yr(y, { concept: "net_income", tag: "us-gaap:NetIncomeLoss", value });
+  const f = companyFinancials([
+    yr(2025, { value: 216_000 }), ni(2025, 120_100), pt("2025-12-31", "liabilities", 51_200), pt("2025-12-31", "equity", 129_100),
+    yr(2024, { value: 1000 }), ni(2024, -124.5), pt("2024-12-31", "liabilities", 900), pt("2024-12-31", "equity", -50),   // a loss; negative equity
+    yr(2023, { value: 0 }), ni(2023, -5), pt("2023-12-31", "equity", 10),                                                // nothing to divide by; no liabilities
+    yr(2022, { value: 20 }), ni(2022, -4000), pt("2022-12-31", "liabilities", 50_500), pt("2022-12-31", "equity", 400),   // beyond the caps
+  ])!;
+  const [y25, y24, y23, y22] = f.years as [typeof f.years[0], typeof f.years[0], typeof f.years[0], typeof f.years[0]];
+  assert.deepEqual(ratioOf(y25, margin), { status: "ok", value: 55.6 });
+  assert.deepEqual(ratioOf(y25, le), { status: "ok", value: 0.4 });
+  assert.equal(ratioText(margin, 55.6), "55.6%");
+  assert.equal(ratioText(le, 0.4), "0.40");
+  assert.deepEqual(ratioOf(y24, margin), { status: "ok", value: -12.4 });   // −12.45 rounds toward zero at the half, as Math.round does
+  assert.equal(ratioText(margin, -12.4), "−12.4%");
+  assert.deepEqual(ratioOf(y24, le), { status: "base", value: null });      // equity below zero
+  assert.deepEqual(ratioOf(y23, margin), { status: "base", value: null });  // revenue of zero
+  assert.deepEqual(ratioOf(y23, le), { status: "none", value: null });      // no total liabilities on file
+  assert.equal(ratioOf(y22, margin).value, -20000);
+  assert.equal(ratioText(margin, -20000), "under −1,000%");
+  assert.equal(ratioText(margin, 32747.6), "over 1,000%");
+  assert.equal(ratioText(margin, 1000), "1,000.0%");
+  assert.equal(ratioOf(y22, le).value, 126.25);
+  assert.equal(ratioText(le, 126.25), "over 100");
+  assert.equal(ratioText(le, 100), "100.00");
+  // a tiny negative result is never printed as minus zero
+  const z = companyFinancials([yr(2025, { value: 1_000_000 }), ni(2025, -1)])!;
+  assert.ok(Object.is(ratioOf(z.years[0]!, margin).value, 0));
+  // a figure that is held back is not divided
+  const h = companyFinancials([yr(2025, { value: 100 }), ni(2025, 10)])!;
+  h.years[0]!.cells["net_income"]!.held = "balance";
+  assert.equal(ratioOf(h.years[0]!, margin).status, "none");
+  // a line exists only when some column has a value or an n/a
+  assert.deepEqual(shownRatios(f.years).map((r) => r.key), ["net_margin", "liabilities_to_equity"]);
+  assert.deepEqual(shownRatios([y23]).map((r) => r.key), ["net_margin"]);
+  assert.deepEqual(shownRatios(companyFinancials([yr(2025)])!.years), []);
+  // wording: named inputs, this site's arithmetic, no verdict words, no long dash
+  assert.equal(ratioNote([]), "");
+  for (const text of [ratioNote(RATIOS), ratioNote([margin]), RATIO_HEAD, ...RATIOS.flatMap((r) => [r.label, r.inputs])]) {
+    assert.doesNotMatch(text, /\b(undervalued|overvalued|cheap|expensive|strong|weak|healthy|score|rating|should|recommend|good|bad|safe|risky)\b/i);
+    assert.ok(!text.includes("\u2014"));
+  }
+  assert.match(ratioNote(RATIOS), /^Net margin \(net income ÷ revenue\) and liabilities to equity \(total liabilities ÷ shareholders' equity\) are this site's arithmetic/);
+  assert.match(ratioNote([le]), /^Liabilities to equity \(.*\) is this site's arithmetic .* not a figure the company filed/);
+  assert.match(ratioNote(RATIOS), /Beyond 1,000% either way for net margin and 100 for liabilities to equity/);
+  // the build log counts them over every period on file
+  const d = emptyFinancials();
+  d.byCik.set("0000000001", [yr(2025, { value: 216_000 }), ni(2025, 120_100), pt("2025-12-31", "liabilities", 51_200), pt("2025-12-31", "equity", -1), yr(2024, { value: 20 }), ni(2024, -4000)]);
+  assert.match(financialsLog(d, new Set(["0000000001"])), /ratios in the periods on file: net margin worked out for 2 periods of 1 companies \(1 beyond 1000%\), n\/a for 0; liabilities to equity worked out for 0 periods of 0 companies \(0 beyond 100\), n\/a for 1$/);
 });

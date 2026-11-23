@@ -579,7 +579,18 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
   ('0009996703', 'cash', 'us-gaap:CashAndCashEquivalentsAtCarryingValue', 'USD', null, '2025-12-31', 1500000, '10-K', '2026-03-02', '0009996703-26-000002'),
   ('0009996703', 'assets', 'us-gaap:Assets', 'USD', null, '2025-12-31', 48000000, '10-K', '2026-03-02', '0009996703-26-000002'),
   ('0009996703', 'liabilities_and_equity', 'us-gaap:LiabilitiesAndStockholdersEquity', 'USD', null, '2025-12-31', 48000000, '10-K', '2026-03-02', '0009996703-26-000002'),
-  ('0009996703', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2025-12-31', 20000000, '10-K', '2026-03-02', '0009996703-26-000002');
+  ('0009996703', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2025-12-31', 20000000, '10-K', '2026-03-02', '0009996703-26-000002'),
+  -- ratios (web/src/lib/financials.ts, RATIOS): the trust's year gets total liabilities (1.40); a quarter with
+  -- no revenue and equity below zero ("n/a" twice); a quarter beyond both caps ("under −1,000%", "over 100").
+  ('0009996703', 'liabilities', 'us-gaap:Liabilities', 'USD', null, '2025-12-31', 28000000, '10-K', '2026-03-02', '0009996703-26-000002'),
+  ('0009996703', 'revenue', 'us-gaap:Revenues', 'USD', '2026-01-01', '2026-03-31', 0, '10-Q', '2026-05-11', '0009996703-26-000005'),
+  ('0009996703', 'net_income', 'us-gaap:NetIncomeLoss', 'USD', '2026-01-01', '2026-03-31', -5000000, '10-Q', '2026-05-11', '0009996703-26-000005'),
+  ('0009996703', 'liabilities', 'us-gaap:Liabilities', 'USD', null, '2026-03-31', 60000000, '10-Q', '2026-05-11', '0009996703-26-000005'),
+  ('0009996703', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2026-03-31', -2000000, '10-Q', '2026-05-11', '0009996703-26-000005'),
+  ('0009996703', 'revenue', 'us-gaap:Revenues', 'USD', '2026-04-01', '2026-06-30', 20000, '10-Q', '2026-08-10', '0009996703-26-000008'),
+  ('0009996703', 'net_income', 'us-gaap:NetIncomeLoss', 'USD', '2026-04-01', '2026-06-30', -4000000, '10-Q', '2026-08-10', '0009996703-26-000008'),
+  ('0009996703', 'liabilities', 'us-gaap:Liabilities', 'USD', null, '2026-06-30', 50500000, '10-Q', '2026-08-10', '0009996703-26-000008'),
+  ('0009996703', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2026-06-30', 400000, '10-Q', '2026-08-10', '0009996703-26-000008');
 insert into company_financials (cik, concept, tag, unit, period_start, period_end, value, form, filed, accession) values
   ('0001045810', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2025-01-26', 8460000000, '10-K', '2025-02-26', '0001045810-25-000023'),
   ('0001045810', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2026-10-25', 60000000000, '10-Q', '2026-11-18', '0001045810-26-000180'),
