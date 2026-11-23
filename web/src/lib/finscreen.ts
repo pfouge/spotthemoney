@@ -6,9 +6,15 @@
 // its first rows with `finScreen`, and the browser script (scripts/finscreen.ts) and the unit
 // tests use the same `finMatches`, `finScreen`, `parseFinHash` and `toFinHash`.
 // Rules:
-//   - Every figure is the filed one. Nothing is converted, annualised or worked out from two
-//     figures. No ratio, score, rating or ranking of companies by quality: a column can be
-//     sorted by the figure it holds, and that is all.
+//   - Every amount is the filed one. Nothing is converted or annualised. No score, rating or
+//     ranking of companies by quality: a column can be sorted by what it holds, and that is all.
+//   - The table has two sets of columns. "Filed figures" (the view the page opens on) holds
+//     filed amounts only. "Two worked-out ratios" adds net margin and liabilities to equity,
+//     the two ratios of lib/financials.ts (RATIOS), each worked out from two amounts printed in
+//     the same row and set beside them, with the same "n/a" and beyond-the-cap wording as on a
+//     company's page. A ratio column can be sorted (a ratio needs no currency, so every
+//     reporting currency takes part); there is no filter on a ratio. Total liabilities is
+//     stored for that view only.
 //   - A figure the company page holds back ("not shown", lib/financials.ts) is held back here
 //     too: it is not in the data file, passes no filter on its column and sorts last.
 //   - The revenue and total-assets filters are in U.S. dollars. A company that reports in
@@ -21,7 +27,7 @@
 //     never compared with any figure in the row (no ratio), and a company with none shows a dash
 //     and sorts last.
 import { toCsv, type Column } from "./csv";
-import { filingUrl, finMoney, finPerShare } from "./financials";
+import { filingUrl, finMoney, finPerShare, ratioText, ratioValue, RATIOS, RATIO_NA, type RatioCell, type RatioDef } from "./financials";
 
 export const FIN_SCREENER_PATH = "/company-financials/";
 export const FIN_SCREENER_DATA = "/data/financials-screener.json";
@@ -34,13 +40,20 @@ export const FS_CONCEPTS = [
   { key: "assets", label: "Total assets", perShare: false },
   { key: "equity", label: "Shareholders' equity", perShare: false },
 ] as const;
-export type FsConcept = (typeof FS_CONCEPTS)[number]["key"];
+/** Stored for the ratios view only: total liabilities has no column in the opening view. */
+export const FS_EXTRA = [{ key: "liabilities", label: "Total liabilities", perShare: false }] as const;
+/** Every figure a period carries in the data file, in mask-bit order. */
+export const FS_STORED = [...FS_CONCEPTS, ...FS_EXTRA] as const;
+export type FsConcept = (typeof FS_STORED)[number]["key"];
+/** Where figure i of FS_STORED sits in a packed period: 5 to 9, then 11 (10 is the mask). */
+const slot = (i: number) => (i < FS_CONCEPTS.length ? 5 + i : 6 + i);
 
 /** One period, packed: [last day, first day or "", filing date of the newest report used, its
  *  form, its accession number, revenue, net income, diluted EPS, total assets, equity, held mask].
  *  A figure is null when the report gives none under a heading this site reads, or when it is
- *  held back; the mask has bit i set when figure i (in FS_CONCEPTS order) is held back. */
-export type PackedPeriod = [string, string, string, string, string, number | null, number | null, number | null, number | null, number | null, number];
+ *  held back; the mask has bit i set when figure i (in FS_STORED order) is held back. Total
+ *  liabilities follows the mask and may be missing in a file written before it was added. */
+export type PackedPeriod = [string, string, string, string, string, number | null, number | null, number | null, number | null, number | null, number, (number | null)?];
 /** One company, packed: [name, page path or "", ticker or "", CIK (10 digits), division index or
  *  -1, SIC code or "", currency, newest fiscal year or 0, newest quarter or 0, principal executive
  *  officer's total pay or null, the fiscal year end that pay covers or ""]. The last two may be
@@ -74,8 +87,8 @@ export interface FsRow { c: FsCompany; p: FsPeriod }
 function unpackPeriod(x: PackedPeriod | 0): FsPeriod | null {
   if (!x) return null;
   const v = {} as Record<FsConcept, number | null>, held = {} as Record<FsConcept, boolean>;
-  FS_CONCEPTS.forEach((c, i) => {
-    const n = x[5 + i] as number | null;
+  FS_STORED.forEach((c, i) => {
+    const n = x[slot(i)] as number | null | undefined;
     held[c.key] = ((x[10] >> i) & 1) === 1;
     v[c.key] = held[c.key] || typeof n !== "number" || !Number.isFinite(n) ? null : n;
   });
@@ -90,9 +103,9 @@ export function unpackFinScreen(d: FinScreenData): FsCompany[] {
 }
 export function packPeriod(p: FsPeriod): PackedPeriod {
   let mask = 0;
-  FS_CONCEPTS.forEach((c, i) => { if (p.held[c.key]) mask |= 1 << i; });
+  FS_STORED.forEach((c, i) => { if (p.held[c.key]) mask |= 1 << i; });
   const val = (k: FsConcept) => (p.held[k] ? null : p.v[k]);
-  return [p.end, p.start ?? "", p.filed, p.form, p.accession, val("revenue"), val("net_income"), val("eps_diluted"), val("assets"), val("equity"), mask];
+  return [p.end, p.start ?? "", p.filed, p.form, p.accession, val("revenue"), val("net_income"), val("eps_diluted"), val("assets"), val("equity"), mask, val("liabilities")];
 }
 export function packFinScreen(built: string, companies: readonly FsCompany[]): FinScreenData {
   const divisions: { name: string; slug: string }[] = [];
@@ -120,8 +133,54 @@ export const NI_SIGNS = ["pos", "neg"] as const;
 export const NI_OPTION: Record<string, string> = { pos: "Net income above zero", neg: "Net income below zero" };
 export const PER_PAGE = [25, 50, 100] as const;
 export const DEFAULT_PER = 50;
-export const SORT_KEYS = ["company", "end", "revenue", "net_income", "eps_diluted", "assets", "equity", "pay"] as const;
+export const SORT_KEYS = ["company", "end", "revenue", "net_income", "eps_diluted", "assets", "equity", "pay", "liabilities", "net_margin", "liabilities_to_equity"] as const;
 export type FsSortKey = (typeof SORT_KEYS)[number];
+
+// ── the two sets of columns ──────────────────────────────────────────────────────────────
+export type FsCols = "figures" | "ratios";
+export const COLS: readonly FsCols[] = ["figures", "ratios"];
+export const COLS_OPTION: Record<FsCols, string> = { figures: "Filed figures", ratios: "Two worked-out ratios" };
+export type RatioKey = RatioDef["key"];
+export type FsColumn =
+  | { kind: "figure"; key: FsConcept; label: string; views: readonly FsCols[] }
+  | { kind: "ratio"; key: RatioKey; label: string; views: readonly FsCols[] }
+  | { kind: "pay"; key: "pay"; label: string; views: readonly FsCols[] }
+  | { kind: "payyear"; key: "payyear"; label: string; views: readonly FsCols[] };
+const BOTH: readonly FsCols[] = COLS, FIG: readonly FsCols[] = ["figures"], RAT: readonly FsCols[] = ["ratios"];
+const ratioDef = (k: RatioKey): RatioDef => RATIOS.find((r) => r.key === k)!;
+/** Every column between "ended" and "Report", in table order, with the views it belongs to.
+ *  Each ratio stands right after the two amounts it is worked out from. */
+export const FS_COLUMNS: readonly FsColumn[] = [
+  { kind: "figure", key: "revenue", label: "Revenue", views: BOTH },
+  { kind: "figure", key: "net_income", label: "Net income", views: BOTH },
+  { kind: "ratio", key: "net_margin", label: ratioDef("net_margin").label, views: RAT },
+  { kind: "figure", key: "eps_diluted", label: "Diluted EPS", views: FIG },
+  { kind: "figure", key: "assets", label: "Total assets", views: FIG },
+  { kind: "figure", key: "liabilities", label: "Total liabilities", views: RAT },
+  { kind: "figure", key: "equity", label: "Shareholders' equity", views: BOTH },
+  { kind: "ratio", key: "liabilities_to_equity", label: ratioDef("liabilities_to_equity").label, views: RAT },
+  { kind: "pay", key: "pay", label: "CEO pay, as reported", views: FIG },
+  { kind: "payyear", key: "payyear", label: "Pay year", views: FIG },
+];
+export const columnsOf = (cols: FsCols): FsColumn[] => FS_COLUMNS.filter((c) => c.views.includes(cols));
+/** The columns a view can be sorted by: the two fixed ones and every column it shows but "Pay year". */
+export function sortKeysOf(cols: FsCols): FsSortKey[] {
+  return ["company", "end", ...columnsOf(cols).filter((c) => c.kind !== "payyear").map((c) => c.key as FsSortKey)];
+}
+/** A ratio of the two amounts of a row, as the company pages work it out (lib/financials.ts). */
+export function fsRatio(r: FsRow, k: RatioKey): RatioCell {
+  const d = ratioDef(k);
+  return ratioValue(r.p.v[d.num as FsConcept], r.p.v[d.den as FsConcept], d);
+}
+/** What a ratio cell prints: "55.6%", "over 1,000%", "0.40", "n/a", or "" when an amount is missing or not shown. */
+export function fsRatioText(r: FsRow, k: RatioKey): string {
+  const x = fsRatio(r, k);
+  return x.status === "ok" ? ratioText(ratioDef(k), x.value!) : x.status === "base" ? RATIO_NA : "";
+}
+/** The two amounts a ratio is worked out from, in words ("net income ÷ revenue"). */
+export const ratioInputs = (k: RatioKey): string => ratioDef(k).inputs;
+/** The sentence over the table while the ratio columns show. */
+export const RATIO_VIEW_NOTE = `Net margin and liabilities to equity are this site's arithmetic on two amounts of the same row, not figures the company filed. "${RATIO_NA}" means the amount divided by is zero or negative; an empty cell means an amount is missing or not shown. Sorting by a ratio orders the companies by that one number and is no verdict on any of them.`;
 
 export interface FsFilter {
   q: string;
@@ -140,8 +199,14 @@ export interface FsFilter {
   pay: 0 | 1;
 }
 export const NO_FS_FILTER: FsFilter = { q: "", period: "year", division: "", unit: "", rmin: 0, rmax: 0, ni: "", amin: 0, pay: 0 };
-export interface FsView { f: FsFilter; sort: FsSortKey; dir: "asc" | "desc"; page: number; per: number }
-export const DEFAULT_FS_VIEW: FsView = { f: NO_FS_FILTER, sort: "revenue", dir: "desc", page: 1, per: DEFAULT_PER };
+export interface FsView { f: FsFilter; sort: FsSortKey; dir: "asc" | "desc"; page: number; per: number; /** Which set of columns shows; absent = "figures". */ cols?: FsCols }
+export const DEFAULT_FS_VIEW: FsView = { f: NO_FS_FILTER, sort: "revenue", dir: "desc", page: 1, per: DEFAULT_PER, cols: "figures" };
+export const colsOf = (v: FsView): FsCols => (v.cols === "ratios" ? "ratios" : "figures");
+/** A view with the set of columns changed; a sort the new set cannot show goes back to the opening order. */
+export function withCols(v: FsView, cols: FsCols): FsView {
+  const keep = sortKeysOf(cols).includes(v.sort);
+  return { ...v, cols, sort: keep ? v.sort : DEFAULT_FS_VIEW.sort, dir: keep ? v.dir : DEFAULT_FS_VIEW.dir, page: 1 };
+}
 
 /** The companies that have the period a view looks at, each with that period. */
 export function rowsFor(all: readonly FsCompany[], period: PeriodKey): FsRow[] {
@@ -175,10 +240,12 @@ function sortValue(r: FsRow, k: FsSortKey): number | string | null {
   if (k === "company") return r.c.name.toLowerCase();
   if (k === "end") return r.p.end;
   if (k === "pay") return r.c.pay?.peo ?? null;
+  // A ratio has no currency: every company with both amounts takes part. "n/a" and empty go last.
+  if (k === "net_margin" || k === "liabilities_to_equity") return fsRatio(r, k).value;
   return usd(r, k);
 }
-/** Sorted copy. Empty values, held-back figures and amounts in another currency go last in
- *  either direction; ties fall back to the company's name, then its SEC number. */
+/** Sorted copy. Empty values, held-back figures, amounts in another currency and ratios that
+ *  could not be worked out go last in either direction; ties fall back to the company's name, then its SEC number. */
 export function sortFsRows(rows: readonly FsRow[], k: FsSortKey, dir: "asc" | "desc"): FsRow[] {
   const sign = dir === "asc" ? 1 : -1;
   return rows.map((r) => ({ r, v: sortValue(r, k) })).sort((a, b) => {
@@ -244,7 +311,7 @@ export const tickerPagePath = (ticker: string) => `/stocks/${ticker.toLowerCase(
 export function isDefaultFsFilter(f: FsFilter): boolean {
   return !f.q.trim() && f.period === "year" && !f.division && !f.unit && !f.rmin && !f.rmax && !f.ni && !f.amin && !f.pay;
 }
-export const FS_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "sort", "dir", "page", "per"];
+export const FS_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "cols", "sort", "dir", "page", "per"];
 /** True when a hash is a view (carries one of the screener's keys), not a jump link. */
 export function isFsViewHash(hash: string): boolean {
   if (!hash.includes("=")) return false;
@@ -264,11 +331,13 @@ export function parseFinHash(hash: string): FsView {
   const ni = p.get("ni"); if (ni === "pos" || ni === "neg") f.ni = ni;
   if (p.get("pay") === "1") f.pay = 1;
   f.q = (p.get("q") ?? "").slice(0, 60);
-  const so = p.get("sort") ?? ""; const sort = (SORT_KEYS as readonly string[]).includes(so) ? (so as FsSortKey) : DEFAULT_FS_VIEW.sort;
+  const cols: FsCols = p.get("cols") === "ratios" ? "ratios" : "figures";
+  // A sort by a column the set of columns does not show is ignored.
+  const so = p.get("sort") ?? ""; const sort = (sortKeysOf(cols) as readonly string[]).includes(so) ? (so as FsSortKey) : DEFAULT_FS_VIEW.sort;
   const di = p.get("dir"); const dir = di === "asc" || di === "desc" ? di : firstFsDir(sort);
   const pg = Number(p.get("page")); const page = Number.isInteger(pg) && pg >= 1 && pg <= 100000 ? pg : 1;
   const pe = Number(p.get("per")); const per = (PER_PAGE as readonly number[]).includes(pe) ? pe : DEFAULT_PER;
-  return { f, sort, dir, page, per };
+  return { f, sort, dir, page, per, cols };
 }
 /** The hash for a view; "" for the view the page opens on. */
 export function toFinHash(v: FsView): string {
@@ -282,6 +351,7 @@ export function toFinHash(v: FsView): string {
   if (f.amin) p.set("amin", String(f.amin));
   if (f.pay) p.set("pay", "1");
   if (f.q.trim()) p.set("q", f.q.trim());
+  if (colsOf(v) !== "figures") p.set("cols", colsOf(v));
   if (v.sort !== DEFAULT_FS_VIEW.sort || v.dir !== firstFsDir(v.sort)) { p.set("sort", v.sort); p.set("dir", v.dir); }
   if (v.page > 1) p.set("page", String(v.page));
   if (v.per !== DEFAULT_PER) p.set("per", String(v.per));
@@ -318,8 +388,10 @@ const CSV_COLUMNS: Column<FsRow>[] = [
   { key: "net_income", about: "Net income for the period, as filed", get: figure("net_income") },
   { key: "eps_diluted", about: "Diluted earnings per share, as filed", get: figure("eps_diluted") },
   { key: "assets", about: "Total assets on the last day of the period, as filed", get: figure("assets") },
+  { key: "liabilities", about: "Total liabilities on the last day of the period, as filed; blank when the report gives no such total", get: figure("liabilities") },
   { key: "equity", about: "Shareholders' equity on the last day of the period, as filed", get: figure("equity") },
-  { key: "not_shown", about: "Figures held back by a check, blank in their column", get: (r) => FS_CONCEPTS.filter((c) => r.p.held[c.key]).map((c) => c.key).join("; ") || null },
+  ...RATIOS.map((d): Column<FsRow> => ({ key: d.column, about: `${d.label}: ${d.inputs}${d.percent ? ", as a percentage rounded to one decimal" : ", rounded to two decimals"}. Worked out by this site from two columns of this row, not a filed figure. Blank when either is missing or not shown, or when the one divided by is zero or negative`, get: (r) => fsRatio(r, d.key).value })),
+  { key: "not_shown", about: "Figures held back by a check, blank in their column", get: (r) => FS_STORED.filter((c) => r.p.held[c.key]).map((c) => c.key).join("; ") || null },
   { key: "report_form", about: "Form of the newest report used for the period", get: (r) => r.p.form },
   { key: "report_filed", about: "Day that report was filed", get: (r) => r.p.filed },
   { key: "report_url", about: "The report at the SEC", get: (r) => reportUrl(r) },
@@ -341,9 +413,14 @@ export function fsViewCsvName(v: FsView, built: string): string {
 export function finScreenLog(all: readonly FsCompany[]): string {
   const y = rowsFor(all, "year"), q = rowsFor(all, "quarter");
   const hit = (rows: FsRow[], f: Partial<FsFilter>) => rows.filter((r) => finMatches(r, { ...NO_FS_FILTER, ...f })).length;
-  const held = (rows: FsRow[]) => rows.reduce((s, r) => s + FS_CONCEPTS.filter((c) => r.p.held[c.key]).length, 0);
+  const held = (rows: FsRow[]) => rows.reduce((s, r) => s + FS_STORED.filter((c) => r.p.held[c.key]).length, 0);
+  const ratios = (rows: FsRow[]) => RATIOS.map((d) => {
+    const cells = rows.map((r) => fsRatio(r, d.key)), okc = cells.filter((x) => x.status === "ok");
+    return `${d.label.toLowerCase()} worked out for ${okc.length} (${okc.filter((x) => Math.abs(x.value!) > d.cap).length} beyond ${d.cap}${d.percent ? "%" : ""}), ${RATIO_NA} for ${cells.filter((x) => x.status === "base").length}`;
+  }).join("; ");
+  const liab = (rows: FsRow[]) => rows.filter((r) => r.p.v.liabilities != null).length;
   const div = new Map<string, number>();
   for (const r of y) { const k = r.c.division?.name ?? "no division"; div.set(k, (div.get(k) ?? 0) + 1); }
   const divs = [...div].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, v]) => `${k} ${v}`).join(", ");
-  return `financials screener: ${all.length} companies, ${y.length} with a fiscal year, ${q.length} with a quarter; ${all.filter((c) => c.unit !== "USD").length} not in dollars; fiscal year: revenue in dollars ${y.filter((r) => usd(r, "revenue") != null).length}, ${REV_MIN_STEPS.map((s) => `at least ${s} ${hit(y, { rmin: s })}`).join(", ")}, at most ${REV_MAX_STEPS[0]} ${hit(y, { rmax: REV_MAX_STEPS[0] })}; net income above zero ${hit(y, { ni: "pos" })}, below zero ${hit(y, { ni: "neg" })}; total assets at least ${ASSET_MIN_STEPS[2]} ${hit(y, { amin: ASSET_MIN_STEPS[2] })}; executive pay on file ${hit(y, { pay: 1 })} of ${y.length}, newest pay year ends ${all.map((c) => c.pay?.fye ?? "").filter(Boolean).sort().at(-1) ?? "-"}; figures not shown ${held(y)} (fiscal year), ${held(q)} (quarter); newest fiscal year ends ${y.map((r) => r.p.end).sort()[0] ?? "-"} to ${y.map((r) => r.p.end).sort().at(-1) ?? "-"}; by division: ${divs}`;
+  return `financials screener: ${all.length} companies, ${y.length} with a fiscal year, ${q.length} with a quarter; ${all.filter((c) => c.unit !== "USD").length} not in dollars; fiscal year: revenue in dollars ${y.filter((r) => usd(r, "revenue") != null).length}, ${REV_MIN_STEPS.map((s) => `at least ${s} ${hit(y, { rmin: s })}`).join(", ")}, at most ${REV_MAX_STEPS[0]} ${hit(y, { rmax: REV_MAX_STEPS[0] })}; net income above zero ${hit(y, { ni: "pos" })}, below zero ${hit(y, { ni: "neg" })}; total assets at least ${ASSET_MIN_STEPS[2]} ${hit(y, { amin: ASSET_MIN_STEPS[2] })}; executive pay on file ${hit(y, { pay: 1 })} of ${y.length}, newest pay year ends ${all.map((c) => c.pay?.fye ?? "").filter(Boolean).sort().at(-1) ?? "-"}; figures not shown ${held(y)} (fiscal year), ${held(q)} (quarter); newest fiscal year ends ${y.map((r) => r.p.end).sort()[0] ?? "-"} to ${y.map((r) => r.p.end).sort().at(-1) ?? "-"}; ratio columns, fiscal year: total liabilities on file ${liab(y)}; ${ratios(y)}; quarter: total liabilities on file ${liab(q)}; ${ratios(q)}; by division: ${divs}`;
 }

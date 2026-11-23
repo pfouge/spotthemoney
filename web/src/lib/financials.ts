@@ -170,9 +170,15 @@ export const RATIO_NA = "n/a";
 /** A ratio of two figures of one period, as a page prints it: a percentage rounded to one decimal, or a number rounded to two. */
 export function ratioOf(p: Period, r: RatioDef): RatioCell {
   const a = p.cells[r.num], b = p.cells[r.den];
-  if (!a || !b || a.held || b.held || !Number.isFinite(a.value) || !Number.isFinite(b.value)) return { status: "none", value: null };
-  if (!(b.value > 0)) return { status: "base", value: null };
-  const raw = r.percent ? Math.round((a.value / b.value) * 1000) / 10 : Math.round((a.value / b.value) * 100) / 100;
+  if (!a || !b || a.held || b.held) return { status: "none", value: null };
+  return ratioValue(a.value, b.value, r);
+}
+/** The same arithmetic on two bare figures (null = missing or not shown): the financials screener
+ *  (lib/finscreen.ts) reads its own two figures of a row through this. */
+export function ratioValue(a: number | null | undefined, b: number | null | undefined, r: RatioDef): RatioCell {
+  if (typeof a !== "number" || typeof b !== "number" || !Number.isFinite(a) || !Number.isFinite(b)) return { status: "none", value: null };
+  if (!(b > 0)) return { status: "base", value: null };
+  const raw = r.percent ? Math.round((a / b) * 1000) / 10 : Math.round((a / b) * 100) / 100;
   return { status: "ok", value: raw === 0 ? 0 : raw };
 }
 /** "55.6%", "−12.4%", "over 1,000%", "under −1,000%"; "0.40", "over 100". */
@@ -195,7 +201,7 @@ export function ratioNote(shown: readonly RatioDef[]): string {
   if (!shown.length) return "";
   const names = shown.map((r) => `${r.label.toLowerCase()} (${r.inputs})`);
   const caps = shown.map((r) => `${r.cap.toLocaleString("en-US")}${r.percent ? "% either way" : ""} for ${r.label.toLowerCase()}`);
-  return `${names.join(" and ").replace(/^./, (c) => c.toUpperCase())} ${shown.length === 1 ? "is" : "are"} this site's arithmetic on two lines of the same column, not ${shown.length === 1 ? "a figure" : "figures"} the company filed. A dash means one of the two figures is missing or not shown; "${RATIO_NA}" means the figure divided by is zero or negative, so the result would say nothing. Beyond ${caps.join(" and ")} the cell says so in words, and the CSV file has the number. A ratio describes one period of one company; it is not a verdict on the company and is used in no total, filter or sort order on this site.`;
+  return `${names.join(" and ").replace(/^./, (c) => c.toUpperCase())} ${shown.length === 1 ? "is" : "are"} this site's arithmetic on two lines of the same column, not ${shown.length === 1 ? "a figure" : "figures"} the company filed. A dash means one of the two figures is missing or not shown; "${RATIO_NA}" means the figure divided by is zero or negative, so the result would say nothing. Beyond ${caps.join(" and ")} the cell says so in words, and the CSV file has the number. A ratio describes one period of one company; it is not a verdict on the company and is used in no total or filter on this site.`;
 }
 
 const DAY = 86_400_000;

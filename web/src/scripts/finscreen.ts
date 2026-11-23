@@ -5,8 +5,8 @@
 // anywhere and nothing is stored in the browser.
 import { h } from "./dom";
 import {
-  unpackFinScreen, finScreen, fsSummaryLine, fsViewCsv, fsViewCsvName, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, firstFsDir, fsCellText, fsPayText, fsShortDate, reportUrl, divisionPagePath,
-  NO_FS_FILTER, DEFAULT_FS_VIEW, DEFAULT_PER, FS_CONCEPTS, FIN_SCREENER_DATA, type FinScreenData, type FsRow, type FsView, type FsFilter, type FsSortKey,
+  unpackFinScreen, finScreen, fsSummaryLine, fsViewCsv, fsViewCsvName, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, firstFsDir, fsCellText, fsPayText, fsShortDate, reportUrl, divisionPagePath, columnsOf, colsOf, withCols, fsRatio, fsRatioText,
+  NO_FS_FILTER, DEFAULT_FS_VIEW, DEFAULT_PER, FIN_SCREENER_DATA, type FinScreenData, type FsRow, type FsView, type FsFilter, type FsSortKey, type FsCols,
 } from "../lib/finscreen";
 
 const root = document.querySelector<HTMLElement>("[data-finscreen]");
@@ -17,8 +17,9 @@ async function start(root: HTMLElement): Promise<void> {
   const sel = (name: string) => ctl<HTMLSelectElement>(name);
   const q = ctl<HTMLInputElement>("q"), tbody = ctl<HTMLTableSectionElement>("rows"), count = ctl<HTMLElement>("count"), empty = ctl<HTMLElement>("empty"),
     reset = ctl<HTMLButtonElement>("reset"), prev = ctl<HTMLButtonElement>("prev"), next = ctl<HTMLButtonElement>("next"),
-    pageinfo = ctl<HTMLElement>("pageinfo"), pager = ctl<HTMLElement>("pager"), per = sel("per"), download = ctl<HTMLButtonElement>("download"), endHead = ctl<HTMLElement>("endhead");
+    pageinfo = ctl<HTMLElement>("pageinfo"), pager = ctl<HTMLElement>("pager"), per = sel("per"), colsSel = sel("cols"), ratioNote = ctl<HTMLElement>("rationote"), download = ctl<HTMLButtonElement>("download"), endHead = ctl<HTMLElement>("endhead");
   const heads = Array.from(root.querySelectorAll<HTMLTableCellElement>("th[data-sort]"));
+  const viewHeads = Array.from(root.querySelectorAll<HTMLTableCellElement>("th[data-cols]"));
   if (!tbody) return;
 
   let data: FinScreenData;
@@ -51,21 +52,24 @@ async function start(root: HTMLElement): Promise<void> {
     pick(sel("period"), f.period, "year"); pick(sel("division"), f.division); pick(sel("unit"), f.unit);
     pick(sel("rmin"), String(f.rmin), "0"); pick(sel("rmax"), String(f.rmax), "0"); pick(sel("ni"), f.ni); pick(sel("amin"), String(f.amin), "0"); pick(sel("pay"), String(f.pay), "0");
     pick(per, String(v.per), String(DEFAULT_PER));
+    pick(colsSel, colsOf(v), "figures");
   };
+  const readCols = (): FsCols => (colsSel?.value === "ratios" ? "ratios" : "figures");
 
-  const rowEl = (r: FsRow): HTMLTableRowElement => {
+  const rowEl = (r: FsRow, cols: FsCols): HTMLTableRowElement => {
     const url = reportUrl(r);
     return h("tr", { "data-cik": r.c.cik },
       h("td", {}, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "soft small mono" }, ` ${r.c.ticker}`) : null),
       h("td", {}, r.c.division ? h("a", { href: divisionPagePath(r.c.division.slug) }, r.c.division.name) : null),
       h("td", { class: "mono" }, fsShortDate(r.p.end)),
-      ...FS_CONCEPTS.map((c) => {
+      ...columnsOf(cols).map((c) => {
+        if (c.kind === "pay") return h("td", { class: "num", "data-pay": "" }, fsPayText(r.c));
+        if (c.kind === "payyear") return h("td", { class: "mono", "data-payyear": "" }, r.c.pay ? fsShortDate(r.c.pay.fye) : "");
+        if (c.kind === "ratio") return h("td", { class: "num", "data-ratio": c.key, "data-status": fsRatio(r, c.key).status }, fsRatioText(r, c.key));
         const text = fsCellText(r, c.key);
         if (r.p.held[c.key]) return h("td", { class: "num", "data-held": "" }, heldHref ? h("a", { class: "soft", href: heldHref }, text) : h("span", { class: "soft" }, text));
-        return h("td", { class: `num${c.key === "revenue" ? " strong" : ""}` }, text);
+        return h("td", { class: `num${c.key === "revenue" ? " strong" : ""}`, "data-fig": c.key }, text);
       }),
-      h("td", { class: "num", "data-pay": "" }, fsPayText(r.c)),
-      h("td", { class: "mono", "data-payyear": "" }, r.c.pay ? fsShortDate(r.c.pay.fye) : ""),
       h("td", { class: "mono" }, url ? h("a", { href: url, rel: "noopener nofollow", target: "_blank", title: `Filed ${fsShortDate(r.p.filed)}` }, `${r.p.form} ↗`) : r.p.form),
     );
   };
@@ -73,7 +77,10 @@ async function start(root: HTMLElement): Promise<void> {
   const render = (updateHash: boolean): void => {
     const res = finScreen(all, view);
     view = { ...view, page: res.page };
-    tbody.replaceChildren(...res.rows.map(rowEl));
+    const cols = colsOf(view);
+    for (const th of viewHeads) th.hidden = !(th.dataset.cols ?? "").split(" ").includes(cols);
+    if (ratioNote) ratioNote.hidden = cols !== "ratios";
+    tbody.replaceChildren(...res.rows.map((r) => rowEl(r, cols)));
     if (count) count.textContent = fsSummaryLine(res, view.f.period);
     if (empty) empty.hidden = res.total > 0;
     if (pager) pager.hidden = res.total === 0;
@@ -91,13 +98,15 @@ async function start(root: HTMLElement): Promise<void> {
     root.dataset.shown = String(res.total);
     root.dataset.all = String(res.all);
     root.dataset.period = view.f.period;
+    root.dataset.cols = cols;
     root.dataset.page = String(res.page);
     root.dataset.pages = String(res.pages);
     root.dataset.ready = "1";
     if (updateHash) history.replaceState(null, "", toFinHash(view) || location.pathname + location.search);
   };
 
-  const filterChanged = (): void => { view = { ...view, f: readFilter(), page: 1 }; render(true); };
+  // The Columns control is not a filter: Reset leaves it, and a sort the new columns cannot show goes back to the opening order.
+  const filterChanged = (): void => { view = { ...view, f: readFilter(), page: 1 }; if (readCols() !== colsOf(view)) view = withCols(view, readCols()); render(true); };
   root.querySelectorAll<HTMLSelectElement>(".fs-controls select").forEach((s) => s.addEventListener("change", filterChanged));
   q?.addEventListener("input", filterChanged);
   per?.addEventListener("change", () => { view = { ...view, per: Number(per.value) || DEFAULT_PER, page: 1 }; render(true); });

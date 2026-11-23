@@ -4165,3 +4165,45 @@ it in the pull request that changes a cell.**
   than a sortable filed figure, and amounts in different currencies are no obstacle for a ratio, so it needs its own
   decision and wording (and three places for any new hash key). Also not done: the ratios on the on-demand pages; other
   ratios (anything with cash flow, debt or a price).
+
+### The two ratios in the financials screener, as a second set of columns (2026-11-23, scheduled parity run) — queue item A1-b, stage 2
+
+- **What.** `/company-financials/` has a control "Columns" with two sets: "Filed figures" (the view the page opens on,
+  unchanged: filed amounts only) and "Two worked-out ratios", which shows Revenue, Net income, **Net margin**, **Total
+  liabilities**, Shareholders' equity, **Liabilities to equity**. Each ratio stands right after the two amounts it is
+  worked out from, its column title names them ("net income ÷ revenue"), and a sentence over the table
+  (`p[data-fs="rationote"]`, `RATIO_VIEW_NOTE`) says the two are this site's arithmetic and that a sort by one is no
+  verdict. Hash key `cols=ratios`. The download of the rows gained `liabilities`, `net_margin_pct`,
+  `liabilities_to_equity` (the names `company-financials.csv` uses). No migration, no data job change, no new file,
+  nothing stored in the browser.
+- **Decisions.** (1) A second set of columns, not three more columns in one table: the opening view stays "every amount
+  as filed", the ratios are a choice the reader makes, and each set is narrower than one 14-column table. (2) **A ratio
+  column can be sorted**; the page (`#ratios`), the sentence over the table, methodology `#financials-screener` and the
+  guide say the order is by that one worked-out number and is no verdict. (3) **No filter on a ratio** ("margin above
+  X" is screening by quality). (4) A ratio needs no currency, so sorting by one takes in every reporting currency;
+  "n/a" and empty cells go last in both directions; a value beyond the cap prints in words and sorts by its number.
+  (5) Total liabilities is an amount: its sort reads dollar reporters only, like the others.
+- **Rules** (`web/src/lib/finscreen.ts`; tests `scripts/finscreen.test.ts`): `FS_COLUMNS` is the one list of columns
+  with the sets each belongs to (`columnsOf`, `sortKeysOf`); `fsRatio` / `fsRatioText` call `ratioValue` in
+  `lib/financials.ts`, the arithmetic `ratioOf` uses on company pages, so the two cannot differ. "n/a" = the amount
+  divided by is zero or negative; empty = an amount missing or not shown. `FsView.cols`; `withCols` drops a sort the new
+  set cannot show; `parseFinHash` ignores such a sort. The Columns control is NOT a filter: Reset leaves it.
+- **Data file.** A packed period has a 12th entry, total liabilities, after the mask (mask bit 5 when held back);
+  `FS_STORED` is the six stored figures, `FS_CONCEPTS` the five of the opening view. The ratios are worked out in the
+  browser and are not in the file. A file without the 12th entry still unpacks.
+- **Page.** The thead holds every column with `data-cols`; the ratio-set ones are `hidden` as served and the script
+  switches them. The rows printed without JavaScript are the filed-figure set, as before.
+- **`ratioNote` on company pages** (lib/financials.ts) now ends "used in no total or filter on this site" (it said "or
+  sort order"); methodology `#financial-ratios` says the screener can list companies in order of a ratio.
+- **Build log** line `[web] financials screener: ...` gained `ratio columns, fiscal year: total liabilities on file L;
+  net margin worked out for N (K beyond 1000%), n/a for M; liabilities to equity worked out for N (K beyond 100), n/a
+  for M; quarter: ...`. `verify-finscreen` prints `ratios of the newest periods: N worked out (K beyond a limit), M n/a`
+  (both periods and both ratios added together) from the CSV with its own arithmetic: **the sums must agree.**
+- **Verifier.** `verify-finscreen` (388 checks on the seed, was 276): total liabilities in the data file against the
+  CSV; both ratios from the CSV's filed figures with its own arithmetic against the CSV's own ratio columns, every cell
+  on screen in both periods, each cell's status, the order of a sort by each ratio in both directions, five more
+  combined views, the address, a sort the set cannot show, Reset, the download; that the page as served shows no ratio.
+  `cols` is in its `KEYS` and in `FIN_KEYS` of `verify-links`. The seed's Apple quarter has made-up liabilities and
+  negative equity, so the newest-quarter view has an "n/a".
+- Not done: a filter on a ratio (on purpose); ratios on the on-demand pages; the ratio set without JavaScript; a
+  saved choice of columns (the address carries it); cash and long-term debt as columns.

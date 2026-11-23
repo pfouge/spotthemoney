@@ -4,13 +4,14 @@ import assert from "node:assert/strict";
 import {
   packFinScreen, unpackFinScreen, rowsFor, finMatches, finScreen, sortFsRows, fsSummaryLine, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, finScreenCounts, finScreenerHref,
   fsCellText, fsPayText, fsViewCsv, fsViewCsvName, finScreenLog, usd, stepLabel, revMinLabel,
+  columnsOf, sortKeysOf, withCols, colsOf, fsRatio, fsRatioText, FS_STORED, FS_COLUMNS, RATIO_VIEW_NOTE,
   NO_FS_FILTER, DEFAULT_FS_VIEW, FS_CONCEPTS, FS_KEYS, REV_MIN_STEPS, REV_MAX_STEPS, ASSET_MIN_STEPS, type FsCompany, type FsPeriod, type FsConcept,
 } from "../web/src/lib/finscreen";
 
 const period = (end: string, v: Partial<Record<FsConcept, number | null>>, held: FsConcept[] = []): FsPeriod => ({
   end, start: null, filed: "2026-02-01", form: "10-K", accession: "0000000001-26-000001",
-  v: { revenue: null, net_income: null, eps_diluted: null, assets: null, equity: null, ...v },
-  held: Object.fromEntries(FS_CONCEPTS.map((c) => [c.key, held.includes(c.key)])) as Record<FsConcept, boolean>,
+  v: { revenue: null, net_income: null, eps_diluted: null, assets: null, equity: null, liabilities: null, ...v },
+  held: Object.fromEntries(FS_STORED.map((c) => [c.key, held.includes(c.key)])) as Record<FsConcept, boolean>,
 });
 const MFG = { name: "Manufacturing", slug: "manufacturing" }, SVC = { name: "Services", slug: "services" };
 const co = (name: string, x: Partial<FsCompany>): FsCompany => ({ name, path: `/companies/${name.toLowerCase()}/`, ticker: name.slice(0, 3).toUpperCase(), cik: "0000000001", division: null, sic: "", unit: "USD", year: null, quarter: null, ...x });
@@ -92,7 +93,7 @@ test("paging and the count line", () => {
 
 test("the address: round trip, defaults left out, junk ignored", () => {
   assert.equal(toFinHash(DEFAULT_FS_VIEW), "");
-  const v = { f: { ...NO_FS_FILTER, period: "quarter" as const, division: "manufacturing", unit: "USD", rmin: 1e9, rmax: 1e10, ni: "pos" as const, amin: 1e10, q: "al pha" }, sort: "assets" as const, dir: "asc" as const, page: 3, per: 25 };
+  const v = { f: { ...NO_FS_FILTER, period: "quarter" as const, division: "manufacturing", unit: "USD", rmin: 1e9, rmax: 1e10, ni: "pos" as const, amin: 1e10, q: "al pha" }, sort: "assets" as const, dir: "asc" as const, page: 3, per: 25, cols: "figures" as const };
   const hash = toFinHash(v);
   assert.deepEqual(parseFinHash(hash), v);
   assert.ok(new URLSearchParams(hash.slice(1)).has("division"));
@@ -130,7 +131,7 @@ test("cells, labels and the file of the rows on screen", () => {
   const csv = fsViewCsv(all, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, ni: "pos" } });
   const lines = (csv.charCodeAt(0) === 0xfeff ? csv.slice(1) : csv).trim().split("\r\n");
   assert.equal(lines.length, 4);
-  assert.ok(lines[0]!.startsWith("company,ticker,cik,sic_code,sic_division,period,period_start,period_end,currency,revenue,net_income,eps_diluted,assets,equity,not_shown,"));
+  assert.ok(lines[0]!.startsWith("company,ticker,cik,sic_code,sic_division,period,period_start,period_end,currency,revenue,net_income,eps_diluted,assets,liabilities,equity,net_margin_pct,liabilities_to_equity,not_shown,"));
   assert.ok(lines[1]!.startsWith("Delta,"), "largest dollar revenue first");
   assert.ok(lines[1]!.includes("eps_diluted; assets"));
   assert.ok(!lines[1]!.includes("790000"));
@@ -176,4 +177,108 @@ test("executive pay: packed, filtered by pay=1, sorted with none last, in the fi
   assert.equal(lines.length, 4);
   assert.ok(lines[1]!.includes("21400000") && lines[1]!.includes("2025-12-31"));
   assert.ok(fsViewCsvName({ ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, pay: 1 } }, "2026-11-22").includes("pay-on-file"));
+});
+
+// ── the ratio columns ────────────────────────────────────────────────────────────────────
+const rc: FsCompany[] = [
+  co("Able", { cik: "0000000011", year: period("2025-12-31", { revenue: 1000, net_income: 556, liabilities: 400, equity: 1000 }) }),
+  co("Baker", { cik: "0000000012", unit: "JPY", year: period("2026-03-31", { revenue: 2e12, net_income: -2.48e11, liabilities: 9e12, equity: 3e12 }) }),
+  co("Cargo", { cik: "0000000013", year: period("2025-12-31", { revenue: 0, net_income: -5, liabilities: 50, equity: -10 }) }),
+  co("Dune", { cik: "0000000014", year: period("2025-12-31", { revenue: 10, net_income: -400, liabilities: 5000, equity: 10 }) }),
+  co("Echo", { cik: "0000000015", year: period("2025-12-31", { revenue: 500, net_income: 50, equity: 200 }) }),
+  co("Fox", { cik: "0000000016", year: period("2025-12-31", { revenue: 900, net_income: 90, liabilities: 300, equity: 600 }, ["net_income", "liabilities"]) }),
+];
+const ra = unpackFinScreen(packFinScreen("2026-11-23", rc));
+const rrow = (name: string) => rowsFor(ra, "year").find((r) => r.c.name === name)!;
+
+test("total liabilities travels in the data file, after the mask, and a held one does not", () => {
+  const d = packFinScreen("2026-11-23", rc);
+  const able = d.companies[0]![7] as unknown[];
+  assert.equal(able.length, 12);
+  assert.equal(able[11], 400);
+  assert.equal(rrow("Able").p.v.liabilities, 400);
+  const fox = d.companies[5]![7] as unknown[];
+  assert.equal(fox[11], null, "a held figure is not in the data file");
+  assert.equal(rrow("Fox").p.held.liabilities, true);
+  assert.equal(rrow("Fox").p.held.net_income, true);
+  // A file written before the column existed still unpacks: no liabilities, nothing held.
+  const old = { ...d, companies: d.companies.map((c) => { const x = [...c] as typeof c; x[7] = (c[7] as unknown[]).slice(0, 11) as never; return x; }) };
+  const oa = unpackFinScreen(old);
+  assert.equal(oa[0]!.year!.v.liabilities, null);
+  assert.equal(oa[0]!.year!.held.liabilities, false);
+  assert.equal(oa[0]!.year!.v.revenue, 1000);
+});
+
+test("a ratio is worked out from the row's own two amounts, as on a company's page", () => {
+  assert.deepEqual(fsRatio(rrow("Able"), "net_margin"), { status: "ok", value: 55.6 });
+  assert.equal(fsRatioText(rrow("Able"), "net_margin"), "55.6%");
+  assert.equal(fsRatioText(rrow("Able"), "liabilities_to_equity"), "0.40");
+  // Another currency: a ratio needs none.
+  assert.equal(fsRatioText(rrow("Baker"), "net_margin"), "\u221212.4%");
+  assert.equal(fsRatioText(rrow("Baker"), "liabilities_to_equity"), "3.00");
+  // Revenue of zero, equity below zero: n/a, no number.
+  assert.deepEqual(fsRatio(rrow("Cargo"), "net_margin"), { status: "base", value: null });
+  assert.equal(fsRatioText(rrow("Cargo"), "net_margin"), "n/a");
+  assert.equal(fsRatioText(rrow("Cargo"), "liabilities_to_equity"), "n/a");
+  // Beyond the limits the cell says so in words; the number is kept for sorting and the download.
+  assert.equal(fsRatio(rrow("Dune"), "net_margin").value, -4000);
+  assert.equal(fsRatioText(rrow("Dune"), "net_margin"), "under \u22121,000%");
+  assert.equal(fsRatioText(rrow("Dune"), "liabilities_to_equity"), "over 100");
+  // A missing amount, or one held back: an empty cell.
+  assert.deepEqual(fsRatio(rrow("Echo"), "liabilities_to_equity"), { status: "none", value: null });
+  assert.equal(fsRatioText(rrow("Echo"), "liabilities_to_equity"), "");
+  assert.equal(fsRatioText(rrow("Fox"), "net_margin"), "");
+  assert.equal(fsRatioText(rrow("Fox"), "liabilities_to_equity"), "");
+});
+
+test("the two sets of columns: each ratio stands right after its two amounts", () => {
+  assert.deepEqual(columnsOf("figures").map((c) => c.key), ["revenue", "net_income", "eps_diluted", "assets", "equity", "pay", "payyear"]);
+  assert.deepEqual(columnsOf("ratios").map((c) => c.key), ["revenue", "net_income", "net_margin", "liabilities", "equity", "liabilities_to_equity"]);
+  assert.ok(columnsOf("figures").every((c) => c.kind !== "ratio"), "the opening view holds no worked-out column");
+  assert.equal(new Set(FS_COLUMNS.map((c) => c.key)).size, FS_COLUMNS.length);
+  assert.deepEqual(sortKeysOf("figures"), ["company", "end", "revenue", "net_income", "eps_diluted", "assets", "equity", "pay"]);
+  assert.deepEqual(sortKeysOf("ratios"), ["company", "end", "revenue", "net_income", "net_margin", "liabilities", "equity", "liabilities_to_equity"]);
+  assert.ok(/not figures the company filed/.test(RATIO_VIEW_NOTE) && /no verdict/.test(RATIO_VIEW_NOTE));
+});
+
+test("sorting by a ratio: every currency takes part, n/a and empty last either way", () => {
+  const order = (k: "net_margin" | "liabilities_to_equity", dir: "asc" | "desc") => sortFsRows(rowsFor(ra, "year"), k, dir).map((r) => r.c.name);
+  assert.deepEqual(order("net_margin", "desc"), ["Able", "Echo", "Baker", "Dune", "Cargo", "Fox"]);
+  assert.deepEqual(order("net_margin", "asc"), ["Dune", "Baker", "Echo", "Able", "Cargo", "Fox"]);
+  assert.deepEqual(order("liabilities_to_equity", "desc"), ["Dune", "Baker", "Able", "Cargo", "Echo", "Fox"]);
+  assert.deepEqual(order("liabilities_to_equity", "asc"), ["Able", "Baker", "Dune", "Cargo", "Echo", "Fox"]);
+  // Total liabilities is an amount: dollars only, like the other amounts.
+  assert.deepEqual(sortFsRows(rowsFor(ra, "year"), "liabilities", "desc").map((r) => r.c.name), ["Dune", "Able", "Cargo", "Baker", "Echo", "Fox"]);
+});
+
+test("the address keeps the set of columns; a sort the set cannot show is ignored", () => {
+  const v = { ...DEFAULT_FS_VIEW, cols: "ratios" as const, sort: "net_margin" as const, dir: "asc" as const };
+  assert.equal(toFinHash(v), "#cols=ratios&sort=net_margin&dir=asc");
+  assert.deepEqual(parseFinHash(toFinHash(v)), v);
+  assert.equal(toFinHash({ ...DEFAULT_FS_VIEW, cols: "ratios" }), "#cols=ratios");
+  assert.ok(isFsViewHash("#cols=ratios") && FS_KEYS.includes("cols"));
+  assert.equal(parseFinHash("#cols=everything").cols, "figures");
+  assert.equal(parseFinHash("#sort=net_margin&dir=desc").sort, "revenue", "a ratio sort without the ratio columns");
+  assert.equal(parseFinHash("#cols=ratios&sort=pay&dir=desc").sort, "revenue", "a pay sort with the ratio columns");
+  assert.equal(parseFinHash("#cols=ratios&sort=equity&dir=asc").sort, "equity");
+  // Switching the set: a sort both sets show is kept, another goes back to the opening order.
+  assert.deepEqual(withCols({ ...DEFAULT_FS_VIEW, sort: "equity", dir: "asc", page: 3 }, "ratios"), { ...DEFAULT_FS_VIEW, sort: "equity", dir: "asc", page: 1, cols: "ratios" });
+  const back = withCols(v, "figures");
+  assert.equal(back.sort, "revenue"); assert.equal(back.dir, "desc"); assert.equal(colsOf(back), "figures");
+  assert.equal(colsOf({ ...DEFAULT_FS_VIEW, cols: undefined }), "figures");
+  // The set of columns is not a filter.
+  assert.ok(isDefaultFsFilter({ ...NO_FS_FILTER }));
+});
+
+test("the download carries total liabilities and both ratios, blank where a cell is n/a or empty", () => {
+  const lines = fsViewCsv(ra, { ...DEFAULT_FS_VIEW, sort: "company", dir: "asc" }).replace(/^\uFEFF/, "").trim().split("\r\n");
+  const head = lines[0]!.split(",");
+  const col = (name: string) => head.indexOf(name);
+  assert.ok(col("liabilities") > col("assets") && col("net_margin_pct") > col("equity") && col("liabilities_to_equity") > col("net_margin_pct"));
+  const cell = (i: number, name: string) => lines[i]!.split(",")[col(name)];
+  assert.equal(cell(1, "liabilities"), "400"); assert.equal(cell(1, "net_margin_pct"), "55.6"); assert.equal(cell(1, "liabilities_to_equity"), "0.4");
+  assert.equal(cell(3, "net_margin_pct"), ""); assert.equal(cell(3, "liabilities_to_equity"), "");
+  assert.equal(cell(4, "net_margin_pct"), "-4000"); assert.equal(cell(4, "liabilities_to_equity"), "500");
+  assert.equal(cell(6, "liabilities"), ""); assert.ok(lines[6]!.includes("net_income; liabilities"));
+  assert.ok(/ratio columns, fiscal year: total liabilities on file 4; net margin worked out for 4 \(1 beyond 1000%\), n\/a for 1; liabilities to equity worked out for 3 \(1 beyond 100\), n\/a for 1/.test(finScreenLog(ra)), finScreenLog(ra));
 });
