@@ -80,7 +80,6 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     ...(model.assistance.rows.length ? [{ loc: "/grants/", lastmod: day(model.assistance.rows.map((r) => r.startDate).filter(Boolean).sort().at(-1), built), changefreq: "daily" as const, priority: 0.6 }] : []),
     ...(model.lobbyContrib.available && model.lobbyContrib.periods.length ? [{ loc: "/lobbyist-contributions/", lastmod: day(model.lobbyContrib.newestPosted, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },
-    { loc: "/companies/", lastmod: built, changefreq: "daily", priority: 0.7 },
     ...(industries.length ? [{ loc: INDUSTRIES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
     ...industries.map((d) => ({ loc: d.path, lastmod: built, changefreq: "daily" as const, priority: 0.5 })),
     // The company financials screener is indexable only when it has rows (pages/company-financials.astro).

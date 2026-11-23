@@ -108,3 +108,13 @@ test("the SEC list's first ticker for a company is its page, not a secondary lis
   assert.equal(securities.get(1).pagePath, "/stocks/baba/");
   assert.equal(companyPath(companies.get(21)), "/stocks/zzz/", "a listed ticker with no security here falls back to the main ticker");
 });
+
+test("an on-demand company with one ticker is its ticker's page", async () => {
+  const { soleTicker } = await import("../web/src/lib/server/odsource").catch(() => ({ soleTicker: null as any }));
+  if (!soleTicker) return; // the module needs the Worker runtime; covered by verify-od
+  assert.equal(soleTicker({ kind: "company", siblings: [{ id: 1, ticker: "ABCD", type: "equity", name: null }, { id: 2, ticker: "abcd", type: "option", name: null }] } as any), "abcd");
+  assert.equal(soleTicker({ kind: "company", siblings: [{ id: 1, ticker: "AB", type: "equity", name: null }, { id: 2, ticker: "AB.B", type: "equity", name: null }] } as any), null);
+  assert.equal(soleTicker({ kind: "company", siblings: [] } as any), null);
+  assert.equal(soleTicker({ kind: "stock", siblings: [{ id: 1, ticker: "AB", type: "equity", name: null }] } as any), null);
+  assert.equal(soleTicker({ kind: "company", siblings: [{ id: 1, ticker: "-- AMCR", type: "equity", name: null }] } as any), null);
+});

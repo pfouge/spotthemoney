@@ -162,12 +162,12 @@
     }
   },
   "insider-buying-vs-insider-selling": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-23",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
       "web/src/components/VizFlow.astro": "c60219a0038ce83c",
-      "web/src/pages/insiders/index.astro": "4017150776f01c2a"
+      "web/src/pages/insiders/index.astro": "77d3347fcbca5c30"
     }
   },
   "insider-options-and-derivatives": {
@@ -248,12 +248,12 @@
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
-      "web/src/lib/server/od.ts": "d8e3c2adc0dd6a8d",
-      "web/src/components/OdPageView.astro": "5a94f9549888f514",
-      "web/src/lib/market.ts": "5efe96a0e16473e4",
+      "web/src/lib/server/od.ts": "38ed428f32a1153c",
+      "web/src/components/OdPageView.astro": "5baf4f540fb72348",
+      "web/src/lib/market.ts": "f8021f9319fa5d30",
       "web/src/pages/stocks/[ticker].astro": "7b84112ae4d43879",
       "web/src/pages/insiders/[slug].astro": "f0ad9f2febae04a5",
-      "web/src/pages/companies/[slug].astro": "992334cf0160c600",
+      "web/src/pages/companies/[slug].astro": "98e889ff4c1b5fc5",
       "web/src/lib/form144.ts": "5792da219a57b938",
       "web/src/lib/plannedsales.ts": "60e8951a617b18bc",
       "web/src/lib/inst13f.ts": "156ecec5730acd97",
@@ -262,7 +262,7 @@
       "web/src/components/Financials.astro": "dbc487422b5f91e4",
       "web/src/components/FiledNotices.astro": "cc73065ceec3cc06",
       "web/src/lib/finscreen.ts": "a0d26b17bd0dfed7",
-      "web/src/pages/company-financials.astro": "0f3a75c5a7b9d6be"
+      "web/src/pages/company-financials.astro": "871367461cdb7128"
     }
   }
 }

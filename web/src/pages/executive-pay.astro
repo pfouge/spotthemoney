@@ -36,7 +36,7 @@ const ld = datasetLd({ downloads: [csv?.path], name: "Executive pay as filed: Pa
 const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LABEL } as const;
 ---
 <BaseLayout title="Executive Pay: Pay Versus Performance, As Filed" description={description} section="Companies" noindex={all.length === 0}>
-  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: "Executive pay", path: "/executive-pay/" }]} />
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks and companies", path: "/stocks/" }, { name: "Executive pay", path: "/executive-pay/" }]} />
   <h1>Executive pay</h1>
   <p class="lede">The newest fiscal year of executive pay for each company on this site that has filed it, from the Pay Versus Performance table of its proxy statement. Narrow the list by industry, fiscal year and size of the principal executive officer's total, and sort any column.</p>
 

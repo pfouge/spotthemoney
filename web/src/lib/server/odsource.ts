@@ -64,6 +64,13 @@ export const companyMovedTo = (slug: string, url: URL) => movedTo("/data/company
 /** The page that shows a ticker with no page of its own (another share class), or null. */
 export const stockMovedTo = (ticker: string, url: URL) => movedTo("/data/stock-redirects.json", ticker, url);
 
+/** Lower-case ticker when every security of an on-demand company carries the same one: its rows are that ticker's page. */
+export function soleTicker(doc: OdDoc): string | null {
+  if (doc.kind !== "company") return null;
+  const tickers = [...new Set((doc.siblings ?? []).map((s) => String(s.ticker ?? "").toLowerCase()))];
+  return tickers.length === 1 && /^[a-z0-9][a-z0-9._-]{0,20}$/.test(tickers[0]) ? tickers[0] : null;
+}
+
 const SEG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/;
 /** The one path segment an on-demand route accepts (/insiders/<slug>/); anything else is a 404. */
 export function oneSegment(rest: string | undefined): string | null {

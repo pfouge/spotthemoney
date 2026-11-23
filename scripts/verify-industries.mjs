@@ -201,7 +201,7 @@ const sm = (await get("/sitemaps/pages.xml")).text;
 ok(sm.includes(`${HUB}</loc>`), "the pages sitemap lacks /industries/");
 ok(hubRows.every((h) => sm.includes(`${h.href}</loc>`)), "the pages sitemap lacks a division page");
 ok((await get("/llms.txt")).text.includes("/industries/"), "llms.txt does not mention /industries/");
-ok((await get("/companies/")).text.includes('href="/industries/"'), "/companies/ does not link to /industries/");
+ok((await get("/stocks/")).text.includes('href="/industries/"'), "/stocks/ does not link to /industries/");
 // phone width cannot be tested without a browser; the tables sit in the site's scrolling wrapper.
 ok((hubRes.text.match(/<div class="tablewrap">/g) ?? []).length >= 1, "the list's table is not in the scrolling wrapper");
 
