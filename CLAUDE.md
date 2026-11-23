@@ -3945,3 +3945,57 @@ SEC filings go first. The plan, the rules and the later stages are in the Projec
   `/companies/`. Watchlist company follows still store the slug and link `/companies/<slug>/`
   (works through the redirect). `verify-accounts-db` fails 1 of 42 on main (seed date drift).
 
+
+### Seven new sources, the page shape and the menus (2026-11-22 to 23, interactive session) — PRs #73, #74, #76, #77, #80
+
+Peter: build all seven and show them, redesign pages and navigation, lose track of nothing. **The
+tracker is the Project doc `claude/page-map.md`: every dataset has a cell for every page type. Update
+it in the pull request that changes a cell.**
+
+- **Ingest (#73, migrations 0033 to 0039; next free 0040).** `senate_lda_contributions` (LD-203,
+  filing year 2025 on, keyless), `sec_company_events` (8-K item codes, tracked companies),
+  `congress_votes` (House Clerk and Senate XML, 119th Congress on), `fec_independent_expenditures`
+  (Schedule E, current cycle; 140 requests a run because it shares the FEC key's hourly limit with
+  `fec_schedule_a` in the `donations` group), `usaspending_assistance` (grants, loans, direct
+  payments), `sec_13f_holdings` (bulk, workflow `form13f-bulk.yml`, monthly on the 20th; keeps the two
+  newest quarters, #74), `sec_exec_pay` (XBRL frames, weekly gate). Groups in `ingest.yml`:
+  `company-events`, `votes`, `lobbyist-contributions`, `assistance`. All seven first live runs proved
+  their request shapes.
+- **Found on the first live runs.** The House Clerk answers a missing roll call with a web page, not
+  a 404: the walk stopped after 2025 (#77 treats that as the end of a year once the layout is
+  proven). One quarter of 13F holdings in tracked companies is about 900,000 rows (210 MB). Executive
+  pay from frames covers 394 of the companies with a page (a company that tags the table with a
+  dimension is not in frames).
+- **Page shape (#76).** `web/src/lib/nav.ts` is the one list behind the header's five menus and the
+  footer. Entity pages: `Glance.astro` tiles, `GroupBar.astro`, `PageGroup.astro` with groups Trading,
+  Ownership, Company, Washington, About this record. A section goes inside its group; a group and a
+  tile exist only when there is something to show. `verify-links` has a GROUPS check.
+- **Sections and hubs (#80).** Ticker and company pages: `InstHolders`, `ExecutivePay`,
+  `CompanyEvents`; company-level `Assistance` and `LobbyContribFiler` sit inside
+  `WashingtonRecords.astro`, so they are on the ticker page under `home` and on the remaining company
+  pages. Member pages: `MemberVotes`, `OutsideSpending`, `LobbyContrib`. Hubs (one page each, no page
+  per entity): `/company-events/`, `/executive-pay/`, `/institutional-holders/`, `/planned-sales/`,
+  `/large-holders/`, `/congress-votes/` (positions load from `/data/votes/<chamber>-<yyyy>-<mm>.json`),
+  `/outside-spending/`, `/grants/`, `/lobbyist-contributions/`. Verifiers: `verify-events`,
+  `-execpay`, `-inst`, `-votes`, `-outside`, `-assistance`, `-lobbycontrib` (all in `deploy.yml`'s
+  warning-only step: read their lines after a deploy).
+- **Three datasets wait for a whole first load before anything shows** (their loaders check
+  `ingest_runs`): votes need a `success` run and both chambers' newest roll call within 60 days
+  (`VOTES_FRESH_DAYS`); outside spending and lobbyist contributions need a run whose stats say
+  `catch_up_complete`. Until then their hubs are noindex pages and the member sections are absent.
+  Votes went live on 2026-11-23; the other two were still loading (11,800 expenditures; 14,046 of
+  about 55,000 filings). The seed inserts such runs so the local site shows all three.
+- **Rules worth knowing.** Kinds of assistance are never added together (a loan figure is face value).
+  13F sums can count shares twice: no percentage of a company is ever printed. Independent
+  expenditures: a notice counts only when dated after that committee's newest regular-report row.
+  LD-203 items reach a member's page only by the exact honoree rule (`memberForItem`); the payee rule
+  was not built because `committees` has no member link. Executive pay never names a person.
+- **Merging several page branches at once:** a both-sides-kept merge duplicates any line two
+  branches changed (model literals, `kinds`, the guide's list of files, verifier key lists). Typecheck,
+  `node --check` every verifier, and scan for near-duplicate adjacent lines before the gate.
+- **TradingView (#75).** Every full chart uses `CHART_SETUP` in `web/src/scripts/tradingview.ts`:
+  daily candles, one year, volume, the built-in moving average ribbon (20, 50, 100, 200 day simple
+  averages) and a 14 day RSI. The free embed takes study ids, not study settings.
+- Not done (in the page map and the parity queue): the `/washington/` hub rebuild, the home page's
+  "this week in filings" tiles, donations on member pages, executive pay columns in the financials
+  screener, the new sections on the on-demand pages.
