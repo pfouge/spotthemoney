@@ -261,8 +261,8 @@
       "web/src/lib/financials.ts": "36e4ca7b62568223",
       "web/src/components/Financials.astro": "a4b847afae55369c",
       "web/src/components/FiledNotices.astro": "cc73065ceec3cc06",
-      "web/src/lib/finscreen.ts": "1b7826a8bb6b25be",
-      "web/src/pages/company-financials.astro": "a92f6bf7ae91fb62"
+      "web/src/lib/finscreen.ts": "e94caa51ff01ce18",
+      "web/src/pages/company-financials.astro": "b0a9c7f4c343c6c5"
     }
   }
 }

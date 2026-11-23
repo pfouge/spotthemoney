@@ -5,6 +5,7 @@ import {
   packFinScreen, unpackFinScreen, rowsFor, finMatches, finScreen, sortFsRows, fsSummaryLine, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, finScreenCounts, finScreenerHref,
   fsCellText, fsPayText, fsViewCsv, fsViewCsvName, finScreenLog, usd, stepLabel, revMinLabel,
   columnsOf, sortKeysOf, withCols, colsOf, fsRatio, fsRatioText, FS_STORED, FS_COLUMNS, RATIO_VIEW_NOTE,
+  recentCutoff, isRecent, RECENT_DAYS, RECENT_OPTION,
   NO_FS_FILTER, DEFAULT_FS_VIEW, FS_CONCEPTS, FS_KEYS, REV_MIN_STEPS, REV_MAX_STEPS, ASSET_MIN_STEPS, type FsCompany, type FsPeriod, type FsConcept,
 } from "../web/src/lib/finscreen";
 
@@ -281,4 +282,50 @@ test("the download carries total liabilities and both ratios, blank where a cell
   assert.equal(cell(4, "net_margin_pct"), "-4000"); assert.equal(cell(4, "liabilities_to_equity"), "500");
   assert.equal(cell(6, "liabilities"), ""); assert.ok(lines[6]!.includes("net_income; liabilities"));
   assert.ok(/ratio columns, fiscal year: total liabilities on file 4; net margin worked out for 4 \(1 beyond 1000%\), n\/a for 1; liabilities to equity worked out for 3 \(1 beyond 100\), n\/a for 1/.test(finScreenLog(ra)), finScreenLog(ra));
+});
+
+test("ended in the last 18 months: by the period's last day, counted back from the build day", () => {
+  assert.equal(RECENT_DAYS, 548);
+  assert.equal(recentCutoff("2026-11-22"), "2025-05-23");
+  assert.equal(isRecent("2025-05-23", "2026-11-22"), true, "the cutoff day itself is in");
+  assert.equal(isRecent("2025-05-22", "2026-11-22"), false);
+  assert.equal(isRecent("2026-11-22", "2026-11-22"), true);
+  assert.equal(isRecent("2026-11-23", "2026-11-22"), false, "a period that ends after the build day is not recent");
+  assert.equal(isRecent("2026-01-01", ""), false, "no build day, nothing is recent");
+  assert.equal(isRecent("2026-01-01", "junk"), false);
+  const old: FsCompany[] = [
+    ...companies,
+    co("Zeta", { cik: "0000000007", division: MFG, year: period("2023-12-31", { revenue: 9e9, net_income: 1e8 }), quarter: period("2025-05-22", { revenue: 2e9 }) }),
+    co("Eta", { cik: "0000000008", year: period("2025-05-23", { revenue: 1e9 }), quarter: period("2024-03-31", { revenue: 1e8 }) }),
+  ];
+  const packed = packFinScreen("2026-11-22", old);
+  assert.ok(!JSON.stringify(packed).includes("recent"), "the flag is worked out when the file is read, not stored in it");
+  assert.equal(packed.companies[0]![7] && (packed.companies[0]![7] as unknown[]).length, 12, "a packed period keeps its twelve entries");
+  const got = unpackFinScreen(packed);
+  const pick = (f: Partial<typeof NO_FS_FILTER>) => rowsFor(got, f.period ?? "year").filter((r) => finMatches(r, { ...NO_FS_FILTER, ...f })).map((r) => r.c.name).sort();
+  assert.deepEqual(pick({}), ["Alpha", "Beta", "Delta", "Eta", "Gamma", "Zeta", "alpha two"]);
+  assert.deepEqual(pick({ recent: 1 }), ["Alpha", "Beta", "Delta", "Eta", "Gamma", "alpha two"], "Zeta's newest fiscal year ended in 2023");
+  assert.deepEqual(pick({ period: "quarter" }), ["Alpha", "Epsilon", "Eta", "Zeta"]);
+  assert.deepEqual(pick({ period: "quarter", recent: 1 }), ["Alpha", "Epsilon"], "one day before the cutoff is out");
+  assert.deepEqual(pick({ recent: 1, division: "manufacturing", ni: "pos" }), ["Alpha", "Gamma"], "it combines with the other filters");
+  // The address.
+  assert.equal(toFinHash({ ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, recent: 1 } }), "#recent=1");
+  assert.equal(parseFinHash("#recent=1").f.recent, 1);
+  assert.equal(parseFinHash("#recent=yes").f.recent, 0, "any other value is ignored");
+  assert.equal(parseFinHash("#recent=0").f.recent, 0);
+  assert.equal(isFsViewHash("#recent=1"), true);
+  assert.equal(isDefaultFsFilter({ ...NO_FS_FILTER, recent: 1 }), false);
+  assert.equal(isDefaultFsFilter(parseFinHash("#recent=1&cols=ratios").f), false);
+  assert.ok(FS_KEYS.includes("recent"));
+  // The count line, the download and its name.
+  const res = finScreen(got, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, recent: 1 } });
+  assert.equal(res.total, 6); assert.equal(res.all, 7);
+  assert.match(fsSummaryLine(res, "year"), /^6 companies of 7 with a fiscal year on file/);
+  const csv = fsViewCsv(got, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, recent: 1 } });
+  assert.ok(!csv.includes("Zeta") && csv.includes("Eta"));
+  assert.match(fsViewCsvName({ ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, recent: 1 } }, "2026-11-22"), /fiscal-year-ended-last-18-months-2026-11-22\.csv$/);
+  assert.match(finScreenLog(got), /ended in the last 548 days: 6 of 7 fiscal years, 2 of 4 quarters;/);
+  assert.match(RECENT_OPTION, /18 months/);
+  // A file with no build day (or rows built by hand): the filter keeps nothing rather than everything.
+  assert.deepEqual(rowsFor(companies, "year").filter((r) => finMatches(r, { ...NO_FS_FILTER, recent: 1 })), []);
 });

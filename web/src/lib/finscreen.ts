@@ -21,6 +21,10 @@
 //     another currency passes neither, and its amounts sort after the dollar amounts: figures
 //     in different currencies are never compared.
 //   - The sign of net income needs no currency, so that filter covers every company.
+//   - "Ended in the last 18 months" keeps a row whose period ended at most RECENT_DAYS days
+//     before the day the data file was built. A company that stopped filing keeps its last
+//     fiscal year or quarter in the table, however old; this filter leaves those rows out. The
+//     table opens without it: every company with a period on file is listed, each with its date.
 //   - Executive pay (lib/execpay.ts) belongs to the company, not to the period: the principal
 //     executive officer's Summary Compensation Table total for the company's newest fiscal year
 //     with one on file, in dollars as the company tagged it, shown beside either period. It is
@@ -72,6 +76,9 @@ export interface FsPeriod {
   end: string; start: string | null; filed: string; form: string; accession: string;
   v: Record<FsConcept, number | null>;
   held: Record<FsConcept, boolean>;
+  /** True when the period ended at most RECENT_DAYS days before the build day. Set when the data
+   *  file is unpacked (it is worked out from the file's build day, not stored in it). */
+  recent?: boolean;
 }
 /** The principal executive officer's total pay for the newest fiscal year that has one, dollars. */
 export interface FsPay { peo: number; fye: string }
@@ -84,7 +91,21 @@ export interface FsCompany {
 /** A company with the period a view looks at. */
 export interface FsRow { c: FsCompany; p: FsPeriod }
 
-function unpackPeriod(x: PackedPeriod | 0): FsPeriod | null {
+/** A period counts as recent when it ended this many days, or fewer, before the build day (about 18 months). */
+export const RECENT_DAYS = 548;
+export const RECENT_OPTION = "Ended in the last 18 months";
+/** The earliest last day a recent period can have: the build day less RECENT_DAYS, as YYYY-MM-DD. */
+export function recentCutoff(built: string): string {
+  const t = Date.parse(`${built.slice(0, 10)}T00:00:00Z`);
+  return Number.isFinite(t) ? new Date(t - RECENT_DAYS * 86_400_000).toISOString().slice(0, 10) : "";
+}
+/** Recent = ended on or after the cutoff and not after the build day. With no usable build day nothing is recent. */
+export function isRecent(end: string, built: string): boolean {
+  const cut = recentCutoff(built);
+  return cut !== "" && end >= cut && end <= built.slice(0, 10);
+}
+
+function unpackPeriod(x: PackedPeriod | 0, built = ""): FsPeriod | null {
   if (!x) return null;
   const v = {} as Record<FsConcept, number | null>, held = {} as Record<FsConcept, boolean>;
   FS_STORED.forEach((c, i) => {
@@ -92,12 +113,12 @@ function unpackPeriod(x: PackedPeriod | 0): FsPeriod | null {
     held[c.key] = ((x[10] >> i) & 1) === 1;
     v[c.key] = held[c.key] || typeof n !== "number" || !Number.isFinite(n) ? null : n;
   });
-  return { end: x[0], start: x[1] || null, filed: x[2], form: x[3], accession: x[4], v, held };
+  return { end: x[0], start: x[1] || null, filed: x[2], form: x[3], accession: x[4], v, held, recent: isRecent(x[0], built) };
 }
 export function unpackFinScreen(d: FinScreenData): FsCompany[] {
   return d.companies.map((c) => ({
     name: c[0], path: c[1] || null, ticker: c[2], cik: c[3], division: d.divisions[c[4]] ?? null, sic: c[5], unit: c[6],
-    year: unpackPeriod(c[7]), quarter: unpackPeriod(c[8]),
+    year: unpackPeriod(c[7], d.built), quarter: unpackPeriod(c[8], d.built),
     pay: typeof c[9] === "number" && Number.isFinite(c[9]) && c[10] ? { peo: c[9], fye: c[10] } : null,
   }));
 }
@@ -197,8 +218,10 @@ export interface FsFilter {
   amin: number;
   /** 1 = only companies with executive pay on file; 0 = any. */
   pay: 0 | 1;
+  /** 1 = only periods that ended in the last RECENT_DAYS days before the build; 0 or absent = any. */
+  recent?: 0 | 1;
 }
-export const NO_FS_FILTER: FsFilter = { q: "", period: "year", division: "", unit: "", rmin: 0, rmax: 0, ni: "", amin: 0, pay: 0 };
+export const NO_FS_FILTER: FsFilter = { q: "", period: "year", division: "", unit: "", rmin: 0, rmax: 0, ni: "", amin: 0, pay: 0, recent: 0 };
 export interface FsView { f: FsFilter; sort: FsSortKey; dir: "asc" | "desc"; page: number; per: number; /** Which set of columns shows; absent = "figures". */ cols?: FsCols }
 export const DEFAULT_FS_VIEW: FsView = { f: NO_FS_FILTER, sort: "revenue", dir: "desc", page: 1, per: DEFAULT_PER, cols: "figures" };
 export const colsOf = (v: FsView): FsCols => (v.cols === "ratios" ? "ratios" : "figures");
@@ -224,6 +247,7 @@ export function finMatches(r: FsRow, f: FsFilter): boolean {
   if (f.rmax > 0) { const v = usd(r, "revenue"); if (v == null || v > f.rmax) return false; }
   if (f.amin > 0) { const v = usd(r, "assets"); if (v == null || v < f.amin) return false; }
   if (f.pay && r.c.pay == null) return false;
+  if (f.recent && !r.p.recent) return false;
   if (f.ni) { const v = r.p.v.net_income; if (v == null || (f.ni === "pos" ? !(v > 0) : !(v < 0))) return false; }
   const q = f.q.trim().toLowerCase();
   if (q) {
@@ -309,9 +333,9 @@ export const tickerPagePath = (ticker: string) => `/stocks/${ticker.toLowerCase(
 
 // ── the address ──────────────────────────────────────────────────────────────────────────
 export function isDefaultFsFilter(f: FsFilter): boolean {
-  return !f.q.trim() && f.period === "year" && !f.division && !f.unit && !f.rmin && !f.rmax && !f.ni && !f.amin && !f.pay;
+  return !f.q.trim() && f.period === "year" && !f.division && !f.unit && !f.rmin && !f.rmax && !f.ni && !f.amin && !f.pay && !f.recent;
 }
-export const FS_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "cols", "sort", "dir", "page", "per"];
+export const FS_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "recent", "cols", "sort", "dir", "page", "per"];
 /** True when a hash is a view (carries one of the screener's keys), not a jump link. */
 export function isFsViewHash(hash: string): boolean {
   if (!hash.includes("=")) return false;
@@ -330,6 +354,7 @@ export function parseFinHash(hash: string): FsView {
   const amin = Number(p.get("amin")); if ((ASSET_MIN_STEPS as readonly number[]).includes(amin)) f.amin = amin;
   const ni = p.get("ni"); if (ni === "pos" || ni === "neg") f.ni = ni;
   if (p.get("pay") === "1") f.pay = 1;
+  if (p.get("recent") === "1") f.recent = 1;
   f.q = (p.get("q") ?? "").slice(0, 60);
   const cols: FsCols = p.get("cols") === "ratios" ? "ratios" : "figures";
   // A sort by a column the set of columns does not show is ignored.
@@ -350,6 +375,7 @@ export function toFinHash(v: FsView): string {
   if (f.ni) p.set("ni", f.ni);
   if (f.amin) p.set("amin", String(f.amin));
   if (f.pay) p.set("pay", "1");
+  if (f.recent) p.set("recent", "1");
   if (f.q.trim()) p.set("q", f.q.trim());
   if (colsOf(v) !== "figures") p.set("cols", colsOf(v));
   if (v.sort !== DEFAULT_FS_VIEW.sort || v.dir !== firstFsDir(v.sort)) { p.set("sort", v.sort); p.set("dir", v.dir); }
@@ -404,7 +430,7 @@ export function fsViewCsv(all: readonly FsCompany[], v: FsView): string {
 }
 export function fsViewCsvName(v: FsView, built: string): string {
   const f = v.f;
-  const bits = [f.period === "quarter" ? "quarter" : "fiscal-year", f.division, f.unit, f.rmin ? `revmin${f.rmin}` : "", f.rmax ? `revmax${f.rmax}` : "", f.ni ? `ni-${f.ni}` : "", f.amin ? `assetsmin${f.amin}` : "", f.pay ? "pay-on-file" : "", f.q.trim() ? "filtered" : ""]
+  const bits = [f.period === "quarter" ? "quarter" : "fiscal-year", f.division, f.unit, f.rmin ? `revmin${f.rmin}` : "", f.rmax ? `revmax${f.rmax}` : "", f.ni ? `ni-${f.ni}` : "", f.amin ? `assetsmin${f.amin}` : "", f.pay ? "pay-on-file" : "", f.recent ? "ended-last-18-months" : "", f.q.trim() ? "filtered" : ""]
     .filter(Boolean).map((b) => String(b).toLowerCase().replace(/[^a-z0-9]+/g, "-"));
   return `company-financials-${bits.join("-")}-${built}.csv`;
 }
@@ -422,5 +448,5 @@ export function finScreenLog(all: readonly FsCompany[]): string {
   const div = new Map<string, number>();
   for (const r of y) { const k = r.c.division?.name ?? "no division"; div.set(k, (div.get(k) ?? 0) + 1); }
   const divs = [...div].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, v]) => `${k} ${v}`).join(", ");
-  return `financials screener: ${all.length} companies, ${y.length} with a fiscal year, ${q.length} with a quarter; ${all.filter((c) => c.unit !== "USD").length} not in dollars; fiscal year: revenue in dollars ${y.filter((r) => usd(r, "revenue") != null).length}, ${REV_MIN_STEPS.map((s) => `at least ${s} ${hit(y, { rmin: s })}`).join(", ")}, at most ${REV_MAX_STEPS[0]} ${hit(y, { rmax: REV_MAX_STEPS[0] })}; net income above zero ${hit(y, { ni: "pos" })}, below zero ${hit(y, { ni: "neg" })}; total assets at least ${ASSET_MIN_STEPS[2]} ${hit(y, { amin: ASSET_MIN_STEPS[2] })}; executive pay on file ${hit(y, { pay: 1 })} of ${y.length}, newest pay year ends ${all.map((c) => c.pay?.fye ?? "").filter(Boolean).sort().at(-1) ?? "-"}; figures not shown ${held(y)} (fiscal year), ${held(q)} (quarter); newest fiscal year ends ${y.map((r) => r.p.end).sort()[0] ?? "-"} to ${y.map((r) => r.p.end).sort().at(-1) ?? "-"}; ratio columns, fiscal year: total liabilities on file ${liab(y)}; ${ratios(y)}; quarter: total liabilities on file ${liab(q)}; ${ratios(q)}; by division: ${divs}`;
+  return `financials screener: ${all.length} companies, ${y.length} with a fiscal year, ${q.length} with a quarter; ${all.filter((c) => c.unit !== "USD").length} not in dollars; fiscal year: revenue in dollars ${y.filter((r) => usd(r, "revenue") != null).length}, ${REV_MIN_STEPS.map((s) => `at least ${s} ${hit(y, { rmin: s })}`).join(", ")}, at most ${REV_MAX_STEPS[0]} ${hit(y, { rmax: REV_MAX_STEPS[0] })}; net income above zero ${hit(y, { ni: "pos" })}, below zero ${hit(y, { ni: "neg" })}; total assets at least ${ASSET_MIN_STEPS[2]} ${hit(y, { amin: ASSET_MIN_STEPS[2] })}; executive pay on file ${hit(y, { pay: 1 })} of ${y.length}, newest pay year ends ${all.map((c) => c.pay?.fye ?? "").filter(Boolean).sort().at(-1) ?? "-"}; figures not shown ${held(y)} (fiscal year), ${held(q)} (quarter); newest fiscal year ends ${y.map((r) => r.p.end).sort()[0] ?? "-"} to ${y.map((r) => r.p.end).sort().at(-1) ?? "-"}; ended in the last ${RECENT_DAYS} days: ${hit(y, { recent: 1 })} of ${y.length} fiscal years, ${hit(q, { recent: 1 })} of ${q.length} quarters; ratio columns, fiscal year: total liabilities on file ${liab(y)}; ${ratios(y)}; quarter: total liabilities on file ${liab(q)}; ${ratios(q)}; by division: ${divs}`;
 }

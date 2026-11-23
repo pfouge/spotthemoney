@@ -19,6 +19,9 @@
 // this script's own arithmetic and compared with the CSV's own ratio columns, with every cell on
 // screen, with the order a sort by a ratio gives, and with the download; that the opening view
 // shows no ratio; the address, a sort the columns cannot show, and that Reset leaves the columns.
+// "Ended in the last 18 months": this script's own cutoff (the data file's build day less 548
+// days) applied to the CSV's period ends; the counts the page states, the filter in both periods
+// and combined with others, the address, Reset, a junk value and the download's name.
 import { readFile } from "node:fs/promises";
 
 const args = process.argv.slice(2);
@@ -27,7 +30,7 @@ const noBrowser = args.includes("--no-browser");
 const PATH = "/company-financials/", DATA = "/data/financials-screener.json";
 const FIGS = ["revenue", "net_income", "eps_diluted", "assets", "equity"];
 const REV_MIN = [1e8, 1e9, 1e10, 1e11], REV_MAX = [1e8, 1e9, 1e10], ASSET_MIN = [1e9, 1e10, 1e11];
-const KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "cols", "sort", "dir", "page", "per"];
+const KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "recent", "cols", "sort", "dir", "page", "per"];
 // Stored figures: the five of the opening view, then total liabilities (ratios view only).
 const STORED = [...FIGS, "liabilities"];
 const slot = (i) => (i < 5 ? 5 + i : 6 + i);
@@ -150,6 +153,7 @@ function matches(r, f) {
   if (f.rmax) { const v = usd(r, "revenue"); if (v == null || v > f.rmax) return false; }
   if (f.amin) { const v = usd(r, "assets"); if (v == null || v < f.amin) return false; }
   if (f.pay && !r.o.pay) return false;
+  if (f.recent && !recentEnd(r.p.end)) return false;
   if (f.ni) { const v = r.p.v.net_income; if (v == null || (f.ni === "pos" ? !(v > 0) : !(v < 0))) return false; }
   if (f.q) { const hay = `${r.o.name} ${r.o.ticker}`.toLowerCase(); if (!f.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w))) return false; }
   return true;
@@ -165,6 +169,11 @@ function sorted(rows, key, dir) {
     return an < bn ? -1 : an > bn ? 1 : a.o.cik < b.o.cik ? -1 : a.o.cik > b.o.cik ? 1 : 0;
   });
 }
+// This script's own copy of the 18-month rule: the period ended at most 548 days before the day
+// the data file says it was built, and not after it.
+const RECENT_DAYS = 548;
+let builtDay = "";
+const recentEnd = (end) => /^\d{4}-\d{2}-\d{2}$/.test(builtDay) && end <= builtDay && (Date.parse(`${builtDay}T00:00:00Z`) - Date.parse(`${end}T00:00:00Z`)) / 86400000 <= RECENT_DAYS;
 const expect = (f = {}, sort = "revenue", dir = "desc") => sorted(rowsOf(f.period ?? "year").filter((r) => matches(r, f)), sort, dir);
 
 // ── the data file against the oracle ─────────────────────────────────────────────────────
@@ -172,6 +181,8 @@ const dataRes = await get(DATA);
 ok(dataRes.status === 200, `${DATA} is served`);
 const data = dataRes.status === 200 ? JSON.parse(dataRes.text) : { built: "", divisions: [], companies: [] };
 ok(/^\d{4}-\d{2}-\d{2}$/.test(data.built), `the data file states its build day (${data.built})`);
+builtDay = data.built;
+ok(!dataRes.text.includes('"recent"'), "the data file stores no recent flag (it is worked out from the build day)");
 ok(Object.keys(data).join() === "built,divisions,companies", `the data file's top-level layout is built, divisions, companies (${Object.keys(data).join()})`);
 ok(data.companies.length === oracle.length, `the data file has ${data.companies.length} companies, company-financials.csv gives ${oracle.length}`);
 ok(new Set(data.companies.map((c) => c[3])).size === data.companies.length, "no company is in the data file twice");
@@ -246,6 +257,15 @@ const years = rowsOf("year"), quarters = rowsOf("quarter");
 ok(strip((main.match(/data-fs="count"[^>]*>([\s\S]*?)<\/span>/) ?? [])[1] ?? "").startsWith(`All ${years.length.toLocaleString("en-US")} `), `the count line starts "All ${years.length} ..."`);
 const answer = strip((main.match(/class="[^"]*answer[^"]*"[\s\S]*?<\/(?:section|div|aside)>/) ?? [""])[0]);
 ok(answer.includes(`${oracle.length.toLocaleString("en-US")} compan`) && answer.includes(`${years.length.toLocaleString("en-US")} with a fiscal year`) && answer.includes(`${quarters.length.toLocaleString("en-US")} with a quarter`), `the answer states ${oracle.length} companies, ${years.length} fiscal years and ${quarters.length} quarters`);
+
+// "Ended in the last 18 months": the control and the counts the page states.
+const recentN = { year: years.filter((r) => recentEnd(r.p.end)).length, quarter: quarters.filter((r) => recentEnd(r.p.end)).length };
+const recentSel = main.match(/<select[^>]*data-fs="recent"[^>]*>([\s\S]*?)<\/select>/);
+ok(!!recentSel && [...recentSel[1].matchAll(/<option[^>]*value="([^"]*)"[^>]*>([\s\S]*?)<\/option>/g)].map((m) => `${m[1]}:${strip(m[2])}`).join("|") === "0:Any period end|1:Ended in the last 18 months", "the Period end control offers any period end and the last 18 months");
+const recentPara = strip((main.match(/<p[^>]*id="recent"[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
+const nf = (x) => x.toLocaleString("en-US");
+ok(recentPara.includes(`${nf(recentN.year)} of the ${nf(years.length)} fiscal years and ${nf(recentN.quarter)} of the ${nf(quarters.length)} quarters`), `the page states ${recentN.year} of ${years.length} fiscal years and ${recentN.quarter} of ${quarters.length} quarters ended in the last 18 months ("${recentPara.slice(0, 400)}")`);
+ok(recentPara.includes(`${RECENT_DAYS} days`) && /says nothing about a company/.test(recentPara), "the page gives the number of days and says the filter goes by the date alone");
 
 // ── wording, discovery, links in ─────────────────────────────────────────────────────────
 const text = strip(main).toLowerCase();
@@ -358,10 +378,10 @@ if (chromium) {
   ok(await shown() === years.length && (await page.inputValue('[data-fs="cols"]')) === "ratios" && new URL(page.url()).hash === "#cols=ratios", "Reset clears the filters and leaves the set of columns");
   await open();
 
-  const offered = { division: await optionsOf("division"), unit: await optionsOf("unit"), rmin: await optionsOf("rmin"), rmax: await optionsOf("rmax"), ni: await optionsOf("ni"), amin: await optionsOf("amin"), pay: await optionsOf("pay") };
+  const offered = { division: await optionsOf("division"), unit: await optionsOf("unit"), rmin: await optionsOf("rmin"), rmax: await optionsOf("rmax"), ni: await optionsOf("ni"), amin: await optionsOf("amin"), pay: await optionsOf("pay"), recent: await optionsOf("recent") };
   ok(offered.division.filter(Boolean).sort().join() === data.divisions.map((d) => d.slug).sort().join(), "the industry filter offers the divisions in the data file");
   ok(offered.unit.length === 0 || offered.unit.filter(Boolean).sort().join() === [...new Set(oracle.map((o) => o.unit))].sort().join(), "the currency filter offers the currencies companies report in");
-  ok(offered.rmin.join() === ["0", ...REV_MIN].join() && offered.rmax.join() === ["0", ...REV_MAX].join() && offered.amin.join() === ["0", ...ASSET_MIN].join() && offered.ni.join() === ",pos,neg" && offered.pay.join() === "0,1", "the amount filters offer the steps this script knows");
+  ok(offered.rmin.join() === ["0", ...REV_MIN].join() && offered.rmax.join() === ["0", ...REV_MAX].join() && offered.amin.join() === ["0", ...ASSET_MIN].join() && offered.ni.join() === ",pos,neg" && offered.pay.join() === "0,1" && offered.recent.join() === "0,1", "the amount filters offer the steps this script knows");
   let optionChecks = 0;
   for (const period of ["year", "quarter"]) {
     await page.selectOption('[data-fs="period"]', period);
@@ -369,12 +389,12 @@ if (chromium) {
     ok((await page.locator('[data-fs="endhead"]').textContent()) === (period === "quarter" ? "Quarter ended" : "Fiscal year ended"), `period ${period}: the date column is titled for it`);
     for (const [key, values] of Object.entries(offered)) for (const value of values.filter((v) => v && v !== "0")) {
       await page.selectOption(`[data-fs="${key}"]`, value);
-      const f = { period, [key]: ["rmin", "rmax", "amin", "pay"].includes(key) ? Number(value) : value };
+      const f = { period, [key]: ["rmin", "rmax", "amin", "pay", "recent"].includes(key) ? Number(value) : value };
       const want = expect(f).length, got = await shown();
       optionChecks++;
       ok(got === want, `${period}, ${key}=${value}: ${got} companies on screen, the oracle gives ${want}`);
       if (want > 0 && want <= 100) ok((await pageCiks()).join() === expect(f).slice(0, 50).map((r) => r.o.cik).join(), `${period}, ${key}=${value}: the companies on screen are the oracle's, in order`);
-      await page.selectOption(`[data-fs="${key}"]`, ["rmin", "rmax", "amin", "pay"].includes(key) ? "0" : "");
+      await page.selectOption(`[data-fs="${key}"]`, ["rmin", "rmax", "amin", "pay", "recent"].includes(key) ? "0" : "");
     }
   }
   // Combined views, paged through, company by company.
@@ -397,6 +417,10 @@ if (chromium) {
     { f: { period: "quarter" }, cols: "ratios", sort: "liabilities_to_equity", dir: "desc" },
     { f: { amin: 1e9 }, cols: "ratios", sort: "liabilities_to_equity", dir: "asc" },
     { f: { period: "quarter", unit: "USD" }, cols: "ratios", sort: "liabilities", dir: "desc" },
+    { f: { recent: 1 }, sort: "end", dir: "asc" },
+    { f: { period: "quarter", recent: 1 }, sort: "end", dir: "asc" },
+    { f: { recent: 1, ni: "pos" }, sort: "net_income", dir: "desc" },
+    { f: { recent: 1 }, cols: "ratios", sort: "net_margin", dir: "desc" },
   ];
   const hashOf = (c) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(c.f)) p.set(k, String(v)); if (c.cols) p.set("cols", c.cols); if (c.sort !== "revenue" || c.dir !== "desc") { p.set("sort", c.sort); p.set("dir", c.dir); } const s = p.toString(); return s ? `#${s}` : ""; };
   for (const c of combos) {
@@ -427,6 +451,19 @@ if (chromium) {
   ok(await page.locator('[data-fs="reset"]').isVisible(), "Reset shows when a filter is set");
   await page.click('[data-fs="reset"]');
   ok(await shown() === years.length && (await page.inputValue('[data-fs="ni"]')) === "" && !(await page.locator('[data-fs="reset"]').isVisible()), "Reset clears the filters");
+  // Ended in the last 18 months: the address, both periods, Reset, a junk value.
+  await open();
+  await page.selectOption('[data-fs="recent"]', "1");
+  ok(new URL(page.url()).hash === "#recent=1" && await shown() === recentN.year, `"Ended in the last 18 months" writes its address (${new URL(page.url()).hash}) and keeps ${await shown()} companies, the oracle gives ${recentN.year}`);
+  ok((await page.locator('[data-fs="count"]').textContent()).startsWith(recentN.year === years.length ? "All " : `${nf(recentN.year)} compan`), "the count line follows the filter");
+  await page.selectOption('[data-fs="period"]', "quarter");
+  ok(new URL(page.url()).hash === "#period=quarter&recent=1" && await shown() === recentN.quarter, `with the quarter view the filter keeps ${await shown()} companies, the oracle gives ${recentN.quarter}`);
+  await open("#period=quarter&recent=1");
+  ok(await shown() === recentN.quarter && (await page.inputValue('[data-fs="recent"]')) === "1", "opening the address restores the filter and its control");
+  await page.click('[data-fs="reset"]');
+  ok(await shown() === years.length && (await page.inputValue('[data-fs="recent"]')) === "0" && new URL(page.url()).hash === "", "Reset clears it");
+  await open("#recent=maybe");
+  ok(await shown() === years.length && (await page.inputValue('[data-fs="recent"]')) === "0", "a junk value for the filter is ignored");
   await open("#ni=pos");
   const kept = await shown();
   await page.evaluate(() => { location.hash = "#about"; });
@@ -459,6 +496,9 @@ if (chromium) {
     await open("#cols=ratios&sort=net_margin&dir=desc");
     const byRatio = await grab();
     ok(byRatio.rows.map((r) => r.cik).join() === expect({}, "net_margin", "desc").map((r) => r.o.cik).join() && byRatio.rows.every((r) => numOrNull(r.net_margin_pct) === ratio(oByCik.get(r.cik).year, "net_margin").v), "the download of a view sorted by net margin is in that order, with the number in each row");
+    await open("#recent=1");
+    const rec = await grab();
+    ok(rec.rows.length === recentN.year && rec.rows.every((r) => recentEnd(r.period_end)) && rec.name === `company-financials-fiscal-year-ended-last-18-months-${data.built}.csv`, `the download with the 18-month filter has ${rec.rows.length} rows (oracle ${recentN.year}), all recent, named ${rec.name}`);
     // A filtered, sorted quarter view that has rows (the first of these that matches anything).
     const pickNi = ["neg", "pos"].find((ni) => expect({ period: "quarter", ni }).length > 0);
     if (pickNi) {
@@ -497,5 +537,5 @@ if (chromium) {
 
 console.log(failures
   ? `verify-finscreen: ${failures} problem(s) in ${checks} checks`
-  : `✓ verify-finscreen: ${checks} checks pass: ${oracle.length} companies (${years.length} with a fiscal year, ${quarters.length} with a quarter) and ${figures} figures against company-financials.csv, ${heldSeen} held back; ratios of the newest periods: ${ratioSeen.ok} worked out (${ratioSeen.capped} beyond a limit), ${ratioSeen.base} n/a, ${ratioCells} ratio cells read on screen; ${linksIn} links in from the industry pages; ${browserNote}`);
+  : `✓ verify-finscreen: ${checks} checks pass: ${oracle.length} companies (${years.length} with a fiscal year, ${quarters.length} with a quarter) and ${figures} figures against company-financials.csv, ${heldSeen} held back; ended in the last ${RECENT_DAYS} days: ${recentN.year} of ${years.length} fiscal years, ${recentN.quarter} of ${quarters.length} quarters; ratios of the newest periods: ${ratioSeen.ok} worked out (${ratioSeen.capped} beyond a limit), ${ratioSeen.base} n/a, ${ratioCells} ratio cells read on screen; ${linksIn} links in from the industry pages; ${browserNote}`);
 process.exit(failures ? 1 : 0);

@@ -44,13 +44,13 @@ async function start(root: HTMLElement): Promise<void> {
   const pick = (s: HTMLSelectElement | null, v: string, fallback = "") => { if (s) s.value = has(s, v) ? v : fallback; };
   const readFilter = (): FsFilter => ({
     q: q?.value ?? "", period: sel("period")?.value === "quarter" ? "quarter" : "year", division: sel("division")?.value ?? "", unit: sel("unit")?.value ?? "",
-    rmin: Number(sel("rmin")?.value ?? 0), rmax: Number(sel("rmax")?.value ?? 0), ni: (sel("ni")?.value ?? "") as FsFilter["ni"], amin: Number(sel("amin")?.value ?? 0), pay: sel("pay")?.value === "1" ? 1 : 0,
+    rmin: Number(sel("rmin")?.value ?? 0), rmax: Number(sel("rmax")?.value ?? 0), ni: (sel("ni")?.value ?? "") as FsFilter["ni"], amin: Number(sel("amin")?.value ?? 0), pay: sel("pay")?.value === "1" ? 1 : 0, recent: sel("recent")?.value === "1" ? 1 : 0,
   });
   const writeControls = (v: FsView): void => {
     const f = v.f;
     if (q) q.value = f.q;
     pick(sel("period"), f.period, "year"); pick(sel("division"), f.division); pick(sel("unit"), f.unit);
-    pick(sel("rmin"), String(f.rmin), "0"); pick(sel("rmax"), String(f.rmax), "0"); pick(sel("ni"), f.ni); pick(sel("amin"), String(f.amin), "0"); pick(sel("pay"), String(f.pay), "0");
+    pick(sel("rmin"), String(f.rmin), "0"); pick(sel("rmax"), String(f.rmax), "0"); pick(sel("ni"), f.ni); pick(sel("amin"), String(f.amin), "0"); pick(sel("pay"), String(f.pay), "0"); pick(sel("recent"), String(f.recent ?? 0), "0");
     pick(per, String(v.per), String(DEFAULT_PER));
     pick(colsSel, colsOf(v), "figures");
   };
