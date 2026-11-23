@@ -93,17 +93,15 @@ const SCREEN_KEYS = ["q", "chamber", "party", "state", "committee", "side", "min
 const FIN_SCREENER = "/company-financials/";
 const FIN_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "sort", "dir", "page", "per"];
 const isFinView = (path, hash) => path === FIN_SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => FIN_KEYS.includes(key));
-// Company events and executive pay hubs (web/src/lib/events8k.ts HUB_KEYS, execpay.ts PAY_HUB_KEYS).
+// Company events and executive pay hubs (web/src/lib/events8k.ts HUB_VIEWS, execpay.ts PAY_HUB_VIEWS).
 const HUB_VIEWS = { "/company-events/": ["q", "item", "division", "form", "w", "sort", "dir", "page", "n"], "/executive-pay/": ["q", "division", "fy", "min", "sort", "dir", "page", "n"] };
 const isHubView = (path, hash) => path in HUB_VIEWS && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => HUB_VIEWS[path].includes(key));
-const HUB_KEYS = { "/planned-sales/": ["q", "division", "form", "plan", "min", "w", "sort", "dir", "page", "n"], "/large-holders/": ["q", "division", "schedule", "pct", "w", "sort", "dir", "page", "n"] };
-const isHubView = (path, hash) => !!HUB_KEYS[path] && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => HUB_KEYS[path].includes(key));
-const isScreenView = (path, hash) => isFinView(path, hash) || isHubView(path, hash) || (path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key)));
+Object.assign(HUB_VIEWS, { "/planned-sales/": ["q", "division", "form", "plan", "min", "w", "sort", "dir", "page", "n"], "/large-holders/": ["q", "division", "schedule", "pct", "w", "sort", "dir", "page", "n"] });
 // The roll call hub's views (web/src/lib/votes.ts KEYS).
 const VOTES_HUB = "/congress-votes/";
 const VOTE_KEYS = ["q", "chamber", "result", "w", "member", "sort", "dir", "page", "n"];
 const isVoteView = (path, hash) => path === VOTES_HUB && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => VOTE_KEYS.includes(key));
-const isScreenView = (path, hash) => isVoteView(path, hash) || isFinView(path, hash) || (path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key)));
+const isScreenView = (path, hash) => isVoteView(path, hash) || isFinView(path, hash) || isHubView(path, hash) || (path === SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].some((key) => SCREEN_KEYS.includes(key)));
 for (const k of [...targets.keys()].filter((x) => x.includes("#"))) {
   const [path, hash] = [k.slice(0, k.indexOf("#")), k.slice(k.indexOf("#") + 1)];
   if (isScreenView(path, hash)) continue;   // checked under SCREEN below

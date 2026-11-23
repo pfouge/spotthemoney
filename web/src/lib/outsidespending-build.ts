@@ -31,6 +31,12 @@ export async function loadOutside(sql: Sql, m: Flagship, builtAt: string): Promi
      where e.spent_at is null or e.spent_at <= ${out.builtAt}::date
      order by e.sub_id`) as Row[];
   if (!rows.length) return out;
+  // Shown only once the first load of the cycle has finished (the job pages the cycle newest first
+  // over several runs and records catch_up_complete in its run stats): totals from part of a cycle
+  // would understate every candidate.
+  const whole = (await sql`select 1 from ingest_runs r join sources s on s.id = r.source_id
+                            where s.code = 'fec_independent_expenditures' and r.stats->>'catch_up_complete' = 'true' limit 1`) as unknown[];
+  if (!whole.length) { console.log("[web] outside spending: not shown yet (the first load of the cycle has not finished)"); return out; }
   const all: Expenditure[] = rows.map((r) => ({
     subId: r.sub_id, committeeId: r.committee_fec_id, committeeName: cleanOutsideText(r.committee_name, 200) ?? r.committee_fec_id ?? "Unnamed committee",
     candidateId: r.candidate_fec_id, candidateName: cleanOutsideText(r.candidate_name, 120),

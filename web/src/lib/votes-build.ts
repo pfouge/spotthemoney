@@ -14,12 +14,29 @@ const POS = new Set(["yea", "nay", "present", "not_voting"]);
 const ROLL_COLS = `v.id, v.chamber, v.congress, v.session, v.roll_number, v.voted_at::text as voted_at, v.question, v.result, v.bill, v.vote_type,
   v.yeas, v.nays, v.present, v.not_voting, v.source_url`;
 
+export const VOTES_FRESH_DAYS = 60;
+async function loadIsWhole(sql: Sql, rolls: RollRow[], builtAt: string): Promise<boolean> {
+  const cut = new Date(Date.parse(builtAt + "T00:00:00Z") - VOTES_FRESH_DAYS * 86400000).toISOString().slice(0, 10);
+  for (const ch of ["house", "senate"]) {
+    const newest = rolls.filter((r) => r.chamber === ch).map((r) => String(r.voted_at)).sort().pop();
+    if (!newest || newest < cut) { console.log(`[web] roll-call votes: not shown yet (${ch}: newest roll call on file ${newest ?? "none"})`); return false; }
+  }
+  const ok = (await sql.unsafe(`select 1 from ingest_runs r join sources s on s.id = r.source_id where s.code = 'congress_votes' and r.status = 'success' limit 1`)) as unknown[];
+  if (!ok.length) console.log("[web] roll-call votes: not shown yet (no run of congress_votes has finished whole)");
+  return ok.length > 0;
+}
+
 /** Reads every roll call (no positions), then per-person counts and the newest rows for members with a page. */
 export async function loadVotes(sql: Sql, m: Flagship, builtAt: string): Promise<VotesModel> {
   const out = emptyVotes();
   out.builtAt = builtAt.slice(0, 10);
   const rolls = (await sql.unsafe(`select ${ROLL_COLS} from congress_votes v where v.voted_at <= $1::date order by v.voted_at desc, v.chamber desc, v.roll_number desc`, [out.builtAt])) as RollRow[];
   if (!rolls.length) return out;
+  // Shown only when the load is whole: the first catch-up (about 1,600 roll calls) takes several
+  // runs, and a member's counts from half a record would be wrong. Whole = a run of the source has
+  // ended "success" (a run that stops on its budget ends "partial") and each chamber's newest roll
+  // call is within VOTES_FRESH_DAYS of the build (recesses run to about five weeks).
+  if (!(await loadIsWhole(sql, rolls, out.builtAt))) return out;
   out.rolls = rolls.map((r) => rollFromRow(r));
   out.shown = true;
 
