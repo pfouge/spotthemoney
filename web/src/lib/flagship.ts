@@ -32,6 +32,8 @@ import { loadOutside } from "./outsidespending-build";
 import { emptyAssistance, assistanceLog } from "./assistance";
 import { loadAssistance } from "./assistance-build";
 import { emptyLobbyContrib, lobbyContribLog } from "./lobbygifts";
+import { emptyCampaign, campaignLog } from "./campaign";
+import { loadCampaign } from "./campaign-build";
 import { loadLobbyContrib } from "./lobbygifts-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
@@ -87,7 +89,7 @@ async function load(): Promise<Flagship> {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
-    votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(),
+    votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(), campaign: emptyCampaign(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -176,7 +178,7 @@ async function load(): Promise<Flagship> {
     ]);
 
     const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
-      votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib() };
+      votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(), campaign: emptyCampaign() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -293,7 +295,15 @@ async function load(): Promise<Flagship> {
       subAgency: c.awarding_sub_agency, endDate: c.end_date, description: c.description }));
     console.log(contractDetailLog(model.contracts));
     console.log(naicsLog(model.contracts));
-    model.committees = committeeRows.map((c) => ({ id: c.id, fecId: c.fec_id, name: c.name, party: c.party, type: c.committee_type, total: c.total, count: c.count, latest: c.latest }));
+    model.committees = committeeRows.map((c) => ({ id: c.id, fecId: c.fec_id, name: c.name, party: c.party, type: c.committee_type, total: c.total, count: c.count, latest: c.latest, candidateFecId: null, personId: null }));
+    // Migration 0040 columns, read apart so a database without them still builds (the links stay null).
+    try {
+      const links = await sql<{ id: number; candidate_fec_id: string | null; person_id: number | null }[]>`select id, candidate_fec_id, person_id from committees where candidate_fec_id is not null or person_id is not null`;
+      const by = new Map(links.map((l) => [Number(l.id), l]));
+      for (const c of model.committees) { const l = by.get(Number(c.id)); if (l) { c.candidateFecId = l.candidate_fec_id; c.personId = l.person_id == null ? null : l.person_id; } }
+    } catch (err) {
+      console.warn("[web] committee member links skipped:", (err as Error).message);
+    }
     model.donationsByEmployer = donorEmployerRows;
     model.donationsByState = donorStateRows;
 
@@ -470,10 +480,19 @@ async function load(): Promise<Flagship> {
       console.warn("[web] federal assistance skipped:", (err as Error).message);
     }
 
+    // Campaign committees linked to members (migration 0040) and their itemized receipts. Own try/catch;
+    // read before the LD-203 pass, which uses the committee names for its payee rule.
+    try {
+      model.campaign = await loadCampaign(sql, model.people);
+      console.log(`[web] ${campaignLog(model.campaign)}`);
+    } catch (err) {
+      console.warn("[web] campaign committees skipped:", (err as Error).message);
+    }
+
     // Lobbyist contributions, Form LD-203 (migration 0033). Aggregated in SQL; the CSV files are
     // streamed to temporary files (lib/lobbygifts-build.ts). Optional.
     try {
-      model.lobbyContrib = await loadLobbyContrib(sql, model.people.values(), model.companies.values());
+      model.lobbyContrib = await loadLobbyContrib(sql, model.people.values(), model.companies.values(), model.campaign.payeeMap);
       console.log(lobbyContribLog(model.lobbyContrib));
     } catch (err) {
       console.warn("[web] lobbyist contributions skipped:", (err as Error).message);

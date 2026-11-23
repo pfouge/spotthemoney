@@ -28,6 +28,7 @@ import { getCoverage } from "../coverage";
 import { formatDate, formatPercent } from "../format";
 import { FACTS } from "./facts";
 import { FORM4_FLOOR } from "@stm/shared";
+import { EMPLOYER_ROWS as CAMPAIGN_EMPLOYER_ROWS, STATE_ROWS as CAMPAIGN_STATE_ROWS, MAX_COMMITTEES_PER_MEMBER as CAMPAIGN_MAX_COMMITTEES, RECENT_DAYS as CAMPAIGN_RECENT_DAYS } from "../campaign";
 import { ISSUES_INLINE, ISSUE_FILING_ROWS, ISSUE_TOP_ROWS } from "../lobbyissues";
 import { FEED_CAPS, CLUSTER_MIN_INSIDERS, CLUSTER_DAYS, STAKE_MIN_PCT, STAKE_MIN_VALUE, LARGE_SALE_MIN, CONGRESS_MIN_LOW, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_VALUE, CLUSTER_SELL_MIN_PCT } from "../notable";
 
@@ -53,6 +54,8 @@ export interface GuideCtx {
   congressRecordStart: string; firstMinDays: number; runMin: number;
   /** Issue names shown in one lobbying table cell, and rows in an issue page's tables (lib/lobbyissues.ts). */
   issuesInline: number; issueFilingRows: number; issueTopRows: number;
+  /** Campaign committees (lib/campaign.ts): how many are linked to members, the table sizes and the recent window. */
+  campaignLinked: number; campaignEmployerRows: number; campaignStateRows: number; campaignMaxCommittees: number; campaignRecentDays: number;
   /** Characters of a contract description shown in a table cell (lib/contracts.ts). */
   contractDescriptionShown: number;
   /** Days back that grants, loans and direct payments are listed (lib/assistance.ts). */
@@ -113,6 +116,7 @@ async function build(): Promise<GuideCtx> {
     screenerRows: SCREENER_ROWS, savedScreensMax: SAVED_SCREENS_MAX,
     congressRecordStart: new Date(RECORD_START + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }), firstMinDays: FIRST_MIN_DAYS, runMin: RUN_MIN,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
+    campaignLinked: m.campaign.committees.length, campaignEmployerRows: CAMPAIGN_EMPLOYER_ROWS, campaignStateRows: CAMPAIGN_STATE_ROWS, campaignMaxCommittees: CAMPAIGN_MAX_COMMITTEES, campaignRecentDays: CAMPAIGN_RECENT_DAYS,
     contractDescriptionShown: DESCRIPTION_SHOWN,
     instShown: instHubShown(m), instTop: INST_TOP, instMinManagers: INST_MIN_MANAGERS.toLocaleString("en-US"), instShownDays: INST_SHOWN_DAYS, instPeriod: m.inst.period ? instQuarterDate(m.inst.period) : "",
     assistanceWindowDays: ASSISTANCE_WINDOW_DAYS,

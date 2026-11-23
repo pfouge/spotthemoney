@@ -11,6 +11,7 @@ import type { EventsData } from "./events8k";
 import type { PayData } from "./execpay";
 import type { VotesModel } from "./votes";
 import type { OutsideData } from "./outsidespending";
+import type { CampaignData } from "./campaign";
 import type { AssistanceData } from "./assistance";
 import type { LobbyContribData } from "./lobbygifts";
 import type { HoldingsChange } from "./holdings";
@@ -105,7 +106,9 @@ export interface ContractRow {
   /** As USAspending reports them (migration 0027; lib/contracts.ts): the part of the agency that made the award, the date the work is currently due to end, the award's description. Null until the contracts job has re-read the award. */
   subAgency: string | null; endDate: string | null; description: string | null;
 }
-export interface CommitteeRow { id: number; fecId: string | null; name: string; party: string | null; type: string | null; total: number; count: number; latest: string | null }
+export interface CommitteeRow { id: number; fecId: string | null; name: string; party: string | null; type: string | null; total: number; count: number; latest: string | null;
+  /** Migration 0040: the FEC candidate id and the member this committee is linked to by ids. Null for a PAC or an unlinked committee, and when the columns are missing. */
+  candidateFecId: string | null; personId: number | null }
 export interface DonationAgg { key: string; total: number; count: number }
 
 /** Market-scope Form 4 data (stage 3b). Separate from the tracked model on purpose: nothing but the home feed reads it. */
@@ -162,6 +165,8 @@ export interface Flagship {
   assistance: AssistanceData;
   /** Contributions lobbyists report on Form LD-203 (lib/lobbygifts.ts). Aggregates and short lists only; never every item. */
   lobbyContrib: LobbyContribData;
+  /** Campaign committees linked to members and their itemized receipts (lib/campaign.ts). Empty likewise. */
+  campaign: CampaignData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

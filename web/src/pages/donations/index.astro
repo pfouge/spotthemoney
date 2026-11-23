@@ -11,7 +11,7 @@ import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
-import { getFlagship, num, plural, money, sum } from "../../lib/flagship";
+import { getFlagship, num, plural, money, sum, personPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
 import { formatDate } from "../../lib/format";
 import Viz from "../../components/Viz.astro";
@@ -42,7 +42,7 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
   <h2>Committees by itemized receipts held ({model.donationWindowDays} days)</h2>
   {committees.length === 0 ? <p class="empty-reason">No itemized receipts dated in the window yet. Committees report monthly or quarterly, so the window fills after each FEC filing deadline.</p> : (
     <div class="tablewrap"><table class="data"><thead><tr><th>Committee</th><th>Type</th><th>Party</th><th class="num">Sampled amount</th><th class="num">Receipts held</th><th>Latest</th><th>Full totals</th></tr></thead><tbody>
-      {committees.slice(0, 200).map((c) => <tr><td>{c.name}</td><td class="mono">{c.type ?? "—"}</td><td class="mono">{c.party ?? "—"}</td><td class="num strong">{money(c.total)}</td><td class="num">{num(c.count)}</td><td class="mono">{formatDate(c.latest)}</td><td>{c.fecId ? <a href={`https://www.fec.gov/data/committee/${c.fecId}/`} rel="noopener nofollow" target="_blank">FEC ↗</a> : "—"}</td></tr>)}
+      {committees.slice(0, 200).map((c) => <tr><td>{c.name}{(() => { const p = c.personId != null ? model.people.get(c.personId) : undefined; return p && p.slug ? <span class="cc-member"> · <a href={personPath(p)}>{p.name}</a></span> : null; })()}</td><td class="mono">{c.type ?? "—"}</td><td class="mono">{c.party ?? "—"}</td><td class="num strong">{money(c.total)}</td><td class="num">{num(c.count)}</td><td class="mono">{formatDate(c.latest)}</td><td>{c.fecId ? <a href={`https://www.fec.gov/data/committee/${c.fecId}/`} rel="noopener nofollow" target="_blank">FEC ↗</a> : "—"}</td></tr>)}
     </tbody></table></div>
   )}
 

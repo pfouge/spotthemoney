@@ -1,6 +1,7 @@
 // Lobbyist contributions, LD-203 (web/src/lib/lobbygifts.ts). Run: npx tsx --test scripts/lobbygifts.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { payeeMap } from "../web/src/lib/campaign";
 import { honoreeName, buildMemberIndex, memberForItem, countedFilings, sentenceCase, periodLabel, periodRank, nameKey, shareText } from "../web/src/lib/lobbygifts";
 
 const idx = buildMemberIndex([
@@ -52,6 +53,32 @@ test("must NOT match: surname alone, two people, an unknown name, a shared name"
 
 test("the payee never matches without a committee map (rule a is not applied)", () => {
   assert.equal(memberForItem({ honoree: null, payee: "WHITFIELD FOR CONGRESS" }, idx), null);
+});
+
+const committees = payeeMap([
+  { name: "Whitfield for Congress", slug: "jordan-whitfield" },
+  { name: "Marsh for California, Inc.", slug: "elena-marsh" },
+  { name: "Shared Name Committee", slug: "pat-lee-1" },
+  { name: "SHARED NAME COMMITTEE", slug: "pat-lee-2" }, // a name two members share maps to nobody
+]);
+const mp = (honoree: string | null, payee: string | null) => memberForItem({ honoree, payee }, idx, committees);
+
+test("payee rule: an exact committee name (case and ending ignored) matches its member", () => {
+  assert.equal(mp(null, "WHITFIELD FOR CONGRESS"), "jordan-whitfield");
+  assert.equal(mp("N/A", "Marsh for California, Inc."), "elena-marsh");
+  assert.equal(mp("", "whitfield for congress"), "jordan-whitfield");
+});
+
+test("payee rule: a near name, an unknown payee or a shared name matches nobody", () => {
+  assert.equal(mp(null, "WHITFIELD FOR CONGRESS VICTORY FUND"), null);
+  assert.equal(mp(null, "Marsh"), null);
+  assert.equal(mp(null, "Some Other Committee"), null);
+  assert.equal(mp(null, "Shared Name Committee"), null);
+  assert.equal(mp(null, null), null);
+});
+
+test("payee rule: the honoree wins over the payee", () => {
+  assert.equal(mp("Elena Marsh", "Whitfield for Congress"), "elena-marsh");
 });
 
 test("amended filings: the newest posting counts per registrant, lobbyist, year and period", () => {
