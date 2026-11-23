@@ -113,7 +113,7 @@ const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LAB
   <JsonLd data={ld} />
 </BaseLayout>
 
-<style>
+<style is:global>
   .pay-coverage { color: var(--ink-soft); font-size: 14.5px; max-width: 80ch; }
   .pay-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
   .pc-controls .hm-input { width: 200px; }
@@ -123,7 +123,7 @@ const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LAB
   .pc-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
   .pc-dl button.dl:hover { background: var(--chip); }
   .pc-dl button.dl:disabled { opacity: 0.45; cursor: default; }
-  :global(html:not(.js)) .pc-dl { display: none; }
+  html:not(.js) .pc-dl { display: none; }
   .pc-neg { color: var(--red-ink); }
   .pc-mark { color: var(--ink-soft); margin-left: 2px; }
   .pc-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
@@ -133,7 +133,7 @@ const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LAB
   .pc-per { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
   .linklike { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
   .paycompare[data-loading] .pc-table { opacity: 0.6; }
-  :global(html:not(.js)) .pc-controls, :global(html:not(.js)) .pc-pager { display: none; }
+  html:not(.js) .pc-controls, html:not(.js) .pc-pager { display: none; }
 </style>
 <script>
   import "../scripts/execpay";

@@ -109,7 +109,7 @@ const ld = datasetLd({ downloads: [csv?.path], name: "Company events: Form 8-K r
   <JsonLd data={ld} />
 </BaseLayout>
 
-<style>
+<style is:global>
   .ev-controls .hm-input { width: 200px; }
   .ev-controls select { max-width: 290px; }
   .ev-count { margin: 0 0 0.25rem; }
@@ -117,7 +117,7 @@ const ld = datasetLd({ downloads: [csv?.path], name: "Company events: Form 8-K r
   .ev-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
   .ev-dl button.dl:hover { background: var(--chip); }
   .ev-dl button.dl:disabled { opacity: 0.45; cursor: default; }
-  :global(html:not(.js)) .ev-dl { display: none; }
+  html:not(.js) .ev-dl { display: none; }
   .ev-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
   .ev-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
   .ev-pager button.chip:disabled { opacity: 0.45; cursor: default; }
@@ -128,7 +128,7 @@ const ld = datasetLd({ downloads: [csv?.path], name: "Company events: Form 8-K r
   .ev-item { display: block; line-height: 1.35; }
   .ev-soft { color: var(--ink-soft); font-size: 13px; }
   .evhub[data-loading] .ev-hub-table { opacity: 0.6; }
-  :global(html:not(.js)) .ev-controls, :global(html:not(.js)) .ev-pager { display: none; }
+  html:not(.js) .ev-controls, html:not(.js) .ev-pager { display: none; }
 </style>
 <script>
   import "../scripts/companyevents";
