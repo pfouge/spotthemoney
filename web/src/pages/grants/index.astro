@@ -1,0 +1,135 @@
+---
+// /grants/: federal grants, loans and direct payments that started in the last 180 days, from
+// USAspending (lib/assistance.ts has the rules). Static, sortable tables; no data file.
+// The three kinds are never added together.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getFlagship, num, plural, money } from "../../lib/flagship";
+import { getDownloads } from "../../lib/downloads";
+import { datasetLd, SOURCES, fitTitle, fitDescription } from "../../lib/seo";
+import { orgPath } from "../../lib/links";
+import { formatDate } from "../../lib/format";
+import { subAgencyLabel } from "../../lib/contracts";
+import {
+  ASSISTANCE_CAVEAT, ASSISTANCE_WINDOW_DAYS, GRANT_ROWS, LOAN_ROWS, PAYMENT_ROWS, GROUP_ROWS, kindTotals, largest, agencyRows, programRows, maskedCount, maskedSentence,
+  isMasked, programLabel, shortDescription, DESCRIPTION_SHOWN, AMOUNT_NAME, type AssistanceRow, type AssistanceKind,
+} from "../../lib/assistance";
+
+const model = await getFlagship();
+const rows = model.assistance.rows;
+const t = kindTotals(rows);
+const masked = maskedCount(rows);
+const grants = largest(rows, "grant", GRANT_ROWS);
+const loans = largest(rows, "loan", LOAN_ROWS);
+const payments = largest(rows, "direct_payment", PAYMENT_ROWS);
+const agencies = agencyRows(rows);
+const programs = programRows(rows);
+const file = (await getDownloads()).files.find((f) => f.name === "federal-assistance.csv");
+const newest = rows.map((r) => r.startDate).filter(Boolean).sort().at(-1) ?? null;
+const d = (s: string | null) => (s ? s.replaceAll("-", "") : "");
+
+const answer = rows.length === 0
+  ? "No grant, loan or direct payment awards are on record yet; the daily USAspending job loads the largest awards that started in each of the last six months."
+  : `USAspending lists ${plural(t.grant.awards, "grant")} with an award value of ${money(t.grant.value)}, ${plural(t.loan.awards, "loan or guarantee")} with a face value of ${money(t.loan.value)} and ${plural(t.direct_payment.awards, "direct payment")} with an award value of ${money(t.direct_payment.value)} that started in the last ${ASSISTANCE_WINDOW_DAYS} days among the awards held here. The kinds are listed apart and are not added together, and this is not every federal award.`;
+const description = fitDescription(["Federal grants, loans and direct payments that started in the last 180 days, from USAspending: largest awards, agencies and programs.", "Federal grants, loans and direct payments, last 180 days, from USAspending."]);
+const ld = datasetLd({ downloads: [file?.path], name: "Federal grants, loans and direct payments (USAspending)", path: "/grants/", description, dateModified: model.builtAt.slice(0, 10), keywords: ["federal grants", "federal loans", "direct payments", "USAspending"], sources: [SOURCES.usaspending], parentCatalogPath: "/washington/" });
+
+const head = (cols: { label: string; type: string; cls?: string }[]) => cols;
+const awardCols = head([{ label: "Recipient", type: "text" }, { label: "Agency", type: "text" }, { label: "Program", type: "text" }, { label: "Description, as reported", type: "text" }, { label: "Start", type: "num" }, { label: "End", type: "num" }]);
+const groupHead = (first: string) => head([{ label: first, type: "text" }, ...(["Grants", "Grant value", "Loans", "Loan face value", "Direct payments", "Payment value"] as string[]).map((l, i) => ({ label: l, type: "num", cls: "num" }))]);
+---
+<BaseLayout title={fitTitle(["Federal Grants, Loans and Direct Payments", "Federal Grants and Loans"])} description={description} section="Washington · Grants and loans" noindex={rows.length === 0}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Grants and loans", path: "/grants/" }]} />
+  <p class="eyebrow">Washington <span class="x">/</span> Grants and loans</p>
+  <h1>Federal grants, loans and direct payments</h1>
+  <p class="lede">Awards that started in the last {ASSISTANCE_WINDOW_DAYS} days as published by USAspending: recipient, agency, program, amount and dates, updated daily.</p>
+  <Answer text={answer} updated={newest ?? model.builtAt} sourceNote="Source: USAspending.gov" />
+
+  {rows.length > 0 && (
+    <section data-assist-hub data-awards={rows.length} data-masked={masked}>
+    <div class="summary" data-figures>
+      {(["grant", "loan", "direct_payment"] as AssistanceKind[]).map((k) => (
+        <div class="cell" data-kind={k}><div class="k">{k === "grant" ? "Grants" : k === "loan" ? "Loans and guarantees" : "Direct payments"}, {AMOUNT_NAME[k]}</div><div class="v">{money(t[k].value)}</div><div class="delta">{num(t[k].awards)} {t[k].awards === 1 ? "award" : "awards"}</div></div>
+      ))}
+    </div>
+    <p class="section-note" data-caveat>{ASSISTANCE_CAVEAT} <a href="/guides/federal-contracts-usaspending/#assistance">How to read these awards</a>. {maskedSentence(masked)}</p>
+    <DownloadCsv file={file} note="every award held" />
+
+    {[
+      { id: "grants", title: "Largest grants", list: grants, kind: "grant" as AssistanceKind },
+      { id: "loans", title: "Largest loans and guarantees", list: loans, kind: "loan" as AssistanceKind },
+      { id: "payments", title: "Largest direct payments", list: payments, kind: "direct_payment" as AssistanceKind },
+    ].filter((s) => s.list.length > 0).map((s) => (
+      <section data-kind-table={s.kind}>
+        <h2 id={s.id}>{s.title} (started in the last {ASSISTANCE_WINDOW_DAYS} days)</h2>
+        <p class="section-note">{s.kind === "loan" ? "Amount is the face value of the loan or guarantee. Subsidy cost is the government's own estimate of what it costs, and can be negative." : "Amount is the award value reported by the agency."} Click a column title to sort.</p>
+        <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+          {awardCols.map((h) => <th aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label={s.kind === "loan" ? "Sort by face value" : "Sort by amount"}>{s.kind === "loan" ? "Face value" : "Amount"}<span class="arr" aria-hidden="true"></span></button></th>
+          {s.kind === "loan" && <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by subsidy cost">Subsidy cost<span class="arr" aria-hidden="true"></span></button></th>}
+          <th>Source</th>
+        </tr></thead><tbody>
+          {s.list.map((r: AssistanceRow) => {
+            const href = isMasked(r.recipient) ? null : orgPath(model, r.recipient);
+            const sub = subAgencyLabel(r.agency, r.subAgency); const prog = programLabel(r.listing); const desc = shortDescription(r.description);
+            return (
+              <tr data-award={r.sourceRef} data-masked={isMasked(r.recipient) ? "1" : undefined}>
+                <td class="wrap as-rec" data-v={r.recipient.toLowerCase().replace(/[<>"]/g, "")}>{href ? <a href={href}>{r.recipient}</a> : r.recipient}</td>
+                <td class="wrap as-agency" data-v={(r.agency ?? "").toLowerCase()}>{r.agency ?? "—"}{sub && <span class="as-sub" data-sub>{sub}</span>}</td>
+                <td class="wrap as-prog" data-v={(prog ?? "").toLowerCase().replace(/[<>"]/g, "")} data-program>{prog ?? "—"}</td>
+                <td class="wrap as-desc" data-v={(desc ?? "").toLowerCase().replace(/[<>"]/g, "")} data-desc>{desc ?? "—"}</td>
+                <td class="mono" data-v={d(r.startDate)}>{r.startDate ? formatDate(r.startDate) : "—"}</td>
+                <td class="mono" data-v={d(r.endDate)} data-end>{r.endDate ? formatDate(r.endDate) : "—"}</td>
+                <td class="num strong" data-v={r.amount != null ? Math.round(r.amount) : ""} data-amount>{r.amount != null ? money(r.amount, { compact: false }) : "—"}</td>
+                {s.kind === "loan" && <td class="num" data-v={r.subsidyCost != null ? Math.round(r.subsidyCost) : ""} data-subsidy>{r.subsidyCost != null ? money(r.subsidyCost, { compact: false }) : "—"}</td>}
+                <td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}/`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody></table></div>
+      </section>
+    ))}
+
+    <AdSlot />
+
+    {[{ id: "by-agency", title: "By agency", first: "Agency", list: agencies }, { id: "by-program", title: "By program", first: "Program", list: programs }].map((g) => g.list.length > 0 && (
+      <section data-group-table={g.id}>
+        <h2 id={g.id}>{g.title} (started in the last {ASSISTANCE_WINDOW_DAYS} days)</h2>
+        <p class="section-note">Each kind has its own columns and none is added to another. The {Math.min(GROUP_ROWS, g.list.length)} {g.list.length > GROUP_ROWS ? `with the largest grant value of ${num(g.list.length)} ` : ""}are shown, largest grant value first. Click a column title to sort.</p>
+        <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+          {groupHead(g.first).map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+        </tr></thead><tbody>
+          {g.list.slice(0, GROUP_ROWS).map((r) => (
+            <tr data-group-row>
+              <td class="wrap" data-v={r.label.toLowerCase().replace(/[<>"]/g, "")}>{r.number ? <span class="mono as-num">{r.number}</span> : null}{r.label}</td>
+              <td class="num" data-v={r.kinds.grant.awards}>{num(r.kinds.grant.awards)}</td><td class="num strong" data-v={Math.round(r.kinds.grant.value)}>{r.kinds.grant.awards ? money(r.kinds.grant.value) : "—"}</td>
+              <td class="num" data-v={r.kinds.loan.awards}>{num(r.kinds.loan.awards)}</td><td class="num" data-v={Math.round(r.kinds.loan.value)}>{r.kinds.loan.awards ? money(r.kinds.loan.value) : "—"}</td>
+              <td class="num" data-v={r.kinds.direct_payment.awards}>{num(r.kinds.direct_payment.awards)}</td><td class="num" data-v={Math.round(r.kinds.direct_payment.value)}>{r.kinds.direct_payment.awards ? money(r.kinds.direct_payment.value) : "—"}</td>
+            </tr>
+          ))}
+        </tbody></table></div>
+      </section>
+    ))}
+    </section>
+  )}
+
+  <div class="prose">
+  <h2 id="about-this-page">What this page shows</h2>
+  <p>Federal agencies give money in three main ways besides buying goods: grants, which are not repaid; loans and loan guarantees, which are; and direct payments, such as benefit payments to people and organizations. This page lists the largest awards of each kind that started in the last {ASSISTANCE_WINDOW_DAYS} days, with the agency and program that made each one. Contracts, where the government buys something, are on the <a href="/contracts/">contracts page</a>.</p>
+  <p>The three kinds are not added together, because a loan's amount is money lent or guaranteed, not money spent. A recipient that USAspending masks, mostly individuals, is shown as returned and is never matched to a company. A company page lists awards only when the recipient name equals the company's name exactly. See <a href="/methodology/#assistance">methodology</a> and the <a href="/guides/federal-contracts-usaspending/#assistance">guide to federal award data</a>.</p>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>USAspending.gov, the Treasury Department's public record of federal spending built from agency reports. This site reads it once a day and links each award to its USAspending page. Descriptions are the agency's own wording, cut at {DESCRIPTION_SHOWN} characters on this page.</p>
+  </div>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+<style>
+  .as-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .as-num { display: block; font-size: 12.5px; color: var(--ink-soft); }
+  .as-rec { min-width: 11rem; } .as-agency { min-width: 10rem; } .as-prog { min-width: 12rem; } .as-desc { min-width: 14rem; max-width: 22rem; font-size: 13px; line-height: 1.35; }
+  @media (max-width: 640px) { .as-rec { min-width: 9rem; } .as-agency { min-width: 8rem; } .as-prog { min-width: 9rem; } .as-desc { min-width: 11rem; } }
+</style>

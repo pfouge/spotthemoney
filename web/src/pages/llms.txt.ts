@@ -61,6 +61,10 @@ ${plannedShown(m) ? `- [Planned sales](${SITE_URL}/planned-sales/): every SEC Fo
 - [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
 - [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
 ${m.outside.shown ? `- [Outside spending](${SITE_URL}/outside-spending/): independent expenditures reported to the FEC, by candidate and by spender, counted once. Money outside groups spent on communications about candidates; the candidates did not receive it.\n` : ""}- [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
+${m.assistance.rows.length ? `- [Grants and loans](${SITE_URL}/grants/): federal grants, loans and direct payments that started in the last 180 days, from USAspending, with agency and program. The three kinds are listed apart and not added together; a loan's amount is its face value.
+` : ""}
+${m.lobbyContrib.available && m.lobbyContrib.periods.length ? `- [Lobbyist contributions](${SITE_URL}/lobbyist-contributions/): contributions and payments that lobbyists and lobbying firms report on Form LD-203, with largest filers, most named recipients and newest items. Names are as typed by the filers; a report is not a statement by the recipient.
+` : ""}
 - [Newest disclosures](${SITE_URL}/disclosures/): one feed across every source, newest first.
 
 ## Free CSV downloads (no sign-up; same rows as the pages; column meanings on the page)

@@ -75,6 +75,9 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     ...(model.votes.shown ? [{ loc: VOTES_PATH, lastmod: day(model.votes.rolls[0]?.date ?? null, built), changefreq: "daily" as const, priority: 0.7 }] : []),
     ...(committees.length ? [{ loc: COMMITTEES_PATH, lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     ...committees.map((c) => ({ loc: c.path, lastmod: day(c.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
+    // Grants and loans, and lobbyist contributions: indexable only when they hold rows.
+    ...(model.assistance.rows.length ? [{ loc: "/grants/", lastmod: day(model.assistance.rows.map((r) => r.startDate).filter(Boolean).sort().at(-1), built), changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...(model.lobbyContrib.available && model.lobbyContrib.periods.length ? [{ loc: "/lobbyist-contributions/", lastmod: day(model.lobbyContrib.newestPosted, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/companies/", lastmod: built, changefreq: "daily", priority: 0.7 },
     ...(industries.length ? [{ loc: INDUSTRIES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),

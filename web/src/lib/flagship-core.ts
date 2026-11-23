@@ -11,6 +11,8 @@ import type { EventsData } from "./events8k";
 import type { PayData } from "./execpay";
 import type { VotesModel } from "./votes";
 import type { OutsideData } from "./outsidespending";
+import type { AssistanceData } from "./assistance";
+import type { LobbyContribData } from "./lobbygifts";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -148,6 +150,10 @@ export interface Flagship {
   votes: VotesModel;
   /** Independent expenditures (lib/outsidespending.ts). Empty likewise. */
   outside: OutsideData;
+  /** Federal grants, loans and direct payments that started in the last 180 days (lib/assistance.ts). Empty when the table cannot be read. */
+  assistance: AssistanceData;
+  /** Contributions lobbyists report on Form LD-203 (lib/lobbygifts.ts). Aggregates and short lists only; never every item. */
+  lobbyContrib: LobbyContribData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

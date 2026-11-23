@@ -35,10 +35,10 @@ export const NAV: NavGroup[] = [
     { href: "/washington/", label: "Overview", desc: "Money moving through Washington", live: true },
     { href: "/lobbying/", label: "Lobbying", desc: "Lobbying reports, clients and registrants", live: true },
     { href: "/lobbying-issues/", label: "Lobbying by issue", desc: "Filings grouped by the issue they name", live: true },
-    { href: "/lobbyist-contributions/", label: "Lobbyist contributions", desc: "Gifts and contributions reported by lobbyists", live: false },
+    { href: "/lobbyist-contributions/", label: "Lobbyist contributions", desc: "Gifts and contributions reported by lobbyists", live: true },
     { href: "/donations/", label: "Donations", desc: "Campaign receipts reported to the FEC", live: true },
     { href: "/contracts/", label: "Contracts", desc: "Federal contract awards by agency", live: true },
-    { href: "/grants/", label: "Grants and loans", desc: "Federal grants and loans to recipients", live: false },
+    { href: "/grants/", label: "Grants and loans", desc: "Federal grants and loans to recipients", live: true },
   ] },
   { key: "markets", label: "Markets", href: "/rates/", items: [
     { href: "/rates/", label: "Rates overview", desc: "Treasury rates and inflation in one place", live: true },

@@ -28,6 +28,7 @@ import MemberVotes from "../../components/MemberVotes.astro";
 import OutsideSpending from "../../components/OutsideSpending.astro";
 import { windowTotal } from "../../lib/votes";
 import VizPerson from "../../components/VizPerson.astro";
+import LobbyContrib from "../../components/LobbyContrib.astro";
 import { ordinal, memberProfile, peerStats, sameState, sameStocks, seatGroups, seatTitle, memberQa, stateName, seatName, partyName } from "../../lib/profile";
 
 export async function getStaticPaths() {
@@ -107,6 +108,11 @@ const ld = {
 const faqLd = qa.length ? { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SITE_URL}${path}#questions`,
   mainEntity: qa.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })) } : null;
 
+const lc = p.slug ? model.lobbyContrib.members.get(p.slug) : undefined;
+const lcItems = lc ? lc.years.reduce((a, y) => a + y.items, 0) : 0;
+const lcYear = model.lobbyContrib.newestYear;
+const lcNewest = lc ? (lc.years.find((y) => y.year === lcYear) ?? lc.years[0]) : undefined;
+const lcFile = (await getDownloads()).files.filter((f) => f.kind === "lobbycontrib")[0];
 const showCompare = txns.length > 0 && peers.members > 1;
 const glance = noindex ? [] : [
   { label: "Trades on record", value: num(txns.length), note: prof.lastTrade ? `Latest ${formatDate(prof.lastTrade)}` : undefined, href: "#trades" },
@@ -115,12 +121,14 @@ const glance = noindex ? [] : [
   ...(hasVotes ? [{ label: "Recorded votes", value: num(windowTotal(votes!)), note: votes!.newest ? `Newest ${formatDate(votes!.newest)}` : "Last 12 months", href: "#votes" }] : []),
   ...(hasOutside ? [{ label: "Outside spending", value: num(outside!.totals.spenders), note: model.outside.cycle ? `Spenders, ${model.outside.cycle} cycle` : "Spenders", href: "#outside-spending" }] : []),
   ...(groups.length ? [{ label: "Committees", value: num(groups.length), note: "Listed for context", href: "#committees" }] : []),
+  ...(lcItems ? [{ label: "Lobbyist contributions", value: num(lcNewest?.items ?? 0), note: `Items in ${lcNewest?.year}`, href: "#lobbyist-contributions" }] : []),
   ...(p.filings.length ? [{ label: "Filings", value: num(p.filings.length), note: "Periodic transaction reports", href: "#filings" }] : []),
   ...(showCompare && rank ? [{ label: "Rank by trades", value: ordinal(rank), note: `Of ${num(peers.members)} members`, href: "#compare" }] : []),
 ];
 const groupList = noindex ? [] : [
   { id: "trading", label: "Trading" },
   ...(groups.length || hasVotes || hasOutside ? [{ id: "washington", label: "Washington" }] : []),
+  ...(groups.length || lcItems ? [{ id: "washington", label: "Washington" }] : []),
   { id: "record", label: "About this record" },
 ];
 ---
@@ -273,6 +281,7 @@ const groupList = noindex ? [] : [
   <AdSlot label="Advertisement" show={!noindex} />
 
   {(groups.length > 0 || hasVotes || hasOutside) && (
+  {(groups.length > 0 || lcItems > 0) && (
     <PageGroup id="washington" label="Washington">
   <MemberVotes model={model} personId={p.id} slug={p.slug!} name={p.name} chamber={role.chamber === "senate" ? "senate" : "house"} />
   {groups.length > 0 && (
@@ -295,6 +304,7 @@ const groupList = noindex ? [] : [
     </section>
   )}
   <OutsideSpending model={model} personId={p.id} name={p.name} file={outsideFile} />
+  <LobbyContrib model={model} slug={p.slug} file={lcFile} />
     </PageGroup>
   )}
 

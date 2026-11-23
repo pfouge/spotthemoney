@@ -1,0 +1,51 @@
+---
+// "Contributions this company's lobbying filings report" on company pages: LD-203 items filed under
+// a registrant whose name equals this company's name exactly (lib/lobbygifts-build.ts).
+import type { Flagship } from "../lib/flagship";
+import { money, num } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { LOBBY_CONTRIB_FILER_CAVEAT, COMPANY_ROWS, sentenceCase, companySummary } from "../lib/lobbygifts";
+import DownloadCsv from "./DownloadCsv.astro";
+import type { DownloadFile } from "../lib/downloads";
+
+interface Props { model: Flagship; companyId: number; name: string; file?: DownloadFile | null }
+const { model, companyId, name, file } = Astro.props;
+const s = model.lobbyContrib.companies.get(companyId);
+const total = s ? s.years.reduce((a, y) => a + y.items, 0) : 0;
+const fmt = (n: number) => money(n, { compact: false });
+const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
+const heads = [{ l: "Date", t: "num" }, { l: "Type", t: "text" }, { l: "Contributor", t: "text" }, { l: "Payee", t: "text" }, { l: "Honoree, as typed", t: "text" }, { l: "Amount", t: "num" }];
+---
+{s && total > 0 && (
+  <section aria-labelledby="filer-contributions" data-lobby-filer data-items={total}>
+    <h2 id="filer-contributions">Contributions this company's lobbying filings report</h2>
+    <p data-lf-summary>{companySummary(s.registrants[0] ?? name, s.years, fmt)}</p>
+    <p class="lc-note" data-lf-caveat>{LOBBY_CONTRIB_FILER_CAVEAT} <a href="/lobbyist-contributions/">All lobbyist contributions</a> · <a href="/guides/lobbying-disclosure-reports/#contributions">How to read an LD-203 report</a>.</p>
+    <DownloadCsv file={file} label="Download all items (CSV)" note="every item, all filers" />
+    <div class="tablewrap"><table class="data" data-lf-years><thead><tr><th>Year</th><th class="num">Items</th><th class="num">Amount as reported</th></tr></thead><tbody>
+      {s.years.map((y) => <tr data-lf-year={y.year}><td class="mono">{y.year}</td><td class="num">{num(y.items)}</td><td class="num">{fmt(y.amount)}</td></tr>)}
+    </tbody></table></div>
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {heads.map((h) => <th class={h.l === "Amount" ? "num" : ""} aria-sort="none" data-type={h.t}><button type="button" class="sort" aria-label={`Sort by ${h.l.toLowerCase()}`}>{h.l}<span class="arr" aria-hidden="true"></span></button></th>)}
+      <th>Source</th>
+    </tr></thead><tbody>
+      {s.items.slice(0, COMPANY_ROWS).map((r) => (
+        <tr data-lf-item>
+          <td class="mono" data-v={dayNum(r.date)}>{r.date ? formatDate(r.date) : "—"}</td>
+          <td class="wrap" data-v={(r.type ?? "").toLowerCase()}>{r.type ? sentenceCase(r.type) : "—"}</td>
+          <td class="wrap lc-who" data-v={(r.contributor ?? "").toLowerCase().replace(/[<>"]/g, "")}>{r.contributor ?? "—"}</td>
+          <td class="wrap lc-who" data-v={(r.payee ?? "").toLowerCase().replace(/[<>"]/g, "")}>{r.payee ?? "—"}</td>
+          <td class="wrap lc-who" data-v={(r.honoree ?? "").toLowerCase().replace(/[<>"]/g, "")}>{r.honoree ?? "—"}</td>
+          <td class="num" data-v={r.amount != null ? Math.round(r.amount) : ""}>{r.amount != null ? fmt(r.amount) : "—"}</td>
+          <td>{r.sourceUrl ? <a href={r.sourceUrl} rel="noopener nofollow" target="_blank">LD-203 ↗</a> : "—"}</td>
+        </tr>
+      ))}
+    </tbody></table></div>
+    {total > COMPANY_ROWS && <p class="lc-note" data-lf-more>The {COMPANY_ROWS} newest of {num(total)} items are shown. The rest are in the CSV file.</p>}
+  </section>
+)}
+<style>
+  .lc-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .lc-who { min-width: 10rem; max-width: 18rem; }
+  @media (max-width: 640px) { .lc-who { min-width: 8rem; } }
+</style>
