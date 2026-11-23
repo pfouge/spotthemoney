@@ -18,7 +18,7 @@ import { getFlagship, num, plural } from "../lib/flagship";
 import { datasetLd } from "../lib/seo";
 import { siteFinScreen } from "../lib/finscreen-build";
 import {
-  finScreen, fsSummaryLine, fsCellText, fsShortDate, reportUrl, divisionPagePath, rowsFor, revMinLabel, revMaxLabel, assetMinLabel, stepLabel, firstFsDir,
+  finScreen, fsSummaryLine, fsCellText, fsPayText, fsShortDate, reportUrl, divisionPagePath, rowsFor, revMinLabel, revMaxLabel, assetMinLabel, stepLabel, firstFsDir,
   DEFAULT_FS_VIEW, DEFAULT_PER, PER_PAGE, FS_CONCEPTS, PERIODS, PERIOD_OPTION, REV_MIN_STEPS, REV_MAX_STEPS, ASSET_MIN_STEPS, NI_SIGNS, NI_OPTION, FIN_SCREENER_DATA, type FsSortKey,
 } from "../lib/finscreen";
 import { MIN_IMPLIED_SHARES } from "../lib/financials";
@@ -38,7 +38,7 @@ const answer = all.length === 0
 const description = "Screen companies by figures from their SEC annual and quarterly reports: revenue, net income, earnings per share, total assets and equity, as filed.";
 const csv = (await getDownloads()).files.find((f) => f.name === "company-financials.csv");
 const ld = datasetLd({ downloads: [csv?.path], name: "Company financials screener: figures as filed with the SEC", path: "/company-financials/", description, dateModified: lastUpdated.slice(0, 10), keywords: ["company financials", "SEC filings", "10-K", "10-Q", "XBRL", "stock screener"], sources: [{ name: "SEC EDGAR: XBRL company facts", url: "https://www.sec.gov/search-filings/edgar-application-programming-interfaces" }], parentCatalogPath: "/" });
-const HEAD: Record<FsSortKey, string> = { company: "Company", end: "Fiscal year ended", revenue: "Revenue", net_income: "Net income", eps_diluted: "Diluted EPS", assets: "Total assets", equity: "Shareholders' equity" };
+const HEAD: Record<FsSortKey, string> = { company: "Company", end: "Fiscal year ended", revenue: "Revenue", net_income: "Net income", eps_diluted: "Diluted EPS", assets: "Total assets", equity: "Shareholders' equity", pay: "CEO pay, as reported" };
 const heldHref = "/methodology/#financials";
 const th = (k: FsSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_FS_VIEW.sort });
 ---
@@ -75,6 +75,9 @@ const th = (k: FsSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_FS_VIEW.sor
         <div class="ctl"><span class="lbl">Net income</span>
           <select data-fs="ni" aria-label="Net income above or below zero"><option value="">Any net income</option>{NI_SIGNS.map((k) => <option value={k}>{NI_OPTION[k]}</option>)}</select>
         </div>
+        <div class="ctl"><span class="lbl">Executive pay</span>
+          <select data-fs="pay" aria-label="Executive pay on file"><option value="0">Any executive pay</option><option value="1">Has pay on file</option></select>
+        </div>
         <div class="ctl"><span class="lbl">Total assets</span>
           <select data-fs="amin" aria-label="Total assets at least, in U.S. dollars"><option value="0">Any total assets</option>{ASSET_MIN_STEPS.map((s) => <option value={s}>{assetMinLabel(s)}</option>)}</select>
         </div>
@@ -91,6 +94,8 @@ const th = (k: FsSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_FS_VIEW.sor
           {FS_CONCEPTS.map((c) => th(c.key)).map((x) => (
             <th class="num" aria-sort={x.on ? "descending" : "none"} data-sort={x.k} data-first={firstFsDir(x.k)}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true">{x.on ? "▼" : ""}</span></button></th>
           ))}
+          <th class="num" aria-sort="none" data-sort="pay" data-first="desc"><button type="button" class="sort" aria-label="Sort by CEO pay, as reported">{HEAD.pay}<span class="arr" aria-hidden="true"></span></button></th>
+          <th>Pay year</th>
           <th>Report</th>
         </tr></thead>
         <tbody data-fs="rows">
@@ -102,6 +107,8 @@ const th = (k: FsSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_FS_VIEW.sor
               {FS_CONCEPTS.map((c) => r.p.held[c.key]
                 ? <td class="num" data-held><a class="soft" href={heldHref}>{fsCellText(r, c.key)}</a></td>
                 : <td class={`num${c.key === "revenue" ? " strong" : ""}`}>{fsCellText(r, c.key)}</td>)}
+              <td class="num" data-pay>{fsPayText(r.c)}</td>
+              <td class="mono" data-payyear>{r.c.pay ? fsShortDate(r.c.pay.fye) : ""}</td>
               <td class="mono">{reportUrl(r) ? <a href={reportUrl(r)} rel="noopener nofollow" target="_blank" title={`Filed ${fsShortDate(r.p.filed)}`}>{`${r.p.form} ↗`}</a> : r.p.form}</td>
             </tr>
           ))}
@@ -122,7 +129,7 @@ const th = (k: FsSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_FS_VIEW.sor
   <p>One row for each company this site tracks whose annual or quarterly reports to the SEC are on file here. "Newest fiscal year" shows the latest full fiscal year the company has reported; "Newest quarter" shows the latest quarter it has reported on its own. The columns are revenue, net income, diluted earnings per share, total assets and shareholders' equity, each exactly as the company filed it, with the last day of the period and a link to the newest report the figures were taken from (its form, for example 10-K or 10-Q; the filing date is in the download). Companies have different fiscal years, so the periods in one view do not all end on the same day: the "ended" column says which period each row is.</p>
   <p>Nothing here is estimated, converted or worked out from two figures. An empty cell means the report gave no such figure under a heading this site reads. A fourth fiscal quarter is not filed on its own, so "Newest quarter" is never a fourth quarter. "not shown" marks a figure this site holds back because, as stored, it fails one of three checks (for example earnings per share that would mean fewer than {num(MIN_IMPLIED_SHARES)} shares); the <a href="/methodology/#financials">methodology</a> lists them, and the <a href="/downloads/">CSV file</a> keeps the filed figure. A held-back figure passes no filter on its column.</p>
   <p id="currencies">Amounts are in the currency the company reports in, and that currency is printed with every amount that is not in U.S. dollars. The revenue and total-assets filters are in U.S. dollars: "{revMinLabel(REV_MIN_STEPS[1])}" keeps companies whose filed revenue for the period is {stepLabel(REV_MIN_STEPS[1])} or higher, and a company that reports in another currency passes neither filter, because this site converts nothing. For the same reason, sorting by an amount lists the dollar figures first and the others, with empty cells, after them. "{NI_OPTION.pos}" and "{NI_OPTION.neg}" go by the sign of the filed figure and cover every currency.</p>
-  <p>The industry is the division of the SEC's industry code (SIC) for the company, the same label as on the <a href="/industries/">industry pages</a>; it is a classification, not a judgement. Sorting a column orders the companies by that filed figure and by nothing else. This table has no score, rating or forecast, and no figure that needs a share price. A company's page has more: three fiscal years and four quarters, cash and total liabilities, and cash flow for fiscal years. How the figures are read: <a href="/methodology/#financials-screener">methodology</a>. What the figures are: <a href="/guides/what-is-form-4/#financials">the guide</a>.</p>
+  <p>The industry is the division of the SEC's industry code (SIC) for the company, the same label as on the <a href="/industries/">industry pages</a>; it is a classification, not a judgement. Sorting a column orders the companies by that filed figure and by nothing else. This table has no score, rating or forecast, and no figure that needs a share price. "CEO pay, as reported" is the principal executive officer's total in the Summary Compensation Table, from the Pay Versus Performance table of the company's proxy statement, for the newest fiscal year the company has one for; "Pay year" is the last day of that fiscal year. Pay is in dollars as the company tagged it for the SEC, belongs to the company rather than to the period shown, and is not set against any other figure here; a company with none on file shows an empty cell and sorts last. The <a href="/executive-pay/">executive pay page</a> has all four figures. A company's page has more: three fiscal years and four quarters, cash and total liabilities, and cash flow for fiscal years. How the figures are read: <a href="/methodology/#financials-screener">methodology</a>. What the figures are: <a href="/guides/what-is-form-4/#financials">the guide</a>.</p>
   <AdSlot />
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures shown as filed with the SEC; no judgement about any company is made or implied.</p>

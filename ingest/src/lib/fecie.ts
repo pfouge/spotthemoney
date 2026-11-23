@@ -149,6 +149,16 @@ export function fecToBioguide(legislators: Legislator[]): Map<string, string> {
   return m;
 }
 
+/**
+ * The people.id of the member an FEC candidate id belongs to: candidate id, then the roster's Bioguide ID,
+ * then people.bioguide_id. Null when any step has no entry. Names are never used.
+ */
+export function personForCandidate(cand: string | null | undefined, fecBio: Map<string, string>, bioId: Map<string, number>): number | null {
+  if (!cand) return null;
+  const bio = fecBio.get(cand.trim().toUpperCase());
+  return bio ? bioId.get(bio) ?? null : null;
+}
+
 export interface IePage {
   pagination?: { last_indexes?: Record<string, unknown> | null; pages?: number; count?: number } | null;
   results?: unknown;

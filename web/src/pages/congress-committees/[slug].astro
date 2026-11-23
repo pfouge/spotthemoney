@@ -17,7 +17,7 @@ import { formatDate } from "../../lib/format";
 import { dayKey } from "../../lib/tablesort";
 import { stateName } from "../../lib/profile";
 import { PARTY_LABEL } from "../../lib/directory";
-import { buildCommittees, CHAMBER_LABEL, COMMITTEES_PATH, COMMITTEE_TRADE_ROWS, COMMITTEE_STOCK_ROWS } from "../../lib/committees";
+import { buildCommittees, committeeLobbyContrib, COMMITTEE_LOBBY_CAVEAT, CHAMBER_LABEL, COMMITTEES_PATH, COMMITTEE_TRADE_ROWS, COMMITTEE_STOCK_ROWS } from "../../lib/committees";
 
 export async function getStaticPaths() {
   const model = await getFlagship();
@@ -35,6 +35,8 @@ const lastUpdated = c.latest ?? model.builtAt;
 const stocks = c.stocks.slice(0, COMMITTEE_STOCK_ROWS);
 const parties = (["D", "R", "I"] as const).map((k) => ({ k, n: c.members.filter((x) => x.party === k).length })).filter((x) => x.n > 0);
 const others = all.filter((x) => x.chamber === c.chamber && x.code !== c.code);
+const lcShown = model.lobbyContrib.available;
+const lcMembers = committeeLobbyContrib(c, (id) => { const sl = model.people.get(id)?.slug; return sl ? model.lobbyContrib.members.get(sl) : undefined; }, lcShown);
 const hasSubs = c.members.some((x) => x.subs.length > 0);
 
 const answer = c.trades === 0
@@ -43,7 +45,7 @@ const answer = c.trades === 0
 const description = `Members of the ${c.name} and the stock trades they have disclosed, with a link to every filing.`;
 const ld = datasetLd({ name: `${c.name}: members and their disclosed trades`, path: c.path, description, dateModified: lastUpdated.slice(0, 10), keywords: [c.name, "congress stock trades", "STOCK Act", "committee assignments"], sources: c.chamber === "senate" ? [SOURCES.senate] : c.chamber === "house" ? [SOURCES.house] : [SOURCES.house, SOURCES.senate], parentCatalogPath: COMMITTEES_PATH });
 const short = c.name.replace(/^(House|Senate) Committee on (the )?/, (_m, ch) => `${ch} `);
-const jump: [string, string][] = [["#members", "Members"], ...(stocks.length ? [["#most-traded", "Most-traded stocks"] as [string, string]] : []), ...(c.trades ? [["#trades", "Trades"] as [string, string]] : []), ["#about", "About this page"]];
+const jump: [string, string][] = [["#members", "Members"], ...(stocks.length ? [["#most-traded", "Most-traded stocks"] as [string, string]] : []), ...(c.trades ? [["#trades", "Trades"] as [string, string]] : []), ...(lcMembers.length ? [["#lobbyist-contributions", "Lobbyist contributions"] as [string, string]] : []), ["#about", "About this page"]];
 const sortTh = (label: string, type: "text" | "num", cls?: string) => ({ label, type, cls });
 const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat", "text"), sortTh("Role", "text"), sortTh("Trades", "num", "num"), sortTh("Trades, 12 months", "num", "num"), sortTh("Latest disclosure", "num")];
 ---
@@ -144,6 +146,32 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
       <p class="section-note">Newest disclosures first, each with a link to the original report. {c.trades > COMMITTEE_TRADE_ROWS ? `The table holds the ${COMMITTEE_TRADE_ROWS} most recent of ${num(c.trades)} rows; every row is on the member's own page.` : "Every row is also on the member's own page."} A trade may predate the member's seat on this committee.</p>
       <ScreenerLink committee={c.code} n={screenerCountsFor(model, personPath).committee.get(c.code) ?? 0} of="by this committee's members" />
       <TxnTable model={model} txns={c.txns} showPerson showSecurity limit={COMMITTEE_TRADE_ROWS} />
+    </section>
+  )}
+
+  {lcMembers.length > 0 && (
+    <section aria-labelledby="lobbyist-contributions" data-committee-lobbycontrib data-n={lcMembers.length}>
+      <h2 id="lobbyist-contributions">Lobbyist contributions naming members</h2>
+      <p class="section-note" data-lcc-summary>{plural(lcMembers.length, "current member")} of the {n} on record {lcMembers.length === 1 ? "is" : "are"} named as honoree, or have a campaign committee named as payee, in at least one contribution item on a lobbyist's Form LD-203 report.</p>
+      <p class="section-note" data-lcc-caveat>{COMMITTEE_LOBBY_CAVEAT} <a href="/lobbyist-contributions/">All lobbyist contributions</a></p>
+      <div class="tablewrap"><table class="data" data-sortable>
+        <thead><tr>
+          <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by member">Member<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by items">Items<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by filers, most in one year">Filers, most in one year<span class="arr" aria-hidden="true"></span></button></th>
+          <th aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by newest item">Newest item<span class="arr" aria-hidden="true"></span></button></th>
+        </tr></thead>
+        <tbody>
+          {lcMembers.map((m) => (
+            <tr data-lcc-row>
+              <td data-v={m.name.toLowerCase()}><a href={m.path}>{m.name}</a></td>
+              <td class="num" data-v={m.items}>{num(m.items)}</td>
+              <td class="num" data-v={m.filers}>{num(m.filers)}</td>
+              <td class="mono" data-v={m.newest ? m.newest.replaceAll("-", "") : ""}>{m.newest ? formatDate(m.newest) : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
     </section>
   )}
 

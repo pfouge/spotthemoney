@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  cleanText, dateOnly, fecToBioguide, hasIeShape, ieUrl, minusDays, nextCursor, parseIeRow, DESCRIPTION_MAX, type ParseNotes,
+  cleanText, dateOnly, fecToBioguide, personForCandidate, hasIeShape, ieUrl, minusDays, nextCursor, parseIeRow, DESCRIPTION_MAX, type ParseNotes,
 } from "./fecie.js";
 
 const notes = (): ParseNotes => ({ futureDate: 0, badDate: 0 });
@@ -99,4 +99,14 @@ test("ieUrl carries the cycle, both notice values, min_date and the cursor", () 
 
 test("minusDays", () => {
   assert.equal(minusDays("2026-03-01", 30), "2026-01-30");
+});
+
+test("personForCandidate goes candidate id to Bioguide ID to person, by ids only", () => {
+  const fecBio = fecToBioguide([{ id: { bioguide: "A000001", fec: ["H4PA00001", "s9xx00009"] } }, { id: { bioguide: "B000002", fec: ["S0TX00002"] } }]);
+  const bioId = new Map<string, number>([["A000001", 11]]);
+  assert.equal(personForCandidate("H4PA00001", fecBio, bioId), 11);
+  assert.equal(personForCandidate(" S9XX00009 ", fecBio, bioId), 11);
+  assert.equal(personForCandidate("S0TX00002", fecBio, bioId), null); // bioguide not in people
+  assert.equal(personForCandidate("H0ZZ00000", fecBio, bioId), null); // not on the roster
+  assert.equal(personForCandidate(null, fecBio, bioId), null);
 });

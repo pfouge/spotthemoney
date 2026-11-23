@@ -22,7 +22,7 @@ const noBrowser = args.includes("--no-browser");
 const PATH = "/company-financials/", DATA = "/data/financials-screener.json";
 const FIGS = ["revenue", "net_income", "eps_diluted", "assets", "equity"];
 const REV_MIN = [1e8, 1e9, 1e10, 1e11], REV_MAX = [1e8, 1e9, 1e10], ASSET_MIN = [1e9, 1e10, 1e11];
-const KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "sort", "dir", "page", "per"];
+const KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "sort", "dir", "page", "per"];
 let failures = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { failures++; if (failures <= 60) console.log(`✗ ${msg}`); } return !!cond; };
 
@@ -76,6 +76,16 @@ if (!/data-finscreen/.test(html)) {
 ok(finCsvRes.status === 200, "company-financials.csv is served");
 const finCsv = parseCsv(finCsvRes.text);
 const coCsv = parseCsv((await get("/downloads/companies.csv")).text);
+// Executive pay: the oracle is executive-pay.csv (written by another code path): for each company
+// the newest fiscal year that has a principal executive officer total.
+const payCsv = parseCsv((await get("/downloads/executive-pay.csv")).text);
+const payBy = new Map();
+for (const r of payCsv) {
+  const peo = r.peo_total === "" || r.peo_total == null ? null : Number(r.peo_total);
+  if (peo == null || !Number.isFinite(peo)) continue;
+  const k = String(r.cik).padStart(10, "0"), cur = payBy.get(k);
+  if (!cur || r.fiscal_year_end > cur.fye) payBy.set(k, { peo, fye: r.fiscal_year_end });
+}
 const coByCik = new Map(coCsv.map((r) => [String(r.cik).padStart(10, "0"), r]));
 const numOrNull = (s) => (s === "" || s == null ? null : Number(s));
 function periodOf(r) {
@@ -94,7 +104,7 @@ for (const [cik, e] of byCik) {
   const year = periodOf(newest("fiscal_year")), quarter = periodOf(newest("quarter"));
   if (!year && !quarter) continue;
   const any = e.rows[0], co = coByCik.get(cik);
-  oracle.push({ cik, name: any.company, ticker: any.ticker || "", unit: any.currency, path: (any.page_url || "").replace(/^https?:\/\/[^/]+/, ""), division: co?.sic_division || "", sic: co?.sic_code || "", year, quarter });
+  oracle.push({ cik, name: any.company, ticker: any.ticker || "", unit: any.currency, path: (any.page_url || "").replace(/^https?:\/\/[^/]+/, ""), division: co?.sic_division || "", sic: co?.sic_code || "", year, quarter, pay: payBy.get(cik) ?? null });
 }
 const oByCik = new Map(oracle.map((o) => [o.cik, o]));
 const rowsOf = (period) => oracle.filter((o) => o[period]).map((o) => ({ o, p: o[period] }));
@@ -105,12 +115,13 @@ function matches(r, f) {
   if (f.rmin) { const v = usd(r, "revenue"); if (v == null || v < f.rmin) return false; }
   if (f.rmax) { const v = usd(r, "revenue"); if (v == null || v > f.rmax) return false; }
   if (f.amin) { const v = usd(r, "assets"); if (v == null || v < f.amin) return false; }
+  if (f.pay && !r.o.pay) return false;
   if (f.ni) { const v = r.p.v.net_income; if (v == null || (f.ni === "pos" ? !(v > 0) : !(v < 0))) return false; }
   if (f.q) { const hay = `${r.o.name} ${r.o.ticker}`.toLowerCase(); if (!f.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w))) return false; }
   return true;
 }
 function sorted(rows, key, dir) {
-  const val = (r) => (key === "company" ? r.o.name.toLowerCase() : key === "end" ? r.p.end : usd(r, key));
+  const val = (r) => (key === "company" ? r.o.name.toLowerCase() : key === "end" ? r.p.end : key === "pay" ? r.o.pay?.peo ?? null : usd(r, key));
   const sign = dir === "asc" ? 1 : -1;
   return [...rows].sort((a, b) => {
     const x = val(a), y = val(b);
@@ -132,9 +143,10 @@ ok(data.companies.length === oracle.length, `the data file has ${data.companies.
 ok(new Set(data.companies.map((c) => c[3])).size === data.companies.length, "no company is in the data file twice");
 let figures = 0, heldSeen = 0;
 for (const c of data.companies) {
-  const [name, path, ticker, cik, di, sic, unit, y, q] = c;
+  const [name, path, ticker, cik, di, sic, unit, y, q, payPeo, payFye] = c;
   const o = oByCik.get(cik);
   if (!ok(!!o, `${name} (${cik}) is in the data file but has no newest period in company-financials.csv`)) continue;
+  ok((payPeo ?? null) === (o.pay?.peo ?? null) && (payFye || "") === (o.pay?.fye ?? ""), `${name}: executive pay ${payPeo} (${payFye}) in the data file, executive-pay.csv gives ${o.pay?.peo ?? null} (${o.pay?.fye ?? ""})`);
   ok(name === o.name && ticker === o.ticker && unit === o.unit && path === o.path, `${name}: name, ticker, currency or page differ from company-financials.csv`);
   ok((data.divisions[di]?.name ?? "") === o.division && sic === o.sic, `${name}: division "${data.divisions[di]?.name ?? ""}" and code ${sic}, companies.csv gives "${o.division}" and ${o.sic}`);
   if (data.divisions[di]) ok(data.divisions[di].slug === slugOf(o.division), `${name}: the division's page name ${data.divisions[di].slug}`);
@@ -161,6 +173,7 @@ ok(trs.map((r) => r.cik).join() === first.map((r) => r.o.cik).join(), `the page 
 const cellsExpected = (r) => [
   `${r.o.name}${r.o.ticker ? ` ${r.o.ticker}` : ""}`, r.o.division, shortDate(r.p.end),
   ...FIGS.map((f) => (r.p.held[f] ? "not shown" : r.p.v[f] == null ? "" : printed(f, r.p.v[f], r.o.unit))),
+  r.o.pay ? money(r.o.pay.peo, "USD") : "", r.o.pay ? shortDate(r.o.pay.fye) : "",
   `${r.p.form} ↗`,
 ];
 trs.forEach((tr, i) => {
@@ -169,7 +182,7 @@ trs.forEach((tr, i) => {
   ok(got.join("|") === want.join("|"), `${r.o.name}: the row reads "${got.join(" | ")}", expected "${want.join(" | ")}"`);
   ok(!r.o.path || tr.cells[0].includes(`href="${r.o.path}"`), `${r.o.name}: the name links to the company's page`);
   ok(!r.o.division || tr.cells[1].includes(`href="/industries/${slugOf(r.o.division)}/"`), `${r.o.name}: the industry links to its division page`);
-  ok(tr.cells[8].includes(`href="${r.p.url}"`) && tr.cells[8].includes(`title="Filed ${shortDate(r.p.filed)}"`), `${r.o.name}: the report link is the CSV's newest report, with its filing date`);
+  ok(tr.cells[10].includes(`href="${r.p.url}"`) && tr.cells[10].includes(`title="Filed ${shortDate(r.p.filed)}"`), `${r.o.name}: the report link is the CSV's newest report, with its filing date`);
   for (const f of FIGS) if (r.p.held[f] && r.p.filedValues[f] != null) ok(!strip(tr.cells.join(" ")).includes(printed(f, r.p.filedValues[f], r.o.unit)), `${r.o.name}: a held-back ${f} is printed`);
 });
 const years = rowsOf("year"), quarters = rowsOf("quarter");
@@ -235,10 +248,10 @@ if (chromium) {
   ok(jsFirst.join("\n") === trs.map((r) => r.cells.map(strip).join("|")).join("\n"), "the rows printed without JavaScript are the first page with JavaScript, cell for cell");
 
   // Every option of every filter, in both periods.
-  const offered = { division: await optionsOf("division"), unit: await optionsOf("unit"), rmin: await optionsOf("rmin"), rmax: await optionsOf("rmax"), ni: await optionsOf("ni"), amin: await optionsOf("amin") };
+  const offered = { division: await optionsOf("division"), unit: await optionsOf("unit"), rmin: await optionsOf("rmin"), rmax: await optionsOf("rmax"), ni: await optionsOf("ni"), amin: await optionsOf("amin"), pay: await optionsOf("pay") };
   ok(offered.division.filter(Boolean).sort().join() === data.divisions.map((d) => d.slug).sort().join(), "the industry filter offers the divisions in the data file");
   ok(offered.unit.length === 0 || offered.unit.filter(Boolean).sort().join() === [...new Set(oracle.map((o) => o.unit))].sort().join(), "the currency filter offers the currencies companies report in");
-  ok(offered.rmin.join() === ["0", ...REV_MIN].join() && offered.rmax.join() === ["0", ...REV_MAX].join() && offered.amin.join() === ["0", ...ASSET_MIN].join() && offered.ni.join() === ",pos,neg", "the amount filters offer the steps this script knows");
+  ok(offered.rmin.join() === ["0", ...REV_MIN].join() && offered.rmax.join() === ["0", ...REV_MAX].join() && offered.amin.join() === ["0", ...ASSET_MIN].join() && offered.ni.join() === ",pos,neg" && offered.pay.join() === "0,1", "the amount filters offer the steps this script knows");
   let optionChecks = 0;
   for (const period of ["year", "quarter"]) {
     await page.selectOption('[data-fs="period"]', period);
@@ -246,12 +259,12 @@ if (chromium) {
     ok((await page.locator('[data-fs="endhead"]').textContent()) === (period === "quarter" ? "Quarter ended" : "Fiscal year ended"), `period ${period}: the date column is titled for it`);
     for (const [key, values] of Object.entries(offered)) for (const value of values.filter((v) => v && v !== "0")) {
       await page.selectOption(`[data-fs="${key}"]`, value);
-      const f = { period, [key]: ["rmin", "rmax", "amin"].includes(key) ? Number(value) : value };
+      const f = { period, [key]: ["rmin", "rmax", "amin", "pay"].includes(key) ? Number(value) : value };
       const want = expect(f).length, got = await shown();
       optionChecks++;
       ok(got === want, `${period}, ${key}=${value}: ${got} companies on screen, the oracle gives ${want}`);
       if (want > 0 && want <= 100) ok((await pageCiks()).join() === expect(f).slice(0, 50).map((r) => r.o.cik).join(), `${period}, ${key}=${value}: the companies on screen are the oracle's, in order`);
-      await page.selectOption(`[data-fs="${key}"]`, ["rmin", "rmax", "amin"].includes(key) ? "0" : "");
+      await page.selectOption(`[data-fs="${key}"]`, ["rmin", "rmax", "amin", "pay"].includes(key) ? "0" : "");
     }
   }
   // Combined views, paged through, company by company.
@@ -266,6 +279,9 @@ if (chromium) {
     { f: { rmin: 1e11, rmax: 1e8 }, sort: "revenue", dir: "desc" },
     { f: { amin: 1e10, ni: "pos" }, sort: "equity", dir: "asc" },
     { f: { period: "quarter" }, sort: "eps_diluted", dir: "desc" },
+    { f: { pay: 1 }, sort: "pay", dir: "desc" },
+    { f: {}, sort: "pay", dir: "asc" },
+    { f: { period: "quarter", pay: 1, ni: "pos" }, sort: "pay", dir: "desc" },
   ];
   const hashOf = (c) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(c.f)) p.set(k, String(v)); if (c.sort !== "revenue" || c.dir !== "desc") { p.set("sort", c.sort); p.set("dir", c.dir); } const s = p.toString(); return s ? `#${s}` : ""; };
   for (const c of combos) {
@@ -276,7 +292,7 @@ if (chromium) {
   }
   // Sorting by clicking a column title: first click, second click, third click.
   await open();
-  for (const key of ["company", "end", "net_income", "assets"]) {
+  for (const key of ["company", "end", "net_income", "assets", "pay"]) {
     const firstDir = key === "company" ? "asc" : "desc", other = firstDir === "asc" ? "desc" : "asc";
     await page.click(`th[data-sort="${key}"] button`);
     ok((await pageCiks()).join() === expect({}, key, firstDir).slice(0, 50).map((r) => r.o.cik).join(), `sort by ${key}: first click is ${firstDir}`);
@@ -324,7 +340,7 @@ if (chromium) {
     const every = await grab();
     ok(every.rows.length === years.length && every.name === `company-financials-fiscal-year-${data.built}.csv`, `with no filter the download has every company (${every.rows.length} of ${years.length}) and is named ${every.name}`);
     ok(every.rows.map((r) => r.cik).join() === expect().map((r) => r.o.cik).join(), "the download is in the order shown, every page");
-    ok(every.rows.every((r) => { const o = oByCik.get(r.cik); const p = o?.year; return p && r.company === o.name && r.currency === o.unit && r.period === "fiscal_year" && r.period_end === p.end && FIGS.every((f) => r[f] === (p.v[f] == null ? "" : String(p.v[f]))) && r.not_shown === FIGS.filter((f) => p.held[f]).join("; ") && r.report_url === p.url && r.sic_division === o.division; }), "each downloaded row equals the oracle's newest fiscal year, held-back figures blank and named");
+    ok(every.rows.every((r) => { const o = oByCik.get(r.cik); const p = o?.year; return p && r.company === o.name && r.currency === o.unit && r.period === "fiscal_year" && r.period_end === p.end && FIGS.every((f) => r[f] === (p.v[f] == null ? "" : String(p.v[f]))) && r.not_shown === FIGS.filter((f) => p.held[f]).join("; ") && r.report_url === p.url && r.sic_division === o.division && numOrNull(r.ceo_pay_total) === (o.pay?.peo ?? null) && (r.ceo_pay_fiscal_year_end || "") === (o.pay?.fye ?? ""); }), "each downloaded row equals the oracle's newest fiscal year, held-back figures blank and named, and executive pay as executive-pay.csv has it");
     // A filtered, sorted quarter view that has rows (the first of these that matches anything).
     const pickNi = ["neg", "pos"].find((ni) => expect({ period: "quarter", ni }).length > 0);
     if (pickNi) {

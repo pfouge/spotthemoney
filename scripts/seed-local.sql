@@ -270,11 +270,37 @@ insert into contracts (recipient, awarding_agency, amount, action_date, naics, s
   -- SEED6 a code in no edition (shown without a title), SEED7 no code at all.
   ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 150000, current_date - 20, '999999', 'CONT_AWD_SEED6', null, null, null),
   ('ACME LOGISTICS LLC', 'Department of Veterans Affairs', 90000, current_date - 25, null, 'CONT_AWD_SEED7', null, null, null);
-insert into committees (fec_id, name, party, committee_type) values
-  ('C00SEED001', 'Whitfield for Congress', 'REP', 'H'), ('C00SEED002', 'Marsh for California', 'DEM', 'H'), ('C00SEED003', 'Freedom Forward PAC', null, 'PAC');
+-- Committees. Principal campaign committees of seeded members carry the FEC candidate id and the
+-- member (migration 0040; lib/campaign.ts): Whitfield (receipts in the last 90 days and older
+-- ones, and one dated in the future that is never counted), Marsh (older receipts only), Okafor
+-- (none). Lindqvist's committee has a candidate id and no member (the roster did not link it): it
+-- gets receipts and must get no section anywhere. The PAC stays as it was.
+insert into committees (fec_id, name, party, committee_type, candidate_fec_id, person_id, donations_history_note) values
+  ('C00SEED001', 'Whitfield for Congress', 'REP', 'H', 'H4PA00001', (select id from people where slug = 'jordan-whitfield'), 'Seed note: every receipt since 2025-10-01.'),
+  ('C00SEED002', 'Marsh for California', 'DEM', 'H', 'H6CA00002', (select id from people where slug = 'elena-marsh'), 'Seed note: the newest 200 receipts of each 30-day slice since 2025-10-01 (a sample).'),
+  ('C00SEED003', 'Freedom Forward PAC', null, 'PAC', null, null, null),
+  ('C00SEED004', 'Okafor Ohio Victory Committee', 'DEM', 'H', 'H8OH00004', (select id from people where slug = 'samuel-okafor'), null),
+  ('C00SEED005', 'Lindqvist for Senate Committee', 'DEM', 'S', 'S2WA00005', null, null);
 insert into donations (committee_id, donor_name, donor_employer, donor_state, amount, donated_at, source_ref)
 select c.id, 'WITHHELD', e, st, a, current_date - d, 'seed-' || row_number() over ()
-  from committees c, (values ('Self-employed','TX',2500,3),('Retired','CA',1000,10),('Microsoft','WA',3300,15),('Lockheed Martin','MD',2900,22),('Not employed','OH',250,40)) as t(e, st, a, d);
+  from committees c, (values ('Self-employed','TX',2500,3),('Retired','CA',1000,10),('Microsoft','WA',3300,15),('Lockheed Martin','MD',2900,22),('Not employed','OH',250,40)) as t(e, st, a, d)
+ where c.fec_id in ('C00SEED001', 'C00SEED002', 'C00SEED003');
+-- Marsh: only older receipts (nothing in the last 90 days).
+delete from donations where committee_id = (select id from committees where fec_id = 'C00SEED002') and donated_at > current_date - 90;
+-- More receipts for the campaign committee sections (lib/campaign.ts). Donor names are never shown; the
+-- employers include blank, N/A, NONE, RETIRED, NOT EMPLOYED and SELF-EMPLOYED spellings that the list leaves out.
+insert into donations (committee_id, donor_name, donor_employer, donor_state, amount, donated_at, source_ref)
+select (select id from committees where fec_id = c), 'WITHHELD', e, st, a, current_date - d, 'seed-camp-' || row_number() over ()
+  from (values
+    ('C00SEED001', 'Lockheed Martin', 'MD', 1200, 120), ('C00SEED001', 'Lockheed Martin', 'VA', 800, 140), ('C00SEED001', 'Acme Logistics', 'PA', 3000, 200),
+    ('C00SEED001', 'Acme Logistics', 'PA', 500, 5), ('C00SEED001', 'N/A', 'NY', 700, 8), ('C00SEED001', 'NONE', 'NY', 300, 9), ('C00SEED001', '', 'FL', 150, 30),
+    ('C00SEED001', 'Self', 'PA', 400, 31), ('C00SEED001', 'SELF-EMPLOYED', 'PA', 600, 33), ('C00SEED001', 'Retired', 'PA', 250, 45), ('C00SEED001', 'Not Employed', 'OH', 100, 46),
+    ('C00SEED001', 'Palantir Technologies', 'CO', 2800, 60), ('C00SEED001', 'Brownstein Hyatt', 'CO', 1900, 75),
+    ('C00SEED001', 'Future Corp', 'TX', 9999, -20),
+    ('C00SEED002', 'Microsoft', 'WA', 2000, 100), ('C00SEED002', 'Microsoft', 'CA', 1500, 130), ('C00SEED002', 'Palantir Technologies', 'CA', 900, 170), ('C00SEED002', 'Retired', 'CA', 200, 220),
+    ('C00SEED005', 'Lockheed Martin', 'WA', 1000, 12), ('C00SEED005', 'Microsoft', 'WA', 2500, 20)
+  ) as t(c, e, st, a, d);
+update donations set donor_employer = null where donor_employer = '' and source_ref like 'seed-camp-%';
 
 -- Stored, not shown (lib/coverage-stored.ts; /data/coverage.json key storedNotShown and the
 -- methodology's coverage list). Form 144: three notices and one amendment in two months, the
@@ -791,6 +817,7 @@ insert into lobby_contribution_filings (filing_uuid, filing_type, filing_year, f
   ('seed-c11', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9006, 'PALANTIR TECHNOLOGIES INC.', null, false, (current_date - 100)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c11/print/', 2),
   ('seed-c12', 'Year-End Report', extract(year from current_date)::int - 1, 'Year-End (Jul 1 - Dec 31)', 'Lobbyist', 9003, 'BROWNSTEIN HYATT FARBER SCHRECK', 'DANA REYES', false, (current_date - 299)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c12/print/', 2),
   ('seed-c13', 'Mid-Year Report', extract(year from current_date)::int - 1, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9002, 'LOCKHEED MARTIN CORP', null, false, (current_date - 470)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c13/print/', 1),
+  ('seed-c15', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9008, 'CAPITOL ADVISORS LLC', 'JAN PRICE', false, (current_date - 80)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c15/', 6),
   ('seed-c14', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9007, 'ACME LOGISTICS LLC', 'RAY OKONKWO', false, (current_date - 90)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c14/print/', 1);
 insert into lobby_contribution_items (filing_uuid, seq, contribution_type, contributor_name, payee_name, honoree_name, amount, contributed_at) values
   ('seed-c01', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 1000, current_date - 500),
@@ -817,7 +844,17 @@ insert into lobby_contribution_items (filing_uuid, seq, contribution_type, contr
   ('seed-c12', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 2700, current_date - 310),
   ('seed-c12', 2, 'FECA', 'SELF', 'LEADERSHIP FUND', 'Marcus Delacroix', 1000, current_date - 305),
   ('seed-c13', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'MARSH VICTORY FUND', 'Elena Marsh', 2000, current_date - 480),
-  ('seed-c14', 1, 'FECA', 'SELF', 'NO NAME COMMITTEE', 'Dr. Jordan Whitfield <"friend"> & guests', 600, current_date - 95);
+  ('seed-c14', 1, 'FECA', 'SELF', 'NO NAME COMMITTEE', 'Dr. Jordan Whitfield <"friend"> & guests', 600, current_date - 95),
+  -- the payee rule (lib/lobbygifts.ts memberForItem): the payee equals a linked member committee's name, the honoree is blank or N/A
+  ('seed-c15', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', null, 1800, current_date - 85),
+  ('seed-c15', 2, 'FECA', 'SELF', 'Marsh for California, Inc.', 'N/A', 700, current_date - 84),
+  -- near misses: not the committee's name, so nobody
+  ('seed-c15', 3, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS VICTORY FUND', null, 400, current_date - 83),
+  ('seed-c15', 4, 'FECA', 'SELF', 'MARSH FOR CALIFORNIA VICTORY FUND', 'N/A', 650, current_date - 82),
+  -- the honoree names a member and wins over the payee, which is another member's committee
+  ('seed-c15', 5, 'FECA', 'SELF', 'OKAFOR OHIO VICTORY COMMITTEE', 'Elena Marsh', 900, current_date - 81),
+  -- a linked committee that holds no receipts: the member still gets the LD-203 item
+  ('seed-c15', 6, 'FECA', 'SELF', 'Okafor Ohio Victory Committee', '', 1100, current_date - 80);
 
 -- The pages show roll-call votes, outside spending and lobbyist contributions only once the
 -- first load of each has finished (a run that says so in ingest_runs). The seed says so too.

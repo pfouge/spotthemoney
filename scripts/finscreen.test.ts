@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   packFinScreen, unpackFinScreen, rowsFor, finMatches, finScreen, sortFsRows, fsSummaryLine, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, finScreenCounts, finScreenerHref,
-  fsCellText, fsViewCsv, fsViewCsvName, finScreenLog, usd, stepLabel, revMinLabel,
+  fsCellText, fsPayText, fsViewCsv, fsViewCsvName, finScreenLog, usd, stepLabel, revMinLabel,
   NO_FS_FILTER, DEFAULT_FS_VIEW, FS_CONCEPTS, FS_KEYS, REV_MIN_STEPS, REV_MAX_STEPS, ASSET_MIN_STEPS, type FsCompany, type FsPeriod, type FsConcept,
 } from "../web/src/lib/finscreen";
 
@@ -142,4 +142,38 @@ test("cells, labels and the file of the rows on screen", () => {
   assert.match(log, /net income above zero 3, below zero 1/);
   assert.match(log, /figures not shown 2 \(fiscal year\), 0 \(quarter\)/);
   for (const bad of ["score", "rating", "best", "worst", "cheap", "undervalued"]) assert.ok(!log.toLowerCase().includes(bad));
+});
+
+test("executive pay: packed, filtered by pay=1, sorted with none last, in the file and the address", () => {
+  const withPay = companies.map((c) => (c.name === "Alpha" ? { ...c, pay: { peo: 21_400_000, fye: "2025-12-31" } } : c.name === "Gamma" ? { ...c, pay: { peo: 3_000_000, fye: "2026-03-31" } } : c.name === "Beta" ? { ...c, pay: { peo: 9_900_000, fye: "2026-06-30" } } : c));
+  const d = packFinScreen("2026-11-22", withPay);
+  assert.deepEqual(Object.keys(d), ["built", "divisions", "companies"]);
+  const pa = unpackFinScreen(d);
+  assert.deepEqual(pa.find((c) => c.name === "Alpha")!.pay, { peo: 21_400_000, fye: "2025-12-31" });
+  assert.equal(pa.find((c) => c.name === "Delta")!.pay, null);
+  // An older file with no pay items still reads.
+  const old = { ...d, companies: d.companies.map((c) => c.slice(0, 9)) } as unknown as typeof d;
+  assert.equal(unpackFinScreen(old)[0]!.pay, null);
+  const rows = (f: Partial<typeof NO_FS_FILTER>) => finScreen(pa, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, ...f }, sort: "pay", dir: "desc" }).rows.map((r) => r.c.name);
+  assert.deepEqual(rows({ pay: 1 }), ["Alpha", "Beta", "Gamma"]);
+  assert.deepEqual(rows({}), ["Alpha", "Beta", "Gamma", "alpha two", "Delta"]);
+  const asc = finScreen(pa, { ...DEFAULT_FS_VIEW, sort: "pay", dir: "asc" }).rows.map((r) => r.c.name);
+  assert.deepEqual(asc, ["Gamma", "Beta", "Alpha", "alpha two", "Delta"], "no pay sorts last in either direction, ties by name");
+  // Pay is dollars whatever the company's reporting currency, so a yen reporter is sorted with the rest.
+  assert.equal(fsPayText(pa.find((c) => c.name === "Gamma")!), "$3.0M");
+  assert.equal(fsPayText(pa.find((c) => c.name === "Delta")!), "");
+  // Address.
+  const v = parseFinHash("#pay=1&sort=pay");
+  assert.equal(v.f.pay, 1); assert.equal(v.sort, "pay"); assert.equal(v.dir, "desc");
+  assert.equal(toFinHash(v), "#pay=1&sort=pay&dir=desc");
+  assert.equal(parseFinHash("#pay=2").f.pay, 0);
+  assert.ok(isFsViewHash("#pay=1") && !isDefaultFsFilter(v.f) && FS_KEYS.includes("pay"));
+  // CSV.
+  const csv = fsViewCsv(pa, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, pay: 1 } });
+  const lines = (csv.charCodeAt(0) === 0xfeff ? csv.slice(1) : csv).trim().split("\r\n");
+  const head = lines[0]!.split(",");
+  assert.ok(head.includes("ceo_pay_total") && head.includes("ceo_pay_fiscal_year_end"));
+  assert.equal(lines.length, 4);
+  assert.ok(lines[1]!.includes("21400000") && lines[1]!.includes("2025-12-31"));
+  assert.ok(fsViewCsvName({ ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, pay: 1 } }, "2026-11-22").includes("pay-on-file"));
 });

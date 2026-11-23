@@ -240,9 +240,36 @@ const guide = await get("/guides/form-8-k-company-events/");
 ok(guide.status === 200 && /four business days/.test(guide.text), "the guide is missing or does not state the deadline");
 const dl = await get("/downloads/");
 ok(dl.text.includes(`/downloads/${FILE}`) && /data-dict="events"/.test(dl.text), "the downloads page does not list the file and its columns");
-// An insider page carries no events section.
-const insiderLink = [...(await get("/insiders/")).text.matchAll(/href="(\/insiders\/[a-z0-9-]+\/)"/g)].map((m) => m[1])[0];
-if (insiderLink) ok(!(await get(insiderLink)).text.includes("data-company-events"), `${insiderLink}: an events section on an insider page`);
+// An insider page carries no events section, only one line that points to the company's.
+const insiderLinks = [...new Set([...(await get("/insiders/")).text.matchAll(/href="(\/insiders\/[a-z0-9-]+\/)"/g)].map((m) => m[1]))];
+if (insiderLinks[0]) ok(!(await get(insiderLinks[0])).text.includes("data-company-events"), `${insiderLinks[0]}: an events section on an insider page`);
+// The line "N company events (Form 8-K) reported by <company> in the last 12 months" on insider pages:
+// N equals the recount from the events CSV for that company, the link goes to the company page's
+// section anchor (which exists), and a line is there exactly when the count is above zero.
+let insiderLines = 0, insiderNone = 0;
+for (const link of insiderLinks.slice(0, 80)) {
+  const ip = await get(link);
+  if (ip.status !== 200) continue;
+  const line = ip.text.match(/<p[^>]*data-insider-events[^>]*>[\s\S]*?<\/p>/)?.[0] ?? null;
+  const cpath = ip.text.match(/<dt>Company<\/dt><dd><a href="([^"]+)"/)?.[1] ?? null;
+  const cpage = cpath ? await get(cpath) : null;
+  const sec = cpage && cpage.status === 200 ? section(cpage.text) : null;
+  const cik = sec ? attr(sec.tag, "data-cik") : null;
+  const want = cik && byCik.has(cik) ? win(cik).length : 0;
+  if (!line) {
+    ok(want === 0, `${link}: no events line, but ${cpath} has ${want} reports in the window`);
+    insiderNone++;
+    continue;
+  }
+  insiderLines++;
+  ok(Number(attr(line, "data-n")) === want && want > 0, `${link}: the line says ${attr(line, "data-n")}, the CSV recount for ${cpath} gives ${want}`);
+  const href = (line.match(/href="([^"]+)"/) ?? [])[1];
+  ok(href === `${cpath}#company-events-section`, `${link}: the line links to ${href}, expected ${cpath}#company-events-section`);
+  ok(!!cpage && cpage.text.includes('id="company-events-section"'), `${link}: the anchor is not on ${cpath}`);
+  const t = text(line);
+  ok(t.startsWith(`${want.toLocaleString("en-US")} company event${want === 1 ? "" : "s"} (Form 8-K) reported by `) && t.endsWith("in the last 12 months."), `${link}: the line reads "${t}"`);
+  ok(!sentenceOfWords.test(t) && !/[—–]/.test(t), `${link}: wording or a dash in the line`);
+}
 
 // ── in a browser, when there is one ─────────────────────────────────────────────────────────
 let browserChecks = "no browser";
@@ -311,5 +338,5 @@ try {
 
 console.log(failures
   ? `verify-events: ${failures} of ${checks} checks failed`
-  : `verify-events: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} reports for ${byCik.size} companies, ${amendments} amendments, ${want365.length} in the last 12 months; hub ${hubTrs.length} rows printed; ${old} company with reports only before the window has no section; browser: ${browserChecks})`);
+  : `verify-events: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} reports for ${byCik.size} companies, ${amendments} amendments, ${want365.length} in the last 12 months; hub ${hubTrs.length} rows printed; ${old} company with reports only before the window has no section; ${insiderLines} insider pages with an events line and ${insiderNone} without; browser: ${browserChecks})`);
 process.exit(failures ? 1 : 0);

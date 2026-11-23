@@ -7,6 +7,8 @@ import { companyPath, mainTicker } from "./flagship";
 import { financialsOf } from "./financials-build";
 import { sourceFilings, type Period } from "./financials";
 import { industryOf } from "./entity";
+import { payOf } from "./execpay-build";
+import { sortYears } from "./execpay";
 import { divisionSlug } from "./industries";
 import { FS_CONCEPTS, packFinScreen, unpackFinScreen, finScreenCounts, finScreenLog, type FinScreenData, type FsCompany, type FsConcept, type FsPeriod } from "./finscreen";
 
@@ -33,7 +35,10 @@ export function finScreenCompanies(m: Flagship): FsCompany[] {
     if (!year && !quarter) continue;
     seen.add(cik);
     const ind = industryOf(m, c);
+    // The newest fiscal year that has a principal executive officer total; none = no pay on file.
+    const py = sortYears(payOf(m, cik)).find((y) => typeof y.values.peo_total === "number");
     out.push({
+      pay: py ? { peo: py.values.peo_total as number, fye: py.fiscalYearEnd } : null,
       name: c.name, path: companyPath(c), ticker: mainTicker(c) ?? "", cik,
       division: ind?.division ? { name: ind.division, slug: divisionSlug(ind.division) } : null, sic: ind?.code ?? "", unit: f.unit, year, quarter,
     });

@@ -44,16 +44,16 @@ interface ItemSql {
 }
 const ITEM_COLS = `i.contributed_at::text as date, i.contributor_name as contributor, i.contribution_type as type, i.payee_name as payee, i.honoree_name as honoree, i.amount::float8 as amount,
   f.registrant_name as registrant, f.lobbyist_name as lobbyist, f.filing_year as year, f.filing_period as period, f.posted_at::date::text as posted, f.filing_uuid as uuid, f.source_url`;
-const toItem = (r: ItemSql, slugOf: (honoree: string | null) => string | null): ItemRow => ({
+const toItem = (r: ItemSql, slugOf: (honoree: string | null, payee?: string | null) => string | null): ItemRow => ({
   date: r.date && r.date <= new Date().toISOString().slice(0, 10) ? r.date : null, contributor: cleanText(r.contributor), type: cleanText(r.type, 120), payee: cleanText(r.payee), honoree: cleanText(r.honoree),
-  amount: r.amount, registrant: cleanText(r.registrant), lobbyist: cleanText(r.lobbyist), year: r.year, period: r.period, posted: r.posted, filingUuid: r.uuid, sourceUrl: r.source_url, memberSlug: slugOf(r.honoree),
+  amount: r.amount, registrant: cleanText(r.registrant), lobbyist: cleanText(r.lobbyist), year: r.year, period: r.period, posted: r.posted, filingUuid: r.uuid, sourceUrl: r.source_url, memberSlug: slugOf(r.honoree, r.payee), viaPayee: slugOf(r.honoree, r.payee) != null && slugOf(r.honoree, null) == null,
 });
 
 function yearStats(rows: { year: number; items: number; filers: number; amount: number }[]): YearStat[] {
   return rows.map((r) => ({ year: Number(r.year), items: Number(r.items), filers: Number(r.filers), amount: Number(r.amount ?? 0) })).sort((a, b) => b.year - a.year);
 }
 
-export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, companies: Iterable<Company>, outDir = join(tmpdir(), `stm-lobbycontrib-${process.pid}`)): Promise<LobbyContribData> {
+export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, companies: Iterable<Company>, committees: Map<string, string> = new Map(), outDir = join(tmpdir(), `stm-lobbycontrib-${process.pid}`)): Promise<LobbyContribData> {
   const out = emptyLobbyContrib();
   const tot = (await sql.unsafe(`select count(*)::int as n, (select count(*)::int from lobby_contribution_filings f join (${COUNTED}) c using (filing_uuid)) as counted,
         (select max(posted_at)::date::text from lobby_contribution_filings) as newest from lobby_contribution_filings`))[0] as { n: number; counted: number; newest: string | null };
@@ -80,8 +80,14 @@ export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, compa
   const members = memberNames(people);
   const idx = buildMemberIndex(members);
   const bySlug = new Map(members.map((m) => [m.slug, m.person]));
+  // The two rules (lib/lobbygifts.ts memberForItem): the honoree names the member, or the payee equals a linked campaign committee's name.
   const slugCache = new Map<string, string | null>();
-  const slugOf = (h: string | null) => { if (!h) return null; if (slugCache.has(h)) return slugCache.get(h)!; const s = memberForItem({ honoree: h }, idx); slugCache.set(h, s); return s; };
+  const slugOf = (h: string | null, payee: string | null = null) => {
+    if (!h && !payee) return null;
+    const key = `${h ?? ""}\u0000${payee ?? ""}`;
+    if (slugCache.has(key)) return slugCache.get(key)!;
+    const s = memberForItem({ honoree: h, payee }, idx, committees); slugCache.set(key, s); return s;
+  };
 
   if (Y != null) {
     out.types = ((await sql.unsafe(`select coalesce(i.contribution_type, '') as type, count(*)::int as items, coalesce(sum(i.amount), 0)::float8 as amount
@@ -98,42 +104,56 @@ export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, compa
         from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
        where f.filing_year = ${Number(Y)} group by 1, 2 having coalesce(nullif(btrim(i.honoree_name), ''), nullif(btrim(i.payee_name), '')) is not null
        order by 3 desc, 5 desc, 1 limit ${RECIPIENT_ROWS}`)) as { name: string; role: "honoree" | "payee"; items: number; filers: number; amount: number }[];
-    out.recipients = rec.map((r): RecipientRow => ({ name: cleanText(r.name) ?? "", role: r.role, items: Number(r.items), filers: Number(r.filers), amount: Number(r.amount), memberSlug: r.role === "honoree" ? slugOf(r.name) : null }));
+    out.recipients = rec.map((r): RecipientRow => ({ name: cleanText(r.name) ?? "", role: r.role, items: Number(r.items), filers: Number(r.filers), amount: Number(r.amount), memberSlug: r.role === "honoree" ? slugOf(r.name) : (committees.get(normalizeOrgName(r.name)) ?? null) }));
   }
   out.newest = ((await sql.unsafe(`select ${ITEM_COLS} from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
        where i.contributed_at is null or i.contributed_at <= current_date order by i.contributed_at desc nulls last, f.posted_at desc nulls last, i.id desc limit ${NEWEST_ROWS}`)) as ItemSql[]).map((r) => toItem(r, slugOf));
 
-  // Honoree names of counted items, with counts; matching is done once per distinct name.
-  const honorees = (await sql.unsafe(`select i.honoree_name as h, f.filing_year as year, count(*)::int as n
-      from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
-     where i.honoree_name is not null and btrim(i.honoree_name) <> '' group by 1, 2`)) as { h: string; year: number; n: number }[];
-  const matchedNames = new Set<string>();
-  let totalNewest = 0, matchedNewest = 0;
-  for (const r of honorees) { const s = slugOf(r.h); if (s) matchedNames.add(r.h); if (Y != null && r.year === Y) { matchedNewest += s ? r.n : 0; } }
-  if (Y != null) totalNewest = Number((await sql.unsafe(`select count(*)::int as n from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid) where f.filing_year = ${Number(Y)}`))[0].n);
-  out.match = { items: totalNewest, matched: matchedNewest };
+  out.postedRecent = ((await sql.unsafe(`select f.posted_at::date::text as date, count(distinct f.filing_uuid)::int as filings
+      from lobby_contribution_filings f join (${COUNTED}) c using (filing_uuid)
+     where f.posted_at is not null and f.posted_at::date >= current_date - 30 and f.posted_at::date <= current_date
+       and exists (select 1 from lobby_contribution_items i where i.filing_uuid = f.filing_uuid)
+     group by 1 order by 1 desc`)) as { date: string; filings: number }[]).map((r) => ({ date: r.date, filings: Number(r.filings) }));
 
-  if (matchedNames.size) {
-    const names = [...matchedNames];
-    const ys = (await sql.unsafe(`select i.honoree_name as h, f.filing_year as year, count(*)::int as items, count(distinct f.registrant_id)::int as filers, coalesce(sum(i.amount), 0)::float8 as amount
+  // Items tied to a member: by the honoree, or (the payee rule) by a payee equal to a linked committee's name.
+  // Matching is done once per distinct name, then the matching items are read by name.
+  const honorees = (await sql.unsafe(`select distinct i.honoree_name as h
+      from lobby_contribution_items i where i.honoree_name is not null and btrim(i.honoree_name) <> ''`)) as { h: string }[];
+  const matchedNames = new Set<string>();
+  for (const r of honorees) if (slugOf(r.h)) matchedNames.add(r.h);
+  const matchedPayees = new Set<string>();
+  if (committees.size) {
+    const payees = (await sql.unsafe(`select distinct i.payee_name as p from lobby_contribution_items i where i.payee_name is not null and btrim(i.payee_name) <> ''`)) as { p: string }[];
+    for (const r of payees) if (committees.has(normalizeOrgName(r.p))) matchedPayees.add(r.p);
+  }
+  const hn = [...matchedNames], pn = [...matchedPayees];
+  const WHERE_M = `(i.honoree_name = any($1) or i.payee_name = any($2))`;
+  let totalNewest = 0, matchedNewest = 0;
+  if (Y != null) totalNewest = Number((await sql.unsafe(`select count(*)::int as n from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid) where f.filing_year = ${Number(Y)}`))[0].n);
+
+  if (hn.length || pn.length) {
+    const ys = (await sql.unsafe(`select i.honoree_name as h, i.payee_name as p, f.filing_year as year, count(*)::int as items, count(distinct f.registrant_id)::int as filers, coalesce(sum(i.amount), 0)::float8 as amount
         from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
-       where i.honoree_name = any($1) and f.filing_year is not null group by 1, 2`, [names])) as { h: string; year: number; items: number; filers: number; amount: number }[];
+       where ${WHERE_M} and f.filing_year is not null group by 1, 2, 3`, [hn, pn])) as { h: string | null; p: string | null; year: number; items: number; filers: number; amount: number }[];
     // Several spellings can name one member: add the items, take the larger filer count (an upper bound is not claimed: filers is the largest single spelling's).
     const bySubject = new Map<string, Map<number, YearStat>>();
     for (const r of ys) {
-      const s = slugOf(r.h)!; const m = bySubject.get(s) ?? new Map<number, YearStat>(); bySubject.set(s, m);
+      const s = slugOf(r.h, r.p); if (!s) continue;
+      if (Y != null && Number(r.year) === Y) matchedNewest += Number(r.items);
+      const m = bySubject.get(s) ?? new Map<number, YearStat>(); bySubject.set(s, m);
       const y = m.get(r.year) ?? { year: Number(r.year), items: 0, filers: 0, amount: 0 }; m.set(r.year, y);
       y.items += Number(r.items); y.amount += Number(r.amount); y.filers = Math.max(y.filers, Number(r.filers));
     }
     const rows = (await sql.unsafe(`select ${ITEM_COLS} from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
-       where i.honoree_name = any($1) order by i.contributed_at desc nulls last, f.posted_at desc nulls last, i.id desc`, [names])) as ItemSql[];
+       where ${WHERE_M} order by i.contributed_at desc nulls last, f.posted_at desc nulls last, i.id desc`, [hn, pn])) as ItemSql[];
     const lists = new Map<string, ItemRow[]>();
-    for (const r of rows) { const it = toItem(r, slugOf); const l = lists.get(it.memberSlug!) ?? []; if (l.length < MEMBER_ROWS) l.push(it); lists.set(it.memberSlug!, l); }
+    for (const r of rows) { const it = toItem(r, slugOf); if (!it.memberSlug) continue; const l = lists.get(it.memberSlug) ?? []; if (l.length < MEMBER_ROWS) l.push(it); lists.set(it.memberSlug, l); }
     for (const [slug, m] of bySubject) {
       if (!bySlug.has(slug)) continue;
       out.members.set(slug, { slug, years: [...m.values()].sort((a, b) => b.year - a.year), items: lists.get(slug) ?? [] } as Subject);
     }
   }
+  out.match = { items: totalNewest, matched: matchedNewest };
 
   // Companies: a filer whose exact normalised name equals exactly one company's name with a page.
   const co = new Map<string, number>(); const twice = new Set<string>();
@@ -152,13 +172,13 @@ export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, compa
     out.companies.set(cid, { companyId: cid, registrants: [...e.names], years: yearStats(ys), items } as CompanyContrib);
   }
 
-  out.csv = await writeCsvFiles(sql, outDir, (h) => { const s = slugOf(h); const p = s ? bySlug.get(s) : null; const pp = p ? personPath(p) : null; return pp ? SITE_URL + pp : null; });
+  out.csv = await writeCsvFiles(sql, outDir, (h, pay) => { const s = slugOf(h, pay); const p = s ? bySlug.get(s) : null; const pp = p ? personPath(p) : null; return pp ? SITE_URL + pp : null; });
   return out;
 }
 
 const HEADER = BOM + CSV_COLUMNS.map((c) => c.key).join(",") + "\r\n";
 /** One streaming pass: every item of every filing, counted or not, written to a file per year (split by period if a year passes CSV_MAX_BYTES). */
-async function writeCsvFiles(sql: Sql, dir: string, urlOf: (h: string | null) => string | null): Promise<CsvFile[]> {
+async function writeCsvFiles(sql: Sql, dir: string, urlOf: (h: string | null, payee: string | null) => string | null): Promise<CsvFile[]> {
   mkdirSync(dir, { recursive: true });
   const counted = new Set<string>((await sql.unsafe(`select filing_uuid from (${COUNTED}) c`)).map((r: { filing_uuid: string }) => r.filing_uuid));
   const q = sql.unsafe(`select f.filing_year as year, f.filing_period as period, f.filer_type, f.registrant_name, f.lobbyist_name, i.contribution_type, i.contributor_name, i.payee_name, i.honoree_name,
@@ -180,7 +200,7 @@ async function writeCsvFiles(sql: Sql, dir: string, urlOf: (h: string | null) =>
       const f = files.get(key) ?? open(key, r.year, r.period);
       const date = r.date && r.date <= today ? r.date : "";
       const cells = [r.year, r.period ? periodLabel(r.period) : "", r.filer_type ?? "", cleanText(r.registrant_name, 300), cleanText(r.lobbyist_name, 300), cleanText(r.contribution_type, 200), cleanText(r.contributor_name, 300),
-        cleanText(r.payee_name, 300), cleanText(r.honoree_name, 300), r.amount, date, r.posted, counted.has(r.filing_uuid), urlOf(r.honoree_name), r.filing_uuid, r.source_url];
+        cleanText(r.payee_name, 300), cleanText(r.honoree_name, 300), r.amount, date, r.posted, counted.has(r.filing_uuid), urlOf(r.honoree_name, r.payee_name), r.filing_uuid, r.source_url];
       const line = cells.map((c) => csvCell(c as string | number | boolean | null)).join(",") + "\r\n";
       if (!f.ws.write(line)) await once(f.ws, "drain");
       f.rows++; f.bytes += Buffer.byteLength(line);

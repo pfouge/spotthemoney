@@ -79,7 +79,7 @@ ok(!!dirCounts, "the member directory is served");
 
 const BAD = /\b(conflicts? of interest|suspicious|insider knowledge|profited from|front[- ]?ran)\b/i;
 const picked = hub.filter((_, i) => sample >= hub.length || i % Math.ceil(hub.length / sample) === 0);
-const backlinksChecked = new Set();
+let lcPages = 0; const lcAbsentOk = false; const backlinksChecked = new Set();
 let pages = 0, tradeRows = 0;
 for (const h of picked) {
   const r = await page.goto(base + h.href, { waitUntil: "load" });
@@ -90,8 +90,11 @@ for (const h of picked) {
     const fact = (k) => txt(document.querySelector(`[data-committee-facts] [data-fact="${k}"]`));
     const members = [...document.querySelectorAll("[data-committee-members] tbody tr")].map((tr) => ({ name: txt(tr.cells[0]), href: tr.cells[0].querySelector("a")?.getAttribute("href") ?? null, role: txt(tr.cells[3]), trades: txt(tr.cells[4]), trades12: txt(tr.cells[5]), latest: txt(tr.cells[6]) }));
     const stocks = [...document.querySelectorAll("[data-committee-stocks] tbody tr")].map((tr) => ({ ticker: txt(tr.cells[0]), members: txt(tr.cells[2]), trades: txt(tr.cells[3]), buys: txt(tr.cells[4]), sells: txt(tr.cells[5]) }));
+    const lcSec = document.querySelector("[data-committee-lobbycontrib]");
+    const lcc = lcSec ? { n: lcSec.getAttribute("data-n"), summary: txt(lcSec.querySelector("[data-lcc-summary]")), caveat: txt(lcSec.querySelector("[data-lcc-caveat]")), text: txt(lcSec),
+      rows: [...lcSec.querySelectorAll("tbody tr")].map((tr) => ({ name: txt(tr.cells[0]), href: tr.cells[0].querySelector("a")?.getAttribute("href") ?? null, items: txt(tr.cells[1]), filers: txt(tr.cells[2]), newest: txt(tr.cells[3]) })) } : null;
     const filers = [...document.querySelectorAll("[data-committee-trades] table.txns tbody tr")].map((tr) => tr.cells[0].querySelector("a")?.getAttribute("href") ?? txt(tr.cells[0]));
-    return { h1: txt(document.querySelector("h1")), h1s: document.querySelectorAll("h1").length, title: document.title, members, stocks, filers,
+    return { h1: txt(document.querySelector("h1")), h1s: document.querySelectorAll("h1").length, title: document.title, members, stocks, filers, lcc,
       fMembers: fact("members"), fWith: fact("with-trades"), fTrades: fact("trades"), answer: document.querySelectorAll("[data-answer]").length,
       robots: document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? "", main: txt(document.querySelector("main")),
       jump: [...document.querySelectorAll("nav.jump a")].map((a) => a.getAttribute("href")).filter((x) => x.startsWith("#")).every((x) => document.getElementById(x.slice(1))) };
@@ -124,6 +127,28 @@ for (const h of picked) {
   ok(d.stocks.every((s, i) => i === 0 || int(d.stocks[i - 1].trades) >= int(s.trades)), `${at}: most-traded table is in order`);
   ok((d.stocks.length > 0) === (total12 > 0 && d.stocks.length > 0) && (total12 > 0 || d.stocks.length === 0), `${at}: most-traded table only with trades in 12 months`);
   ok(d.title.replace(/ [|·] Spot the Money$/, "").length <= 60 || d.title.length <= 75, `${at}: title is ${d.title.length} characters`);
+  // Lobbyist contributions naming members: counts only, from the member pages' own data.
+  if (d.lcc) {
+    ok(int(d.lcc.n) === d.lcc.rows.length && d.lcc.rows.length > 0 && d.lcc.rows.length <= d.members.length, `${at}: lobbyist section says ${d.lcc.n}, has ${d.lcc.rows.length} rows, ${d.members.length} members`);
+    ok(new RegExp(`^${d.lcc.rows.length} current members? of the ${d.members.length} on record (is|are) named as honoree, or have a campaign committee named as payee`).test(d.lcc.summary), `${at}: lobbyist summary reads "${d.lcc.summary}"`);
+    ok(d.lcc.caveat.includes("A committee seat is context only") && d.lcc.caveat.includes("nothing here ties a contribution"), `${at}: lobbyist caveat is missing`);
+    ok(!/[$\u2013\u2014]/.test(d.lcc.text) && !BAD.test(d.lcc.text), `${at}: a dollar figure, a dash or conflict wording in the lobbyist section`);
+    const names = new Set(d.members.map((m) => m.href));
+    ok(d.lcc.rows.every((r) => names.has(r.href)), `${at}: a lobbyist row names someone who is not a member`);
+    ok(d.lcc.rows.every((r, i) => i === 0 || int(d.lcc.rows[i - 1].items) >= int(r.items)), `${at}: lobbyist rows are not in order of items`);
+    for (const r of d.lcc.rows.slice(0, 6)) {
+      const html = await (await fetch(base + r.href)).text();
+      const sec = html.match(/<section[^>]*data-lobby-contrib[^>]*>/)?.[0] ?? "";
+      ok(Number(sec.match(/data-items="(\d+)"/)?.[1] ?? -1) === int(r.items), `${at}: ${r.name} has ${r.items} items here, ${sec.match(/data-items="(\d+)"/)?.[1]} on their own page`);
+      const dates = [...html.matchAll(/<tr data-lc-item[^>]*>\s*<td[^>]*>([^<]*)<\/td>/g)].map((m) => Date.parse(m[1].trim() + " UTC")).filter((x) => !Number.isNaN(x));
+      const want = dates.length ? Math.max(...dates) : 0;
+      ok((r.newest ? Date.parse(r.newest + " UTC") : 0) === want, `${at}: ${r.name} newest item ${r.newest || "none"} here, differs on their own page`);
+    }
+    lcPages++;
+  } else {
+    // no section: no member of this committee has a lobbyist section of their own
+    for (const m of d.members.slice(0, 3)) { const html = await (await fetch(base + m.href)).text(); ok(!/data-lobby-contrib/.test(html) || lcAbsentOk, `${at}: ${m.name} has a lobbyist section but the committee shows none`); }
+  }
   // Two members' own pages link back to this committee.
   for (const m of d.members.filter((x) => !backlinksChecked.has(x.href)).slice(0, 2)) {
     backlinksChecked.add(m.href);
@@ -142,6 +167,6 @@ for (const p of [HUB, picked[0].href]) {
 await phone.close();
 ok(errors.length === 0, `page errors: ${errors.slice(0, 3).join(" | ")}`);
 
-console.log(failures ? `verify-committees: ${failures} problem(s) in ${checks} checks` : `verify-committees: ${hub.length} committees listed, ${pages} pages read, ${tradeRows} trade rows, ${checks} checks pass`);
+console.log(failures ? `verify-committees: ${failures} problem(s) in ${checks} checks` : `verify-committees: ${hub.length} committees listed, ${pages} pages read, ${tradeRows} trade rows, ${lcPages} with a lobbyist section, ${checks} checks pass`);
 await browser.close();
 process.exit(failures ? 1 : 0);

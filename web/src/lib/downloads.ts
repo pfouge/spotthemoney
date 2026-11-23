@@ -37,6 +37,7 @@ import { CSV_COLUMNS as OUTSIDE_COLUMNS } from "./outsidespending";
 import { isMasked, programLabel, splitListing, kindName as assistKind, type AssistanceRow } from "./assistance";
 import { CSV_COLUMNS as LOBBY_CSV_COLUMNS } from "./lobbygifts";
 import { readCsvFile } from "./lobbygifts-build";
+import { RECENT_DAYS, fecCommitteeUrl, type CampaignCommittee } from "./campaign";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -51,7 +52,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside" | "assistance" | "lobbycontrib";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside" | "assistance" | "lobbycontrib" | "campaign";
   /** Size in bytes when it is known without reading the text (files streamed to disk). */
   bytes?: number;
   columns: { key: string; about: string }[];
@@ -472,6 +473,24 @@ async function build(): Promise<Downloads> {
   ];
   void assistKind; void programLabel;
   add(file({ name: "federal-assistance.csv", group: "washington", kind: "assistance", title: "Federal grants, loans and direct payments", about: "One row per federal grant, loan or direct payment that started in the last 180 days, from USAspending. Not every award. A loan's amount is a face value.", updated: newest(assistRows.map((r) => r.startDate)) }, assistCols, assistRows));
+
+  // Campaign committees linked to members (lib/campaign.ts): counts only, no donor names and no dollar totals.
+  // Every linked committee is listed, also one with no receipts held, so the LD-203 payee rule can be checked against it.
+  if (m.campaign.shown) {
+    const campCols: Column<CampaignCommittee>[] = [
+      { key: "committee", about: "The committee's name as the FEC lists it.", get: (c) => c.name },
+      { key: "fec_id", about: "The committee's FEC id.", get: (c) => c.fecId },
+      { key: "fec_url", about: "The committee's page on fec.gov, which holds its reported totals.", get: (c) => fecCommitteeUrl(c.fecId) },
+      { key: "member", about: "The member of Congress the committee is linked to, by FEC candidate id and Bioguide id.", get: (c) => c.memberName },
+      { key: "member_page_url", about: "The member's page on this site.", get: (c) => { const p = m.people.get(c.personId); return p ? `${SITE_URL}${personPath(p)}` : null; } },
+      { key: "receipts_held", about: "Itemized receipts this site holds for the committee, dated up to the build day. A sample for a large committee, not a total.", get: (c) => c.held },
+      { key: "receipts_90d", about: `Itemized receipts held that are dated in the last ${RECENT_DAYS} days.`, get: (c) => c.held90 },
+      { key: "first_receipt", about: "Date of the earliest receipt held (YYYY-MM-DD).", get: (c) => c.first },
+      { key: "newest_receipt", about: "Date of the newest receipt held (YYYY-MM-DD).", get: (c) => c.newest },
+    ];
+    const campRows = [...m.campaign.committees].sort((a, b) => (a.memberName < b.memberName ? -1 : a.memberName > b.memberName ? 1 : a.fecId < b.fecId ? -1 : 1));
+    add(file({ name: "campaign-committees.csv", group: "washington", kind: "campaign", title: "Campaign committees linked to members", about: "One row per campaign committee linked to a member of Congress, with counts of the itemized receipts this site holds. No donor names, no sums.", updated: newest(campRows.map((c) => c.newest)) }, campCols, campRows));
+  }
 
   // Lobbyist contributions (Form LD-203): files streamed to disk by lib/lobbygifts-build.ts.
   for (const cf of m.lobbyContrib.csv) {

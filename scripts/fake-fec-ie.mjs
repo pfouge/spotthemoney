@@ -6,7 +6,7 @@
 // Modes: ok (default), down (HTTP 503 on schedule_e), noshape (200 with rows that lack the fields),
 //        notlist (200 with results as an object), limited (HTTP 429 after the first N schedule_e calls, FAKE_LIMIT_AFTER).
 // Env:   FAKE_ROWS (default 250), FAKE_SLOW_MS.
-// Routes: /schedules/schedule_e/  and  /roster.json
+// Routes: /schedules/schedule_e/, /roster.json, /candidates/search/ and /totals/pac/ (fec_committees)
 // Seek paging as OpenFEC does it: pagination.last_indexes = { last_index, last_expenditure_date },
 // sent back as ?last_index=...&last_expenditure_date=...
 import { createServer } from "node:http";
@@ -65,6 +65,19 @@ const server = createServer(async (req, res) => {
       { id: { bioguide: "NOPE999", fec: ["H8NY00099"] } }, // bioguide not in people: no link
       { id: { bioguide: "C000003" } },
     ]);
+  }
+  // fec_committees: /candidates/search/ (members' principal committees) and /totals/pac/.
+  if (u.pathname === "/candidates/search/") {
+    const office = u.searchParams.get("office");
+    const cands = office === "H"
+      ? [{ candidate_id: "H4PA00001", name: "Fake A", party: "DEM", principal_committees: [{ committee_id: "CFAKE0001", name: "A FOR CONGRESS", committee_type: "H", party: "DEM" }] },
+         { candidate_id: "H8NY00099", name: "Fake Nope", party: "REP", principal_committees: [{ committee_id: "CFAKE0002", name: "NOPE FOR NEW YORK", committee_type: "H", party: "REP" }] }]
+      : [{ candidate_id: "S0TX00002", name: "Fake B", party: "REP", principal_committees: [{ committee_id: "CFAKE0003", name: "B FOR SENATE", committee_type: "S", party: "REP" }] }];
+    return send(200, { results: cands, pagination: { count: cands.length, per_page: 100, pages: 1 } });
+  }
+  if (u.pathname === "/totals/pac/") {
+    const pacs = [{ committee_id: "CFAKEPAC1", committee_name: "FAKE BIG PAC", committee_type: "Q", party: null }, { committee_id: "CFAKEPAC2", committee_name: "FAKE OTHER PAC", committee_type: "N", party: null }];
+    return send(200, { results: pacs, pagination: { count: pacs.length, per_page: 100, pages: 1 } });
   }
   if (u.pathname !== "/schedules/schedule_e/") return send(404, { error: "not found" });
   ieCalls++;

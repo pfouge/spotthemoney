@@ -14,6 +14,7 @@ import FiledNotices from "../../components/FiledNotices.astro";
 import ReportedHoldings from "../../components/ReportedHoldings.astro";
 import { noticesInWindow } from "../../lib/form144";
 import { noticesFiledBy } from "../../lib/form144-build";
+import { eventsInYear } from "../../lib/events8k-build";
 import { holdingsOf } from "../../lib/schedule13";
 import { statementsFiledBy } from "../../lib/schedule13-build";
 import AdSlot from "../../components/AdSlot.astro";
@@ -42,6 +43,8 @@ const path = personPath(p)!;
 const role = p.roles.find((r) => r.kind === "insider");
 const company = role?.companyId != null ? model.companies.get(role.companyId) : undefined;
 const cpath = company ? companyPath(company) : null;
+// Form 8-K reports by the insider's company in the last 12 months (the count the company page prints).
+const eventCount = company?.cik && cpath ? eventsInYear(model, company.cik).length : 0;
 const txns = p.txns;
 const buys = txns.filter((t) => t.side === "buy");
 const sells = txns.filter((t) => t.side === "sell");
@@ -107,6 +110,9 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 
   <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote="Source: SEC EDGAR Form 4 filings" />
   <ReviewNote show={p.underReview} what="These Form 4 rows" />
+  {eventCount > 0 && company && cpath && (
+    <p class="section-note" data-insider-events data-n={eventCount}><a href={`${cpath}#company-events-section`}>{eventCount.toLocaleString("en-US")} company {eventCount === 1 ? "event" : "events"} (Form 8-K)</a> reported by {company.name} in the last 12 months.</p>
+  )}
 
   <Glance items={glance} />
 

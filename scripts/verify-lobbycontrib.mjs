@@ -3,7 +3,8 @@
 //   node scripts/verify-lobbycontrib.mjs <base-url> [--sample N]      e.g. http://127.0.0.1:4321
 // No browser. Per period figures, kinds of item, filers and recipients are recounted from the CSV
 // (counted rows only); the member match is re-derived with this script's own copy of the rule
-// (honoree only; the payee-equals-committee rule is not applied and the hub must say so);
+// (honoree first; else a payee that equals a linked campaign committee's name once normalised, the
+// committees read from campaign-committees.csv, which other code writes);
 // amended filings count once; future dates and non-numeric amounts are blank; wording.
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:/.test(a)) || "http://127.0.0.1:4321").replace(/\/$/, "");
@@ -88,20 +89,28 @@ const roster = new Map(); // slug -> full name, from the member pages named in t
 const dir = parseCsv((await get("/downloads/congress-members.csv")).text);
 const members = dir.map((m) => ({ slug: new URL(m.page_url ?? m.member_page_url ?? "http://x/").pathname.split("/").filter(Boolean).pop(), name: m.member ?? m.name ?? m.full_name })).filter((m) => m.slug && m.name);
 const byName = new Map(); for (const m of members) { const k = nameKey(m.name); byName.set(k, byName.has(k) ? null : m.slug); }
-let derived = 0, mismatched = 0;
+const ccRes = await get("/downloads/campaign-committees.csv");
+const ccRows = ccRes.status === 200 ? parseCsv(ccRes.text) : [];
+const lastSeg = (u) => new URL(u).pathname.split("/").filter(Boolean).pop();
+const payeeBy = new Map(); // normalised committee name -> slug, or null when two members share it
+for (const c of ccRows) { const k = normOrg(c.committee); if (!k || !c.member_page_url) continue; const sl = lastSeg(c.member_page_url); payeeBy.set(k, payeeBy.has(k) && payeeBy.get(k) !== sl ? null : sl); }
+let derived = 0, byPayee = 0, mismatched = 0;
 for (const r of rows) {
-  const h = honoree(r.honoree); const want = h ? byName.get(nameKey(h)) ?? null : null;
-  const got = r.member_page_url ? new URL(r.member_page_url).pathname.split("/").filter(Boolean).pop() : null;
-  if (want) derived++;
-  if (got && !want && !(h && got.startsWith(nameKey(h).replace(/ /g, "-")))) { mismatched++; console.log(`  unexpected match: ${r.honoree} -> ${got}`); }
-  if (want && got !== want) { mismatched++; console.log(`  missed match: ${r.honoree} (want ${want}, got ${got})`); }
+  const h = honoree(r.honoree); const hon = h ? byName.get(nameKey(h)) ?? null : null;
+  const pay = !hon && r.payee ? payeeBy.get(normOrg(r.payee)) ?? null : null;
+  const want = hon || pay;
+  const got = r.member_page_url ? lastSeg(r.member_page_url) : null;
+  if (hon) derived++; else if (pay) byPayee++;
+  if (got && !want && !(h && got.startsWith(nameKey(h).replace(/ /g, "-")))) { mismatched++; console.log(`  unexpected match: ${r.honoree} / ${r.payee} -> ${got}`); }
+  if (want && got !== want) { mismatched++; console.log(`  missed match: ${r.honoree} / ${r.payee} (want ${want}, got ${got})`); }
 }
-ok(mismatched === 0, `member matches agree with the script's own rule (${derived} matched by full name)`);
-ok(rows.every((r) => !r.member_page_url || r.honoree), "a payee alone never ties an item to a member");
+ok(mismatched === 0, `member matches agree with the script's own rules (${derived} by full name, ${byPayee} by committee payee)`);
+ok(rows.every((r) => !r.member_page_url || r.honoree || (r.payee && payeeBy.get(normOrg(r.payee)))), "an item with no honoree is tied to a member only through an exact committee payee");
+ok(!rows.some((r) => r.member_page_url && !r.honoree && r.payee && /victory fund/i.test(r.payee)), "a near-miss payee name matches nobody");
 ok(!rows.some((r) => /^(whitfield|marsh)$/i.test(r.honoree) && r.member_page_url), "a surname alone matches nobody");
 ok(!rows.some((r) => / and /i.test(r.honoree) && r.member_page_url), "two people in one field match nobody");
 const hubMain = text(/data-lc-hub[\s\S]*?<\/main>/.exec(hub.text)?.[0] ?? "");
-ok(/payee that equals a member.s campaign committee, is not applied/.test(hubMain), "hub says the payee rule is not applied");
+ok(/payee/i.test(hubMain) && /campaign committee/i.test(hubMain) && !/is not applied/.test(hubMain), "hub states the payee rule (and no longer says it is not applied)");
 ok(/cannot vouch/.test(hubMain), "hub carries the Senate notice");
 ok(!/\b(bought|in exchange|influence|after receiving)\b/i.test(hubMain), "no forbidden wording on the hub");
 
