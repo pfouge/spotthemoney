@@ -80,7 +80,13 @@ const [pi] = await sql`select p.slug::text as k, count(*) n from transactions t 
 const [ps] = await sql`select lower(s.ticker::text) as k from securities s join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.source = 'sec_form4' and f.scope = 'tracked' group by 1 order by count(*) desc, 1 limit 1`;
 const [pc] = await sql`select c.slug::text as k from companies c join securities s on s.company_id = c.id join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.source = 'sec_form4' and f.scope = 'tracked' group by 1 order by count(*) desc, 1 limit 1`;
 for (const [kind, dir, key] of [["insider", "insiders", pi.k], ["stock", "stocks", ps.k], ["company", "companies", pc.k]]) {
-  const s = await grab(`${staticBase}/${dir}/${key}/`);
+  let s = await grab(`${staticBase}/${dir}/${key}/`);
+  // One page per company: a tracked company with a ticker has no static company page (its address redirects).
+  if (kind === "company" && s.status === 404) {
+    const moved = await fetch(`${staticBase}/data/company-redirects.json`).then((r) => r.json()).catch(() => ({}));
+    ok(typeof moved[key] === "string", `company ${key}: no static page, and the redirect file names its ticker page`, String(moved[key]));
+    continue;
+  }
   const w = await grab(`${parityBase}/od-parity/${kind}/${key}/`);
   const tag = `${kind} ${key}`;
   if (!ok(s.status === 200 && w.status === 200, `${tag}: both render`, `static ${s.status}, worker ${w.status}`)) continue;
@@ -113,8 +119,14 @@ section("market entities from the bulk fixture");
 const SITE = (process.env.PUBLIC_SITE_URL ?? "http://127.0.0.1:4371").replace(/\/$/, "");
 const insiders = (await sql`select distinct p.slug::text k from people p join transactions t on t.person_id = p.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published order by 1`).map((r) => r.k);
 const stocks = (await sql`select distinct s.ticker::text k from securities s join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published order by 1`).map((r) => r.k);
-const companies = (await sql`select distinct c.slug::text k from companies c join securities s on s.company_id = c.id join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published and c.slug is not null order by 1`).map((r) => r.k);
-ok(insiders.length > 0 && stocks.length > 0 && companies.length > 0, "the fixture gives market insiders, tickers and companies", `${insiders.length}/${stocks.length}/${companies.length}`);
+const allCompanies = await sql`select c.slug::text k, (select count(distinct lower(a.ticker::text))::int from securities a where a.company_id = c.id) n, (select min(lower(a.ticker::text)) from securities a where a.company_id = c.id) tk from companies c join securities s on s.company_id = c.id join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id where f.scope = 'market' and f.is_published and c.slug is not null and not c.tracked group by c.id, c.slug order by 1`;
+// One page per company: a market company with one ticker has no page; its address answers 301 to the ticker's page.
+const companies = allCompanies.filter((r) => r.n > 1).map((r) => r.k);
+for (const r of allCompanies.filter((x) => x.n === 1).slice(0, 5)) {
+  const res = await fetch(`${base}/companies/${r.k}/`, { redirect: "manual" });
+  ok(res.status === 301 && new URL(res.headers.get("location"), base).pathname === `/stocks/${r.tk}/`, `company ${r.k} (one ticker) redirects to /stocks/${r.tk}/`, `${res.status} ${res.headers.get("location")}`);
+}
+ok(insiders.length > 0 && stocks.length > 0 && allCompanies.length > 0, "the fixture gives market insiders, tickers and companies", `${insiders.length}/${stocks.length}/${companies.length}`);
 const openMarket = async (kind, key) => {
   const col = kind === "insider" ? sql`p.slug::text = ${key}` : kind === "stock" ? sql`s.ticker::text = ${key}` : sql`c.slug::text = ${key}`;
   const [r] = await sql`select count(*)::int n from transactions t join filings f on f.id = t.filing_id join people p on p.id = t.person_id left join securities s on s.id = t.security_id left join companies c on c.id = s.company_id

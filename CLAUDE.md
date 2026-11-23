@@ -4029,3 +4029,23 @@ it in the pull request that changes a cell.**
 - **Not done:** the same for on-demand (market) companies; `/embed/stocks/`; one list in place of
   `/stocks/` and `/companies/`.
 
+### One page per company, stage 2b: companies outside the tracked set (2026-11-23, interactive session)
+
+- **Rule.** An on-demand (market) company whose securities all carry one ticker has no page:
+  `/companies/<slug>/` answers 301 to `/stocks/<ticker>/` (`soleTicker(doc)` in
+  `server/odsource.ts`, applied in `companies/[...rest].astro` after the document is fetched; no
+  database change, because `od_company` reads a company's rows through its securities, so the
+  ticker's page lists the same rows). On production 4,457 of 4,615 such companies. The 158 with
+  several tickers keep a company page and their ticker pages: folding those needs `od_stock` to
+  return every class, a migration that was left for the market-wide thread.
+- The `market-companies` sitemap lists only companies with several tickers (`market.ts`).
+- `OdPageView`: on a ticker page whose company's main ticker is that ticker, the company name is
+  not a link (its address would come straight back).
+- `verify-od` (manual rig, `scripts/od-dev.mjs`): checks the redirect for one-ticker companies,
+  and accepts a tracked company with no static page when the redirect file names its ticker page.
+  Its canonical, sitemap and home-feed checks need `PUBLIC_SITE_URL` and a build made after the
+  market fixture is loaded.
+- **Left as they are:** `/embed/stocks/` and `/embed/congress/` (charts for other sites to frame,
+  noindex, canonical to the full page: not duplicate pages). Still open: one list in place of
+  `/stocks/` and `/companies/`.
+

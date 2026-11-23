@@ -4,7 +4,7 @@
 // static file exists. Keep this file free of imports of postgres, fs, flagship or db.
 export const prerender = false;
 import OdPageView from "../../components/OdPageView.astro";
-import { fetchOd, guideLinks, oneSegment, notFound, companyMovedTo } from "../../lib/server/odsource";
+import { fetchOd, guideLinks, oneSegment, notFound, companyMovedTo, soleTicker, parityAllowed } from "../../lib/server/odsource";
 
 const key = oneSegment(Astro.params.rest);
 // A tracked company that is now shown on its ticker page: one page per company (lib/onepage.ts).
@@ -13,6 +13,10 @@ if (movedTo) return new Response(null, { status: 301, headers: { location: moved
 const doc = key ? await fetchOd("company", key!, Astro.url).catch(() => undefined) : null;
 if (doc === undefined) return new Response("Temporarily unavailable", { status: 503, headers: { "cache-control": "no-store", "retry-after": "60" } });
 if (!doc) return notFound(Astro.url);
+// One page per company (lib/onepage.ts): a company with one ticker is shown on that ticker's page,
+// which lists the same rows (od_company reads its rows through its securities).
+const only = soleTicker(doc);
+if (only && !parityAllowed(Astro.url)) return new Response(null, { status: 301, headers: { location: `/stocks/${only}/`, "cache-control": "public, max-age=3600, s-maxage=86400" } });
 const guides = await guideLinks(Astro.url);
 Astro.response.headers.set("Cache-Control", "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800");
 ---
