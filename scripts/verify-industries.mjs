@@ -99,9 +99,11 @@ let tickerPages = 0;
     const page = await get(`/stocks/${t.toLowerCase()}/`);
     if (page.status !== 200) continue; // a company can own a ticker with no trades on record: no page
     tickerPages++;
-    const m = page.text.match(/<dt[^>]*>Company<\/dt>\s*<dd[^>]*>\s*(?:<a[^>]*href="([^"]+)"[^>]*>)?/);
+    const m = page.text.match(/<dt[^>]*>Company<\/dt>\s*<dd[^>]*>\s*(?:<a[^>]*href="([^"]+)"[^>]*>)?([^<]*)/);
     const want = new URL(r.page_url).pathname;
-    ok(!!m && m[1] === want, `/stocks/${t.toLowerCase()}/: the Company line links to ${m?.[1] ?? "nothing"}, companies.csv says ${t} is ${r.company}'s (${want})`);
+    // One page per company: when the company's page IS this ticker page, the line names the company and links nowhere.
+    if (want === `/stocks/${t.toLowerCase()}/`) ok(!!m && !m[1] && unescape(m[2]).trim() === r.company, `/stocks/${t.toLowerCase()}/ is ${r.company}'s own page (companies.csv), but its Company line reads "${m?.[2] ?? ""}"${m?.[1] ? ` and links to ${m[1]}` : ""}`);
+    else ok(!!m && m[1] === want, `/stocks/${t.toLowerCase()}/: the Company line links to ${m?.[1] ?? "nothing"}, companies.csv says ${t} is ${r.company}'s (${want})`);
   }
 }
 const f4 = [], ptr = [];

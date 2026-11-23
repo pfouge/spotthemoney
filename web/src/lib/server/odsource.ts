@@ -43,6 +43,20 @@ export function guideLinks(url: URL): Promise<Record<string, GuideLink>> {
   return guides;
 }
 
+let moved: Promise<Record<string, string>> | null = null;
+/** The ticker page that replaced /companies/<slug>/ (lib/onepage.ts), or null. From the static file the build writes. */
+export async function companyMovedTo(slug: string, url: URL): Promise<string | null> {
+  moved ??= (async () => {
+    try {
+      const res = await E.ASSETS!.fetch(new Request(new URL("/data/company-redirects.json", url)));
+      if (!res.ok) return {};
+      return (await res.json()) as Record<string, string>;
+    } catch { return {}; }
+  })();
+  const to = (await moved)[slug.toLowerCase()];
+  return typeof to === "string" && /^\/stocks\/[a-z0-9._-]+\/$/.test(to) ? to : null;
+}
+
 const SEG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/;
 /** The one path segment an on-demand route accepts (/insiders/<slug>/); anything else is a 404. */
 export function oneSegment(rest: string | undefined): string | null {

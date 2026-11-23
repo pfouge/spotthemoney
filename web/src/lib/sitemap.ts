@@ -102,7 +102,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     const u = { loc: path, lastmod: day(p.lastFiledAt, built), changefreq: "weekly", priority: 0.6 };
     (p.isCongress ? congress : insiders).push(u);
   }
-  const companies: SitemapUrl[] = [...model.companies.values()].filter((c) => c.slug).map((c) => ({
+  // Companies shown on their ticker page are in the stocks sitemap, not here (lib/onepage.ts).
+  const companies: SitemapUrl[] = [...model.companies.values()].filter((c) => c.slug && !c.stockPath).map((c) => ({
     loc: companyPath(c)!, lastmod: day(c.txns[0]?.filedAt, built), changefreq: "weekly", priority: 0.6,
   }));
   const seen = new Set<string>();
