@@ -39,7 +39,9 @@ export async function getMarketIndexable(): Promise<MarketIndexable> {
       select c.slug::text as k, ((max(f.filed_at)) at time zone 'UTC')::date::text as d
         from companies c join securities s on s.company_id = c.id join transactions t on t.security_id = s.id join filings f on f.id = t.filing_id
        where c.slug is not null and not c.tracked and ${vis}
-       group by c.slug having ${open} order by c.slug::text`;
+       group by c.slug
+      -- a company with one ticker is shown on that ticker's page (pages/companies/[...rest].astro redirects): not listed here
+      having ${open} and (select count(distinct lower(a.ticker::text)) from securities a where a.company_id = min(c.id)) > 1 order by c.slug::text`;
     const m = (r: { k: string; d: string }[]) => r.map((x) => ({ key: x.k, lastmod: x.d }));
     return { insiders: m(insiders), stocks: m(stocks), companies: m(companies) };
   } catch (e) {
