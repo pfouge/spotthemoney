@@ -41,6 +41,14 @@
       "web/src/pages/grants/index.astro": "f3a504f37c7beef9"
     }
   },
+  "form-13f-institutional-holdings": {
+    "reviewed": "2026-11-22",
+    "covers": {
+      "web/src/lib/inst13f.ts": "156ecec5730acd97",
+      "web/src/lib/inst13f-build.ts": "3c7f374b016abc92",
+      "web/src/components/InstHolders.astro": "21746908838ac1bd"
+    }
+  },
   "form-4-transaction-codes": {
     "reviewed": "2026-11-16",
     "covers": {
@@ -73,18 +81,18 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-22",
+    "reviewed": "2026-11-23",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "58f9b75d937894df",
+      "web/src/lib/downloads.ts": "12458bedacead585",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "cbaa1b3e049d21a9",
+      "web/src/pages/downloads/index.astro": "4b305ceedac23583",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "2e6787a6687f9d77",
-      "web/src/pages/developers.astro": "ad02755c67844e81"
+      "web/src/lib/datafiles.ts": "cfe6f4d2ea734abb",
+      "web/src/pages/developers.astro": "e510fa2eeeaaf48f"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
@@ -124,6 +132,14 @@
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5",
       "web/src/lib/tickerhistory.ts": "50fdeba2cb1f0a66",
       "web/src/lib/savedscreens.ts": "971608586608dc5f"
+    }
+  },
+  "how-to-read-a-roll-call-vote": {
+    "reviewed": "2026-11-23",
+    "covers": {
+      "web/src/lib/votes.ts": "9b0a82a4ee0565c5",
+      "web/src/components/MemberVotes.astro": "d74bd8398bee09aa",
+      "web/src/pages/congress-votes.astro": "d1dca2323351bf61"
     }
   },
   "how-to-use-the-trade-map": {
@@ -245,22 +261,6 @@
       "web/src/pages/company-financials.astro": "0f3a75c5a7b9d6be",
       "web/src/lib/plannedsales.ts": "60e8951a617b18bc",
       "web/src/lib/inst13f.ts": "156ecec5730acd97"
-    }
-  },
-  "form-13f-institutional-holdings": {
-    "reviewed": "2026-11-22",
-    "covers": {
-      "web/src/lib/inst13f.ts": "156ecec5730acd97",
-      "web/src/lib/inst13f-build.ts": "3c7f374b016abc92",
-      "web/src/components/InstHolders.astro": "21746908838ac1bd"
-    }
-  },
-  "how-to-read-a-roll-call-vote": {
-    "reviewed": "2026-11-23",
-    "covers": {
-      "web/src/lib/votes.ts": "9b0a82a4ee0565c5",
-      "web/src/components/MemberVotes.astro": "d74bd8398bee09aa",
-      "web/src/pages/congress-votes.astro": "d1dca2323351bf61"
     }
   }
 }
