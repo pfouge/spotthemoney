@@ -185,14 +185,14 @@
     }
   },
   "lobbying-disclosure-reports": {
-    "reviewed": "2026-11-22",
+    "reviewed": "2026-11-23",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
       "web/src/pages/lobbying/index.astro": "663e97f26df53b0c",
       "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
       "web/src/pages/lobbying-issues/index.astro": "a33c2d2d4f48fb57",
       "web/src/pages/lobbying-issues/[slug].astro": "0bc35da024ab951a",
-      "web/src/lib/lobbygifts.ts": "2b47abf131ca7740",
+      "web/src/lib/lobbygifts.ts": "1940e1910b4cab33",
       "web/src/pages/lobbyist-contributions/index.astro": "84421b4f27337718"
     }
   },

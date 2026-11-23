@@ -933,3 +933,17 @@ details.fnotes summary span { color: var(--ink-soft); font-weight: 400; font-siz
 .groupbar + .pgroup { margin-top: 0.6rem; }
 .groupbar + .pgroup > .pgroup-label { border-top: 0; padding-top: 0; }
 @media (forced-colors: active) { .glance a, .groupbar a { border: 1px solid CanvasText; } }
+
+/* ---- Washington hub tiles and the home week row ---- */
+.wash-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; margin: 1.2rem 0; }
+.wash-tile { min-width: 0; }
+.wash-tile h2 { font-size: 1.15rem; margin: 0 0 .35rem; }
+.wash-figs { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 6px 0; }
+.wash-figs .cell { min-width: 0; }
+.wash-figs .k { font-size: 13px; color: var(--ink-soft); }
+.wash-figs .v { font-size: 20px; font-weight: 600; margin-top: 2px; overflow-wrap: anywhere; }
+.wash-items { list-style: none; margin: .4rem 0 0; padding: 0; font-size: 14px; }
+.wash-items li { padding: 4px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.wk-strip .wk-tile { text-decoration: none; color: inherit; }
+.wk-strip .wk-tile:hover .k { color: var(--signal); }
+@media (max-width: 760px) { .wk-strip .wk-tile { min-width: 130px; } }

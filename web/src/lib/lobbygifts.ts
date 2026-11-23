@@ -54,13 +54,15 @@ export interface LobbyContribData {
   types: TypeRow[]; filers: FilerRow[]; recipients: RecipientRow[]; newest: ItemRow[];
   /** Items of the newest year, and how many of them name a member of Congress by memberForItem. */
   match: { items: number; matched: number };
+  /** Counted filings that carry at least one item, by the day the Senate posted them, for the last 30 days (the home page's week count). */
+  postedRecent: { date: string; filings: number }[];
   members: Map<string, Subject>;
   companies: Map<number, CompanyContrib>;
   csv: CsvFile[];
 }
 export const emptyLobbyContrib = (): LobbyContribData => ({
   available: false, newestYear: null, filingsCounted: 0, filingsSuperseded: 0, filingsAll: 0, newestPosted: null, periods: [], types: [], filers: [], recipients: [],
-  newest: [], match: { items: 0, matched: 0 }, members: new Map(), companies: new Map(), csv: [],
+  newest: [], match: { items: 0, matched: 0 }, postedRecent: [], members: new Map(), companies: new Map(), csv: [],
 });
 
 // ── text ─────────────────────────────────────────────────────────────────────────────────

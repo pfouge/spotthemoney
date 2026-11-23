@@ -1,46 +1,56 @@
 ---
-// /washington/ — hub for the money-in-politics sources: donations (FEC), lobbying (LDA),
-// federal contracts (USAspending). Each has its own collection page.
+// /washington/: the hub for the money-in-politics datasets. One tile per dataset shown in this
+// build (a gated dataset with no complete first load has no tile and is not named in the answer).
+// Each tile uses the figures and wording of the dataset's own hub (lib/washhub-build.ts).
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import SectionFaq from "../../components/SectionFaq.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
-import { getFlagship, num, plural, money, sum } from "../../lib/flagship";
-import { dataCatalogLd } from "../../lib/seo";
+import { getFlagship } from "../../lib/flagship";
+import { dataCatalogLd, fitTitle, fitDescription } from "../../lib/seo";
+import { formatDate } from "../../lib/format";
+import { washTiles } from "../../lib/washhub-build";
+import { washAnswer, washShortList, washLog } from "../../lib/washhub";
 
 const model = await getFlagship();
-const contracts180 = sum(model.contracts.map((c) => c.amount));
-const year = new Date().getUTCFullYear();
-const lobbyingYtd = sum(model.lobbying.filter((l) => l.year === year).map((l) => l.amount));
-const donations90 = sum(model.committees.map((c) => c.total));
-const answer = `Three official feeds, one place: ${plural(model.contracts.length, "large federal contract award")} started in the last 180 days with a combined value of ${money(contracts180)} (USAspending), ${plural(model.lobbying.filter((l) => l.year === year).length, "lobbying filing")} reporting ${money(lobbyingYtd)} in ${year} (Senate LDA), and ${money(donations90)} in itemized contributions to ${plural(model.committees.filter((c) => c.count > 0).length, "tracked committee")} in the last 90 days (FEC).`;
-const description = "Money in Washington from official sources: FEC campaign donations, Senate lobbying disclosures and USAspending federal contracts, cross-linked to companies.";
-const cards = [
-  { path: "/donations/", title: "Donations", body: "Itemized contributions to the campaign committees of every member of Congress and the 200 largest PACs, aggregated by committee, employer and state.", n: model.counts.committees ?? 0, unit: "committees with receipts (90d)" },
-  { path: "/lobbying/", title: "Lobbying", body: "Every Senate LDA filing posted since October 2025: registrants, clients, issues and reported income.", n: model.lobbying.length, unit: "filings on record" },
-  { path: "/contracts/", title: "Federal contracts", body: "The largest contract awards that started in the last 180 days, from USAspending: recipient, agency, award value, NAICS, with a link to each award.", n: model.contracts.length, unit: "awards (180d)" },
-];
+const tiles = washTiles(model);
+console.log(washLog(tiles));
+const answer = washAnswer(tiles);
+const updated = tiles.map((t) => t.newest).filter((d): d is string => !!d).sort().at(-1) ?? model.builtAt;
+const description = fitDescription([
+  `Money in Washington from official sources: ${washShortList(tiles) || "lobbying, contracts and donations"}, each with its newest filings.`,
+  "Money in Washington from official sources: lobbying, contracts, donations, outside spending and votes.",
+  "Money in Washington from official sources.",
+]);
 ---
-<BaseLayout title="Washington: Donations, Lobbying & Federal Contracts" description={description} section="Washington">
+<BaseLayout title={fitTitle(["Washington: Lobbying, Contracts, Donations and Votes", "Money in Washington", "Washington"])} description={description} section="Washington">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Washington</p>
   <h1>Money in Washington</h1>
-  <p class="lede">Who gives, who lobbies, who gets paid, as filed with the FEC, the Senate and Treasury.</p>
-  <Answer text={answer} updated={model.builtAt} sourceNote="Sources: FEC; Senate LDA; USAspending" />
-  <div class="grid">
-    {cards.map((c) => (
-      <a class="card" href={c.path}>
-        <h3>{c.title} →</h3>
-        <p>{c.body}</p>
-        <p class="mono soft">{num(c.n)} {c.unit}</p>
-      </a>
+  <p class="lede">Who lobbies, who gives, who gets paid, and how Congress votes, as filed with the Senate, the FEC, Treasury and the two chambers.</p>
+  <Answer text={answer} updated={updated} sourceNote="Sources: Senate LDA; FEC; USAspending; Clerk of the House; Secretary of the Senate" />
+  <div class="wash-tiles" data-wash-tiles>
+    {tiles.map((t) => (
+      <article class="card wash-tile" data-wtile={t.key}>
+        <h2><a href={t.path}>{t.title}</a></h2>
+        <p>{t.blurb}</p>
+        <div class="wash-figs" data-figures>
+          {t.figures.map((f) => <div class="cell" data-fig={f.key}><div class="k">{f.label}</div><div class="v">{f.value}</div></div>)}
+        </div>
+        <p class="soft wash-window">{t.window}.{t.newest ? <> Newest on file: <span data-newest={t.newest}>{formatDate(t.newest)}</span> ({t.newestLabel}).</> : null}</p>
+        {t.items.length > 0 && (
+          <ul class="wash-items" aria-label={`Newest in ${t.title}`}>
+            {t.items.map((i) => <li><a href={i.href}>{i.text}</a>{i.date ? <span class="soft"> · {formatDate(i.date)}</span> : null}</li>)}
+          </ul>
+        )}
+      </article>
     ))}
   </div>
   <AdSlot />
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no inference of wrongdoing is made or implied by any figure on these pages.</p>
-  <JsonLd data={dataCatalogLd({ path: "/washington/", name: "Money in Washington", description, datasets: cards.map((c) => ({ name: c.title, path: c.path })) })} />
+  <JsonLd data={dataCatalogLd({ path: "/washington/", name: "Money in Washington", description, datasets: tiles.map((t) => ({ name: t.title, path: t.path })) })} />
   <SectionFaq section="washington" />
 </BaseLayout>

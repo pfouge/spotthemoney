@@ -103,6 +103,12 @@ export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, compa
   out.newest = ((await sql.unsafe(`select ${ITEM_COLS} from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
        where i.contributed_at is null or i.contributed_at <= current_date order by i.contributed_at desc nulls last, f.posted_at desc nulls last, i.id desc limit ${NEWEST_ROWS}`)) as ItemSql[]).map((r) => toItem(r, slugOf));
 
+  out.postedRecent = ((await sql.unsafe(`select f.posted_at::date::text as date, count(distinct f.filing_uuid)::int as filings
+      from lobby_contribution_filings f join (${COUNTED}) c using (filing_uuid)
+     where f.posted_at is not null and f.posted_at::date >= current_date - 30 and f.posted_at::date <= current_date
+       and exists (select 1 from lobby_contribution_items i where i.filing_uuid = f.filing_uuid)
+     group by 1 order by 1 desc`)) as { date: string; filings: number }[]).map((r) => ({ date: r.date, filings: Number(r.filings) }));
+
   // Honoree names of counted items, with counts; matching is done once per distinct name.
   const honorees = (await sql.unsafe(`select i.honoree_name as h, f.filing_year as year, count(*)::int as n
       from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
