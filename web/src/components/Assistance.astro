@@ -1,0 +1,58 @@
+---
+// "Federal grants, loans and direct payments" on company pages (lib/assistance.ts has the rules).
+// Shown when an award that started in the last 180 days names a recipient that matches this company
+// by exact normalised name. The three kinds are never added together; a loan's amount is a face value.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import { money, num } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { subAgencyLabel } from "../lib/contracts";
+import { ASSISTANCE_CAVEAT, COMPANY_ROWS, kindName, kindSentence, programLabel, shortDescription, AMOUNT_NAME } from "../lib/assistance";
+import DownloadCsv from "./DownloadCsv.astro";
+
+interface Props { model: Flagship; companyId: number; name: string; file?: DownloadFile | null }
+const { model, companyId, name, file } = Astro.props;
+const rows = model.assistance.byCompany.get(companyId) ?? [];
+const shown = rows.slice(0, COMPANY_ROWS);
+const heads = [
+  { label: "Kind", type: "text", cls: "" }, { label: "Agency", type: "text", cls: "" }, { label: "Program", type: "text", cls: "" }, { label: "Description, as reported", type: "text", cls: "" },
+  { label: "Start", type: "num", cls: "" }, { label: "End", type: "num", cls: "" }, { label: "Amount", type: "num", cls: "num" }, { label: "Subsidy cost (loans)", type: "num", cls: "num" },
+];
+const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
+---
+{rows.length > 0 && (
+  <section aria-labelledby="assistance" data-assistance data-awards={rows.length}>
+    <h2 id="assistance">Federal grants, loans and direct payments (USAspending, awards started in the last 180 days)</h2>
+    <p data-as-summary>{name} is named as the recipient of {kindSentence(rows, (n) => money(n))}. Kinds are listed apart and are not added together.</p>
+    <p class="as-note" data-as-caveat>{ASSISTANCE_CAVEAT} <a href="/guides/federal-contracts-usaspending/#assistance">How to read these awards</a>.</p>
+    <DownloadCsv file={file} label="Download all awards (CSV)" note="every award held, all recipients" />
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      <th>Source</th>
+    </tr></thead><tbody>
+      {shown.map((r) => {
+        const sub = subAgencyLabel(r.agency, r.subAgency); const prog = programLabel(r.listing); const desc = shortDescription(r.description);
+        return (
+          <tr data-award={r.sourceRef} data-kind={r.kind}>
+            <td data-v={r.kind}>{kindName(r.kind, 1)}</td>
+            <td class="wrap as-agency" data-v={(r.agency ?? "").toLowerCase()}>{r.agency ?? "—"}{sub && <span class="as-sub" data-sub>{sub}</span>}</td>
+            <td class="wrap as-prog" data-v={(prog ?? "").toLowerCase()} data-program>{prog ?? "—"}</td>
+            <td class="wrap as-desc" data-v={(desc ?? "").toLowerCase()} data-desc>{desc ?? "—"}</td>
+            <td class="mono" data-v={dayNum(r.startDate)}>{r.startDate ? formatDate(r.startDate) : "—"}</td>
+            <td class="mono" data-v={dayNum(r.endDate)} data-end>{r.endDate ? formatDate(r.endDate) : "—"}</td>
+            <td class="num" data-v={r.amount != null ? Math.round(r.amount) : ""} data-amount title={AMOUNT_NAME[r.kind]}>{r.amount != null ? money(r.amount, { compact: false }) : "—"}</td>
+            <td class="num" data-v={r.kind === "loan" && r.subsidyCost != null ? Math.round(r.subsidyCost) : ""} data-subsidy>{r.kind === "loan" && r.subsidyCost != null ? money(r.subsidyCost, { compact: false }) : "—"}</td>
+            <td>{r.sourceRef ? <a href={`https://www.usaspending.gov/award/${r.sourceRef}/`} rel="noopener nofollow" target="_blank">USAspending ↗</a> : "—"}</td>
+          </tr>
+        );
+      })}
+    </tbody></table></div>
+    {rows.length > COMPANY_ROWS && <p class="as-note" data-as-more>The {COMPANY_ROWS} newest of {num(rows.length)} awards are shown. The rest are in the CSV file.</p>}
+  </section>
+)}
+<style>
+  .as-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .as-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .as-agency { min-width: 10rem; } .as-prog { min-width: 12rem; } .as-desc { min-width: 14rem; max-width: 22rem; font-size: 13px; line-height: 1.35; }
+  @media (max-width: 640px) { .as-agency { min-width: 8rem; } .as-prog { min-width: 9rem; } .as-desc { min-width: 11rem; } }
+</style>

@@ -5,7 +5,14 @@
 // working unchanged.
 import type { Form144Data } from "./form144";
 import type { Schedule13Data } from "./schedule13";
+import type { InstData } from "./inst13f";
 import type { FinancialsData } from "./financials";
+import type { EventsData } from "./events8k";
+import type { PayData } from "./execpay";
+import type { VotesModel } from "./votes";
+import type { OutsideData } from "./outsidespending";
+import type { AssistanceData } from "./assistance";
+import type { LobbyContribData } from "./lobbygifts";
 import type { HoldingsChange } from "./holdings";
 
 // ── types ────────────────────────────────────────────────────────────────────────────────
@@ -133,8 +140,22 @@ export interface Flagship {
   form144: Form144Data;
   /** SEC Schedules 13D and 13G about companies on the site (lib/schedule13.ts). Empty, with shown false, until the load has reached today. */
   schedule13: Schedule13Data;
+  /** Form 13F institutional holdings about companies on the site (lib/inst13f.ts). Empty, with shown false, while the load is stale. */
+  inst: InstData;
   /** Figures from companies' annual and quarterly reports, by 10-digit CIK (lib/financials.ts). Empty when the table cannot be read. */
   financials: FinancialsData;
+  /** Form 8-K reports by 10-digit CIK (lib/events8k.ts). Empty when the table cannot be read. */
+  events: EventsData;
+  /** Pay Versus Performance figures by 10-digit CIK (lib/execpay.ts). Empty when the table cannot be read. */
+  execPay: PayData;
+  /** Roll-call votes (lib/votes.ts). Empty when the tables cannot be read or hold nothing. */
+  votes: VotesModel;
+  /** Independent expenditures (lib/outsidespending.ts). Empty likewise. */
+  outside: OutsideData;
+  /** Federal grants, loans and direct payments that started in the last 180 days (lib/assistance.ts). Empty when the table cannot be read. */
+  assistance: AssistanceData;
+  /** Contributions lobbyists report on Form LD-203 (lib/lobbygifts.ts). Aggregates and short lists only; never every item. */
+  lobbyContrib: LobbyContribData;
 }
 
 /** "EVP &amp; CFO" → "EVP & CFO". Titles reached the database with XML escapes intact (migration 0016 repairs the stored rows). */

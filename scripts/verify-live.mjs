@@ -169,7 +169,7 @@ for (const path of sampled) {
   ok(/Not investment advice|Draft — needs review/.test(html), `${path} missing the disclaimer`);
   // no data table without a body row
   for (const t of html.matchAll(/<table class="data[^"]*">([\s\S]*?)<\/table>/g)) {
-    ok(/<tbody>[\s\S]*?<tr/.test(t[1]), `${path} has an empty data table`);
+    ok(/<tbody[^>]*>[\s\S]*?<tr/.test(t[1]), `${path} has an empty data table`);
   }
   ok(!/>Soon</.test(html), `${path} still shows a "Soon" tag`);
 }

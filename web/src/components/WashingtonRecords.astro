@@ -10,10 +10,16 @@ import { shortDescription, subAgencyLabel } from "../lib/contracts";
 import { naicsLabel } from "../lib/naics";
 import IssueList from "./IssueList.astro";
 import { issueIndex } from "../lib/lobbyissues";
+import Assistance from "./Assistance.astro";
+import LobbyContribFiler from "./LobbyContribFiler.astro";
+import { getDownloads } from "../lib/downloads";
 
 interface Props { model: Flagship; company: Company }
 const { model, company: c } = Astro.props;
 const issueIdx = issueIndex(model.lobbying, model.issueNames);
+// Grants, loans and direct payments sit after contracts; contributions the company's own lobbying
+// filings report (Form LD-203) after lobbying. Each prints nothing when it has nothing.
+const dlFiles = (await getDownloads()).files;
 ---
 <h2 id="contracts">Federal contracts (USAspending, awards started in the last 180 days)</h2>
 {c.contracts.length === 0 ? <p class="empty-reason">No contract award starting in the last 180 days was found for a recipient named exactly "{c.name}". Subsidiaries and differently-spelled recipients are not matched. Search <a href="/contracts/">contracts</a>.</p> : (
@@ -29,6 +35,8 @@ const issueIdx = issueIndex(model.lobbying, model.issueNames);
   </div>
 )}
 
+<Assistance model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "assistance")} />
+
 <h2 id="lobbying">Lobbying (Senate LDA, as client)</h2>
 {c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing posted since October 2025 names "{c.name}" as the client. Filings under a subsidiary or trade-association name are not matched. Search <a href="/lobbying/">lobbying</a>.</p> : (
   <div class="tablewrap">
@@ -42,6 +50,7 @@ const issueIdx = issueIndex(model.lobbying, model.issueNames);
     </table>
   </div>
 )}
+<LobbyContribFiler model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "lobbycontrib")} />
 <style>
   .con-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
   td.con-naics { min-width: 150px; max-width: 230px; padding-top: 6px; padding-bottom: 6px; }

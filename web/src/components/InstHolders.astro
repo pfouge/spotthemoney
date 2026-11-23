@@ -1,0 +1,67 @@
+---
+// "Institutional holders: Form 13F" on stock and company pages (lib/inst13f.ts has the rules).
+// Renders nothing unless the 13F load is recent (model.inst.shown) and at least one manager
+// reported the company. The 25 managers with the largest summed reported value; never a share of
+// the company, and the sums are labelled as sums of what managers reported.
+import type { Flagship } from "../lib/flagship";
+import type { DownloadFile } from "../lib/downloads";
+import { num } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { INST_CAVEAT, INST_TOP, instSummaryOf, instSentence, priorCell, changeShares, signed, valueLabel, filingFolderUrl, quarterDate, quarterName } from "../lib/inst13f";
+import { managerPath } from "../lib/inst13f-build";
+import DownloadCsv from "./DownloadCsv.astro";
+
+interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
+const { model, cik, name, file } = Astro.props;
+const inst = model.inst;
+const c = cik && inst.shown ? inst.byCik.get(cik.padStart(10, "0")) ?? null : null;
+const s = c ? instSummaryOf(c) : null;
+const hasPrior = !!(c && inst.prior && c.prevManagers != null);
+const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
+const attrText = (t: string) => t.toLowerCase().replace(/[<>"]/g, "");
+const heads = [
+  { label: "Manager", type: "text", cls: "" }, { label: "Shares", type: "num", cls: "num" }, { label: "Reported value", type: "num", cls: "num" },
+  ...(hasPrior ? [{ label: "Shares, prior quarter", type: "num", cls: "num" }, { label: "Change", type: "num", cls: "num" }] : []),
+  { label: "Filed", type: "num", cls: "" },
+];
+---
+{c && s && inst.period && (
+  <section aria-labelledby="institutional-holders" data-inst-holders data-cik={cik!.padStart(10, "0")} data-managers={c.managers} data-options={c.options} data-period={inst.period} data-prior={inst.prior ?? ""}>
+    <h2 id="institutional-holders">Institutional holders: Form 13F</h2>
+    <p data-ih-summary>{instSentence(name, inst.period, inst.prior, s)}</p>
+    <p class="ih-note" data-ih-caveat>{INST_CAVEAT} <a href="/guides/form-13f-institutional-holdings/">What Form 13F is</a>.</p>
+    <DownloadCsv file={file} label="Download the largest managers (CSV)" note="every tracked company" />
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      <th>Source</th>
+    </tr></thead><tbody>
+      {c.top.map((m) => {
+        const href = managerPath(model, m.cik);
+        const ch = hasPrior ? changeShares(m, true) : null;
+        return (
+          <tr data-manager={m.cik}>
+            <td class="wrap ih-mgr" data-v={attrText(m.name)} data-ih-manager>{href ? <a href={href}>{m.name}</a> : m.name}</td>
+            <td class="num" data-v={Math.round(m.shares)} data-ih-shares>{num(m.shares)}</td>
+            <td class="num" data-v={Math.round(m.value)} data-ih-value>{valueLabel(m.value)}</td>
+            {hasPrior && <td class="num" data-v={m.prevShares != null ? Math.round(m.prevShares) : ""} data-ih-prior>{m.prevShares != null ? num(m.prevShares) : <span class="ih-sub">{priorCell(m, inst.prior)}</span>}</td>}
+            {hasPrior && <td class="num" data-v={ch != null ? ch : ""} data-ih-change>{ch != null ? signed(ch) : "—"}</td>}
+            <td class="mono" data-v={dayNum(m.filed)} data-ih-filed>{m.filed ? formatDate(m.filed) : "—"}</td>
+            <td data-ih-source>{m.accession ? <a href={filingFolderUrl(m.cik, m.accession)} rel="noopener nofollow" target="_blank">13F filing ↗</a> : "—"}</td>
+          </tr>
+        );
+      })}
+    </tbody></table></div>
+    <p class="ih-note" data-ih-more>
+      {c.managers > INST_TOP
+        ? `The ${INST_TOP} managers with the largest summed reported value for ${quarterName(inst.period)} (${quarterDate(inst.period)}), of ${num(c.managers)}, are listed. The rest are in the CSV file.`
+        : `All ${num(c.managers)} managers that reported for ${quarterName(inst.period)} (${quarterDate(inst.period)}) are listed.`}
+      {" "}<a href="/institutional-holders/">All companies by number of managers</a>.
+    </p>
+  </section>
+)}
+<style>
+  .ih-sub { color: var(--ink-soft); font-size: 12.5px; }
+  .ih-mgr { min-width: 13rem; }
+  @media (max-width: 640px) { .ih-mgr { min-width: 10rem; } }
+  .ih-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+</style>

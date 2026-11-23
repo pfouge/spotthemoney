@@ -5,10 +5,16 @@ import { NOTICE_ROWS, VALUE_MAX_PER_SHARE } from "../form144";
 import { YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES } from "../financials";
 import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL } from "../schedule13";
 import { DESCRIPTION_SHOWN } from "../contracts";
+import { EVENT_ROWS, EVENT_WINDOW_DAYS } from "../events8k";
+import { PAY_YEARS, PAY_LARGE, PAY_SMALL } from "../execpay";
+import { INST_TOP, INST_MIN_MANAGERS, INST_SHOWN_DAYS, quarterDate as instQuarterDate } from "../inst13f";
+import { instHubShown } from "../inst13f-hub";
+import { ASSISTANCE_WINDOW_DAYS } from "../assistance";
 import { feedDef } from "../feeds";
 import { ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS, FEED_NEW_MAX_AGE_DAYS } from "../account";
 import { WATCH_WINDOW_DAYS } from "../watchcards";
 import { COMMITTEE_TRADE_ROWS } from "../committees";
+import { VOTE_ROWS } from "../votes";
 import { DEFAULT_PER as SCREENER_ROWS } from "../screener";
 import { MAX_SAVED as SAVED_SCREENS_MAX } from "../savedscreens";
 import { RECORD_START, FIRST_MIN_DAYS, RUN_MIN } from "../tickerhistory";
@@ -37,6 +43,7 @@ export interface GuideCtx {
   feedCongressItems: number; feedPurchaseItems: number; feedInsiderItems: number;
   /** Rows in a committee page's trade table (lib/committees.ts). */
   committeeTradeRows: number;
+  voteRows: number;
   /** Rows per page the Congress trade screener opens on (lib/screener.ts). */
   screenerRows: number;
   /** Most saved screens the Congress trade screener keeps in a browser (lib/savedscreens.ts). */
@@ -48,7 +55,11 @@ export interface GuideCtx {
   issuesInline: number; issueFilingRows: number; issueTopRows: number;
   /** Characters of a contract description shown in a table cell (lib/contracts.ts). */
   contractDescriptionShown: number;
+  /** Days back that grants, loans and direct payments are listed (lib/assistance.ts). */
+  assistanceWindowDays: number;
   /** True once Form 144 notices are shown on pages (lib/form144.ts), and the rows a page's table prints. */
+  /** True when Form 13F holders are shown on pages (lib/inst13f.ts); managers listed per company; managers a quarter needs to count as loaded; days a load may be old; the newer quarter end as text. */
+  instShown: boolean; instTop: number; instMinManagers: string; instShownDays: number; instPeriod: string;
   form144Shown: boolean; form144Rows: number;
   /** Dollars a share above which a notice's stated market value is not shown, as text ("1,000,000"). */
   form144ValueMaxPerShare: string;
@@ -56,6 +67,10 @@ export interface GuideCtx {
   schedule13Shown: boolean; holderRows: number; holderThreshold: number; holderRecordStart: string;
   /** True when company financials are on file (lib/financials.ts); the fiscal years and quarters a page shows; the share count under which earnings per share are held back, as text. */
   financialsShown: boolean; finYears: number; finQuarters: number; finMinImpliedShares: string;
+  /** True when Form 8-K reports are on file (lib/events8k.ts); the rows a company page prints and the window in days. */
+  eventsShown: boolean; eventRows: number; eventWindowDays: number;
+  /** True when executive pay figures are on file (lib/execpay.ts); the fiscal years a page shows; the size ("$1 billion", "$1,000") at which a figure is marked. */
+  execPayShown: boolean; payYears: number; payLarge: string; paySmall: string;
   /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
   form4Floor: string;
   /** Calendar days after which the site flags a Form 4 as late. */
@@ -94,13 +109,18 @@ async function build(): Promise<GuideCtx> {
     alertsEnabled: ALERTS_ENABLED, alertPendingDays: ALERT_PENDING_DAYS, alertBodyDays: ALERT_BODY_DAYS, alertMaxAgeDays: ALERT_MAX_AGE_DAYS,
     feedCongressItems: feedDef("congress-trades").limit, feedPurchaseItems: feedDef("insider-purchases").limit, feedInsiderItems: feedDef("insider-trades").limit,
     committeeTradeRows: COMMITTEE_TRADE_ROWS,
+    voteRows: VOTE_ROWS,
     screenerRows: SCREENER_ROWS, savedScreensMax: SAVED_SCREENS_MAX,
     congressRecordStart: new Date(RECORD_START + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }), firstMinDays: FIRST_MIN_DAYS, runMin: RUN_MIN,
     issuesInline: ISSUES_INLINE, issueFilingRows: ISSUE_FILING_ROWS, issueTopRows: ISSUE_TOP_ROWS,
     contractDescriptionShown: DESCRIPTION_SHOWN,
+    instShown: instHubShown(m), instTop: INST_TOP, instMinManagers: INST_MIN_MANAGERS.toLocaleString("en-US"), instShownDays: INST_SHOWN_DAYS, instPeriod: m.inst.period ? instQuarterDate(m.inst.period) : "",
+    assistanceWindowDays: ASSISTANCE_WINDOW_DAYS,
     form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS, form144ValueMaxPerShare: VALUE_MAX_PER_SHARE.toLocaleString("en-US"),
     schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL,
     financialsShown: m.financials.byCik.size > 0, finYears: YEARS_SHOWN, finQuarters: QUARTERS_SHOWN, finMinImpliedShares: MIN_IMPLIED_SHARES.toLocaleString("en-US"),
+    eventsShown: m.events.byCik.size > 0, eventRows: EVENT_ROWS, eventWindowDays: EVENT_WINDOW_DAYS,
+    execPayShown: m.execPay.byCik.size > 0, payYears: PAY_YEARS, payLarge: `$${(PAY_LARGE / 1e9).toLocaleString("en-US")} billion`, paySmall: `$${PAY_SMALL.toLocaleString("en-US")}`,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
     capBands: CAP_BANDS.map((b) => ({ label: b.label, range: b.range })),

@@ -338,7 +338,7 @@ if (chromium) {
   ok((await page.evaluate(() => [Object.keys(localStorage), Object.keys(sessionStorage)].flat())).every((k) => k === "theme" || k.startsWith("stm.screens.") || /^(_ga|google|goog)/i.test(k)), "the screener writes nothing to browser storage");
   requests.length = 0;
   await page.selectOption('[data-fs="ni"]', "pos"); await page.selectOption('[data-fs="rmin"]', "1000000000"); await page.fill('[data-fs="q"]', "a");
-  ok(requests.filter((u) => u.startsWith(base)).length === 0, `filtering sends no request to the site (${requests.filter((u) => u.startsWith(base)).slice(0, 2).join(", ")})`);
+  ok(requests.filter((u) => u.startsWith(base) && !/favicon|apple-touch-icon/.test(u)).length === 0, `filtering sends no request to the site (${requests.filter((u) => u.startsWith(base) && !/favicon|apple-touch-icon/.test(u)).slice(0, 2).join(", ")})`);
   // Without JavaScript the controls are hidden; at 390 px nothing runs off the side.
   const plain = await browser.newContext({ javaScriptEnabled: false });
   const np = await plain.newPage();

@@ -262,6 +262,49 @@ ok(/are shown on the stock and company pages/.test(methLine) && !/not shown on a
 const dl = (await get("/downloads/")).text;
 ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
 
+
+// HUB: /large-holders/ against the same CSV file (newest statement per holder and company), with this script's own copy of the rules.
+{
+  const HUB_PER = 50;
+  const newest = csv.rows.filter((r) => r.newest_for_holder === "true" && r.filed_date <= builtDay);
+  const hub = await get("/large-holders/");
+  const hubData = await get("/data/large-holders.json");
+  ok(hub.status === 200 && !/noindex/.test(hub.text), "HUB: /large-holders/ is indexable");
+  let packed = null; try { packed = JSON.parse(hubData.text); } catch { /* reported below */ }
+  ok(!!packed && Array.isArray(packed.rows), "HUB: /data/large-holders.json parses");
+  if (packed) {
+    ok(packed.rows.length === newest.length, `HUB: data file has ${packed.rows.length} holders, the CSV has ${newest.length} newest statements`);
+    const byAcc = new Map(newest.map((r) => [r.accession, r]));
+    let bad = 0;
+    for (const r of packed.rows) {
+      const c = byAcc.get(r[9]); if (!c) { bad++; continue; }
+      if ((r[5] ?? null) !== (c.percent_of_class === "" ? null : Number(c.percent_of_class))) bad++;
+      if ((r[6] ?? null) !== (c.shares_stated === "" ? null : Number(c.shares_stated))) bad++;
+      if (r[3] !== c.schedule.slice(2)) bad++;
+      if (r[8] !== c.filed_date) bad++;
+    }
+    ok(bad === 0, `HUB: ${bad} cells of the data file differ from the CSV`);
+  }
+  const order = [...newest].sort((a, b) => b.filed_date.localeCompare(a.filed_date) || clean(a.company, 200).localeCompare(clean(b.company, 200)) || (a.accession < b.accession ? 1 : -1));
+  const trs = [...hub.text.slice(hub.text.indexOf("<tbody")).matchAll(/<tr[^>]*data-statement="([^"]*)"[^>]*>/g)].map((m) => m[1]);
+  ok(trs.length === Math.min(HUB_PER, order.length), `HUB: ${trs.length} rows printed, expected ${Math.min(HUB_PER, order.length)}`);
+  ok(trs.every((a, i) => a === order[i]?.accession), "HUB: the printed rows are the newest statements, newest filed first");
+  const companies = new Set(newest.map((r) => r.issuer_cik)).size;
+  const ht = text(hub.text);
+  ok(ht.includes(`${nf(newest.length)} ${newest.length === 1 ? "holder" : "holders"} of ${nf(companies)} ${companies === 1 ? "company" : "companies"}`), `HUB: count line should state ${newest.length} holders of ${companies} companies`);
+  const below = newest.filter((r) => r.percent_of_class !== "" && Number(r.percent_of_class) < 5).length;
+  ok(below === 0 || /below 5%/.test(hub.text), "HUB: a statement under 5% is marked");
+  ok(/not a report of a trade/i.test(ht) && /not to be added together/i.test(ht), "HUB: says a statement is not a trade and rows are not added");
+  ok(!/total (shares|holding)|in total|combined holding of all/i.test(ht), "HUB: adds nothing up");
+  ok(["q", "division", "schedule", "pct", "w"].every((k) => hub.text.includes(`data-hub-ctl="${k}"`)), "HUB: every filter control is on the page");
+  ok(/data-hub="download"/.test(hub.text), "HUB: has the client-built download");
+  ok((await get("/sitemaps/pages.xml")).text.includes("/large-holders/"), "HUB: in the sitemap");
+  ok((await get("/llms.txt")).text.includes("/large-holders/"), "HUB: in llms.txt");
+  ok((await get("/data/search.json")).text.includes("/large-holders/"), "HUB: in the search index");
+  ok(/href="\/large-holders\/"/.test((await get("/")).text), "HUB: linked in the navigation");
+  ok(/large-holders\/"/.test(meth), "HUB: the methodology mentions the hub");
+}
+
 const holdersAll = withRows.reduce((a, x) => a + x.holders.length, 0);
 console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersAll} holders by newest statement; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
 process.exit(failures ? 1 : 0);

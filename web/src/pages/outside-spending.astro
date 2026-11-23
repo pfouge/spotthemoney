@@ -1,0 +1,151 @@
+---
+// Outside spending: /outside-spending/. Independent expenditures reported to the FEC, counted by
+// one rule (lib/outsidespending.ts, unit-tested): by candidate, the largest spenders and the
+// newest expenditures. Static, sortable tables; a search box narrows the candidate table and is
+// hidden without JavaScript. Candidates who are not sitting members have no page here.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, num, plural, personPath } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { datasetLd } from "../lib/seo";
+import { usdFull, fecCommitteeUrl, SIDE_LABEL, CANDIDATE_MIN_ROWS, CANDIDATE_MAX, SPENDER_ROWS, NEWEST_ROWS, COUNT_RULE, OUTSIDE_CAVEAT, DESCRIPTION_SHOWN, cleanOutsideText } from "../lib/outsidespending";
+
+const model = await getFlagship();
+const o = model.outside;
+const built = model.builtAt.slice(0, 10);
+const newest = o.rows.map((r) => r.spentAt).filter((x): x is string => !!x).sort().at(-1) ?? null;
+const answer = !o.shown
+  ? "No independent expenditures are on file here yet. They are added as outside spenders report them to the FEC."
+  : `${plural(o.countedRows, "independent expenditure")} are counted for the ${o.cycle ?? "current"} cycle, reported by ${num(o.spenderCount)} spending ${o.spenderCount === 1 ? "committee" : "committees"} and naming ${num(o.candidateCount)} ${o.candidateCount === 1 ? "candidate" : "candidates"}. The money was spent by outside groups on communications about the candidates, not given to them.`;
+const description = "Independent expenditures reported to the FEC: which outside groups spend to support or oppose which federal candidates, counted once, by candidate and by spender.";
+const csvFiles = (await getDownloads()).files.filter((f) => f.kind === "outside");
+const ld = datasetLd({ downloads: csvFiles.map((f) => f.path), name: "Independent expenditures in federal races (FEC)", path: "/outside-spending/", description, dateModified: (newest ?? built).slice(0, 10), keywords: ["independent expenditures", "super PAC", "outside spending", "FEC"], sources: [{ name: "FEC: independent expenditures", url: "https://www.fec.gov/data/independent-expenditures/" }], parentCatalogPath: "/washington/" });
+const pageOf = (id: number | null) => { if (id == null) return null; const p = model.people.get(id); return p ? personPath(p) : null; };
+const OFFICE: Record<string, string> = { H: "House", S: "Senate", P: "President" };
+type H = [string, "text" | "num", string?];
+const candHeads: H[] = [["Candidate", "text"], ["Office", "text"], ["State", "text"], ["Reported in support", "num", "num"], ["Reported in opposition", "num", "num"], ["Spenders", "num", "num"]];
+const spendHeads: H[] = [["Spender", "text"], ["Reported in support", "num", "num"], ["Reported in opposition", "num", "num"], ["Candidates named", "num", "num"]];
+const newHeads: H[] = [["Date", "num"], ["Spender", "text"], ["Candidate", "text"], ["Support or oppose", "text"], ["Amount", "num", "num"], ["Purpose, as reported", "text"]];
+---
+<BaseLayout title={["Outside Spending: Independent Expenditures in Federal Races", "Outside Spending: Independent Expenditures"]} description={description} section="Washington · Outside spending" noindex={!o.shown}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Outside spending", path: "/outside-spending/" }]} />
+  <p class="eyebrow">Washington <span class="x">/</span> Outside spending</p>
+  <h1>Outside spending</h1>
+  <p class="lede">Independent expenditures: money outside groups spend on ads and other communications to support or oppose federal candidates, as the groups reported it to the FEC.</p>
+  <Answer text={answer} updated={newest ?? built} sourceNote="Source: Federal Election Commission, Schedule E and 24-hour and 48-hour reports" />
+
+  {!o.shown ? <p class="empty-reason">No independent expenditures on file yet.</p> : (
+    <>
+      <div class="datastrip" data-os-strip>
+        <div class="cell"><div class="k">Cycle</div><div class="v" data-os="cycle">{o.cycle ?? "—"}</div></div>
+        <div class="cell"><div class="k">Expenditures counted</div><div class="v" data-os="counted">{num(o.countedRows)}</div></div>
+        <div class="cell"><div class="k">Spending committees</div><div class="v" data-os="spenders">{num(o.spenderCount)}</div></div>
+        <div class="cell"><div class="k">Candidates named</div><div class="v" data-os="candidates">{num(o.candidateCount)}</div></div>
+      </div>
+      <p class="section-note" data-os-caveat>{OUTSIDE_CAVEAT} <a href="/guides/campaign-donations-fec-data/#independent-expenditures">What an independent expenditure is</a>.</p>
+      {csvFiles.map((f) => <DownloadCsv file={f} note="every expenditure, with the column that says whether it counts" />)}
+
+      <h2 id="candidates">By candidate</h2>
+      <p>Every candidate named in at least {CANDIDATE_MIN_ROWS} counted expenditures{o.candidates.length >= CANDIDATE_MAX ? `, the ${CANDIDATE_MAX} with the most reported` : ""}. The two amounts are never added together or netted. Candidates who are not sitting members of Congress have no page on this site, and presidential candidates are included as reported.</p>
+      <p class="os-search" data-os-search hidden><label class="lbl" for="os-q">Find a candidate</label> <input id="os-q" class="hm-input" type="search" placeholder="Candidate name" autocomplete="off" maxlength="60" data-os="q" /> <span class="soft" data-os="qcount" aria-live="polite"></span></p>
+      {o.candidates.length === 0 ? <p class="empty-reason">No candidate has {CANDIDATE_MIN_ROWS} or more counted expenditures yet.</p> : (
+        <div class="tablewrap"><table class="data" data-sortable data-os-candidates><thead><tr>
+          {candHeads.map(([label, type, cls]) => <th class={cls ?? ""} aria-sort="none" data-type={type}><button type="button" class="sort" aria-label={`Sort by ${label.toLowerCase()}`}>{label}<span class="arr" aria-hidden="true"></span></button></th>)}
+        </tr></thead><tbody>
+          {o.candidates.map((c) => {
+            const path = pageOf(c.personId);
+            return (
+              <tr data-candidate={c.key} data-name={c.name.toLowerCase().replace(/[<>"]/g, "")}>
+                <td class="wrap" data-v={c.name.toLowerCase().replace(/[<>"]/g, "")}>{path ? <a href={path}>{c.name}</a> : c.name}</td>
+                <td data-v={c.office ?? ""}>{c.office ? OFFICE[c.office] : "—"}</td>
+                <td data-v={c.state ?? ""}>{c.state ?? "—"}</td>
+                <td class="num" data-v={Math.round(c.support)} data-os-support>{usdFull(c.support)}</td>
+                <td class="num" data-v={Math.round(c.oppose)} data-os-oppose>{usdFull(c.oppose)}</td>
+                <td class="num" data-v={c.spenders}>{num(c.spenders)}</td>
+              </tr>
+            );
+          })}
+        </tbody></table></div>
+      )}
+
+      <h2 id="spenders">Largest spenders</h2>
+      <p>The {SPENDER_ROWS} committees with the most counted dollars reported, as they named themselves. Each name opens the committee's page at the FEC.</p>
+      <div class="tablewrap"><table class="data" data-sortable data-os-spenders><thead><tr>
+        {spendHeads.map(([label, type, cls]) => <th class={cls ?? ""} aria-sort="none" data-type={type}><button type="button" class="sort" aria-label={`Sort by ${label.toLowerCase()}`}>{label}<span class="arr" aria-hidden="true"></span></button></th>)}
+      </tr></thead><tbody>
+        {o.spenders.map((s) => {
+          const u = fecCommitteeUrl(s.committeeId);
+          return (
+            <tr data-spender={s.committeeId ?? ""}>
+              <td class="wrap" data-v={s.name.toLowerCase().replace(/[<>"]/g, "")}>{u ? <a href={u} rel="noopener nofollow" target="_blank">{s.name}</a> : s.name}</td>
+              <td class="num" data-v={Math.round(s.support)}>{usdFull(s.support)}</td>
+              <td class="num" data-v={Math.round(s.oppose)}>{usdFull(s.oppose)}</td>
+              <td class="num" data-v={s.candidates}>{num(s.candidates)}</td>
+            </tr>
+          );
+        })}
+      </tbody></table></div>
+
+      <AdSlot />
+
+      <h2 id="newest">Newest expenditures</h2>
+      <p>The {NEWEST_ROWS} newest counted expenditures by the date the money was spent.</p>
+      <div class="tablewrap"><table class="data" data-sortable data-os-newest><thead><tr>
+        {newHeads.map(([label, type, cls]) => <th class={cls ?? ""} aria-sort="none" data-type={type}><button type="button" class="sort" aria-label={`Sort by ${label.toLowerCase()}`}>{label}<span class="arr" aria-hidden="true"></span></button></th>)}<th>Filing</th>
+      </tr></thead><tbody>
+        {o.newest.map((r) => {
+          const u = fecCommitteeUrl(r.committeeId);
+          const path = pageOf(r.personId);
+          const desc = cleanOutsideText(r.description, DESCRIPTION_SHOWN);
+          return (
+            <tr data-expenditure={r.subId}>
+              <td class="mono" data-v={(r.spentAt ?? "").replaceAll("-", "")}>{r.spentAt ? formatDate(r.spentAt) : "—"}</td>
+              <td class="wrap" data-v={r.committeeName.toLowerCase().replace(/[<>"]/g, "")}>{u ? <a href={u} rel="noopener nofollow" target="_blank">{r.committeeName}</a> : r.committeeName}</td>
+              <td class="wrap" data-v={(r.candidateName ?? "").toLowerCase().replace(/[<>"]/g, "")}>{path ? <a href={path}>{r.candidateName}</a> : (r.candidateName ?? "—")}</td>
+              <td data-v={r.side ?? ""}>{r.side ? SIDE_LABEL[r.side] : "Not stated"}</td>
+              <td class="num" data-v={r.amount ?? ""}>{r.amount != null ? usdFull(r.amount) : "—"}</td>
+              <td class="wrap os-desc" data-v={(desc ?? "").toLowerCase().replace(/[<>"]/g, "")}>{desc ?? "—"}</td>
+              <td>{r.url ? <a href={r.url} rel="noopener nofollow" target="_blank">Filing ↗</a> : "—"}</td>
+            </tr>
+          );
+        })}
+      </tbody></table></div>
+    </>
+  )}
+
+  <h2 id="about">How these numbers are counted</h2>
+  <p>An independent expenditure is money a person or group spends on a communication that expressly advocates the election or defeat of a clearly identified federal candidate, without coordination with the candidate. The candidate does not receive it. Spenders report each one on a 24-hour or 48-hour notice and again on their next regular report, so the FEC's raw data lists many of them twice.</p>
+  <p>{COUNT_RULE} A row with no amount or no stated side is listed and left out of the totals. Support and opposition are never added together or netted, and no figure here is "spent on" a member in the sense of a payment to them. Amounts are as reported: the FEC and the spender can amend them later. What the terms mean: <a href="/guides/campaign-donations-fec-data/#independent-expenditures">the guide</a>. How the page is built: <a href="/methodology/#outside-spending">methodology</a>.</p>
+  <p>The payee a spender paid (a media buyer, a printer) is not shown, and individual donors to the spenders are not shown; the FEC's own search has both.</p>
+  <JsonLd data={ld} />
+  <p class="disclaimer"><strong>Not investment advice.</strong> Figures as the spenders reported them to the FEC; this page does not say why anyone spent money.</p>
+</BaseLayout>
+
+<style>
+  .os-search { margin: 0.4rem 0; }
+  .os-search .hm-input { width: 220px; }
+  :global(html.js) .os-search { display: block; }
+  .os-desc { min-width: 12rem; }
+</style>
+<script>
+  // Narrows the candidate table by name. Rows stay in the page (so the table sorts and prints as
+  // written); nothing is stored or sent. Hidden without JavaScript.
+  const box = document.querySelector<HTMLElement>("[data-os-search]");
+  const input = document.querySelector<HTMLInputElement>('[data-os="q"]');
+  const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>("[data-os-candidates] tbody tr"));
+  const out = document.querySelector<HTMLElement>('[data-os="qcount"]');
+  if (box && input && rows.length) {
+    box.hidden = false;
+    input.addEventListener("input", () => {
+      const words = input.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      let shown = 0;
+      for (const r of rows) { const hay = r.dataset.name ?? ""; const ok = words.every((w) => hay.includes(w)); r.hidden = !ok; if (ok) shown++; }
+      if (out) out.textContent = words.length ? `${shown.toLocaleString("en-US")} of ${rows.length.toLocaleString("en-US")} candidates` : "";
+    });
+  }
+</script>

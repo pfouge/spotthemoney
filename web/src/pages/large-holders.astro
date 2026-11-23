@@ -1,0 +1,118 @@
+---
+// Large holders: /large-holders/. For every company with a page on this site, each holder's newest
+// Schedule 13D or 13G statement, with filters (company, holder or ticker, industry division,
+// schedule, percent threshold, filing window) and sortable columns. A statement says what the filer
+// owned on its event date; it is not a trade and nothing here is added up. Rules are in
+// lib/largeholders.ts (unit-tested) and lib/schedule13.ts. The page prints the first rows itself;
+// the browser script (scripts/largeholders.ts) loads /data/large-holders.json and takes over. While
+// the Schedule 13 load is not current the hub is a noindex "being refreshed" page and is in no
+// sitemap, search or llms.txt.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import HubStyles from "../components/HubStyles.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, num } from "../lib/flagship";
+import { datasetLd } from "../lib/seo";
+import { siteLarge } from "../lib/largeholders-build";
+import { HOLDER_CAVEAT, RECORD_START_LABEL } from "../lib/schedule13";
+import { DEFAULT_PER, PER_PAGE, plural } from "../lib/hubscreen";
+import {
+  largeScreen, lhSummaryLine, shortDate, percentText, FILING_THRESHOLD, DEFAULT_LH_VIEW, LARGE_DATA, SCHEDULES, SCHEDULE_LABEL, PCTS, PCT_LABEL, WINDOWS, WINDOW_LABEL, firstLhDir, type LhSortKey,
+} from "../lib/largeholders";
+
+const model = await getFlagship();
+const { all, data } = siteLarge(model);
+const shown = all.length > 0;
+const built = data.built;
+const first = largeScreen(all, DEFAULT_LH_VIEW, built);
+const companies = new Set(all.map((r) => r.c.cik)).size;
+const lastUpdated = model.schedule13.lastFiled ?? model.builtAt;
+const csv = (await getDownloads()).files.find((f) => f.name === "large-holders-13d-13g.csv");
+const answer = shown
+  ? `${plural(all.length, "holder", "holders")} of ${plural(companies, "company", "companies")} on this site ${all.length === 1 ? "has" : "have"} a Schedule 13D or 13G statement on record, each listed by its newest statement. A statement says what the filer owned on its event date; it is not a report of a trade.`
+  : "The Schedule 13D and 13G statements are being refreshed. This page returns when the daily load has caught up with today.";
+const description = "Holders that told the SEC they own more than 5% of a company on this site, by newest Schedule 13D or 13G statement: percent, shares and dates, as filed.";
+const ld = shown ? datasetLd({ downloads: [csv?.path].filter(Boolean) as string[], name: "Large holders: SEC Schedule 13D and 13G statements about companies on Spot the Money", path: "/large-holders/", description, dateModified: String(lastUpdated).slice(0, 10), keywords: ["Schedule 13D", "Schedule 13G", "large holders", "beneficial ownership"] }) : null;
+const HEAD: Record<LhSortKey, string> = { filed: "Filed", company: "Company", holder: "Holder, as filed", percent: "Percent of class", shares: "Shares stated", event: "As of (event date)" };
+const th = (k: LhSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_LH_VIEW.sort });
+---
+<BaseLayout title={["Large Holders: Schedules 13D and 13G", "Large Holders (13D and 13G)"]} description={description} section="Insiders" noindex={!shown}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Insiders", path: "/insiders/" }, { name: "Large holders", path: "/large-holders/" }]} />
+  <h1>Large holders</h1>
+  <p class="lede">Holders that filed a Schedule 13D or 13G with the SEC about a company on this site, each by its newest statement.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR, Schedules 13D and 13G" />
+
+  {!shown ? <p class="empty-reason">Schedule 13D and 13G statements are being refreshed. Check back after the next daily update.</p> : (
+    <div class="hubscr" data-hub-root data-src={LARGE_DATA} data-total={all.length} data-built={built}>
+      <HubStyles />
+      <p class="hub-note" data-lh-caveat>{HOLDER_CAVEAT} <a href="/methodology/#schedule-13">How these statements are read</a>.</p>
+      <div class="controls hub-controls" role="group" aria-label="Filter holders">
+        <div class="ctl"><label class="lbl" for="lh-q">Company, ticker or holder</label><input id="lh-q" class="hm-input" data-hub-ctl="q" type="search" placeholder="Company, ticker or holder" autocomplete="off" maxlength="60" /></div>
+        <div class="ctl"><span class="lbl">Filed</span>
+          <select data-hub-ctl="w" aria-label="Filing date window"><option value="0">{WINDOW_LABEL[0]}</option>{WINDOWS.map((w) => <option value={w}>{WINDOW_LABEL[w]}</option>)}</select>
+        </div>
+        {data.divisions.length > 0 && (
+          <div class="ctl"><span class="lbl">Industry</span>
+            <select data-hub-ctl="division" aria-label="Industry division, as the SEC classifies the company"><option value="">Any industry</option>{data.divisions.map((d) => <option value={d.slug}>{d.name}</option>)}</select>
+          </div>
+        )}
+        <div class="ctl"><span class="lbl">Schedule</span>
+          <select data-hub-ctl="schedule" aria-label="Schedule 13D or 13G"><option value="">Both schedules</option>{SCHEDULES.map((s) => <option value={s}>{SCHEDULE_LABEL[s]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Percent of class</span>
+          <select data-hub-ctl="pct" aria-label="Percent of class the statement states"><option value="">Any percent</option>{PCTS.map((p) => <option value={p}>{PCT_LABEL[p]}</option>)}</select>
+        </div>
+      </div>
+      <p class="section-note hub-count"><span data-hub="count" aria-live="polite">{lhSummaryLine(first)}</span> <button type="button" class="linklike" data-hub="reset" hidden>Reset filters</button></p>
+      <DownloadCsv file={csv} note="every statement on record for these companies, not only the rows filtered here" />
+      <p class="dl-row hub-dl"><button type="button" class="dl" data-hub="download">Download these rows (CSV)</button> <span class="dl-meta">The holders that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+
+      <div class="tablewrap"><table class="data hub-table">
+        <thead><tr>
+          {[th("company"), th("holder")].map((x) => <th aria-sort="none" data-sort={x.k} data-first={firstLhDir(x.k)}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          <th>Schedule</th>
+          {[th("percent"), th("shares")].map((x) => <th class="num" aria-sort="none" data-sort={x.k} data-first={firstLhDir(x.k)}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          {[th("event"), th("filed")].map((x) => <th aria-sort={x.on ? "descending" : "none"} data-sort={x.k} data-first={firstLhDir(x.k)}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true">{x.on ? "▼" : ""}</span></button></th>)}
+          <th>Statement</th>
+        </tr></thead>
+        <tbody data-hub="rows">
+          {first.rows.map((r) => (
+            <tr data-statement={r.accession}>
+              <td><a href={r.c.path}>{r.c.name}</a>{r.c.ticker && <span class="soft small mono"> {r.c.ticker}</span>}</td>
+              <td class="wrap">{r.path ? <a href={r.path}>{r.holder}</a> : r.holder}{r.persons > 1 && <span class="lh-sub">with {num(r.persons - 1)} other reporting {r.persons - 1 === 1 ? "person" : "persons"}</span>}</td>
+              <td>Schedule {r.schedule}</td>
+              <td class="num">{r.percent != null ? percentText(r.percent) : ""}{r.percent != null && r.percent < FILING_THRESHOLD && <span class="lh-sub">below {FILING_THRESHOLD}%</span>}</td>
+              <td class="num">{r.shares != null ? num(r.shares) : ""}</td>
+              <td class="mono">{shortDate(r.event)}</td>
+              <td class="mono">{shortDate(r.filed)}</td>
+              <td class="mono">{r.url ? <a href={r.url} rel="noopener nofollow" target="_blank">{`Schedule ${r.schedule}${r.amend ? "/A (amendment)" : ""} ↗`}</a> : `Schedule ${r.schedule}${r.amend ? "/A (amendment)" : ""}`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p class="empty-reason" data-hub="empty" hidden>No holder matches these filters. <button type="button" class="linklike" data-hub="reset2">Clear the filters</button></p>
+      <div class="hub-pager" data-hub="pager">
+        <button type="button" class="chip" data-hub="prev" disabled>Previous</button>
+        <span data-hub="pageinfo" class="soft">Page 1 of {num(first.pages)}</span>
+        <button type="button" class="chip" data-hub="next" disabled={first.pages <= 1}>Next</button>
+        <label class="hub-per soft">Rows per page <select data-hub-ctl="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
+      </div>
+      <noscript><p class="section-note">These are the first {num(first.rows.length)} of {num(first.total)} holders, newest statement first. The filters need JavaScript; the CSV file above has every statement on record.</p></noscript>
+    </div>
+  )}
+
+  <h2 id="about">What this table shows</h2>
+  <p>One row for each holder and company: the holder's newest Schedule 13D or 13G statement about a company with a page on this site. A holder files a statement after passing {FILING_THRESHOLD}% of a class of a company's voting shares, and again when it falls below {FILING_THRESHOLD}%, so a row under {FILING_THRESHOLD}% is a notice that the holder is no longer above that mark.</p>
+  <p>A statement says what the filer says it owned on the event date, not what it traded. When a statement names several reporting persons, the percent and shares are the largest that any one of them states, never a sum, and rows are not added together: this page counts holders and companies only. The record starts with statements published from {RECORD_START_LABEL} on, so it is not a full list of shareholders. A holder's name links to a page here only when the filer's SEC number belongs to exactly one person or company with a page. See the <a href="/methodology/#schedule-13">methodology</a> and the <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">guide to Schedules 13D and 13G</a>.</p>
+  <AdSlot />
+  <p class="disclaimer"><strong>Not investment advice.</strong> Statements shown as filed with the SEC; no judgement about any holder is made or implied.</p>
+  {ld && <JsonLd data={ld} />}
+</BaseLayout>
+<script>
+  import "../scripts/largeholders";
+</script>

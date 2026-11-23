@@ -252,5 +252,53 @@ ok(/shown on the stock and company pages/.test(methLine) && !/not shown on any p
 const dl = (await get("/downloads/")).text;
 ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
 
+
+// HUB: /planned-sales/ against the same CSV file, with this script's own copy of the rules.
+{
+  const HUB_PER = 50, HUB_DEFAULT_DAYS = 30;
+  const inDays = (r, d) => { const t = Date.parse(r.filed_date + "T00:00:00Z"); return t <= built && t >= built - d * DAY; };
+  const rows365 = csv.rows.filter((r) => inDays(r, WINDOW));
+  const hub = await get("/planned-sales/");
+  const hubData = await get("/data/planned-sales.json");
+  ok(hub.status === 200 && !/noindex/.test(hub.text), "HUB: /planned-sales/ is indexable");
+  let packed = null; try { packed = JSON.parse(hubData.text); } catch { /* reported below */ }
+  ok(!!packed && Array.isArray(packed.rows), "HUB: /data/planned-sales.json parses");
+  if (packed) {
+    ok(packed.rows.length === rows365.length, `HUB: data file has ${packed.rows.length} notices, the CSV has ${rows365.length} filed in the last ${WINDOW} days`);
+    const acc = new Set(packed.rows.map((r) => r[10]));
+    ok(rows365.every((r) => acc.has(r.accession)), "HUB: every notice of the last 12 months in the CSV is in the data file");
+    const byAcc = new Map(csv.rows.map((r) => [r.accession, r]));
+    let bad = 0, held = 0;
+    for (const r of packed.rows) {
+      const c = byAcc.get(r[10]); if (!c) { bad++; continue; }
+      if (r[7] === 1) { held++; if (!outOfRange(c)) bad++; if (r[6] != null) bad++; }
+      else if ((r[6] ?? null) !== (c.stated_market_value === "" ? null : Number(c.stated_market_value))) bad++;
+      if ((r[5] ?? null) !== (c.shares_to_be_sold === "" ? null : Number(c.shares_to_be_sold))) bad++;
+      if ((r[1] === 1) !== (c.form_type === "144/A")) bad++;
+    }
+    ok(bad === 0, `HUB: ${bad} cells of the data file differ from the CSV`);
+    ok(held === rows365.filter(outOfRange).length, `HUB: ${held} values held back in the data file, ${rows365.filter(outOfRange).length} by a recount`);
+    ok(packed.rows.every((r) => !(r[7] === 1 && r[6] != null)), "HUB: a held value is not in the data file");
+  }
+  const first = rows365.filter((r) => inDays(r, HUB_DEFAULT_DAYS)).sort((a, b) => b.filed_date.localeCompare(a.filed_date) || (a.accession < b.accession ? 1 : -1));
+  const tbody = hub.text.slice(hub.text.indexOf("<tbody"));
+  const trs = [...tbody.matchAll(/<tr[^>]*data-accession="([^"]*)"[^>]*>/g)].map((m) => m[1]);
+  ok(trs.length === Math.min(HUB_PER, first.length), `HUB: ${trs.length} rows printed, expected ${Math.min(HUB_PER, first.length)}`);
+  ok(trs.every((a, i) => a === first[i]?.accession), "HUB: the printed rows are the newest 30 days of the CSV, newest first");
+  const companies = new Set(first.map((r) => r.issuer_cik)).size;
+  const sellers = new Set(first.map((r) => (r.seller_sec_number ? "c:" + r.seller_sec_number : "n:" + unguard(r.seller).toLowerCase()))).size;
+  const ht = text(hub.text);
+  ok(ht.includes(`${nf(first.length)} ${first.length === 1 ? "notice" : "notices"} about ${nf(companies)} ${companies === 1 ? "company" : "companies"} from ${nf(sellers)} ${sellers === 1 ? "seller" : "sellers"}`), `HUB: count line should state ${first.length} notices, ${companies} companies, ${sellers} sellers`);
+  ok(/not a report of a sale/i.test(ht) && /plan/i.test(ht), "HUB: says a notice is a plan, not a sale");
+  ok(!/total (shares|value|dollars)|in total/i.test(ht), "HUB: adds nothing up");
+  ok(["q", "division", "form", "plan", "min", "w"].every((k) => hub.text.includes(`data-hub-ctl="${k}"`)), "HUB: every filter control is on the page");
+  ok(/class="[^"]*hub-dl/.test(hub.text) && /data-hub="download"/.test(hub.text), "HUB: has the client-built download");
+  ok((await get("/sitemaps/pages.xml")).text.includes("/planned-sales/"), "HUB: in the sitemap");
+  ok((await get("/llms.txt")).text.includes("/planned-sales/"), "HUB: in llms.txt");
+  ok((await get("/data/search.json")).text.includes("/planned-sales/"), "HUB: in the search index");
+  ok(/href="\/planned-sales\/"/.test((await get("/")).text), "HUB: linked in the navigation");
+  ok(/planned-sales\/"/.test(meth), "HUB: the methodology mentions the hub");
+}
+
 console.log(failures ? `verify-form144: ${failures} problem(s) in ${checks} checks` : `verify-form144: notices are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} notices in the file for ${byPage.size} companies, ${withRows.length} of them with a notice in the last 12 months; ${heldInFile.length} stated values out of range, ${heldInTables} of them in a page table; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
 process.exit(failures ? 1 : 0);

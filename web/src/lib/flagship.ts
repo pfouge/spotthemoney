@@ -17,8 +17,22 @@ import { emptyForm144, form144Log, filerLog } from "./form144";
 import { loadForm144, siteCompanyCiks, siteCompanyByCik, sitePersonCiks } from "./form144-build";
 import { emptySchedule13, schedule13Log, holdingsLog } from "./schedule13";
 import { loadSchedule13 } from "./schedule13-build";
+import { emptyInst, instLog } from "./inst13f";
+import { loadInst } from "./inst13f-build";
 import { emptyFinancials, financialsLog } from "./financials";
 import { loadFinancials } from "./financials-build";
+import { emptyEvents, eventsLog } from "./events8k";
+import { loadEvents } from "./events8k-build";
+import { emptyPay, payLog } from "./execpay";
+import { loadPay } from "./execpay-build";
+import { emptyVotes, votesLog } from "./votes";
+import { loadVotes } from "./votes-build";
+import { emptyOutside, outsideLog } from "./outsidespending";
+import { loadOutside } from "./outsidespending-build";
+import { emptyAssistance, assistanceLog } from "./assistance";
+import { loadAssistance } from "./assistance-build";
+import { emptyLobbyContrib, lobbyContribLog } from "./lobbygifts";
+import { loadLobbyContrib } from "./lobbygifts-build";
 import { cleanFootnotes } from "./footnotes";
 import { contractDetailLog } from "./contracts";
 import { naicsLog } from "./naics";
@@ -72,7 +86,8 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
+    votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -160,7 +175,8 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials() };
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
+      votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -387,6 +403,16 @@ async function load(): Promise<Flagship> {
       console.warn("[web] Schedule 13 statements skipped:", (err as Error).message);
     }
 
+    // Form 13F institutional holdings for the stock and company pages: set-based queries only
+    // (lib/inst13f.ts, lib/inst13f-build.ts). Optional; read only while the load is recent.
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.inst = await loadInst(sql, builtAt, ciks);
+      console.log(`[web] ${instLog(model.inst, builtAt, ciks.size)}`);
+    } catch (err) {
+      console.warn("[web] Form 13F holdings skipped:", (err as Error).message);
+    }
+
     // Figures from companies' annual and quarterly reports (SEC XBRL), for the "Financials, as
     // filed" section of stock and company pages. Optional: a missing table leaves the section out
     // (lib/financials.ts, lib/financials-build.ts).
@@ -396,6 +422,54 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${financialsLog(model.financials, ciks)}`);
     } catch (err) {
       console.warn("[web] company financials skipped:", (err as Error).message);
+    }
+
+    // Form 8-K reports (lib/events8k.ts) and executive pay figures (lib/execpay.ts): each optional, so
+    // a missing table leaves its section, file and hub out.
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.events = await loadEvents(sql, ciks);
+      console.log(`[web] ${eventsLog(model.events, builtAt, ciks)}`);
+    } catch (err) {
+      console.warn("[web] company events skipped:", (err as Error).message);
+    }
+    try {
+      const ciks = siteCompanyCiks(model);
+      model.execPay = await loadPay(sql, ciks);
+      console.log(`[web] ${payLog(model.execPay, ciks)}`);
+    } catch (err) {
+      console.warn("[web] executive pay skipped:", (err as Error).message);
+    }
+    // Roll-call votes and independent expenditures for the member pages and their hubs. Each in
+    // its own try/catch: a missing table leaves its sections out and nothing else.
+    try {
+      model.votes = await loadVotes(sql, model, builtAt);
+      console.log(`[web] ${votesLog(model.votes)}`);
+    } catch (err) {
+      console.warn("[web] roll-call votes skipped:", (err as Error).message);
+    }
+    try {
+      model.outside = await loadOutside(sql, model, builtAt);
+      console.log(`[web] ${outsideLog(model.outside)}`);
+    } catch (err) {
+      console.warn("[web] outside spending skipped:", (err as Error).message);
+    }
+    // Federal grants, loans and direct payments (migration 0037). Optional: a missing table leaves
+    // the hub, the company section, the CSV and the guide section out (lib/assistance.ts).
+    try {
+      model.assistance = await loadAssistance(sql, model.companies.values());
+      console.log(assistanceLog(model.assistance));
+    } catch (err) {
+      console.warn("[web] federal assistance skipped:", (err as Error).message);
+    }
+
+    // Lobbyist contributions, Form LD-203 (migration 0033). Aggregated in SQL; the CSV files are
+    // streamed to temporary files (lib/lobbygifts-build.ts). Optional.
+    try {
+      model.lobbyContrib = await loadLobbyContrib(sql, model.people.values(), model.companies.values());
+      console.log(lobbyContribLog(model.lobbyContrib));
+    } catch (err) {
+      console.warn("[web] lobbyist contributions skipped:", (err as Error).message);
     }
 
     // Committee seats for the member pages. Optional as well: before migration 0015 is applied the

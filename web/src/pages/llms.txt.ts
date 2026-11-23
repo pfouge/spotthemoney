@@ -5,6 +5,11 @@ import { getFlagship, num } from "../lib/flagship";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
 import { getGuides, byGroup, guidePath } from "../lib/guides";
 import { getArticles, articleUrl } from "../lib/articles";
+import { siteEventsHub } from "../lib/events8k-build";
+import { sitePayHub } from "../lib/execpay-build";
+import { INST_HUB_PATH, instHubShown } from "../lib/inst13f-hub";
+import { plannedShown } from "../lib/plannedsales-build";
+import { largeShown } from "../lib/largeholders-build";
 import { MARKETS_PATH, WFE, US_MILLIONS, EU_MILLIONS, CHINA_MILLIONS, COMMONWEALTH_MILLIONS, trillions } from "../lib/worldmarkets";
 
 export const GET: APIRoute = async () => {
@@ -15,6 +20,9 @@ export const GET: APIRoute = async () => {
   // Published articles only; the section is left out entirely while there are none.
   const articles = await getArticles({ publicOnly: true });
   const writing = articles.length === 0 ? "" : `## Writing\n${articles.map((a) => `- [${a.title}](${articleUrl(a.slug)}): ${a.summary ?? a.deck}`).join("\n")}\n\n`;
+  const evN = siteEventsHub(m).data.rows.length, payN = sitePayHub(m).data.rows.length;
+  const eventsLines = (evN ? `- [Company events](${SITE_URL}/company-events/): the Form 8-K reports that companies on this site filed in the last 12 months (${num(evN)} reports), with the SEC's heading for each item named; filters for item, industry and date. A report is the company's own statement that something happened; its text is not read or summarised.\n` : "")
+    + (payN ? `- [Executive pay](${SITE_URL}/executive-pay/): Pay Versus Performance figures for ${num(payN)} companies, as filed: the principal executive officer's total and compensation actually paid, and the average for the other named executive officers. No person is named.\n` : "");
   const body = `# Spot the Money
 
 > See where the money really moves, in the markets and in Washington. Free public U.S. data
@@ -44,12 +52,19 @@ ${SITE_URL}/corrections/. Sitemaps: ${SITE_URL}/sitemap-index.xml
 - [Congress trade screener](${SITE_URL}/congress-trades/): every transaction in the House and Senate periodic transaction reports on record in one table; filters for member, ticker, chamber, party, state, committee, side, amount range, owner, disclosure date and late reports. Amounts are the ranges the reports give.
 - [Member directory](${SITE_URL}/congress-members/): every member of Congress on record with trade counts; filters for chamber, party, state, committee and recent activity.
 - [Committees of Congress](${SITE_URL}/congress-committees/): one page per committee with its current members and the trades they have disclosed. Membership is context only.
-- [Stocks](${SITE_URL}/stocks/): one page per ticker with insider and congressional activity (${num(c.securities ?? 0)} tickers).
+${m.votes.shown ? `- [Roll call votes](${SITE_URL}/congress-votes/): every recorded House and Senate roll call on file with its question, result and official totals; each opens to show how every member voted, as the chambers recorded it. Positions are not scored.\n` : ""}- [Stocks](${SITE_URL}/stocks/): one page per ticker with insider and congressional activity (${num(c.securities ?? 0)} tickers).
 - [Companies](${SITE_URL}/companies/): insiders, contracts and lobbying per company (${num(c.companies ?? 0)} companies).
 - [Companies by industry](${SITE_URL}/industries/): the companies grouped by the division of the industry code (SIC) the SEC assigns to each, with counts of open-market insider purchases and sales and of congressional trades disclosed in the last 12 months. The classification is the SEC's and is a label only.
 - [Company financials screener](${SITE_URL}/company-financials/): the newest fiscal year or quarter of each tracked company in one table, as filed with the SEC (revenue, net income, diluted earnings per share, total assets, equity); filters for industry, currency, revenue, net income above or below zero and total assets. Figures as filed, in the company's own currency; nothing is converted, scored or ranked.
-- [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
+${eventsLines}- [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
+${plannedShown(m) ? `- [Planned sales](${SITE_URL}/planned-sales/): every SEC Form 144 notice filed in the last 12 months about a company on this site, with filters. A notice states a plan to sell, not a sale; nothing is added up.\n` : ""}${largeShown(m) ? `- [Large holders](${SITE_URL}/large-holders/): each holder's newest Schedule 13D or 13G statement about a company on this site, with filters. A statement is a position on a date, not a trade; nothing is added up.\n` : ""}${instHubShown(m) ? `- [Institutional holders](${SITE_URL}${INST_HUB_PATH}): the companies on this site ranked by how many institutional managers report them in SEC Form 13F, and the managers with the largest reported value. Positions on one day a quarter, as filed; sums can count shares twice, and no share of any company is stated.\n` : ""}- [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
 - [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
+- [Washington](${SITE_URL}/washington/): [donations](${SITE_URL}/donations/), [lobbying](${SITE_URL}/lobbying/), [federal contracts](${SITE_URL}/contracts/).
+${m.outside.shown ? `- [Outside spending](${SITE_URL}/outside-spending/): independent expenditures reported to the FEC, by candidate and by spender, counted once. Money outside groups spent on communications about candidates; the candidates did not receive it.\n` : ""}- [Lobbying by issue](${SITE_URL}/lobbying-issues/): one page per general issue area with the clients and lobbying firms whose filings list it. A filing reports one amount for all its issues, so amounts overlap between issues.
+${m.assistance.rows.length ? `- [Grants and loans](${SITE_URL}/grants/): federal grants, loans and direct payments that started in the last 180 days, from USAspending, with agency and program. The three kinds are listed apart and not added together; a loan's amount is its face value.
+` : ""}
+${m.lobbyContrib.available && m.lobbyContrib.periods.length ? `- [Lobbyist contributions](${SITE_URL}/lobbyist-contributions/): contributions and payments that lobbyists and lobbying firms report on Form LD-203, with largest filers, most named recipients and newest items. Names are as typed by the filers; a report is not a statement by the recipient.
+` : ""}
 - [Newest disclosures](${SITE_URL}/disclosures/): one feed across every source, newest first.
 
 ## Free CSV downloads (no sign-up; same rows as the pages; column meanings on the page)

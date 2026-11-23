@@ -1,0 +1,168 @@
+---
+// /lobbyist-contributions/: contributions and payments that lobbyists and lobbying firms report on
+// Form LD-203 (lib/lobbygifts.ts has the rules). Static, sortable tables; the recipients table has a
+// search box (scripts/lobbyrecip.ts). Names are as typed and are not merged.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdSlot from "../../components/AdSlot.astro";
+import Crumbs from "../../components/Crumbs.astro";
+import Answer from "../../components/Answer.astro";
+import JsonLd from "../../components/JsonLd.astro";
+import DownloadCsv from "../../components/DownloadCsv.astro";
+import { getFlagship, num, plural, money } from "../../lib/flagship";
+import { getDownloads } from "../../lib/downloads";
+import { datasetLd, SOURCES, fitTitle, fitDescription } from "../../lib/seo";
+import { orgPath } from "../../lib/links";
+import { formatDate } from "../../lib/format";
+import { SENATE_NOTICE, FILER_ROWS, RECIPIENT_ROWS, NEWEST_ROWS, sentenceCase, periodLabel, shareText } from "../../lib/lobbygifts";
+
+const model = await getFlagship();
+const d = model.lobbyContrib;
+const files = (await getDownloads()).files.filter((f) => f.kind === "lobbycontrib");
+const usd = (n: number) => money(n, { compact: false });
+const dayNum = (s: string | null) => (s ? s.replaceAll("-", "") : "");
+const flat = (s: string | null) => (s ?? "").toLowerCase().replace(/[<>"]/g, "");
+const latestTwo = d.periods.slice(0, 2);
+const periodWord = (p: { year: number; label: string }) => `${p.label} ${p.year}`;
+
+const answer = !d.available || d.periods.length === 0
+  ? "No Form LD-203 reports are on record yet; the daily Senate job loads the contribution reports lobbyists file twice a year."
+  : `Lobbyists and lobbying firms filed ${plural(d.filingsCounted, "Form LD-203 report")} on record, the newest posted ${formatDate(d.newestPosted ?? model.builtAt)}. ${latestTwo.map((p) => `${periodWord(p)}: ${num(p.items)} ${p.items === 1 ? "item" : "items"} worth ${usd(p.amount)} as reported`).join("; ")}. Names are as the filers typed them and are not merged.`;
+const description = fitDescription(["Contributions and payments that lobbyists report on Form LD-203: largest filers, most named recipients and the newest items, from the Senate.", "Lobbyist contributions reported on Form LD-203, from the Senate."]);
+const ld = datasetLd({ downloads: files.map((f) => f.path), name: "Lobbyist contributions reported on Form LD-203", path: "/lobbyist-contributions/", description, dateModified: (d.newestPosted ?? model.builtAt).slice(0, 10), keywords: ["lobbyist contributions", "LD-203", "Lobbying Disclosure Act", "Senate"], sources: [SOURCES.lda], parentCatalogPath: "/washington/" });
+const th = (label: string, type: string, cls = "") => ({ label, type, cls });
+---
+<BaseLayout title={fitTitle(["Lobbyist Contributions Reported on Form LD-203", "Lobbyist Contributions (LD-203)"])} description={description} section="Washington · Lobbyist contributions" noindex={!d.available || d.periods.length === 0}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Washington", path: "/washington/" }, { name: "Lobbyist contributions", path: "/lobbyist-contributions/" }]} />
+  <p class="eyebrow">Washington <span class="x">/</span> Lobbyist contributions</p>
+  <h1>Lobbyist contributions</h1>
+  <p class="lede">What lobbyists and lobbying firms report giving to campaigns, committees, causes and events on Form LD-203, updated daily.</p>
+  <Answer text={answer} updated={d.newestPosted ?? model.builtAt} sourceNote="Source: Senate Lobbying Disclosure (lda.gov)" />
+
+  {d.available && d.periods.length > 0 && (
+    <section data-lc-hub data-filings={d.filingsCounted} data-superseded={d.filingsSuperseded} data-match-items={d.match.items} data-match-matched={d.match.matched}>
+      <div class="summary" data-figures>
+        {latestTwo.map((p) => (
+          <div class="cell" data-period={`${p.year}-${p.period}`}>
+            <div class="k">{periodWord(p)}</div><div class="v">{usd(p.amount)}</div>
+            <div class="delta">{num(p.items)} {p.items === 1 ? "item" : "items"} · {num(p.filings)} {p.filings === 1 ? "report" : "reports"}, {num(p.withContributions)} with contributions</div>
+          </div>
+        ))}
+      </div>
+      <p class="section-note" data-notice>{SENATE_NOTICE} Data read from the Senate on {formatDate(model.builtAt.slice(0, 10))}; the newest report was posted {formatDate(d.newestPosted ?? model.builtAt)}.</p>
+      <p class="section-note" data-amended>Where a lobbyist or firm amended a report, only the version posted last is counted for that registrant, lobbyist, year and period: {num(d.filingsSuperseded)} earlier {d.filingsSuperseded === 1 ? "version is" : "versions are"} left out of every figure here and kept in the CSV files with counted set to false. An item with no date, or a date in the future, is listed without a date and counted in its report's period only.</p>
+      {files.length > 0 && <div class="lc-files">{files.map((f) => <DownloadCsv file={f} label={`${f.name}`} note={`${num(f.rows)} rows`} />)}</div>}
+
+      {d.periods.length > 2 && (
+        <section data-periods>
+          <h2 id="periods">Every period on record</h2>
+          <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+            {[th("Period", "text"), th("Reports", "num", "num"), th("With contributions", "num", "num"), th("Items", "num", "num"), th("Amount as reported", "num", "num")].map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          </tr></thead><tbody>
+            {d.periods.map((p) => (
+              <tr data-period-row={`${p.year}-${p.period}`}><td data-v={`${p.year}${periodLabel(p.period)}`}>{periodWord(p)}</td><td class="num" data-v={p.filings}>{num(p.filings)}</td><td class="num" data-v={p.withContributions}>{num(p.withContributions)}</td><td class="num" data-v={p.items}>{num(p.items)}</td><td class="num strong" data-v={Math.round(p.amount)}>{usd(p.amount)}</td></tr>
+            ))}
+          </tbody></table></div>
+        </section>
+      )}
+
+      {d.types.length > 0 && (
+        <section data-types>
+          <h2 id="by-type">By type, {d.newestYear}</h2>
+          <p class="section-note">The kinds of item the Senate's data names. Each item has one type.</p>
+          <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+            {[th("Type", "text"), th("Items", "num", "num"), th("Amount as reported", "num", "num")].map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          </tr></thead><tbody>
+            {d.types.map((t) => <tr data-type-row><td class="wrap" data-v={flat(t.type)}>{sentenceCase(t.type)}</td><td class="num" data-v={t.items}>{num(t.items)}</td><td class="num strong" data-v={Math.round(t.amount)}>{usd(t.amount)}</td></tr>)}
+          </tbody></table></div>
+        </section>
+      )}
+
+      {d.filers.length > 0 && (
+        <section data-filers>
+          <h2 id="largest-filers">Largest filers, {d.newestYear}</h2>
+          <p class="section-note">The {Math.min(FILER_ROWS, d.filers.length)} registrants whose reports list the most money, as reported. A registrant is the firm or organization; a lobbyist's own report is counted under the firm.</p>
+          <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+            {[th("Registrant", "text"), th("Reports", "num", "num"), th("Items", "num", "num"), th("Amount as reported", "num", "num")].map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          </tr></thead><tbody>
+            {d.filers.slice(0, FILER_ROWS).map((r) => {
+              const href = orgPath(model, r.registrant);
+              return <tr data-filer-row><td class="wrap lc-who" data-v={flat(r.registrant)}>{href ? <a href={href}>{r.registrant}</a> : r.registrant}</td><td class="num" data-v={r.filings}>{num(r.filings)}</td><td class="num" data-v={r.items}>{num(r.items)}</td><td class="num strong" data-v={Math.round(r.amount)}>{usd(r.amount)}</td></tr>;
+            })}
+          </tbody></table></div>
+        </section>
+      )}
+
+      <AdSlot />
+
+      {d.recipients.length > 0 && (
+        <section data-lc-recipients>
+          <h2 id="recipients">Most named recipients, {d.newestYear}</h2>
+          <p class="section-note" data-names-note>Names are exactly as the filers typed them. The same person or committee can appear under several spellings, and nothing here merges them. Each name is the honoree, or the payee when no honoree is given.</p>
+          <div class="controls lc-controls"><div class="ctl"><label class="lbl" for="lc-q">Name</label><input id="lc-q" class="hm-input" data-lc-q type="search" placeholder="Search names" autocomplete="off" maxlength="60" /></div><span class="lc-count" data-lc-count aria-live="polite"></span></div>
+          <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+            {[th("Name, as typed", "text"), th("Named as", "text"), th("Items", "num", "num"), th("Filers", "num", "num"), th("Amount as reported", "num", "num")].map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          </tr></thead><tbody>
+            {d.recipients.slice(0, RECIPIENT_ROWS).map((r) => (
+              <tr data-recipient-row data-name={flat(r.name)} data-member={r.memberSlug ?? undefined}>
+                <td class="wrap lc-who" data-v={flat(r.name)}>{r.memberSlug ? <a href={`/congress/${r.memberSlug}/`}>{r.name}</a> : r.name}</td>
+                <td data-v={r.role}>{r.role === "honoree" ? "Honoree" : "Payee"}</td>
+                <td class="num" data-v={r.items}>{num(r.items)}</td><td class="num" data-v={r.filers}>{num(r.filers)}</td><td class="num strong" data-v={Math.round(r.amount)}>{usd(r.amount)}</td>
+              </tr>
+            ))}
+          </tbody></table></div>
+          <p class="empty-reason" data-lc-empty hidden>No name matches.</p>
+        </section>
+      )}
+
+      {d.newest.length > 0 && (
+        <section data-newest>
+          <h2 id="newest">Newest reported contributions</h2>
+          <p class="section-note">The {Math.min(NEWEST_ROWS, d.newest.length)} items with the latest dates, from counted reports. Click a column title to sort.</p>
+          <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+            {[th("Date", "num"), th("Filer", "text"), th("Type", "text"), th("Contributor", "text"), th("Payee", "text"), th("Honoree, as typed", "text"), th("Amount", "num", "num")].map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+            <th>Source</th>
+          </tr></thead><tbody>
+            {d.newest.slice(0, NEWEST_ROWS).map((r) => {
+              const href = r.registrant ? orgPath(model, r.registrant) : null;
+              return (
+                <tr data-newest-row>
+                  <td class="mono" data-v={dayNum(r.date)}>{r.date ? formatDate(r.date) : "—"}</td>
+                  <td class="wrap lc-who" data-v={flat(r.registrant)}>{href ? <a href={href}>{r.registrant}</a> : (r.registrant ?? "—")}{r.lobbyist && <span class="lc-sub">{r.lobbyist}</span>}</td>
+                  <td class="wrap" data-v={flat(r.type)}>{r.type ? sentenceCase(r.type) : "—"}</td>
+                  <td class="wrap lc-who" data-v={flat(r.contributor)}>{r.contributor ?? "—"}</td>
+                  <td class="wrap lc-who" data-v={flat(r.payee)}>{r.payee ?? "—"}</td>
+                  <td class="wrap lc-who" data-v={flat(r.honoree)}>{r.memberSlug ? <a href={`/congress/${r.memberSlug}/`}>{r.honoree}</a> : (r.honoree ?? "—")}</td>
+                  <td class="num" data-v={r.amount != null ? Math.round(r.amount) : ""}>{r.amount != null ? usd(r.amount) : "—"}</td>
+                  <td>{r.sourceUrl ? <a href={r.sourceUrl} rel="noopener nofollow" target="_blank">LD-203 ↗</a> : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody></table></div>
+        </section>
+      )}
+    </section>
+  )}
+
+  <div class="prose">
+  <h2 id="about-this-page">What this page shows</h2>
+  <p>Under the Lobbying Disclosure Act, every registered lobbyist and every lobbying firm files a Form LD-203 twice a year. It lists contributions to federal candidates, party committees and leadership PACs, payments for events honoring officials, and some other items, and it says whether the filer made none. This page totals those reports and lists the filers, the names that appear most, and the newest items. Lobbying filings, which say what is lobbied on, are on the <a href="/lobbying/">lobbying page</a>.</p>
+  <p data-match-note>Some items name a member of Congress. This site ties an item to a member's page only when the honoree field, once titles such as "Rep." and bracketed tags are removed, equals the member's full name, or equals first and last name where one member has that pair. A surname alone, or a field naming several people, matches nobody. {d.match.items > 0 ? `In ${d.newestYear}, ${num(d.match.matched)} of ${num(d.match.items)} items (${shareText(d.match)}) are tied to a member this way.` : ""} A second rule, a payee that equals a member's campaign committee, is not applied because this site does not yet link committees to members, so contributions made to a member's committee without naming the member are not counted on member pages. See <a href="/methodology/#lobbyist-contributions">methodology</a> and the <a href="/guides/lobbying-disclosure-reports/#contributions">guide to LD-203 reports</a>.</p>
+  <p>A report is the filer's statement. It does not say why a contribution was made, and nothing on this site links one to a vote, a trade or any other action.</p>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>The Senate Lobbying Disclosure database at lda.gov. {SENATE_NOTICE}</p>
+  </div>
+  <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
+  <JsonLd data={ld} />
+</BaseLayout>
+<script>
+  import "../../scripts/lobbyrecip";
+</script>
+<style>
+  .lc-who { min-width: 10rem; max-width: 18rem; }
+  .lc-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .lc-files { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 4px; }
+  .lc-count { color: var(--ink-soft); font-size: 14px; align-self: center; }
+  .lc-controls .hm-input { width: 220px; }
+  :global(html:not(.js)) .lc-controls { display: none; }
+  @media (max-width: 640px) { .lc-who { min-width: 8rem; } }
+</style>

@@ -49,9 +49,9 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>Three kinds of page hold the detail, and they link to one another:</p>
 <p>Stock, company, insider and member pages share one shape. A row of "At a glance" tiles near the top gives the main counts, and each tile opens its section. A bar under it jumps between the groups on the page, always in this order when they apply: Trading, Ownership, Company, Washington and About this record. A group appears only when the page has something to put in it, and a page with no records on file has no tiles and no bar. What each page type holds:</p>
 <ul>
-<li><strong>A stock's page</strong> lists the insiders who filed for that ticker and the members of Congress who traded it, each with the number of rows, open-market purchases and sales, and the latest date. Above that list, a table sums the insiders' open-market purchases and sales over the last 3 and 12 months: trades, people, shares, dollars, how many sales were made under a 10b5-1 plan, and bought minus sold. It counts code P and code S rows only, by the date each was disclosed. A folded table breaks the rows down by Form 4 code. Where members of Congress have traded the ticker, a link above their rows opens the ${`<a href="/congress-trades/">Congress trade screener</a>`} on that ticker alone, to filter, sort and download them. "Related stocks" are the tickers traded by the same people, ranked by the number of filers in common.${c.schedule13Shown ? ` When a holder of more than ${c.holderThreshold}% has an ownership statement on record, the page also has a section "Large holders: Schedules 13D and 13G", which lists positions, not trades; the guide to <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">10% owners and large holders</a> explains it.` : ""}</li>
+<li><strong>A stock's page</strong> lists the insiders who filed for that ticker and the members of Congress who traded it, each with the number of rows, open-market purchases and sales, and the latest date. Above that list, a table sums the insiders' open-market purchases and sales over the last 3 and 12 months: trades, people, shares, dollars, how many sales were made under a 10b5-1 plan, and bought minus sold. It counts code P and code S rows only, by the date each was disclosed. A folded table breaks the rows down by Form 4 code. Where members of Congress have traded the ticker, a link above their rows opens the ${`<a href="/congress-trades/">Congress trade screener</a>`} on that ticker alone, to filter, sort and download them. "Related stocks" are the tickers traded by the same people, ranked by the number of filers in common.${c.schedule13Shown ? ` When a holder of more than ${c.holderThreshold}% has an ownership statement on record, the page also has a section "Large holders: Schedules 13D and 13G", which lists positions, not trades; the guide to <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">10% owners and large holders</a> explains it.` : ""}${c.instShown ? ` When institutional managers report the company in their quarterly Form 13F, a section "Institutional holders: Form 13F" lists the largest of them; it too shows positions on one day, not trades, and the <a href="/guides/form-13f-institutional-holdings/">guide to Form 13F</a> explains it.` : ""}</li>
 <li><strong>An insider's page</strong> shows the same person's rows by code and by year, then every transaction, the filings, and the other insiders at the same company.</li>
-<li><strong>A company with a ticker has one page</strong>, at its ticker's address. Besides the rows above it holds the company's federal contracts and lobbying filings, matched by the company's exact name, and any insider rows its filings do not put under that ticker. An older company address opens the same page. A company with no ticker here keeps a page of its own with the same sections.</li>
+<li><strong>A company with a ticker has one page</strong>, at its ticker's address. Besides the rows above it holds the company's federal contracts, its federal grants, loans and direct payments, its lobbying filings and the contributions its own lobbying reports list, all matched by the company's exact name, and any insider rows its filings do not put under that ticker. Sections are grouped as Trading, Ownership, Company and Washington, and a group appears only when it has something to show. An older company address opens the same page. A company with no ticker here keeps a page of its own with the same sections.</li>
 </ul>
 <p>A row is listed under a ticker when its Form 4 names, as issuer, the company that ticker belongs to (or an earlier registrant of the same stock, after a merger or reorganisation). Some issuers have no trading symbol of their own, for example a fund run by a listed asset manager. Their insiders' rows are on the issuer's company page and the insider's page, shown without a ticker, and are left out of the manager's stock page and its totals. The <a href="/methodology/#ticker-owners">methodology</a> says how a ticker's company is settled.</p>
 <p>The "Industry" line at the top of a company's page is the industry code (SIC) the SEC has assigned to the company, in the SEC's wording, followed by the broad division that code belongs to. It is the SEC's classification and a label only; a company with no code on file has no such line. The line opens the page for that division under <a href="/industries/">Companies by industry</a>, which lists the tracked companies the SEC classifies there, each with the number of open-market insider purchases and sales and of congressional trades disclosed in the last 12 months. Those pages count rows; they do not rank industries or compare a trade with a company's industry.</p>
@@ -62,13 +62,15 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
 <p>The figures are the company's own. Companies file their financial statements with every number labelled (${ext("https://www.sec.gov/search-filings/edgar-application-programming-interfaces", "the SEC publishes those labelled figures")}), and this site reads a fixed set of them. They are shown as filed, in the currency the company reports in, and nothing is estimated or converted. When a later report restates an earlier period, the later report's figure is the one shown.</p>
 <p>Four things follow from showing only what was filed. A period is told by its length, so a column is either a quarter of about three months or a fiscal year. A fourth fiscal quarter has no column, because companies report it inside the annual report and not on its own. Cash-flow lines are in the fiscal-year table only, because a quarterly report gives them for the year so far. And a dash means the report did not give that figure under a label this site reads, which happens: not every company reports a total for liabilities, for instance.</p>
 <p>A few filed figures look wrong as stored, and the page prints "not shown" in their place: earnings per share that would mean the company has fewer than ${c.finMinImpliedShares} shares, total assets that do not equal liabilities plus equity on the same date, and cash larger than total assets. The first of these is usually a figure filed in the wrong scale, but a very small company can really have that few shares; either way the figure as filed is in the download. A small letter beside a figure means it was filed under a different label than the same line in the newest column. Every fiscal year and quarter on file, with the figures as filed, is in one file on the <a href="/downloads/">downloads page</a>. There are no ratios that need a share price, no scores and no forecasts, and the section is a record of filings, not a view on the company.</p>
+<p>Two more sections sit beside it in the "Company" group of a page, when the company has the data: "Executive pay, as filed", the Pay Versus Performance table of its proxy statement (<a href="/guides/executive-pay-pay-versus-performance/">how to read it</a>), and "Company events: Form 8-K reports", the current reports it filed in the last 12 months (<a href="/guides/form-8-k-company-events/">what a Form 8-K is</a>). Neither enters any buy or sell total, and neither is read for the reason behind a trade.</p>
 <p>To see many companies at once, use the <a href="/company-financials/">company financials screener</a>. It lists the newest fiscal year, or the newest quarter, of every company on this site in one table, with the same figures as filed and the same "not shown" rule. It can be narrowed by industry, by the currency a company reports in, by revenue, by total assets and by whether net income was above or below zero, and any column can be sorted. Because nothing is converted, the revenue and total-assets filters read only companies that report in U.S. dollars. The table has no score or rating: sorting a column orders companies by that one filed figure.</p>` }] : []),
       ...(c.form144Shown ? [{ id: "form-144", h: "What is a Form 144 notice, and how is it different from a Form 4?", html: `
 <p>A Form 144 is a notice of a planned sale. Under the SEC's Rule 144, an affiliate of a company (an officer, a director or a large holder) who intends to sell restricted or control shares files one with the SEC when the sale in any three months is to be more than 5,000 shares or more than $50,000. It is filed when the order is placed with a broker, and it has been filed electronically since 2023, so it is public the same day.</p>
 <p>The difference from a Form 4 matters. A Form 4 reports a trade that has happened: the date, the shares and the price. A Form 144 reports an intention. The sale it describes may happen that day, later, in part or not at all, and the form's dollar figure is the market value the filer states for the shares, not what anyone was paid. When an officer or director does sell, that sale appears on a Form 4 in the usual way. Some sellers who file a Form 144 never file a Form 4 at all, because they are not officers, directors or 10% owners.</p>
 <p>On this site, a company's page has a section titled "Planned sales: Form 144 notices" when a notice about the company was filed in the last 12 months. It lists the ${c.form144Rows} newest: the filing date, the seller and the relationship to the company in the filer's own words, the class and number of shares, the stated market value, the approximate sale date, the date a Rule 10b5-1 plan was adopted when the notice gives one, and a link to the notice at the SEC. Notices are shown for the companies this site tracks, from notices filed on or after ${c.form4Floor}. The figures are printed as filed, with one exception: forms are typed by hand and now and then a market value is plainly wrong for the number of shares, so a stated value of more than $${c.form144ValueMaxPerShare} a share reads "not shown" on the page. The figure as filed is still in the CSV file, marked, and on the notice itself.</p>
 <p>Three rules keep the notices apart from the trades. No figure from a notice is in any buy or sell total, chart, feed or trade map here. An amended notice (144/A) is listed as its own row; it repeats the notice it corrects and the form does not say which one, so the rows are not added together and the section counts notices and sellers only. And nothing is read into a notice: it carries no flag or label. All notices are in one file on the <a href="/downloads/">downloads page</a>.</p>
-<p>An insider's own page shows the same notices from the filer's side, under "Planned sales: Form 144 notices this filer submitted": the notices sent in under that person's SEC number in the last 12 months, each with the company, the figures as filed and the seller the notice names, which is sometimes a trust or a family entity and not the person.</p>` }] : []),
+<p>An insider's own page shows the same notices from the filer's side, under "Planned sales: Form 144 notices this filer submitted": the notices sent in under that person's SEC number in the last 12 months, each with the company, the figures as filed and the seller the notice names, which is sometimes a trust or a family entity and not the person.</p>
+<p>The <a href="/planned-sales/">planned sales page</a> puts every notice filed in the last 12 months about a company on this site in one table. It opens on the last 30 days and can be narrowed by company, seller, industry, notice or amendment, whether the notice states a Rule 10b5-1 plan date, the stated value and the filing window; a value shown as "not shown" passes no value filter, and the count line counts notices, companies and sellers and never adds up shares or dollars. "Download these rows (CSV)" saves the rows that match, made in your browser.</p>` }] : []),
     ],
     faqs: [
       ...(c.financialsShown ? [{ q: "Where do the financial figures on a company's page come from?", a: "From the company's own annual and quarterly reports to the SEC (forms 10-K, 10-Q, 20-F and 40-F). The figures are shown as filed, in the currency the company reports in, each column with a link to the report. Nothing is estimated." }] : []),
@@ -90,7 +92,7 @@ export const insiderGuides: ((c: GuideCtx) => Guide)[] = [
     ],
     related: ["form-4-transaction-codes", "rule-10b5-1-trading-plans", "insider-buying-vs-insider-selling", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Stocks with insider activity", href: "/stocks/" }],
-    covers: ["web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/issuer.ts", "web/src/lib/industries.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/lib/server/od.ts", "web/src/components/OdPageView.astro", "web/src/lib/market.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro", "web/src/lib/form144.ts", "web/src/components/PlannedSales.astro", "web/src/lib/financials.ts", "web/src/components/Financials.astro", "web/src/components/FiledNotices.astro", "web/src/lib/finscreen.ts", "web/src/pages/company-financials.astro"],
+    covers: ["web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS", "web/src/lib/flagship-core.ts#isLate", "web/src/lib/entity.ts", "web/src/lib/issuer.ts", "web/src/lib/industries.ts", "web/src/lib/links.ts", "web/src/lib/footnotes.ts", "web/src/components/TxnTable.astro", "web/src/lib/server/od.ts", "web/src/components/OdPageView.astro", "web/src/lib/market.ts", "web/src/pages/stocks/[ticker].astro", "web/src/pages/insiders/[slug].astro", "web/src/pages/companies/[slug].astro", "web/src/lib/form144.ts", "web/src/lib/plannedsales.ts", "web/src/lib/inst13f.ts", "web/src/components/PlannedSales.astro", "web/src/lib/financials.ts", "web/src/components/Financials.astro", "web/src/components/FiledNotices.astro", "web/src/lib/finscreen.ts", "web/src/pages/company-financials.astro"],
     ui: [{ text: "Guides for this page", on: "/stocks/aapl/" }, { text: "Related stocks", on: "/stocks/aapl/" }, { text: "Companies by industry", on: "/industries/" }, { text: "Financials, as filed", on: "/stocks/aapl/" }, { text: "Company financials screener", on: "/company-financials/" }, { text: "Net income above zero", on: "/company-financials/" }],
     facts: ["foreignInsiders"],
   }),
@@ -341,6 +343,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <li><strong>Rows are not to be added together.</strong> Related entities often file one statement together, and each reports the whole group's holding. The row shows the largest figure any one of them states, and the name of the first, "with 3 other reporting persons". Two rows can also describe overlapping shares, for example a fund manager and its parent company.</li>
 </ul>
 <p>The same statements can be read from the filer's side. When the filer of a statement is an insider or a company with a page here, that page has a section titled "Large holdings this filer reports: Schedules 13D and 13G": its newest statement about each other company this site tracks. It is not a list of everything the filer owns, because only holdings above ${c.holderThreshold}% of a class are reported on these schedules.</p>
+<p>The <a href="/large-holders/">large holders page</a> puts every holder's newest statement about a company on this site in one table, newest filing first. It can be narrowed by company or holder, industry, schedule, the percent the statement states (${c.holderThreshold}% or more, 10% or more, or below ${c.holderThreshold}%) and the filing window. A statement that states no percent passes no percent filter, the count line counts holders and companies and never adds shares or percentages together, and "Download these rows (CSV)" saves the rows that match, made in your browser.</p>
 <p>None of these figures enters any buy or sell total, chart or the trade map. The rules are written out in the <a href="/methodology/#schedule-13">methodology</a>.</p>` }] : []),
     ],
     faqs: [
@@ -356,8 +359,185 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["what-is-form-4", "insider-buying-vs-insider-selling", "insider-options-and-derivatives", "how-to-use-the-trade-map"],
     seeLive: [{ label: "Insider map by role", href: "/insiders/" }, { label: "How values are computed", href: "/methodology/#values" }],
-    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/components/LargeHolders.astro", "web/src/components/ReportedHoldings.astro"],
+    covers: ["web/src/lib/joint.ts", "web/src/components/TxnTable.astro", "web/src/lib/schedule13.ts", "web/src/lib/largeholders.ts", "web/src/components/LargeHolders.astro", "web/src/components/ReportedHoldings.astro"],
     ui: [{ text: "10% owners", on: "/insiders/" }, { text: "Officers", on: "/insiders/" }, { text: "Directors", on: "/insiders/" }, ...(c.schedule13Shown ? [{ text: "Large holders: Schedules 13D and 13G", on: "/stocks/nvda/" }] : [])],
+    facts: [],
+  }),
+
+  // ───────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "form-8-k-company-events", group: "insiders", updated: "2026-11-22",
+    title: "Form 8-K: what company event reports are",
+    seoTitle: ["Form 8-K Explained: Company Event Reports and Their Items", "Form 8-K Explained: Company Event Reports"],
+    description: ["A Form 8-K is a company's own report that something happened. What triggers one, the four-business-day deadline, the common items and how to read them.", "What a Form 8-K is, what triggers one, its deadline, the common items such as 2.02 and 5.02, and how to read them."],
+    answer: `A Form 8-K is the report a public company files with the SEC when something specific happens, such as an earnings release, a major agreement or a change of officers. Most are due within four business days of the event, and each names the numbered items, with fixed SEC headings, that the event falls under.`,
+    keyFacts: [
+      "Most 8-K reports are due within four business days of the event; a few are due sooner.",
+      "Each report names one or more numbered items, and the SEC fixes the heading of each item.",
+      "Item 9.01 attaches financial statements and exhibits to another item, so it is on most reports.",
+      "An amendment is filed as an 8-K/A; the form does not say which report it amends.",
+      `This site lists the reports of the last ${c.eventWindowDays} days and their items. It does not read or summarise their text.`,
+    ],
+    sections: [
+      { id: "what", h: "What is a Form 8-K?", html: `
+<p>It is the "current report" of a public company: a short filing that tells the market, within days, about an event the SEC considers important to investors. The annual report (Form 10-K) and the quarterly report (Form 10-Q) arrive on a fixed calendar. An 8-K arrives when something happens, which is why a company can file several in one week and none for a quarter.</p>
+<p>The report is the company's own statement. It is not a review by the SEC and it is not a judgement about whether the event is good or bad for anyone.</p>` },
+      { id: "triggers", h: "What triggers a Form 8-K, and when is it due?", html: `
+<p>Triggers are listed in the form as numbered items grouped into sections: business and operations, financial information, securities and trading markets, matters relating to accountants, corporate governance and management, and others. Examples are signing or ending a material agreement (Item 1.01 and Item 1.02), completing an acquisition (Item 2.01), publishing quarterly results (Item 2.02), a change of the auditor (Item 4.01), the departure or appointment of a director or certain officers (Item 5.02) and the results of a shareholder vote (Item 5.07).</p>
+<p>Most items must be reported within four business days of the event. A few are due earlier or have their own rules. The text of a report usually carries the date of the event, and the filing date is within days of it. The <a href="/company-events/">company events list</a> shows the filing date and, in the CSV file, the event date the report states.</p>` },
+      { id: "items", h: "Which items are the most common, and what do they mean?", html: ` 
+<p>A handful of items account for most reports.</p>
+${table(["Item", "SEC heading", "What it usually is"], [
+  ["1.01", "Entry into a Material Definitive Agreement", "A significant contract, loan or merger agreement was signed."],
+  ["2.02", "Results of Operations and Financial Condition", "The company announced results, often attached as a press release."],
+  ["5.02", "Departure of Directors or Certain Officers; Election of Directors; Appointment of Certain Officers; Compensatory Arrangements of Certain Officers", "A director or senior officer left or joined, or pay arrangements for named officers changed."],
+  ["7.01", "Regulation FD Disclosure", "Information given to the public at once, such as an investor presentation."],
+  ["8.01", "Other Events", "Anything the company considers important that no other item covers."],
+  ["9.01", "Financial Statements and Exhibits", "The documents attached to another item: press releases, agreements, statements."],
+])}
+<p>Item 9.01 is on most reports because the exhibits of the other items are listed under it. For that reason the lists on this site print it last, in softer ink, and leave it out when they name the items a company files most often.</p>` },
+      { id: "amendments", h: "What is an 8-K/A?", html: `
+<p>An 8-K/A is an amendment: the company adds or corrects something in an earlier report, or files financial statements it was allowed to supply later. The form does not state which earlier report it amends, so this site shows an amendment as its own row, marked "amendment", and does not link it to any other.</p>` },
+      { id: "site", h: "What does this site show about Form 8-K reports?", html: `
+<p>Three things. A stock's page and its company's page have a section titled "Company events: Form 8-K reports" when the company has a report filed in the last ${c.eventWindowDays} days: a sentence with the count, the ${c.eventRows} newest reports with their filing and event dates and the SEC's heading for each item, a folded table of reports by item, and a link to each report at the SEC. The <a href="/company-events/">company events list</a> has every report filed in the last 12 months by any company with a page here, with filters for item, industry, form and date. And <a href="/downloads/">the CSV file</a> lists every report on record, with the item headings.</p>
+<p>What the site does not do: it does not read, summarise or rate the text of a report, it does not call any report good or bad news, and it does not set a report beside any trade. A report and a trade on the same day can be a coincidence, a routine schedule or something else; a filing cannot say which.${c.eventsShown ? ' The rules are written out in the <a href="/methodology/#company-events">methodology</a>.' : ""}</p>` },
+    ],
+    faqs: [
+      { q: "What is a Form 8-K?", a: "A Form 8-K is the report a public company files with the SEC when something specific happens, such as an earnings release, a major agreement or a change of officers. It is the company's own statement, filed within days of the event.", on: ["stocks"] },
+      { q: "How soon after an event is a Form 8-K filed?", a: "Most items must be reported within four business days of the event, and a few are due sooner. The filing date is therefore close to the event date, which the report states.", on: ["stocks"] },
+      { q: "What does Item 2.02 on a Form 8-K mean?", a: "Item 2.02 is titled Results of Operations and Financial Condition. A company files it when it announces results, usually with the earnings press release attached as an exhibit." },
+      { q: "What does Item 5.02 on a Form 8-K mean?", a: "Item 5.02 covers the departure or election of directors, the appointment or departure of certain officers, and compensatory arrangements of certain officers. It is the item behind most announcements of a new chief executive or director." },
+      { q: "Why is Item 9.01 on almost every Form 8-K?", a: "Item 9.01 lists the financial statements and exhibits attached to the report, such as a press release or an agreement. Because other items usually come with an exhibit, 9.01 is on most reports." },
+      { q: "Does this site say whether a Form 8-K is good or bad news?", a: "No. The site lists each report, its dates and the SEC's headings for its items, and does not read or rate the text. A filing cannot show why an insider traded or whether the news moved a price." },
+    ],
+    sources: [
+      { name: "Investor.gov: How to read an 8-K", url: "https://www.investor.gov/introduction-investing/general-resources/news-alerts/alerts-bulletins/investor-bulletins/how-read-8" },
+      { name: "SEC: Form 8-K investor bulletin (PDF)", url: "https://www.sec.gov/files/readan8k.pdf" },
+    ],
+    related: ["what-is-form-4", "insider-buying-vs-insider-selling", "executive-pay-pay-versus-performance", "how-to-cite-and-reuse"],
+    seeLive: [{ label: "Company events list", href: "/company-events/" }, ...(c.eventsShown ? [{ label: "How reports are counted", href: "/methodology/#company-events" }] : [])],
+    covers: ["web/src/lib/events8k.ts", "web/src/components/CompanyEvents.astro", "shared/src/events8k.ts"],
+    ui: c.eventsShown ? [{ text: "Company events: Form 8-K reports", on: "/stocks/nvda/" }, { text: "Reports by item, last 12 months", on: "/stocks/nvda/" }] : [],
+    facts: [],
+  }),
+
+  // ───────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "executive-pay-pay-versus-performance", group: "insiders", updated: "2026-11-22",
+    title: "Executive pay: the Pay Versus Performance table",
+    seoTitle: ["Executive Pay Explained: The Pay Versus Performance Table", "Executive Pay: The Pay Versus Performance Table"],
+    description: ["What the Pay Versus Performance table shows: total pay in the summary table, compensation actually paid, why it can be negative, and what the data cannot tell you.", "What the Pay Versus Performance table shows, why compensation actually paid can be negative, and the limits of the data."],
+    answer: `The Pay Versus Performance table, in a company's annual proxy statement, gives for each fiscal year the principal executive officer's total pay in the Summary Compensation Table, a second figure called compensation actually paid, and averages for the other named executive officers. Compensation actually paid is a measure the SEC defines, and it is not the cash a person received.`,
+    keyFacts: [
+      "The table is required by Item 402(v) of Regulation S-K for fiscal years ending on or after December 16, 2022.",
+      "Compensation actually paid revalues share awards each year, so it can be larger, smaller or negative compared with the summary total.",
+      "The figures cover the principal executive officer and, as an average, the other named executive officers.",
+      `This site shows the ${c.payYears} newest fiscal years a company has on file and marks figures of ${c.payLarge} or more.`,
+      "The data names no person, and a company can be missing for reasons the data does not give.",
+    ],
+    sections: [
+      { id: "what", h: "What is the Pay Versus Performance table?", html: `
+<p>It is a table in the proxy statement, the document a company sends before its annual shareholder meeting. Since the SEC's 2022 rule it must show, year by year, how the pay of the company's top executives compares with the company's results. The rule is Item 402(v) of Regulation S-K and first applied to fiscal years ending on or after December 16, 2022, which for most companies meant the proxy statement of spring 2023.</p>
+<p>This site shows only the pay columns, because those are the ones the SEC publishes as structured data. The other columns of the table, such as shareholder return and net income, are not part of this page.</p>` },
+      { id: "figures", h: "What are the four figures?", html: `
+${table(["Figure on this site", "What it is"], [
+  ["Principal executive officer: total, Summary Compensation Table", "The total pay of the chief executive in the Summary Compensation Table: salary, bonus, the grant-date value of share awards and options, and other pay."],
+  ["Principal executive officer: compensation actually paid", "The SEC's adjusted measure for the same person: the summary total changed to reflect the year's change in the value of share awards and pension benefits."],
+  ["Other named executive officers, average: total", "The same Summary Compensation Table total, averaged over the other named executive officers, usually the next highest paid executives."],
+  ["Other named executive officers, average: compensation actually paid", "The adjusted measure, averaged over the same group."],
+])}
+<p>All four are in dollars, as the company tagged them for the SEC. A dash on this site means the company did not tag that figure.</p>` },
+      { id: "actually-paid", h: "What does \"compensation actually paid\" mean, and why can it be negative?", html: `
+<p>It is an SEC-defined measure, not a payment. It starts from the Summary Compensation Table total and replaces the grant-date value of share awards and options with their value as it changed during the year, and it adjusts pension amounts. When a company's share price falls, awards granted earlier lose value, and the adjustment can outweigh the rest of the pay, so the figure can fall below the summary total and even below zero. When the share price rises it can be far higher.</p>
+<p>So "actually paid" is not what a person took home in the year. Cash pay is part of it; much of the rest is a revaluation of awards the person may not yet have received and may never receive. Where a figure is negative this site prints it with a minus sign and does not change it.</p>` },
+      { id: "site", h: "How does this site present the figures?", html: `
+<p>A stock's page and its company's page have a section titled "Executive pay, as filed" when the company has figures on file. It is a table of the ${c.payYears} newest fiscal years, newest first, headed by the date each fiscal year ended, with a link to the filing each column came from. The <a href="/executive-pay/">executive pay list</a> has one row per company with its newest year, with filters for industry, fiscal year and the size of the principal executive officer's total, and every column can be sorted. <a href="/downloads/">The CSV file</a> has every fiscal year on file.</p>
+<p>A figure of ${c.payLarge} or more, or a total of less than ${c.paySmall}, is marked with a small "a". The mark does not say the figure is wrong; it says the figure is unusual and worth checking against the filing, because a company can tag a number in the wrong scale. Nothing is held back, computed or converted.</p>` },
+      { id: "limits", h: "What can this data not tell you?", html: `
+<p>It cannot name the person: the data carries no name, and a principal executive officer's own page on this site never carries these figures. It cannot say why pay was set at a level or whether it was deserved; it is not a ranking of companies by pay quality and the site does not rate any company. It covers only companies that file the table in the structured data the SEC publishes, which is roughly four in ten of the companies with a page here. The rest are smaller reporting companies with a reduced disclosure, foreign companies and funds that do not file the table, or companies that tagged it differently.</p>
+<p>A company that had two principal executives in a year may report them in separate columns, and the data can then hold one figure or none for that year. The table in the proxy statement is the authority.${c.execPayShown ? ' The rules are written out in the <a href="/methodology/#executive-pay">methodology</a>.' : ""}</p>` },
+    ],
+    faqs: [
+      { q: "What is compensation actually paid?", a: "Compensation actually paid is a measure the SEC defines for the Pay Versus Performance table. It starts from the Summary Compensation Table total and revalues share awards and pension benefits for the year, so it is not the cash a person received.", on: ["stocks"] },
+      { q: "Why can compensation actually paid be negative?", a: "When a company's share price falls, share awards granted in earlier years lose value, and the revaluation can be larger than the rest of the pay. The measure then falls below the summary total and can drop below zero." },
+      { q: "Which companies have to file a Pay Versus Performance table?", a: "Companies that file a proxy statement with executive compensation disclosure, for fiscal years ending on or after December 16, 2022. Smaller reporting companies give a reduced version, and some kinds of filers are exempt. Not every company on this site has figures on file." },
+      { q: "Does this site name the executive behind each figure?", a: "No. The data the site reads names no person, and the figures are shown for the company only. Nothing here says who received them." },
+      { q: "Why is a company on this site missing executive pay figures?", a: "It may be exempt, it may have given a reduced version, its proxy statement may not be in the data yet, or it may have tagged the table in a way the data does not capture. The data does not say which." },
+    ],
+    sources: [
+      { name: "SEC: Pay Versus Performance, final rule 34-95607 (PDF)", url: "https://www.sec.gov/rules/final/2022/34-95607.pdf" },
+      { name: "Harvard Law School Forum on Corporate Governance: the SEC's pay versus performance rule", url: "https://corpgov.law.harvard.edu/?p=151133" },
+    ],
+    related: ["what-is-form-4", "form-8-k-company-events", "insider-buying-vs-insider-selling", "how-to-cite-and-reuse"],
+    seeLive: [{ label: "Executive pay list", href: "/executive-pay/" }, ...(c.execPayShown ? [{ label: "How the figures are read", href: "/methodology/#executive-pay" }] : [])],
+    covers: ["web/src/lib/execpay.ts", "web/src/components/ExecutivePay.astro", "shared/src/execpay.ts"],
+    ui: c.execPayShown ? [{ text: "Executive pay, as filed", on: "/stocks/nvda/" }] : [],
+    facts: [],
+  }),
+
+  // ─────────────────────────────────────────────────────────────────────────────────────
+  (c) => ({
+    slug: "form-13f-institutional-holdings", group: "insiders", updated: "2026-11-22",
+    title: "Form 13F: what institutional managers report holding",
+    seoTitle: ["Form 13F Explained: Institutional Holdings Reports", "Form 13F: Institutional Holdings"],
+    description: ["Form 13F is the quarterly list of long positions held by large institutional managers. Who files, the $100 million rule, the 45-day delay and what it cannot show.", "Form 13F is the quarterly list of positions held by large institutional managers. Who files, the delay, and what it cannot show."],
+    answer: "A Form 13F is a quarterly report in which an institutional investment manager that oversees at least $100 million in covered securities lists its long positions on the last day of the quarter. It is filed up to 45 days later, so it is a snapshot of the past, not a record of trades, and it does not show short positions.",
+    keyFacts: [
+      "Filed by managers with $100 million or more in 13(f) securities, within 45 days of each quarter end.",
+      "Shows long positions on one day: no trade dates, no short positions, no options a manager wrote.",
+      "A manager can request confidential treatment, which delays a position from appearing.",
+      "Two managers can report the same shares, so sums across managers can count shares twice.",
+      "It is not a Form 4 (an insider's trade) or a Schedule 13D or 13G (a holder of more than 5%).",
+    ],
+    sections: [
+      { id: "who", h: "Who files a Form 13F?", html: `
+<p>An institutional investment manager files one when it uses the mails or interstate commerce and exercises investment discretion over $100 million or more in what the SEC calls Section 13(f) securities. The test is made on the last trading day of each month, and a manager that passes it files for the quarter. Mutual fund companies, banks, insurers, pension funds, hedge funds and investment advisers are the usual filers.</p>
+<p>The filer is the manager, not the fund. A large adviser can file one report covering the funds and accounts it runs, so the name on a 13F is often an adviser or a bank rather than a fund a retail investor would recognize.</p>` },
+      { id: "what", h: "What does a 13F list, and what is left out?", html: `
+<p>It lists long positions in 13(f) securities on the last day of the quarter: mainly U.S. exchange-traded stocks, closed-end funds and ETFs, plus certain convertible bonds, warrants and options. For each position it gives the issuer, the class, the number of shares or principal amount, and the value the manager reports.</p>
+<p>Several things are not in it:</p>
+<ul>
+<li><strong>Short positions.</strong> They are not reported and are not netted against long positions.</li>
+<li><strong>Trades.</strong> A 13F shows what was held on one day. It does not say when a position was bought or sold, or what happened between two quarter ends.</li>
+<li><strong>Most other assets.</strong> Bonds, cash, open-end mutual funds, foreign shares that do not trade on a U.S. exchange, and private holdings are outside the list.</li>
+<li><strong>Positions under confidential treatment.</strong> A manager can ask the SEC to keep a position out of public view for a period, so it appears later or in a changed filing.</li>
+</ul>
+<p>Put and call options a manager holds can be listed, and are marked as puts or calls in the filing. This site leaves them out of its share and value figures and says how many managers report them.</p>` },
+      { id: "timing", h: "How old is the information?", html: `
+<p>Up to 45 days older than the quarter, and often more. A filing is due within 45 days after the quarter ends, for example by mid-February for the fourth quarter. The positions are as of the last day of the quarter, so a report filed in mid-May describes March 31. A manager may have bought or sold a great deal since.</p>
+<p>That is why a 13F is read for the shape of a holding over several quarters and not for what a manager is doing now.</p>` },
+      { id: "vs", h: "How is a 13F different from Form 4 and Schedules 13D and 13G?", html: `
+<p>Each answers a different question. A <a href="/guides/what-is-form-4/">Form 4</a> reports a trade by one of a company's own insiders, within two business days. A Schedule 13D or 13G reports that a holder has passed ${c.holderThreshold}% of a company's voting shares, and states the size of the stake on a date; see <a href="/guides/ten-percent-owners-and-joint-filings/">10% owners and joint filings</a> for how this site lists them. A Form 13F covers a whole portfolio, quarterly, for managers of any size above the threshold, and reports every position it holds in covered securities, however small a share of the company.</p>
+<p>A manager can appear in all three: its 13F lists a position in a company, and the same company's Form 4s may show its own officers selling in the same quarter. The filings are separate records and say nothing about each other.</p>` },
+      { id: "double", h: "Why can adding up the managers count shares twice?", html: `
+<p>Because the same shares can be reported by more than one manager. An adviser that picks the investments and the fund company that holds them can each state the position, and a parent and its subsidiary can each file. Each report is correct as filed. Added together they overstate the total.</p>
+<p>For that reason this site never says what share of a company managers hold. It states, for each company, how many managers reported it, the shares and value each reported, and a sum labelled as a sum of what managers reported.</p>` },
+      ...(c.instShown ? [{ id: "on-site", h: "How does this site show Form 13F holdings?", html: `
+<p>A stock's page and its company's page have a section titled "Institutional holders: Form 13F" when a manager reported the company for the newest quarter loaded, ${c.instPeriod}. It states how many managers reported the company, the summed reported value, and how many report put or call options, and lists the ${c.instTop} managers with the largest reported value: shares, reported value, shares for the quarter before and the change when both quarters are on file, the filing date and a link to the manager's filing at the SEC. A manager with no row for the earlier quarter reads "not reported for" that quarter; it is not called new, because a manager can hold a position and not report it.</p>
+<p>The <a href="/institutional-holders/">institutional holders page</a> ranks the companies on this site by the number of managers reporting them and lists the largest managers by the value they report in these companies.</p>
+<ul>
+<li><strong>A quarter counts as loaded</strong> when at least ${c.instMinManagers} managers have filed for it, so a partial first week of filings is not shown as the whole.</li>
+<li><strong>A stalled load hides the sections.</strong> They appear only while the newest filing in the newest quarter is at most ${c.instShownDays} days old.</li>
+<li><strong>Only companies on this site</strong> are covered. A manager's figure here counts those companies, not its whole portfolio.</li>
+</ul>
+<p>The rules are written out in the <a href="/methodology/#institutional-holders">methodology</a>.</p>` }] : []),
+    ],
+    faqs: [
+      { q: "What is a Form 13F?", a: "A Form 13F is a quarterly report that an institutional investment manager with $100 million or more in covered securities files with the SEC, listing its long positions on the last day of the quarter. It is filed up to 45 days after the quarter ends.", on: ["insiders", "stocks"] },
+      { q: "Does a 13F show what a fund bought or sold?", a: "No. It shows what a manager held on one day. Comparing two quarters shows that a position grew or shrank, not when or at what price, and it says nothing about trades between those days.", on: ["insiders"] },
+      { q: "Why is a 13F always out of date?", a: "Because it is filed up to 45 days after the quarter ends and describes the last day of the quarter. A filing made in mid-May describes March 31.", on: ["stocks"] },
+      { q: "Are short positions in a 13F?", a: "No. Only long positions are reported, and they are not netted against short ones. Options a manager wrote are not reported either; put and call options it holds can be." },
+      { q: "Is the 13F total the share of a company that institutions own?", a: "No. Two managers can report the same shares, so a sum can count them twice, and managers under the $100 million threshold do not file. This site states what each manager reported and never a share of the company." },
+    ],
+    sources: [
+      { name: "SEC: Frequently asked questions about Form 13F", url: "https://www.sec.gov/divisions/investment/13ffaq" },
+      { name: "SEC: Official list of Section 13(f) securities", url: "https://www.sec.gov/rules-regulations/staff-guidance/official-list-section-13f-securities" },
+      { name: "SEC: Form 13F data sets", url: "https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets" },
+    ],
+    related: ["what-is-form-4", "ten-percent-owners-and-joint-filings", "insider-buying-vs-insider-selling", "what-disclosure-data-cannot-tell-you"],
+    seeLive: [{ label: "Institutional holders", href: "/institutional-holders/" }, { label: "How values are computed", href: "/methodology/#institutional-holders" }],
+    covers: ["web/src/lib/inst13f.ts", "web/src/lib/inst13f-build.ts", "web/src/components/InstHolders.astro"],
+    ui: c.instShown ? [{ text: "Institutional holders: Form 13F", on: "/stocks/nvda/" }] : [],
     facts: [],
   }),
 ];

@@ -1,0 +1,44 @@
+---
+// "Recorded votes" on a member's page (lib/votes.ts has the rules). Renders nothing when the
+// member has no recorded position on any roll call. Counts and rows are what the Clerk of the
+// House or the Secretary of the Senate recorded; nothing here scores a vote or pairs it with a
+// trade or a contribution.
+import type { Flagship } from "../lib/flagship";
+import { formatDate } from "../lib/format";
+import { num } from "../lib/flagship";
+import { memberVotesSentence, windowTotal, VOTES_CAVEAT, VOTE_ROWS, POSITION_LABEL, CHAMBER_LABEL, rollLabel, rollTitle, votesHref, type Chamber } from "../lib/votes";
+
+interface Props { model: Flagship; personId: number; slug: string; name: string; chamber: Chamber }
+const { model, personId, slug, name, chamber } = Astro.props;
+const v = model.votes.shown ? model.votes.byPerson.get(personId) : undefined;
+const heads = [{ label: "Date", type: "num" }, { label: "Roll call", type: "text" }, { label: "Bill", type: "text" }, { label: "Question", type: "text" }, { label: "Result", type: "text" }, { label: "Position", type: "text" }];
+const dayNum = (d: string) => d.replaceAll("-", "");
+---
+{v && v.rows.length > 0 && (
+  <section aria-labelledby="votes" data-votes data-yea={v.yea} data-nay={v.nay} data-present={v.present} data-not-voting={v.notVoting} data-total={v.total}>
+    <h2 id="votes">Recorded votes</h2>
+    <p data-votes-summary>{memberVotesSentence(name, v)}</p>
+    <p class="vt-note" data-votes-caveat>{VOTES_CAVEAT} <a href="/guides/how-to-read-a-roll-call-vote/">How to read a roll call vote</a>.</p>
+    <p class="vt-note"><a href={votesHref({ member: slug, chamber })} data-votes-link>All {CHAMBER_LABEL[chamber]} roll calls, with {name}'s position</a>{v.total > v.rows.length && <> · {num(v.total)} positions on record, the newest {VOTE_ROWS} below</>}</p>
+    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+      {heads.map((h) => <th aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+    </tr></thead><tbody>
+      {v.rows.map((r) => (
+        <tr data-vote={r.roll.id} data-position={r.position}>
+          <td class="mono" data-v={dayNum(r.roll.date)}>{formatDate(r.roll.date)}</td>
+          <td data-v={`${r.roll.chamber}${String(r.roll.roll).padStart(5, "0")}`}>{r.roll.url ? <a href={r.roll.url} rel="noopener nofollow" target="_blank" title={rollTitle(r.roll)}>{rollLabel(r.roll)} ↗</a> : <span title={rollTitle(r.roll)}>{rollLabel(r.roll)}</span>}</td>
+          <td data-v={(r.roll.bill ?? "").toLowerCase().replace(/[<>"]/g, "")}>{r.roll.bill ?? "—"}</td>
+          <td class="wrap vt-q" data-v={(r.roll.question ?? "").toLowerCase().replace(/[<>"]/g, "")}>{r.roll.question ?? "—"}</td>
+          <td class="wrap" data-v={(r.roll.result ?? "").toLowerCase().replace(/[<>"]/g, "")}>{r.roll.result ?? "—"}</td>
+          <td data-v={r.position}><span class={`vt-pos vt-${r.position}`}>{POSITION_LABEL[r.position]}</span></td>
+        </tr>
+      ))}
+    </tbody></table></div>
+  </section>
+)}
+<style>
+  .vt-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .vt-q { min-width: 16rem; }
+  .vt-pos { font-weight: 600; }
+  @media (max-width: 640px) { .vt-q { min-width: 12rem; } }
+</style>

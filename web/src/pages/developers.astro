@@ -132,7 +132,7 @@ print(trades[["filer", "ticker", "side", "amount_low", "amount_high", "disclosed
     <ul class="wfiles" data-working-files>
       {WORKING_FILES.map((w) => (
         <li data-working={w.path} data-top={w.top === "array" ? "array" : w.top.join(",")}>
-          <a class="dl-name" href={w.path}>{w.path}</a>
+          {w.pattern ? <code class="dl-name">{w.path}</code> : <a class="dl-name" href={w.path}>{w.path}</a>}
           <span><strong>{w.title}.</strong> {w.about} Top level today: {topLabel(w.top)}. Loaded by <a href={w.usedBy}>{w.usedBy}</a>.{insteadOf.get(w.path) && <> Stable alternative: <a href={insteadOf.get(w.path)}>{insteadOf.get(w.path)}</a>.</>}</span>
         </li>
       ))}

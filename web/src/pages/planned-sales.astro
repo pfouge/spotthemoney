@@ -1,0 +1,123 @@
+---
+// Planned sales: /planned-sales/. Every Form 144 notice filed in the last 12 months about a company
+// with a page on this site, with filters (company, seller or ticker, industry division, notice or
+// amendment, plan date stated, stated value at least, filing window) and sortable columns. A Form 144
+// is a notice of a PLANNED sale, never a sale: nothing here is added up. Rules are in
+// lib/plannedsales.ts (unit-tested) and lib/form144.ts. The page prints the first rows itself; the
+// browser script (scripts/plannedsales.ts) loads /data/planned-sales.json and takes over, so without
+// JavaScript the first rows are still here and the controls are hidden. While the Form 144 load is
+// not current the hub is a noindex "being refreshed" page and is in no sitemap, search or llms.txt.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import AdSlot from "../components/AdSlot.astro";
+import Crumbs from "../components/Crumbs.astro";
+import Answer from "../components/Answer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import DownloadCsv from "../components/DownloadCsv.astro";
+import HubStyles from "../components/HubStyles.astro";
+import { getDownloads } from "../lib/downloads";
+import { getFlagship, num } from "../lib/flagship";
+import { datasetLd } from "../lib/seo";
+import { sitePlanned } from "../lib/plannedsales-build";
+import { NOTICE_CAVEAT, VALUE_MAX_PER_SHARE } from "../lib/form144";
+import { DEFAULT_PER, PER_PAGE, plural } from "../lib/hubscreen";
+import {
+  plannedScreen, psSummaryLine, shortDate, DEFAULT_PS_VIEW, PLANNED_DATA, WINDOWS, WINDOW_LABEL, VALUE_STEPS, valueStepLabel, FORMS, FORM_LABEL, PLANS, PLAN_LABEL, DEFAULT_WINDOW, firstPsDir, type PsSortKey,
+} from "../lib/plannedsales";
+
+const model = await getFlagship();
+const { all, data } = sitePlanned(model);
+const shown = all.length > 0;
+const built = data.built;
+const first = plannedScreen(all, DEFAULT_PS_VIEW, built);
+const companies = new Set(all.map((r) => r.c.cik)).size, sellers = new Set(all.map((r) => r.s.key)).size;
+const lastUpdated = model.form144.lastFiled ?? model.builtAt;
+const csv = (await getDownloads()).files.find((f) => f.name === "planned-sales-form144.csv");
+const heldHref = "/methodology/#form-144";
+const answer = shown
+  ? `${plural(all.length, "Form 144 notice", "Form 144 notices")} about ${plural(companies, "company", "companies")} on this site ${all.length === 1 ? "was" : "were"} filed with the SEC in the last 12 months, by ${plural(sellers, "seller", "sellers")}. A Form 144 is a notice that a holder plans to sell restricted or control shares, not a report of a sale.`
+  : "The Form 144 notices are being refreshed. This page returns when the daily load has caught up with today.";
+const description = "Every SEC Form 144 notice of a planned sale filed in the last 12 months about companies on this site: seller, shares, stated value and plan date, as filed.";
+const ld = shown ? datasetLd({ downloads: [csv?.path].filter(Boolean) as string[], name: "Planned sales: SEC Form 144 notices about companies on Spot the Money", path: "/planned-sales/", description, dateModified: String(lastUpdated).slice(0, 10), keywords: ["Form 144", "planned sales", "Rule 144", "insider sales"] }) : null;
+const HEAD: Record<PsSortKey, string> = { filed: "Filed", company: "Company", seller: "Seller, as filed", shares: "Shares to be sold", value: "Stated market value", sale: "Approximate sale date", plan: "10b5-1 plan adopted" };
+const th = (k: PsSortKey, cls = "") => ({ k, label: HEAD[k], cls, on: k === DEFAULT_PS_VIEW.sort });
+---
+<BaseLayout title={["Planned Sales: SEC Form 144 Notices", "Planned Sales (Form 144)"]} description={description} section="Insiders" noindex={!shown}>
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Insiders", path: "/insiders/" }, { name: "Planned sales", path: "/planned-sales/" }]} />
+  <h1>Planned sales</h1>
+  <p class="lede">Notices of planned sales of restricted or control shares, filed with the SEC on Form 144, about the companies on this site.</p>
+
+  <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR, Form 144 notices" />
+
+  {!shown ? <p class="empty-reason">Form 144 notices are being refreshed. Check back after the next daily update.</p> : (
+    <div class="hubscr" data-hub-root data-src={PLANNED_DATA} data-held-href={heldHref} data-total={all.length} data-built={built}>
+      <HubStyles />
+      <p class="hub-note" data-ps-caveat>{NOTICE_CAVEAT} <a href="/methodology/#form-144">How these notices are read</a>.</p>
+      <div class="controls hub-controls" role="group" aria-label="Filter notices">
+        <div class="ctl"><label class="lbl" for="ps-q">Company, ticker or seller</label><input id="ps-q" class="hm-input" data-hub-ctl="q" type="search" placeholder="Company, ticker or seller" autocomplete="off" maxlength="60" /></div>
+        <div class="ctl"><span class="lbl">Filed</span>
+          <select data-hub-ctl="w" aria-label="Filing date window">{WINDOWS.map((w) => <option value={w} selected={w === DEFAULT_WINDOW}>{WINDOW_LABEL[w]}</option>)}</select>
+        </div>
+        {data.divisions.length > 0 && (
+          <div class="ctl"><span class="lbl">Industry</span>
+            <select data-hub-ctl="division" aria-label="Industry division, as the SEC classifies the company"><option value="">Any industry</option>{data.divisions.map((d) => <option value={d.slug}>{d.name}</option>)}</select>
+          </div>
+        )}
+        <div class="ctl"><span class="lbl">Form</span>
+          <select data-hub-ctl="form" aria-label="Notice or amendment"><option value="">Notices and amendments</option>{FORMS.map((f) => <option value={f}>{FORM_LABEL[f]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Plan date</span>
+          <select data-hub-ctl="plan" aria-label="Whether the notice states a Rule 10b5-1 plan date"><option value="">Any</option>{PLANS.map((p) => <option value={p}>{PLAN_LABEL[p]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Stated value</span>
+          <select data-hub-ctl="min" aria-label="Stated market value at least"><option value="0">Any stated value</option>{VALUE_STEPS.map((s) => <option value={s}>{valueStepLabel(s)}</option>)}</select>
+        </div>
+      </div>
+      <p class="section-note hub-count"><span data-hub="count" aria-live="polite">{psSummaryLine(first)}</span> <button type="button" class="linklike" data-hub="reset" hidden>Reset filters</button></p>
+      <DownloadCsv file={csv} note="every notice on record for these companies, not only the rows filtered here" />
+      <p class="dl-row hub-dl"><button type="button" class="dl" data-hub="download">Download these rows (CSV)</button> <span class="dl-meta">The notices that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+
+      <div class="tablewrap"><table class="data hub-table">
+        <thead><tr>
+          {[th("filed"), th("company"), th("seller")].map((x) => <th aria-sort={x.on ? "descending" : "none"} data-sort={x.k}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true">{x.on ? "▼" : ""}</span></button></th>)}
+          <th>Relationship</th>
+          {[th("shares"), th("value")].map((x) => <th class="num" aria-sort="none" data-sort={x.k} data-first={firstPsDir(x.k)}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          {[th("sale"), th("plan")].map((x) => <th aria-sort="none" data-sort={x.k} data-first={firstPsDir(x.k)}><button type="button" class="sort" aria-label={`Sort by ${x.label.toLowerCase()}`}>{x.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+          <th>Notice</th>
+        </tr></thead>
+        <tbody data-hub="rows">
+          {first.rows.map((r) => (
+            <tr data-accession={r.accession}>
+              <td class="mono">{shortDate(r.filed)}{r.amend && <span class="ps-sub">Amendment</span>}</td>
+              <td><a href={r.c.path}>{r.c.name}</a>{r.c.ticker && <span class="soft small mono"> {r.c.ticker}</span>}</td>
+              <td class="wrap">{r.s.path ? <a href={r.s.path}>{r.s.name}</a> : r.s.name}</td>
+              <td class="wrap">{r.relationship ?? ""}</td>
+              <td class="num">{r.shares != null ? num(r.shares) : ""}</td>
+              {r.held ? <td class="num" data-held><a class="soft" href={heldHref}>not shown</a></td> : <td class="num">{r.value != null ? `$${num(r.value)}` : ""}</td>}
+              <td class="mono">{shortDate(r.sale)}</td>
+              <td class="mono">{shortDate(r.plan)}</td>
+              <td class="mono">{r.url ? <a href={r.url} rel="noopener nofollow" target="_blank">Form 144 ↗</a> : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p class="empty-reason" data-hub="empty" hidden>No notice matches these filters. <button type="button" class="linklike" data-hub="reset2">Clear the filters</button></p>
+      <div class="hub-pager" data-hub="pager">
+        <button type="button" class="chip" data-hub="prev" disabled>Previous</button>
+        <span data-hub="pageinfo" class="soft">Page 1 of {num(first.pages)}</span>
+        <button type="button" class="chip" data-hub="next" disabled={first.pages <= 1}>Next</button>
+        <label class="hub-per soft">Rows per page <select data-hub-ctl="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
+      </div>
+      <noscript><p class="section-note">These are the first {num(first.rows.length)} of {num(first.total)} notices filed in the last 30 days. The filters need JavaScript; the CSV file above has every notice on record.</p></noscript>
+    </div>
+  )}
+
+  <h2 id="about">What this table shows</h2>
+  <p>One row for each Form 144 notice filed in the last 12 months about a company with a page on this site. A holder files the form before selling restricted or control shares under Rule 144. It states a plan: the sale may happen later, in part or not at all, and the notice does not say which notice an amendment replaces, so rows are not added together and this page counts notices, companies and sellers only.</p>
+  <p>Every figure is the filer's own, as filed. A stated market value of more than {VALUE_MAX_PER_SHARE.toLocaleString("en-US")} dollars a share cannot be right for the number of shares, so it reads "not shown" and passes no value filter; the figure as filed is in the CSV file. A seller's name links to an insider's page only when the filer's SEC number is that person's. The industry is the SEC's, a label only. See the <a href="/methodology/#form-144">methodology</a> and the <a href="/guides/what-is-form-4/#form-144">guide to Form 144</a>.</p>
+  <AdSlot />
+  <p class="disclaimer"><strong>Not investment advice.</strong> Notices shown as filed with the SEC; no judgement about any seller is made or implied.</p>
+  {ld && <JsonLd data={ld} />}
+</BaseLayout>
+<script>
+  import "../scripts/plannedsales";
+</script>

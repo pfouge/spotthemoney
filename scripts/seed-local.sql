@@ -550,6 +550,283 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
 insert into company_financials_checked (cik, checked_at, status, rows, newest_filed)
 select cik, now(), 'ok', count(*), max(filed) from company_financials group by cik;
 
+-- Company events (Form 8-K, company_events): dates are relative to today so the 12-month window and the
+-- 15-row cap behave the same whenever the seed is loaded. NVIDIA: 20 reports across 14 months with varied
+-- items (2.02 + 9.01, 5.02, 8.01 alone, 1.01 + 2.03 + 9.01, an amendment, two on one day, one older than 12
+-- months). Palantir: 3. Microsoft: 1, older than 12 months only (no section, still in the CSV file).
+-- One report is by a CIK with no company (never shown). A few source addresses are not the standard
+-- folder shape, so the packed hub file's full-address branch runs.
+delete from company_events;
+insert into company_events (accession, cik, form, filed, report_date, items, primary_document, source_url) values
+  ('0001045810-26-000001', '0001045810', '8-K',   current_date - 5,   current_date - 6,   '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000001/doc.htm'),
+  ('0001045810-26-000002', '0001045810', '8-K',   current_date - 12,  current_date - 14,  '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000002/doc.htm'),
+  ('0001045810-26-000003', '0001045810', '8-K',   current_date - 20,  current_date - 20,  '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000003/doc.htm'),
+  ('0001045810-26-000004', '0001045810', '8-K',   current_date - 30,  current_date - 31,  '{9.01,1.01,2.03}', 'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000004/doc.htm'),
+  ('0001045810-26-000005', '0001045810', '8-K/A', current_date - 33,  null,               '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000005/doc.htm'),
+  ('0001045810-26-000006', '0001045810', '8-K',   current_date - 45,  current_date - 45,  '{7.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000006/doc.htm'),
+  ('0001045810-26-000007', '0001045810', '8-K',   current_date - 45,  current_date - 46,  '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000007/doc.htm'),
+  ('0001045810-26-000008', '0001045810', '8-K',   current_date - 60,  current_date - 61,  '{5.07}',           null,      'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1045810&type=8-K'),
+  ('0001045810-26-000009', '0001045810', '8-K',   current_date - 75,  current_date - 76,  '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000009/doc.htm'),
+  ('0001045810-26-000010', '0001045810', '8-K',   current_date - 90,  current_date - 92,  '{5.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000010/doc.htm'),
+  ('0001045810-26-000011', '0001045810', '8-K',   current_date - 110, current_date - 111, '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000011/doc.htm'),
+  ('0001045810-26-000012', '0001045810', '8-K',   current_date - 130, current_date - 131, '{7.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000012/doc.htm'),
+  ('0001045810-26-000013', '0001045810', '8-K',   current_date - 150, current_date - 151, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000013/doc.htm'),
+  ('0001045810-26-000014', '0001045810', '8-K',   current_date - 180, current_date - 181, '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000014/doc.htm'),
+  ('0001045810-26-000015', '0001045810', '8-K',   current_date - 210, current_date - 211, '{1.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000015/doc.htm'),
+  ('0001045810-26-000016', '0001045810', '8-K',   current_date - 250, current_date - 251, '{8.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000016/doc.htm'),
+  ('0001045810-26-000017', '0001045810', '8-K',   current_date - 290, current_date - 291, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000017/doc.htm'),
+  ('0001045810-26-000018', '0001045810', '8-K',   current_date - 330, current_date - 331, '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000018/doc.htm'),
+  ('0001045810-26-000019', '0001045810', '8-K',   current_date - 360, current_date - 361, '{7.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581026000019/doc.htm'),
+  ('0001045810-25-000020', '0001045810', '8-K',   current_date - 420, current_date - 421, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1045810/000104581025000020/doc.htm'),
+  ('0001321655-26-000001', '0001321655', '8-K',   current_date - 3,   current_date - 4,   '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1321655/000132165526000001/doc.htm'),
+  ('0001321655-26-000002', '0001321655', '8-K',   current_date - 40,  current_date - 41,  '{5.02}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1321655/000132165526000002/doc.htm'),
+  ('0001321655-26-000003', '0001321655', '8-K',   current_date - 200, current_date - 201, '{1.01,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/1321655/000132165526000003/doc.htm'),
+  ('0000789019-25-000001', '0000789019', '8-K',   current_date - 500, current_date - 501, '{2.02,9.01}',      'doc.htm', 'https://www.sec.gov/Archives/edgar/data/789019/000078901925000001/doc.htm'),
+  ('0009999001-26-000001', '0009999001', '8-K',   current_date - 10,  current_date - 11,  '{8.01}',           'doc.htm', 'https://www.sec.gov/Archives/edgar/data/9999001/000999900126000001/doc.htm');
+
+-- Executive pay (exec_pay, Pay Versus Performance). NVIDIA: five fiscal years, so the cap of four shows,
+-- with a negative compensation actually paid and one missing measure. Palantir: one year with a total of $1
+-- and an actually-paid figure of $2.4 billion (both marked). Lockheed: other named officers only (the
+-- section shows, the glance tile does not). One CIK has no company (never shown). Microsoft has none.
+delete from exec_pay;
+insert into exec_pay (cik, measure, tag, fiscal_year_end, value, accession, frame) values
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2026-01-25', 49866000,  '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2026-01-25', 112400000, '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2026-01-25', 13900000,  '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2026-01-25', 31200000,  '0001045810-26-000045', 'CY2025'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2025-01-26', 34200000,  '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2025-01-26', 189000000, '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2025-01-26', 9800000,   '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2025-01-26', 61000000,  '0001045810-25-000040', 'CY2024'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2024-01-28', 21300000,  '0001045810-24-000036', 'CY2023'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2024-01-28', 210500000, '0001045810-24-000036', 'CY2023'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2024-01-28', 6600000,   '0001045810-24-000036', 'CY2023'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2023-01-29', 24400000,  '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2023-01-29', -3100000,  '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2023-01-29', 7000000,   '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2023-01-29', -1200000,  '0001045810-23-000030', 'CY2022'),
+  ('0001045810', 'peo_total',              'PeoTotalCompAmt',                 '2022-01-30', 19000000,  '0001045810-22-000028', 'CY2021'),
+  ('0001321655', 'peo_total',              'PeoTotalCompAmt',                 '2025-12-31', 1,          '0001321655-26-000010', 'CY2025'),
+  ('0001321655', 'peo_actually_paid',      'PeoActuallyPaidCompAmt',          '2025-12-31', 2400000000, '0001321655-26-000010', 'CY2025'),
+  ('0000936468', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2025-12-31', 8000000,   '0000936468-26-000011', 'CY2025'),
+  ('0000936468', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2025-12-31', 9100000,   '0000936468-26-000011', 'CY2025'),
+  ('0009999001', 'peo_total',              'PeoTotalCompAmt',                 '2025-12-31', 10000000,  '0009999001-26-000001', 'CY2025');
+-- Form 13F institutional holdings (inst_managers, inst_holdings). Newer quarter 2026-09-30 has 1,201
+-- managers, the older quarter 2026-06-30 has 1,010, so both clear the 1,000-manager test.
+-- NVIDIA: 1,150 managers newer, 1,000 older. Palantir: 30 newer. Microsoft: 3 newer (managers 1-3),
+-- 3 older (1, 2 and 9, so manager 3 has no older row and manager 9 only an older one).
+-- Manager 1 also has a second NVIDIA class, Put and Call rows, a bond (PRN) row and a row for an
+-- issuer that is not on the site. Manager 0001100000 is the CIK of a seed person with a page.
+insert into inst_managers (cik, name)
+select '0002' || lpad(n::text, 6, '0'), 'Seed Capital Manager ' || n || case when n % 97 = 0 then ' & Co <LP>' else '' end
+from generate_series(1, 1200) n
+on conflict (cik) do nothing;
+insert into inst_managers (cik, name) values ('0001100000', 'Seed Huang Family Office')
+on conflict (cik) do nothing;
+
+-- NVIDIA, newer quarter (1..1150) and older quarter (1..1000)
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-09-30', '0002' || lpad(n::text, 6, '0'), '0001045810', '67066G104', 'COM', '', 'SH',
+       1000000 + n * 1500, (1000000 + n * 1500) * 180.5,
+       '0001000000-26-' || lpad(n::text, 6, '0'), date '2026-11-03' + (n % 12)
+from generate_series(1, 1150) n;
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-06-30', '0002' || lpad(n::text, 6, '0'), '0001045810', '67066G104', 'COM', '', 'SH',
+       900000 + n * 1400, (900000 + n * 1400) * 150.25,
+       '0001000000-26-' || lpad((n + 5000)::text, 6, '0'), date '2026-08-05' + (n % 12)
+from generate_series(1, 1000) n;
+-- Palantir newer (1..30), older (1001..1010 only, so the older quarter has 1,010 managers)
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-09-30', '0002' || lpad(n::text, 6, '0'), '0001321655', '69608A108', 'CL A', '', 'SH',
+       200000 + n * 900, (200000 + n * 900) * 42.1,
+       '0001000000-26-' || lpad(n::text, 6, '0'), date '2026-11-03' + (n % 12)
+from generate_series(1, 30) n;
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed)
+select '2026-06-30', '0002' || lpad(n::text, 6, '0'), '0001321655', '69608A108', 'CL A', '', 'SH',
+       150000 + n * 100, (150000 + n * 100) * 30.0,
+       '0001000000-26-' || lpad((n + 5000)::text, 6, '0'), date '2026-08-05' + (n % 12)
+from generate_series(1001, 1010) n;
+-- Microsoft
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed) values
+  ('2026-09-30', '0002000001', '0000789019', '594918104', 'COM', '', 'SH', 500000, 500000 * 410.0, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000002', '0000789019', '594918104', 'COM', '', 'SH', 750000, 750000 * 410.0, '0001000000-26-000002', '2026-11-06'),
+  ('2026-09-30', '0002000003', '0000789019', '594918104', 'COM', '', 'SH', 250000, 250000 * 410.0, '0001000000-26-000003', '2026-11-07'),
+  ('2026-06-30', '0002000001', '0000789019', '594918104', 'COM', '', 'SH', 480000, 480000 * 400.0, '0001000000-26-005001', '2026-08-06'),
+  ('2026-06-30', '0002000002', '0000789019', '594918104', 'COM', '', 'SH', 700000, 700000 * 400.0, '0001000000-26-005002', '2026-08-07'),
+  ('2026-06-30', '0002000009', '0000789019', '594918104', 'COM', '', 'SH', 100000, 100000 * 400.0, '0001000000-26-005009', '2026-08-08');
+-- Manager 1 special rows: a second NVIDIA class, Put and Call rows, a bond row, an issuer not on the site
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed) values
+  ('2026-09-30', '0002000001', '0001045810', '67066G999', 'CL B', '', 'SH', 40000, 40000 * 180.5, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000001', '0001045810', '67066G104', 'COM', 'Put', 'SH', 90000, 90000 * 180.5, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000001', '0001045810', '67066G104', 'COM', 'Call', 'SH', 70000, 70000 * 180.5, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000002', '0001045810', '67066G104', 'COM', 'Put', 'SH', 10000, 10000 * 180.5, '0001000000-26-000002', '2026-11-06'),
+  ('2026-09-30', '0002000001', '0001045810', '67066GAA1', 'NOTE', '', 'PRN', 3000000, 3000000, '0001000000-26-000001', '2026-11-05'),
+  ('2026-09-30', '0002000001', '0009999999', '99999X999', 'COM', '', 'SH', 123456, 123456 * 10, '0001000000-26-000001', '2026-11-05');
+-- A manager that is also a person with a page (CIK of a seed insider)
+insert into inst_holdings (period, manager_cik, issuer_cik, cusip, class_title, put_call, amount_type, shares, value, accession, filed) values
+  ('2026-09-30', '0001100000', '0001045810', '67066G104', 'COM', '', 'SH', 12345, 12345 * 180.5, '0001000000-26-009999', '2026-11-09');
+-- Roll-call votes (migration 0035). 30 House and 14 Senate roll calls over the last 15 months, in
+-- two sessions so that numbering restarts; positions for every seeded member of Congress, with
+-- person_id set, plus six position rows with no person; every position value is used. One House
+-- roll call has no bill, one has a 400-character question, the oldest ones are more than 12
+-- months old. Dates are relative to the day the seed is loaded, so the 12-month window is exercised
+-- whenever it runs.
+insert into congress_votes (chamber, congress, session, roll_number, voted_at, vote_time, question, vote_type, result, bill, description, source_url)
+select c.chamber, 119, c.session, row_number() over (partition by c.chamber, c.session order by c.d, c.i), c.d, to_char(time '09:30' + (c.i * 7) * interval '1 minute', 'HH24:MI'),
+       case when c.chamber = 'house' and c.i = 9 then 'On Agreeing to the Amendment: ' || repeat('an amendment to the bill that changes the schedule of payments ', 7)
+            when c.i % 5 = 0 then 'On Motion to Recommit' when c.i % 4 = 0 then 'On the Nomination' when c.i % 3 = 0 then 'On the Cloture Motion' else 'On Passage' end,
+       case when c.i % 3 = 0 then 'RECORDED VOTE' else 'YEA-AND-NAY' end,
+       case when c.i % 5 = 0 then 'Failed' when c.i % 4 = 0 then 'Confirmed' else 'Passed' end,
+       case when c.chamber = 'house' and c.i = 7 then null when c.chamber = 'house' then 'H R ' || (100 + c.i) else 'S. ' || (200 + c.i) end,
+       'Seeded roll call ' || c.i,
+       case when c.chamber = 'senate' and c.i = 3 then null
+            when c.chamber = 'house' then 'https://clerk.house.gov/Votes/seed' || c.i else 'https://www.senate.gov/legislative/seed' || c.i end
+  from (
+    select 'house' as chamber, i, (current_date - (i * 15)) as d, case when extract(year from current_date - (i * 15)) = extract(year from current_date) then 2 else 1 end as session from generate_series(1, 30) i
+    union all
+    select 'senate', i, (current_date - (i * 31) - 4), case when extract(year from current_date - (i * 31) - 4) = extract(year from current_date) then 2 else 1 end from generate_series(1, 14) i
+  ) c;
+
+insert into congress_vote_positions (vote_id, member_key, person_id, name, party, state, position)
+select v.id, m.key, p.id, m.name, m.party, m.state,
+       (array['yea', 'nay', 'present', 'not_voting'])[1 + ((v.id + m.k) % 4)::int]
+  from congress_votes v
+  join (values ('house', 'W000001', 'Whitfield, Jordan', 'R', 'TX', 'Jordan Whitfield', 0), ('house', 'M000001', 'Marsh, Elena', 'D', 'CA', 'Elena Marsh', 1),
+               ('house', 'O000001', 'Okafor, Samuel', 'D', 'OH', 'Samuel Okafor', 2), ('house', 'D000001', 'Delacroix, Marcus', 'D', 'AK', 'Marcus Delacroix', 3),
+               ('senate', 'S0001', 'Lindqvist (I-TX)', 'I', 'TX', 'Priya Lindqvist', 1), ('senate', 'S0002', 'Abara (R-OH)', 'R', 'OH', 'Walter Abara Jr.', 2)) as m(chamber, key, name, party, state, fullname, k)
+    on m.chamber = v.chamber
+  left join people p on p.full_name = m.fullname;
+-- Six members with no match to a person (no page): a few House roll calls.
+insert into congress_vote_positions (vote_id, member_key, person_id, name, party, state, position)
+select v.id, x.key, null, x.name, x.party, x.state, x.pos
+  from (select id from congress_votes where chamber = 'house' order by voted_at desc limit 2) v
+  cross join (values ('X000001', 'Unmatched, Alex', 'R', 'FL', 'yea'), ('X000002', 'Unmatched, Bea', 'D', 'WA', 'nay'), ('X000003', 'Unmatched, Cal', 'R', 'KS', 'not_voting')) as x(key, name, party, state, pos);
+update congress_votes v set
+  yeas = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'yea'),
+  nays = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'nay'),
+  present = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'present'),
+  not_voting = (select count(*) from congress_vote_positions p where p.vote_id = v.id and p.position = 'not_voting');
+
+-- Independent expenditures (migration 0036): 60 rows in the current cycle. Committee A has regular
+-- rows and later notices (the later ones count); B has notices only; C has notices that are all
+-- older than its regular rows (none counts). Rows name two seeded members, a candidate with no
+-- person, a presidential candidate, a null amount, a null side and one dated in the future (the
+-- ingest stores such a date as null); descriptions carry quotes and angle brackets.
+insert into independent_expenditures (sub_id, committee_fec_id, committee_name, candidate_fec_id, candidate_name, candidate_office, candidate_state, candidate_district, candidate_party, person_id, support_oppose, amount, spent_at, disseminated_at, description, payee_name, is_notice, source_url)
+select 'SEED-IE-' || lpad(n::text, 3, '0'), c.id, c.name, k.id, k.name, k.office, k.state, k.district, k.party,
+       (select p.id from people p where p.full_name = k.person), s.side, s.amount, s.d, s.d,
+       case n % 4 when 0 then 'Television ad "Plain Talk" <30 sec>' when 1 then 'Digital advertising' when 2 then 'Mailers & door hangers' else 'Radio ad, 60 seconds' end,
+       'Seed payee ' || n, s.notice, 'https://docquery.fec.gov/pdf/seed/' || n || '.pdf'
+  from (
+    -- committee A, regular reports: support Marsh
+    select n, 'A' as cm, 'M' as cand, 'S' as side, (5000 * (n))::numeric as amount, date '2026-03-01' + n as d, false as notice from generate_series(1, 14) n
+    union all select 14 + n, 'A', 'M', 'S', 1000 * n, d, true from (values (1, date '2026-03-05'), (2, date '2026-03-15'), (3, date '2026-03-21'), (4, date '2026-04-02')) t(n, d)
+    union all select 18 + n, 'B', 'M', 'O', 2000, date '2026-05-01' + n, true from generate_series(1, 8) n
+    union all select 26 + n, 'C', 'W', 'O', 3000, date '2026-07-01' + n, false from generate_series(1, 5) n
+    union all select 31 + n, 'C', 'W', 'S', 4000, date '2026-06-01' + n, true from generate_series(1, 4) n
+    union all select 35 + n, 'D', 'Z', 'S', 750, date '2026-08-01' + n, false from generate_series(1, 12) n
+    union all select 47 + n, 'A', 'P', 'O', 12000, date '2026-09-01' + n, false from generate_series(1, 9) n
+    union all select 57, 'A', 'M', 'S', null, date '2026-04-10', false
+    union all select 58, 'D', 'M', null, 900, date '2026-04-11', false
+    union all select 59, 'D', 'W', 'S', 1500, null, false
+    union all select 60, 'D', 'Z', 'O', 640, date '2026-08-20', false
+  ) s
+  join (values ('A', 'C00000001', 'ALPHA VICTORY PAC'), ('B', 'C00000002', 'BETA NOTICE FUND'), ('C', 'C00000003', 'GAMMA "EARLY" NOTICES'), ('D', 'C00000004', 'DELTA PRIORITIES <PAC>')) c(key, id, name) on c.key = s.cm
+  join (values ('M', 'H0CA00001', 'MARSH, ELENA', 'H', 'CA', '09', 'DEM', 'Elena Marsh'), ('W', 'H0TX00002', 'WHITFIELD, JORDAN', 'H', 'TX', '14', 'REP', 'Jordan Whitfield'),
+               ('Z', 'H0NY00003', 'ZETA, CANDIDATE', 'H', 'NY', '03', 'IND', null), ('P', 'P00000001', 'PRESIDENT, PERSON', 'P', 'US', null, 'NPA', null)) k(key, id, name, office, state, district, party, person) on k.key = s.cand;
+-- ── federal assistance (migration 0037; web/src/lib/assistance.ts) ─────────────────────────
+-- 40 awards over 200 days: grants, loans (one with a negative subsidy cost), direct payments, two
+-- masked recipients, exact-name awards to NVIDIA (1) and Lockheed (2), a name nothing else shares,
+-- one that started 300 days ago (outside the 180-day window), a long description, and one with
+-- quotes and angle brackets.
+delete from assistance_awards;
+insert into assistance_awards (source_ref, award_id, kind, award_type, recipient, awarding_agency, awarding_sub_agency, amount, subsidy_cost, start_date, end_date, description, assistance_listing) values
+  ('ASST_NON_SEED01', 'SEED01', 'grant', 'Project Grant', 'NVIDIA CORP', 'National Science Foundation', 'Directorate for Computer and Information Science', 4200000, null, current_date - 20, current_date + 700, 'ADVANCED COMPUTING RESEARCH TESTBED', '47.070 Computer and Information Science and Engineering'),
+  ('ASST_NON_SEED02', 'SEED02', 'grant', 'Cooperative Agreement', 'LOCKHEED MARTIN CORP', 'Department of Energy', 'Office of Science', 9800000, null, current_date - 33, current_date + 400, 'FUSION MATERIALS IRRADIATION PROGRAM', '81.049 Office of Science Financial Assistance Program'),
+  ('ASST_LOA_SEED03', 'SEED03', 'loan', 'Guaranteed/Insured Loan', 'LOCKHEED MARTIN CORP', 'Department of Energy', 'Loan Programs Office', 650000000, 41000000, current_date - 61, current_date + 5000, 'ADVANCED TECHNOLOGY VEHICLES MANUFACTURING LOAN', '81.124 Advanced Technology Vehicles Manufacturing Loan Program'),
+  ('ASST_LOA_SEED04', 'SEED04', 'loan', 'Direct Loan', 'RIVERBEND ENERGY COOPERATIVE', 'Department of Agriculture', 'Rural Utilities Service', 120000000, -3400000, current_date - 14, current_date + 9000, 'ELECTRIC INFRASTRUCTURE LOAN, NEGATIVE SUBSIDY RATE', '10.850 Rural Electrification Loans and Loan Guarantees'),
+  ('ASST_DIR_SEED05', 'SEED05', 'direct_payment', 'Direct Payment for Specified Use', 'MULTIPLE RECIPIENTS', 'Department of Agriculture', 'Farm Service Agency', 88000000, null, current_date - 9, null, 'COUNTY AGGREGATED PAYMENTS', '10.112 Price Loss Coverage'),
+  ('ASST_DIR_SEED06', 'SEED06', 'direct_payment', 'Direct Payment with Unrestricted Use', 'REDACTED DUE TO PII', 'Social Security Administration', null, 31000000, null, current_date - 45, null, null, '96.001 Social Security Disability Insurance'),
+  ('ASST_NON_SEED07', 'SEED07', 'grant', 'Formula Grant', 'ZENITH COMMUNITY HEALTH CENTERS INC', 'Department of Health and Human Services', 'Health Resources and Services Administration', 1250000, null, current_date - 100, current_date + 265, 'HEALTH CENTER CLUSTER GRANT "PRIMARY CARE" <PHASE 2> & OUTREACH', '93.224 Health Center Program'),
+  ('ASST_NON_SEED08', 'SEED08', 'grant', 'Project Grant', 'OLD HARBOR RESEARCH INSTITUTE', 'Department of Defense', 'Department of the Navy', 2750000, null, current_date - 300, current_date - 20, 'OCEAN ACOUSTICS STUDY (STARTED OUTSIDE THE WINDOW)', '12.300 Basic and Applied Scientific Research'),
+  ('ASST_NON_SEED09', 'SEED09', 'grant', 'Block Grant', 'STATE OF OHIO', 'Department of Health and Human Services', 'Administration for Children and Families', 45000000, null, current_date - 7, current_date + 358,
+   'TEMPORARY ASSISTANCE FOR NEEDY FAMILIES BLOCK GRANT FOR THE STATE FISCAL YEAR, COVERING CASH ASSISTANCE, WORK ACTIVITIES, CHILD CARE TRANSFERS, EMERGENCY ASSISTANCE, ADMINISTRATIVE COSTS, TRAINING AND EVALUATION, PROGRAM INTEGRITY ACTIVITIES, TRIBAL COORDINATION AND RELATED STATE SUPPORT SERVICES UNDER THE APPROVED STATE PLAN', '93.558 Temporary Assistance for Needy Families');
+-- thirty-one more, spread over 200 days (some outside the window), three kinds, a few programs and agencies
+insert into assistance_awards (source_ref, award_id, kind, award_type, recipient, awarding_agency, awarding_sub_agency, amount, subsidy_cost, start_date, end_date, description, assistance_listing)
+select 'ASST_GEN_SEED' || lpad(i::text, 2, '0'), 'GEN' || i,
+       (array['grant','loan','direct_payment'])[1 + i % 3],
+       (array['Project Grant','Direct Loan','Direct Payment for Specified Use'])[1 + i % 3],
+       (array['COUNTY OF HARRIS','UNIVERSITY OF DALLAS','BLUE RIDGE TRANSIT AUTHORITY','NORTHERN PLAINS BROADBAND LLC','CITY OF PORTLAND','MERCY GENERAL HOSPITAL'])[1 + i % 6],
+       (array['Department of Transportation','Department of Education','Department of Agriculture','Department of Health and Human Services'])[1 + i % 4],
+       (array['Federal Transit Administration','Office of Postsecondary Education','Rural Utilities Service','Centers for Medicare and Medicaid Services'])[1 + i % 4],
+       (1000000 + i * 937000)::numeric,
+       case when i % 3 = 1 then (i * 31000 - 400000)::numeric else null end,
+       current_date - (i * 6 + 2), current_date + 100 + i,
+       'SEED AWARD ' || i,
+       (array['20.500 Federal Transit Capital Investment Grants','84.063 Federal Pell Grant Program','10.850 Rural Electrification Loans and Loan Guarantees','93.778 Medical Assistance Program'])[1 + i % 4]
+  from generate_series(1, 31) i;
+
+-- ── lobbyist contributions (migration 0033; web/src/lib/lobbygifts.ts) ───────────────────────
+-- 14 filings over two years and three periods, as the Senate API prints them: three with no
+-- contributions, an amended pair (the later posting counts), items that name seed members in
+-- exact form, with a title and with a bracket tag, a surname-only item and a two-people item
+-- (neither matches), a registrant equal to Lockheed, a future date and a null amount.
+delete from lobby_contribution_filings;
+insert into lobby_contribution_filings (filing_uuid, filing_type, filing_year, filing_period, filer_type, registrant_id, registrant_name, lobbyist_name, no_contributions, posted_at, source_url, item_count) values
+  ('seed-c01', 'Mid-Year Report', extract(year from current_date)::int - 1, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'PAT ELLIS', false, (current_date - 480)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c01/print/', 2),
+  ('seed-c02', 'Year-End Report', extract(year from current_date)::int - 1, 'Year-End (Jul 1 - Dec 31)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'PAT ELLIS', true, (current_date - 300)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c02/print/', 0),
+  ('seed-c03', 'Year-End Report', extract(year from current_date)::int - 1, 'Year-End (Jul 1 - Dec 31)', 'Registrant', 9002, 'LOCKHEED MARTIN CORP', null, false, (current_date - 298)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c03/print/', 3),
+  ('seed-c04', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9002, 'LOCKHEED MARTIN CORP', null, false, (current_date - 120)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c04/print/', 4),
+  ('seed-c05', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9003, 'BROWNSTEIN HYATT FARBER SCHRECK', 'DANA REYES', false, (current_date - 125)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c05/print/', 3),
+  -- the amended pair: seed-c06 is replaced by seed-c07 (same registrant, lobbyist, year and period)
+  ('seed-c06', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9004, 'INVARIANT LLC', 'SAM KOWAL', false, (current_date - 130)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c06/print/', 1),
+  ('seed-c07', 'Mid-Year Amendment', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9004, 'INVARIANT LLC', 'SAM KOWAL', false, (current_date - 110)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c07/print/', 2),
+  ('seed-c08', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9005, 'MICROSOFT CORP', 'LEE CHANG', true, (current_date - 118)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c08/print/', 0),
+  ('seed-c09', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'PAT ELLIS', false, (current_date - 115)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c09/print/', 4),
+  ('seed-c10', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9001, 'AKIN GUMP STRAUSS HAUER & FELD', 'JO MARTINEZ', true, (current_date - 114)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c10/print/', 0),
+  ('seed-c11', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9006, 'PALANTIR TECHNOLOGIES INC.', null, false, (current_date - 100)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c11/print/', 2),
+  ('seed-c12', 'Year-End Report', extract(year from current_date)::int - 1, 'Year-End (Jul 1 - Dec 31)', 'Lobbyist', 9003, 'BROWNSTEIN HYATT FARBER SCHRECK', 'DANA REYES', false, (current_date - 299)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c12/print/', 2),
+  ('seed-c13', 'Mid-Year Report', extract(year from current_date)::int - 1, 'Mid-Year (Jan 1 - Jun 30)', 'Registrant', 9002, 'LOCKHEED MARTIN CORP', null, false, (current_date - 470)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c13/print/', 1),
+  ('seed-c14', 'Mid-Year Report', extract(year from current_date)::int, 'Mid-Year (Jan 1 - Jun 30)', 'Lobbyist', 9007, 'ACME LOGISTICS LLC', 'RAY OKONKWO', false, (current_date - 90)::timestamptz, 'https://lda.gov/filings/public/contribution/seed-c14/print/', 1);
+insert into lobby_contribution_items (filing_uuid, seq, contribution_type, contributor_name, payee_name, honoree_name, amount, contributed_at) values
+  ('seed-c01', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 1000, current_date - 500),
+  ('seed-c01', 2, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Rep. Elena Marsh', 500, current_date - 490),
+  ('seed-c03', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'OKAFOR FOR OHIO', 'Samuel Okafor', 2500, current_date - 330),
+  ('seed-c03', 2, 'PIC', 'LOCKHEED MARTIN CORP', 'SEED PRESIDENTIAL LIBRARY FOUNDATION', 'Seed Library Foundation', 10000, current_date - 320),
+  ('seed-c03', 3, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'COMMITTEE TO ELECT PAT', 'Pat', 250, current_date - 310),
+  ('seed-c04', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'WHITFIELD FOR CONGRESS', 'The Honorable Jordan Whitfield', 5000, current_date - 150),
+  ('seed-c04', 2, 'HONORARY', 'LOCKHEED MARTIN CORP', 'GALA FOUNDATION', 'Elena Marsh [Leadership PAC]', 7500, current_date - 140),
+  ('seed-c04', 3, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'MARSH VICTORY FUND', 'Whitfield', 1500, current_date - 135),
+  ('seed-c04', 4, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'JOINT FUND', 'Samuel Okafor and Elena Marsh', 3000, current_date + 20),
+  ('seed-c05', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 2000, current_date - 160),
+  ('seed-c05', 2, 'FECA', 'SELF', 'SAMUEL OKAFOR FOR OHIO', 'Hon. Samuel Okafor', 1000, current_date - 155),
+  ('seed-c05', 3, 'MEETING', 'SELF', 'ANNUAL POLICY RETREAT', 'Priya Lindqvist', null, null),
+  ('seed-c06', 1, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Elena Marsh', 800, current_date - 170),
+  ('seed-c07', 1, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Elena Marsh', 800, current_date - 170),
+  ('seed-c07', 2, 'FECA', 'SELF', 'WALTER ABARA FOR SENATE', 'Walter Abara', 1200, current_date - 165),
+  ('seed-c09', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 3300, current_date - 140),
+  ('seed-c09', 2, 'FECA', 'SELF', 'LINDQVIST FOR SENATE', 'Priya Lindqvist', 1500, current_date - 138),
+  ('seed-c09', 3, 'HONORARY', 'SELF', 'CITY GALA', 'Senator Priya Lindqvist', 4000, current_date - 120),
+  ('seed-c09', 4, 'FECA', 'SELF', 'MARSH VICTORY FUND', 'Elena Marsh', 900, current_date - 118),
+  ('seed-c11', 1, 'FECA', 'PALANTIR PAC', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 5000, current_date - 110),
+  ('seed-c11', 2, 'FECA', 'PALANTIR PAC', 'OKAFOR FOR OHIO', 'Samuel Okafor', 2500, current_date - 105),
+  ('seed-c12', 1, 'FECA', 'SELF', 'WHITFIELD FOR CONGRESS', 'Jordan Whitfield', 2700, current_date - 310),
+  ('seed-c12', 2, 'FECA', 'SELF', 'LEADERSHIP FUND', 'Marcus Delacroix', 1000, current_date - 305),
+  ('seed-c13', 1, 'FECA', 'LOCKHEED MARTIN CORP PAC', 'MARSH VICTORY FUND', 'Elena Marsh', 2000, current_date - 480),
+  ('seed-c14', 1, 'FECA', 'SELF', 'NO NAME COMMITTEE', 'Dr. Jordan Whitfield <"friend"> & guests', 600, current_date - 95);
+
+-- The pages show roll-call votes, outside spending and lobbyist contributions only once the
+-- first load of each has finished (a run that says so in ingest_runs). The seed says so too.
+insert into sources (code, label) values
+  ('congress_votes', 'Congress roll-call votes'),
+  ('fec_independent_expenditures', 'FEC independent expenditures'),
+  ('senate_lda_contributions', 'Senate LDA lobbyist contribution reports')
+on conflict (code) do nothing;
+insert into ingest_runs (source_id, started_at, finished_at, status, rows_seen, rows_changed, stats)
+select id, now() - interval '2 hours', now() - interval '1 hour', 'success', 0, 0, '{"catch_up_complete": true}'::jsonb
+  from sources where code in ('congress_votes', 'fec_independent_expenditures', 'senate_lda_contributions');
+
+
 -- Publish the way production does: migration 0009's gates (house_ptr, sec_form4) are approved, and
 -- every ingest run ends with publish_approved_filings(), which publishes auto_approved filings of
 -- confidence >= 0.9. Without this call every seeded filing stayed under review, so charts, the

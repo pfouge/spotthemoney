@@ -26,6 +26,14 @@ import { sortNotices, relationshipLabel, cleanText, stated, isAmendment, valueOu
 import { SHOWN_CONCEPTS, CHECK_CONCEPT, YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, csvRows, heldList, sourceFilings, filingUrl, shownYears, shownQuarters, type FinCsvRow } from "./financials";
 import { financialsOf } from "./financials-build";
 import { sortStatements, holdersOf, sharesStated, percentStated, PURPOSE_MAX, type Statement } from "./schedule13";
+import { EVENT_CSV_COLUMNS, sortEvents, type EventCsvRow } from "./events8k";
+import { PAY_CSV_COLUMNS, sortYears, type PayCsvRow } from "./execpay";
+import { filingFolderUrl, cleanName as instName } from "./inst13f";
+import { CSV_COLUMNS as VOTE_COLUMNS, newestFirst as voteNewestFirst } from "./votes";
+import { CSV_COLUMNS as OUTSIDE_COLUMNS } from "./outsidespending";
+import { isMasked, programLabel, splitListing, kindName as assistKind, type AssistanceRow } from "./assistance";
+import { CSV_COLUMNS as LOBBY_CSV_COLUMNS } from "./lobbygifts";
+import { readCsvFile } from "./lobbygifts-build";
 import { WFE, marketCsvRows, type MarketCsvRow } from "./worldmarkets";
 
 export const MAX_ROWS = 50_000;
@@ -40,7 +48,9 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside" | "assistance" | "lobbycontrib";
+  /** Size in bytes when it is known without reading the text (files streamed to disk). */
+  bytes?: number;
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }
@@ -323,6 +333,52 @@ async function build(): Promise<Downloads> {
   ];
   add(file({ name: "large-holders-13d-13g.csv", group: "insiders", kind: "holders", title: "Large holders: SEC Schedules 13D and 13G", about: "One row per ownership statement by a holder of more than 5% of a class of shares, or one reporting it has fallen below that, for the companies this site tracks. A statement says what the filer owned on a date; it is not a trade.", updated: newest(statements.map((x) => x.filedAt)) }, holderCols, statements));
 
+  // Institutional holders: SEC Form 13F positions in companies on the site (lib/inst13f.ts). The model
+  // holds nothing until the load is recent, so the files appear with the page sections. One file lists
+  // the largest managers of each company (as many as a page shows); the other has one row per company.
+  if (m.inst.shown && m.inst.period) {
+    const instPeriod = m.inst.period, instPrior = m.inst.prior;
+    interface InstCsvRow { cik: string; c: import("./inst13f").InstCompany; m: import("./inst13f").InstManagerRow }
+    const instRows: InstCsvRow[] = [];
+    const instCos: { cik: string; c: import("./inst13f").InstCompany }[] = [];
+    for (const [cik, c] of m.inst.byCik) {
+      if (!byCik.get(cik)?.slug) continue;
+      instCos.push({ cik, c });
+      for (const mg of c.top) instRows.push({ cik, c, m: mg });
+    }
+    const ico = (r: { cik: string }) => byCik.get(r.cik);
+    const instCols: Column<InstCsvRow>[] = [
+      { key: "company", about: "The company the position is in, as this site names it.", get: (r) => ico(r)?.name },
+      { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
+      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => ico(r)?.primaryTicker },
+      { key: "quarter_end", about: "The last day of the quarter the positions are as of (YYYY-MM-DD).", get: () => instPeriod },
+      { key: "manager", about: "The institutional manager that filed the Form 13F, as filed.", get: (r) => instName(r.m.name, 200) },
+      { key: "manager_sec_number", about: "The manager's SEC number (CIK), ten digits.", get: (r) => r.m.cik },
+      { key: "shares", about: "Shares the manager reports in this company on the quarter's last day, summed over its share rows. Options (puts and calls) and principal-amount rows are not included.", get: (r) => r.m.shares },
+      { key: "reported_value", about: "The value the manager reports for those shares, in US dollars as filed. Not a market price taken by this site.", get: (r) => r.m.value },
+      { key: "shares_prior_quarter", about: "The same manager's summed shares in the quarter before, blank when the manager reported none for it or that quarter is not loaded.", get: (r) => r.m.prevShares },
+      { key: "prior_quarter_end", about: "The quarter end the prior-quarter column is as of, blank when that quarter is not loaded.", get: () => instPrior },
+      { key: "accession", about: "The SEC's accession number of the manager's newest Form 13F for the quarter.", get: (r) => r.m.accession },
+      { key: "filed", about: "The day that Form 13F was filed (YYYY-MM-DD).", get: (r) => r.m.filed },
+      { key: "source_url", about: "Link to the manager's filing folder on the SEC's EDGAR system.", get: (r) => filingFolderUrl(r.m.cik, r.m.accession) },
+      { key: "page_url", about: "The company's page on this site.", get: (r) => { const c = ico(r); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
+    ];
+    add(file({ name: "institutional-holders.csv", group: "insiders", kind: "inst", title: "Institutional holders: SEC Form 13F", about: "The largest managers by reported value in each company this site tracks, from Form 13F. A 13F lists positions on one day a quarter; it is not a trade and not a share of the company.", updated: newest(instRows.map((r) => r.m.filed)) }, instCols, instRows));
+    const coCols: Column<{ cik: string; c: import("./inst13f").InstCompany }>[] = [
+      { key: "company", about: "The company, as this site names it.", get: (r) => ico(r)?.name },
+      { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
+      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => ico(r)?.primaryTicker },
+      { key: "quarter_end", about: "The last day of the quarter the positions are as of.", get: () => instPeriod },
+      { key: "managers", about: "Managers that report shares in the company for the quarter.", get: (r) => r.c.managers },
+      { key: "shares_summed", about: "Shares reported by all those managers added together. Two managers can report the same shares, so this can count shares twice and is not a share of the company.", get: (r) => r.c.shares },
+      { key: "value_summed", about: "The reported values added together, in US dollars as filed. Can count the same shares twice.", get: (r) => r.c.value },
+      { key: "managers_with_options", about: "Managers that also report put or call options in the company. Options are not in the other figures.", get: (r) => r.c.options },
+      { key: "prior_quarter_end", about: "The quarter end before, blank when that quarter is not loaded.", get: () => instPrior },
+      { key: "managers_prior_quarter", about: "Managers that reported shares in the company for the prior quarter, blank when that quarter is not loaded.", get: (r) => r.c.prevManagers },
+    ];
+    add(file({ name: "institutional-holders-by-company.csv", group: "insiders", kind: "inst", title: "Institutional holders by company: SEC Form 13F", about: "One row per company this site tracks: how many managers report it, and the summed reported figures.", updated: newest(instRows.map((r) => r.m.filed)) }, coCols, instCos));
+  }
+
   // Company financials: every fiscal year and quarter on file for the companies on the site, one
   // row per company and period, the figures as filed (lib/financials.ts). The page section shows
   // the newest of them; `on_page` says which.
@@ -357,6 +413,70 @@ async function build(): Promise<Downloads> {
     { key: "page_url", about: "The company's page on this site.", get: (r) => { const c = fco(r); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
   ];
   add(file({ name: "company-financials.csv", group: "insiders", kind: "financials", title: "Company financials, as filed with the SEC", about: "One row per company and period: revenue, net income, earnings per share, cash flow and balance-sheet totals from annual and quarterly reports, for the companies this site tracks. Figures as filed, in the company's own currency.", updated: finRows.reduce<string | null>((a, r) => { const d = sourceFilings(r.period)[0]?.filed ?? null; return d && (!a || d > a) ? d : a; }, null) }, finCols, finRows));
+
+
+  // Company events (Form 8-K): every report on record for a company with a page, one row per report
+  // (lib/events8k.ts). The page section shows the last 12 months; the file holds all of them.
+  const evRows: EventCsvRow[] = [];
+  const payRows: PayCsvRow[] = [];
+  for (const c of [...byCik.values()].filter((x) => x.slug).sort((a, b) => a.name.localeCompare(b.name) || a.cik!.localeCompare(b.cik!))) {
+    const k = c.cik!.padStart(10, "0");
+    const path = companyPath(c);
+    const base = { company: c.name, cik: k, ticker: c.primaryTicker ?? "", pagePath: path ? SITE_URL + path : null };
+    for (const e of sortEvents(m.events.byCik.get(k) ?? [])) evRows.push({ ...base, e });
+    for (const y of sortYears(m.execPay.byCik.get(k) ?? [])) payRows.push({ ...base, y });
+  }
+  add(file({ name: "company-events.csv", group: "insiders", kind: "events", title: "Company events: Form 8-K reports", about: "One row per Form 8-K report (or 8-K/A amendment) filed by a company this site has a page for: filing and event dates, the item numbers the report names with the SEC's heading for each, and a link to the report. The text of a report is not included.", updated: newest(evRows.map((r) => r.e.filed)) }, EVENT_CSV_COLUMNS, evRows));
+  add(file({ name: "executive-pay.csv", group: "insiders", kind: "execpay", title: "Executive pay, as filed (Pay Versus Performance)", about: "One row per company and fiscal year: the principal executive officer's total and compensation actually paid, and the average for the other named executive officers, in dollars as the company tagged them. No person is named.", updated: newest(payRows.map((r) => r.y.fiscalYearEnd)) }, PAY_CSV_COLUMNS, payRows));
+  // Roll-call votes (lib/votes.ts): one row per roll call. No per-member positions file: the
+  // positions are in the monthly working files listed on /developers/.
+  if (m.votes.shown) {
+    const rolls = [...m.votes.rolls].sort(voteNewestFirst);
+    add(file({ name: "congress-votes.csv", group: "congress", kind: "votes", title: "Roll-call votes of the House and the Senate", about: "One row per recorded roll call: the question, the result and the official totals. Members' positions are not in this file.", updated: newest(rolls.map((r) => r.date)) }, VOTE_COLUMNS, rolls));
+  }
+  // Independent expenditures (lib/outsidespending.ts): every row, with the column that says
+  // whether it counts. Split by quarter of the spending date only if one file would pass 15 MB.
+  if (m.outside.shown) {
+    const pageOf = (id: number) => { const p = m.people.get(id); const path = p ? personPath(p) : null; return path ? SITE_URL + path : null; };
+    const cols = OUTSIDE_COLUMNS(pageOf);
+    const rows = [...m.outside.rows].sort((a, b) => (a.spentAt ?? "") < (b.spentAt ?? "") ? 1 : (a.spentAt ?? "") > (b.spentAt ?? "") ? -1 : a.subId < b.subId ? -1 : 1);
+    const meta = { group: "washington" as const, kind: "outside" as const };
+    const whole = file({ ...meta, name: "independent-expenditures.csv", title: "Independent expenditures in federal races", about: "One row per expenditure as the spender reported it, with a column that says whether the row counts or repeats another report of the same spending.", updated: newest(rows.map((r) => r.spentAt)) }, cols, rows);
+    if (rows.length && Buffer.byteLength(whole.body(), "utf8") <= 15_000_000) add(whole);
+    else for (const piece of splitByPeriod(rows, (r) => r.spentAt)) add(file({ ...meta, name: `independent-expenditures-${piece.period}.csv`, title: `Independent expenditures, ${piece.label}`, about: `Expenditures spent in ${piece.label}, as reported.`, updated: newest(piece.rows.map((r) => r.spentAt)) }, cols, piece.rows));
+  }
+  // Federal grants, loans and direct payments that started in the last 180 days (lib/assistance.ts).
+  const assistRows = m.assistance.rows;
+  const assistCompany = new Map<number, Company>();
+  for (const [cid, xs] of m.assistance.byCompany) { const c = m.companies.get(cid); if (c) for (const r of xs) assistCompany.set(r.id, c); }
+  const assistCols: Column<AssistanceRow>[] = [
+    { key: "kind", about: "grant, loan, direct_payment or other. The kinds are never added together: a loan's amount is a face value.", get: (r) => r.kind },
+    { key: "award_type", about: "The award type as USAspending reports it, for example Project Grant.", get: (r) => r.awardType },
+    { key: "recipient", about: "The recipient as USAspending returns it. A masked name (individuals) is kept as returned.", get: (r) => r.recipient },
+    { key: "recipient_masked", about: "true when USAspending masks the recipient. A masked recipient is never matched to a company.", get: (r) => isMasked(r.recipient) },
+    { key: "awarding_agency", about: "The awarding agency.", get: (r) => r.agency },
+    { key: "awarding_sub_agency", about: "The awarding sub-agency, when it differs from the agency.", get: (r) => r.subAgency },
+    { key: "program_number", about: "Assistance listing (CFDA) number of the program.", get: (r) => splitListing(r.listing).number },
+    { key: "program_title", about: "Assistance listing title of the program.", get: (r) => splitListing(r.listing).title },
+    { key: "description", about: "The agency's description, as entered, white space collapsed, at most 1,000 characters.", get: (r) => r.description },
+    { key: "start_date", about: "Start date of the award (YYYY-MM-DD). For a loan, the date it was issued.", get: (r) => r.startDate },
+    { key: "end_date", about: "End date of the award, when the agency states one.", get: (r) => r.endDate },
+    { key: "amount", about: "Award value in dollars. For a loan or guarantee this is the face value of the loan, not money granted.", get: (r) => r.amount },
+    { key: "subsidy_cost", about: "Loans only: the government's own estimate of what the loan costs. Can be negative.", get: (r) => (r.kind === "loan" ? r.subsidyCost : null) },
+    { key: "award_id", about: "The award's own id (FAIN, URI or loan number).", get: (r) => r.awardId },
+    { key: "source_url", about: "Link to the award on USAspending.", get: (r) => (r.sourceRef ? `https://www.usaspending.gov/award/${r.sourceRef}/` : null) },
+    { key: "company_page_url", about: "The company's page on this site, when the recipient name matches a company here exactly.", get: (r) => { const c = assistCompany.get(r.id); const p = c ? companyPath(c) : null; return p ? SITE_URL + p : null; } },
+  ];
+  void assistKind; void programLabel;
+  add(file({ name: "federal-assistance.csv", group: "washington", kind: "assistance", title: "Federal grants, loans and direct payments", about: "One row per federal grant, loan or direct payment that started in the last 180 days, from USAspending. Not every award. A loan's amount is a face value.", updated: newest(assistRows.map((r) => r.startDate)) }, assistCols, assistRows));
+
+  // Lobbyist contributions (Form LD-203): files streamed to disk by lib/lobbygifts-build.ts.
+  for (const cf of m.lobbyContrib.csv) {
+    files.push({ path: `/downloads/${cf.name}`, name: cf.name, group: "washington", kind: "lobbycontrib",
+      title: `Lobbyist contributions, ${cf.year}${cf.period ? `, ${cf.period.replace(/_/g, " ")}` : ""}`,
+      about: `One row per item on the LD-203 reports lobbyists and lobbying firms filed for ${cf.year}${cf.period ? ` (${cf.period.replace(/_/g, " ")})` : ""}, names as typed by the filer. Earlier versions of an amended report are kept with counted = false.`,
+      rows: cf.rows, updated: cf.updated, bytes: cf.bytes, columns: LOBBY_CSV_COLUMNS.map((c) => ({ key: c.key, about: c.about })), body: () => readCsvFile(cf) });
+  }
 
   // Rates
   for (const f of await rateFiles()) add(f);
@@ -452,4 +572,4 @@ export function getDownloads(): Promise<Downloads> { return (_downloads ??= buil
 export function sizeLabel(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : bytes >= 1024 ? `${Math.round(bytes / 1024)} KB` : `${bytes} bytes`;
 }
-export const byteSize = (f: DownloadFile) => Buffer.byteLength(f.body(), "utf8");
+export const byteSize = (f: DownloadFile) => f.bytes ?? Buffer.byteLength(f.body(), "utf8");

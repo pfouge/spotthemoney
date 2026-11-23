@@ -25,6 +25,8 @@ export interface WorkingFile {
   usedBy: string;
   /** The stable file to use instead, when there is one. */
   instead?: string;
+  /** True when the path is a pattern with {braces} that stands for many files of one layout. */
+  pattern?: true;
 }
 
 /** The /data/*.json files a reader may look at. Not listed: files that exist only for the site's own plumbing. */
@@ -53,6 +55,24 @@ export const WORKING_FILES: WorkingFile[] = [
   { path: "/data/financials-screener.json", title: "Company financials screener rows", usedBy: "/company-financials/", instead: "/downloads/company-financials.csv",
     about: "One short list per company this site tracks with the figures of its newest fiscal year and its newest quarter, as filed with the SEC. A figure a page holds back is left out of this file; the CSV file keeps it.",
     top: ["built", "divisions", "companies"] },
+  { path: "/data/company-events.json", title: "Company events rows", usedBy: "/company-events/", instead: "/downloads/company-events.csv",
+    about: "Every Form 8-K report filed in the last 12 months by a company with a page here: one short list per report with its filing and event dates, item numbers and the address of the report at the SEC. The CSV file has every report on record.",
+    top: ["built", "divisions", "companies", "rows"] },
+  { path: "/data/executive-pay.json", title: "Executive pay rows", usedBy: "/executive-pay/", instead: "/downloads/executive-pay.csv",
+    about: "One short list per company with executive pay figures: its newest fiscal year as the company tagged it, the four figures in dollars and the filing they came from. The CSV file has every fiscal year on file.",
+    top: ["built", "divisions", "companies", "rows", "pages"] },
+  { path: "/data/planned-sales.json", title: "Planned sales hub rows", usedBy: "/planned-sales/", instead: "/downloads/planned-sales-form144.csv",
+    about: "One short list per Form 144 notice filed in the last 12 months about a company with a page here, with companies and sellers written once. A stated value held back by the over-a-million-dollars-a-share check is left out of this file; the CSV file keeps it.",
+    top: ["built", "divisions", "companies", "sellers", "rows"] },
+  { path: "/data/large-holders.json", title: "Large holders hub rows", usedBy: "/large-holders/", instead: "/downloads/large-holders-13d-13g.csv",
+    about: "One short list per holder and company: the holder's newest Schedule 13D or 13G statement about a company with a page here, with companies written once.",
+    top: ["built", "divisions", "companies", "rows"] },
+  { path: "/data/congress-votes.json", title: "Roll-call votes", usedBy: "/congress-votes/", instead: "/downloads/congress-votes.csv",
+    about: "One short list per recorded roll call of the House and the Senate: chamber, congress, session, roll number, date, bill, question, result, the official totals and the address of the official record. Members' positions are in the monthly files.",
+    top: ["built", "results", "members", "rows"] },
+  { path: "/data/votes/{chamber}-{yyyy}-{mm}.json", pattern: true, title: "Roll-call positions, one file per chamber and month", usedBy: "/congress-votes/",
+    about: "For one chamber and calendar month (for example house-2026-09): a roster of the members who voted, with name as recorded, party, state and the member's page name when the site has one, and for each roll call one text string with one character per roster entry: y yea, n nay, p present, x not voting, a dash for no recorded position.",
+    top: ["chamber", "month", "roster", "rolls"] },
   { path: "/data/search.json", title: "Search index", usedBy: "/",
     about: "One row per page the header search can find: kind, title, subtitle, address and a weight.",
     top: "array" },
@@ -75,7 +95,7 @@ export interface Catalog {
   };
   feeds: FeedEntry[];
   other: { path: string; url: string; about: string }[];
-  workingFiles: { path: string; url: string; title: string; about: string; stable: false; instead: string | null }[];
+  workingFiles: { path: string; url: string; title: string; about: string; stable: false; instead: string | null; pattern?: true }[];
 }
 
 export interface CatalogInput {
@@ -110,7 +130,7 @@ export function buildCatalog(i: CatalogInput): Catalog {
     },
     feeds: i.feeds.map((f) => ({ ...f, url: url(f.path) })),
     other: OTHER_FILES.map((o) => ({ ...o, url: url(o.path) })),
-    workingFiles: WORKING_FILES.map((w) => ({ path: w.path, url: url(w.path), title: w.title, about: w.about, stable: false as const, instead: w.instead && i.files.some((f) => f.path === w.instead) ? w.instead : null })),
+    workingFiles: WORKING_FILES.map((w) => ({ path: w.path, url: url(w.path), title: w.title, about: w.about, stable: false as const, instead: w.instead && i.files.some((f) => f.path === w.instead) ? w.instead : null, ...(w.pattern ? { pattern: true as const } : {}) })),
   };
 }
 

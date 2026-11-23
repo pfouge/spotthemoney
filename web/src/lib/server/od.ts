@@ -9,7 +9,14 @@ import { buildTxn, jointMap, type RawTxn, type FilingFacts } from "../txnbuild";
 import { cleanFootnotes } from "../footnotes";
 import { emptyForm144 } from "../form144";
 import { emptySchedule13 } from "../schedule13";
+import { emptyInst } from "../inst13f";
 import { emptyFinancials } from "../financials";
+import { emptyEvents } from "../events8k";
+import { emptyPay } from "../execpay";
+import { emptyVotes } from "../votes";
+import { emptyOutside } from "../outsidespending";
+import { emptyAssistance } from "../assistance";
+import { emptyLobbyContrib } from "../lobbygifts";
 import { insiderRows, codeRows, yearRows, insiderPeriods, isOpenBuy, isOpenSale, type InsiderRow, type CodeRow, type YearRow, type PeriodSummary } from "../entity";
 
 export type OdKind = "insider" | "stock" | "company";
@@ -80,7 +87,7 @@ const EMPTY_STATS = { rowCount: 0, filingCount: 0, firstFiledAt: null, lastFiled
 export function buildOd(doc: OdDoc, now: Date = new Date()): OdPage {
   const model: Flagship = { builtAt: now.toISOString(), connected: true, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(), txns: [],
     lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [], donationWindowDays: 0, counts: {}, latestByPath: new Map(),
-    issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), market: emptyMarket() };
+    issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(), market: emptyMarket(), votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib() };
 
   // companies the page can name: the entity's own, its siblings' securities', the roles'
   const addCompany = (c: { id: number; name: string; slug: string | null; cik: string | null; ticker: string | null }) => {

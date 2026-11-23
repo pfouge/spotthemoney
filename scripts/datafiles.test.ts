@@ -37,7 +37,7 @@ test("catalogue: working files are never marked stable, and the catalogue does n
   assert.ok(c.workingFiles.length >= 5);
   for (const w of c.workingFiles) {
     assert.equal(w.stable, false);
-    assert.match(w.path, /^\/data\/[a-z-]+\.json$/);
+    assert.match(w.path, /^\/data\/[a-z-]+(\/\{[a-z-]+\}-\{[a-z]+\}-\{[a-z]+\})?\.json$/);
     assert.notEqual(w.path, CATALOG_PATH);
     assert.ok(w.about.length > 40);
   }

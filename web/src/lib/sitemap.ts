@@ -13,7 +13,18 @@ import { buildIssues, ISSUES_PATH } from "./lobbyissues";
 import { siteIndustries } from "./industries-build";
 import { siteFinScreen } from "./finscreen-build";
 import { FIN_SCREENER_PATH } from "./finscreen";
+import { siteEventsHub } from "./events8k-build";
+import { sitePayHub } from "./execpay-build";
+import { EVENTS_PATH } from "./events8k";
+import { PAY_PATH } from "./execpay";
+import { VOTES_PATH } from "./votes";
+import { OUTSIDE_PATH } from "./outsidespending";
 import { INDUSTRIES_PATH } from "./industries";
+import { INST_HUB_PATH, instHubShown } from "./inst13f-hub";
+import { plannedShown } from "./plannedsales-build";
+import { largeShown } from "./largeholders-build";
+import { PLANNED_PATH } from "./plannedsales";
+import { LARGE_PATH } from "./largeholders";
 import { MARKETS_PATH, WFE } from "./worldmarkets";
 import { getMarketIndexable, SITEMAP_URL_LIMIT } from "./market";
 import { getArticles, getAuthors, articlePath, authorPath } from "./articles";
@@ -61,17 +72,30 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
     { loc: "/congress/", lastmod: day(latestTxn, built), changefreq: "daily", priority: 0.9 },
     ...(congressMembers ? [{ loc: "/congress-members/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.7 }] : []),
     ...(congressTrades ? [{ loc: "/congress-trades/", lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.8 }] : []),
+    ...(model.votes.shown ? [{ loc: VOTES_PATH, lastmod: day(model.votes.rolls[0]?.date ?? null, built), changefreq: "daily" as const, priority: 0.7 }] : []),
     ...(committees.length ? [{ loc: COMMITTEES_PATH, lastmod: day(latestTxn, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     ...committees.map((c) => ({ loc: c.path, lastmod: day(c.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
+    // Grants and loans, and lobbyist contributions: indexable only when they hold rows.
+    ...(model.assistance.rows.length ? [{ loc: "/grants/", lastmod: day(model.assistance.rows.map((r) => r.startDate).filter(Boolean).sort().at(-1), built), changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...(model.lobbyContrib.available && model.lobbyContrib.periods.length ? [{ loc: "/lobbyist-contributions/", lastmod: day(model.lobbyContrib.newestPosted, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     { loc: "/stocks/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/companies/", lastmod: built, changefreq: "daily", priority: 0.7 },
     ...(industries.length ? [{ loc: INDUSTRIES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
     ...industries.map((d) => ({ loc: d.path, lastmod: built, changefreq: "daily" as const, priority: 0.5 })),
     // The company financials screener is indexable only when it has rows (pages/company-financials.astro).
     ...(siteFinScreen(model).all.length ? [{ loc: FIN_SCREENER_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
+    // Company events and executive pay are indexable only when they have rows (their pages).
+    ...(siteEventsHub(model).data.rows.length ? [{ loc: EVENTS_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...(sitePayHub(model).data.rows.length ? [{ loc: PAY_PATH, lastmod: built, changefreq: "weekly" as const, priority: 0.5 }] : []),
+    // Institutional holders (Form 13F): listed only while the load is recent and has companies.
+    ...(instHubShown(model) ? [{ loc: INST_HUB_PATH, lastmod: day(model.inst.lastFiled, built), changefreq: "weekly" as const, priority: 0.6 }] : []),
+    // Planned sales and large holders hubs: listed only while the Form 144 and Schedule 13 loads are current.
+    ...(plannedShown(model) ? [{ loc: PLANNED_PATH, lastmod: day(model.form144.lastFiled, built), changefreq: "daily" as const, priority: 0.6 }] : []),
+    ...(largeShown(model) ? [{ loc: LARGE_PATH, lastmod: day(model.schedule13.lastFiled, built), changefreq: "daily" as const, priority: 0.6 }] : []),
     { loc: "/washington/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/donations/", lastmod: built, changefreq: "daily", priority: 0.7 },
     { loc: "/lobbying/", lastmod: built, changefreq: "daily", priority: 0.7 },
+    ...(model.outside.shown ? [{ loc: OUTSIDE_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.7 }] : []),
     ...(issues.length ? [{ loc: ISSUES_PATH, lastmod: built, changefreq: "daily" as const, priority: 0.6 }] : []),
     ...issues.map((i) => ({ loc: i.path, lastmod: day(i.latest, built), changefreq: "weekly" as const, priority: 0.5 })),
     { loc: "/contracts/", lastmod: built, changefreq: "daily", priority: 0.7 },
