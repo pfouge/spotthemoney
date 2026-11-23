@@ -10,14 +10,14 @@ import { industryOf } from "./entity";
 import { payOf } from "./execpay-build";
 import { sortYears } from "./execpay";
 import { divisionSlug } from "./industries";
-import { FS_CONCEPTS, packFinScreen, unpackFinScreen, finScreenCounts, finScreenLog, type FinScreenData, type FsCompany, type FsConcept, type FsPeriod } from "./finscreen";
+import { FS_STORED, packFinScreen, unpackFinScreen, finScreenCounts, finScreenLog, type FinScreenData, type FsCompany, type FsConcept, type FsPeriod } from "./finscreen";
 
 function toPeriod(p: Period | undefined): FsPeriod | null {
   if (!p) return null;
   const src = sourceFilings(p)[0];
   if (!src) return null; // a period with none of the figures a page prints
   const v = {} as Record<FsConcept, number | null>, held = {} as Record<FsConcept, boolean>;
-  for (const c of FS_CONCEPTS) { const cell = p.cells[c.key]; v[c.key] = cell ? cell.value : null; held[c.key] = !!cell?.held; }
+  for (const c of FS_STORED) { const cell = p.cells[c.key]; v[c.key] = cell ? cell.value : null; held[c.key] = !!cell?.held; }
   return { end: p.end, start: p.start, filed: src.filed, form: src.form, accession: src.accession, v, held };
 }
 

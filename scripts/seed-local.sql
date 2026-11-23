@@ -573,6 +573,9 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
   ('0000320193', 'revenue', 'us-gaap:Revenues', 'USD', '2026-03-29', '2026-06-27', 109417000000, '10-Q', '2026-07-31', '0000320193-26-000081'),
   ('0000320193', 'net_income', 'us-gaap:NetIncomeLoss', 'USD', '2026-03-29', '2026-06-27', 27100000000, '10-Q', '2026-07-31', '0000320193-26-000081'),
   ('0000320193', 'eps_diluted', 'us-gaap:EarningsPerShareDiluted', 'USD/shares', '2026-03-29', '2026-06-27', 1.85, '10-Q', '2026-07-31', '0000320193-26-000081'),
+  -- made-up balance figures: equity below zero, so the screener's newest quarter has an "n/a" liabilities to equity
+  ('0000320193', 'liabilities', 'us-gaap:Liabilities', 'USD', null, '2026-06-27', 290000000000, '10-Q', '2026-07-31', '0000320193-26-000081'),
+  ('0000320193', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2026-06-27', -1500000000, '10-Q', '2026-07-31', '0000320193-26-000081'),
   ('0009996703', 'revenue', 'us-gaap:Revenues', 'USD', '2025-01-01', '2025-12-31', 12000000, '10-K', '2026-03-02', '0009996703-26-000002'),
   ('0009996703', 'net_income', 'us-gaap:NetIncomeLoss', 'USD', '2025-01-01', '2025-12-31', 3000000, '10-K', '2026-03-02', '0009996703-26-000002'),
   ('0009996703', 'eps_diluted', 'us-gaap:EarningsPerShareDiluted', 'USD/shares', '2025-01-01', '2025-12-31', 0.3, '10-K', '2026-03-02', '0009996703-26-000002'),

@@ -91,7 +91,7 @@ const SCREEN_KEYS = ["q", "chamber", "party", "state", "committee", "side", "min
 // The company financials screener's views (its own list too: web/src/lib/finscreen.ts FS_KEYS).
 // scripts/verify-finscreen.mjs recounts the number beside each link into it.
 const FIN_SCREENER = "/company-financials/";
-const FIN_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "sort", "dir", "page", "per"];
+const FIN_KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "cols", "sort", "dir", "page", "per"];
 const isFinView = (path, hash) => path === FIN_SCREENER && hash.includes("=") && [...new URLSearchParams(hash).keys()].every((key) => FIN_KEYS.includes(key));
 // Company events and executive pay hubs (web/src/lib/events8k.ts HUB_VIEWS, execpay.ts PAY_HUB_VIEWS).
 const HUB_VIEWS = { "/company-events/": ["q", "item", "division", "form", "w", "sort", "dir", "page", "n"], "/executive-pay/": ["q", "division", "fy", "min", "sort", "dir", "page", "n"] };
