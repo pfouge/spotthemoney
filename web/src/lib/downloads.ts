@@ -45,9 +45,7 @@ export interface DownloadFile {
   about: string;           // one line: what the rows are
   rows: number;
   updated: string | null;  // newest date in the file
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets";
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "lobbying" | "contracts" | "rates" | "markets";
-  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "financials" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside";
+  kind: "trades" | "members" | "seats" | "companies" | "notices" | "holders" | "inst" | "financials" | "events" | "execpay" | "lobbying" | "contracts" | "rates" | "markets" | "votes" | "outside";
   columns: { key: string; about: string }[];
   body: () => string;      // the CSV text (built once, then cached)
 }

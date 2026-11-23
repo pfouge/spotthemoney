@@ -81,9 +81,7 @@ async function load(): Promise<Flagship> {
   const empty: Flagship = {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(),
-    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+    donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
     votes: emptyVotes(), outside: emptyOutside(),
   };
   const sql = db();
@@ -172,9 +170,7 @@ async function load(): Promise<Flagship> {
           from donations where donated_at >= current_date - 90 and donated_at <= current_date group by 1 order by total desc limit 60`,
     ]);
 
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay() };
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials() };
-    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), financials: emptyFinancials(),
+    const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
       votes: emptyVotes(), outside: emptyOutside() };
 
     for (const c of companyRows) {
@@ -438,6 +434,7 @@ async function load(): Promise<Flagship> {
       console.log(`[web] ${payLog(model.execPay, ciks)}`);
     } catch (err) {
       console.warn("[web] executive pay skipped:", (err as Error).message);
+    }
     // Roll-call votes and independent expenditures for the member pages and their hubs. Each in
     // its own try/catch: a missing table leaves its sections out and nothing else.
     try {

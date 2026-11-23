@@ -472,6 +472,9 @@ ${table(["Figure on this site", "What it is"], [
     seeLive: [{ label: "Executive pay list", href: "/executive-pay/" }, ...(c.execPayShown ? [{ label: "How the figures are read", href: "/methodology/#executive-pay" }] : [])],
     covers: ["web/src/lib/execpay.ts", "web/src/components/ExecutivePay.astro", "shared/src/execpay.ts"],
     ui: c.execPayShown ? [{ text: "Executive pay, as filed", on: "/stocks/nvda/" }] : [],
+    facts: [],
+  }),
+
   // ─────────────────────────────────────────────────────────────────────────────────────
   (c) => ({
     slug: "form-13f-institutional-holdings", group: "insiders", updated: "2026-11-22",

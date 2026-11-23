@@ -94,8 +94,7 @@ const companyShown = finShown || evRows.length > 0 || payShownYears(payYears).le
 // Schedule 13 statements this company filed about other companies on the site.
 const holdingsN = holdingsOf(statementsFiledBy(model, c.cik), model.builtAt).length;
 const lastTrade = c.txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? null;
-const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || companyShown || plannedN > 0 || holdersN > 0 || holdingsN > 0;
-const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || finShown || plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0;
+const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || companyShown || plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0;
 const latestInsider = txns.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 const glance = [
   ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
@@ -111,10 +110,8 @@ const glance = [
 ];
 const groupList = hasData ? [
   { id: "trading", label: "Trading" },
-  ...(holdersN || holdingsN ? [{ id: "ownership", label: "Ownership" }] : []),
-  ...(companyShown ? [{ id: "company", label: "Company" }] : []),
   ...(holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []),
-  ...(finShown ? [{ id: "company", label: "Company" }] : []),
+  ...(companyShown ? [{ id: "company", label: "Company" }] : []),
   { id: "washington", label: "Washington" },
   { id: "record", label: "About this record" },
 ] : [];

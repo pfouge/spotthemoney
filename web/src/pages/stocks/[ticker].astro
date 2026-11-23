@@ -116,8 +116,7 @@ const glance = [
   ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
 ];
 const hasData = txns.length > 0;
-const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
-const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(finShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
+const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), { id: "record", label: "About this record" }] : [];
 
 const answer = txns.length === 0
   ? `${s.ticker} (${name}) is in the tracked set but has no disclosed insider or congressional transactions that met the publishing bar yet. Rows appear here the day after they are filed.`
