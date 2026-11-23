@@ -29,14 +29,14 @@ const answer = x.divisions.length === 0
   ? "No company on this site has an SEC industry code on file yet, so there are no industries to list. The codes are read from the SEC once a day."
   : `${plural(placed, "company", "companies")} on this site ${placed === 1 ? "is" : "are"} listed under ${plural(x.divisions.length, "industry division")} and ${plural(x.codes, "industry code")}, using the code the SEC has assigned to each company. ${largest ? `The division with the most companies is ${largest.name}, with ${num(largest.companies.length)}. ` : ""}Each division's page lists its companies with counts of the insider and congressional trades disclosed in the last 12 months.`;
 const description = "Companies by industry, using the SIC code the SEC assigns to each: every division with its companies and counts of disclosed insider and congressional trades.";
-const ld = datasetLd({ name: "Companies by SEC industry code", path: INDUSTRIES_PATH, description, dateModified: built, keywords: ["industry", "SIC code", "sector", "insider trading", "Form 4"], sources: [SOURCES.edgar], parentCatalogPath: "/companies/" });
+const ld = datasetLd({ name: "Companies by SEC industry code", path: INDUSTRIES_PATH, description, dateModified: built, keywords: ["industry", "SIC code", "sector", "insider trading", "Form 4"], sources: [SOURCES.edgar], parentCatalogPath: "/stocks/" });
 const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
   { label: "Division", type: "text" }, { label: "Industry codes", type: "num", cls: "num" }, { label: "Companies", type: "num", cls: "num" },
   { label: "With insider purchases", type: "num", cls: "num" }, { label: "With insider sales", type: "num", cls: "num" }, { label: "Traded by Congress", type: "num", cls: "num" },
 ];
 ---
 <BaseLayout title={["Companies by Industry: Insider and Congress Trades", "Companies by Industry"]} description={description} section="Companies" noindex={x.divisions.length === 0}>
-  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Companies", path: "/companies/" }, { name: "Industries", path: INDUSTRIES_PATH }]} />
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks and companies", path: "/stocks/" }, { name: "Industries", path: INDUSTRIES_PATH }]} />
   <h1>Companies by industry</h1>
   <p class="lede">The companies on this site, grouped by the industry code the SEC gives each one.</p>
 
@@ -74,7 +74,7 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
   <p>The SEC gives every company that files with it a four-digit Standard Industrial Classification (SIC) code, such as 3674 for semiconductors. This page groups the companies on this site by the division of the SIC manual their code falls in, which is read from the code's first two digits. {x.divisions.length > 0 && <>Of the {num(x.companies)} companies here, <span data-fact="with-code">{num(x.withCode)}</span> have a code on file and <span data-fact="no-code">{num(noCode)}</span> do not (mostly funds and trusts){x.noDivision > 0 ? <>; {num(x.noDivision)} have a code that falls in no division and are not listed</> : null}.</>}</p>
   <p>The classification dates from 1987 and its divisions are broad. Software companies are under Services, and drug makers and chip makers are both under Manufacturing. A company has one code even when it works in several industries, and the SEC chooses it. So a division is a label for finding companies, not a measure of anything.</p>
   <p>"With insider purchases" counts companies where an insider reported at least one open-market purchase (Form 4 code P) in the 12 months, and "With insider sales" the same for open-market sales (code S). Awards, option exercises, gifts and shares withheld for tax are not counted. "Traded by Congress" counts companies whose stock is in at least one row of a House or Senate report in the same 12 months. A filing is counted by the day it was disclosed. The counts cover the companies this site tracks, not the whole market, and they say nothing about why anyone traded.</p>
-  <p>See the <a href="/companies/">company list</a>, the <a href="/methodology/#industries">methodology</a>, the <a href="/guides/what-is-form-4/">guide to Form 4</a> and the <a href="/downloads/">downloads page</a>, where one file lists every company with its code.</p>
+  <p>See the <a href="/stocks/">list of stocks and companies</a>, the <a href="/methodology/#industries">methodology</a>, the <a href="/guides/what-is-form-4/">guide to Form 4</a> and the <a href="/downloads/">downloads page</a>, where one file lists every company with its code.</p>
   </div>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />

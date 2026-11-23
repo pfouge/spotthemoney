@@ -1,42 +1,77 @@
 ---
-// /stocks/ — every tracked ticker with its 12-month insider + congressional activity.
+// /stocks/ — the one list of stocks and companies (lib/onepage.ts: one page per company). Every
+// ticker page with its 12-month insider and congressional activity and, where the page is a
+// company's page, that company's contracts and lobbying; then the few companies on file that
+// have no ticker page. /companies/ redirects here (pages/companies/[...rest].astro).
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import SectionFaq from "../../components/SectionFaq.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
-import { getFlagship, withinDays, num, plural, securityPath, money, sum } from "../../lib/flagship";
+import { getFlagship, withinDays, num, plural, securityPath, companyPath, money, sum } from "../../lib/flagship";
 import { pageTxns } from "../../lib/onepage";
 import { dataCatalogLd } from "../../lib/seo";
+import { siteIndustries } from "../../lib/industries-build";
+import { siteFinScreen } from "../../lib/finscreen-build";
 
 const model = await getFlagship();
+const year = new Date().getUTCFullYear();
+const industryCount = siteIndustries(model).divisions.length;
+const finCount = siteFinScreen(model).all.length;
 const seen = new Set<string>();
 const rows = [...model.securities.values()]
   .sort((a, b) => (a.type === "equity" ? -1 : 1) - (b.type === "equity" ? -1 : 1))
   .filter((s) => { if (s.pagePath) return false; const k = s.ticker.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
   .map((s) => {
     const y = pageTxns(model, s).filter((t) => withinDays(t.disclosedAt, 365));
-    return { s, name: (s.companyId != null ? model.companies.get(s.companyId)?.name : null) ?? s.name ?? "", ins: y.filter((t) => t.source === "sec_form4"), con: y.filter((t) => t.source !== "sec_form4"), value: sum(y.map((t) => t.value)) };
+    const co = s.companyId != null ? model.companies.get(s.companyId) : undefined;
+    // Contracts and lobbying belong to the company; they are on this row when the ticker page is the company's page.
+    const home = co && companyPath(co) === securityPath(s) ? co : null;
+    return { s, name: co?.name ?? s.name ?? "", ins: y.filter((t) => t.source === "sec_form4"), con: y.filter((t) => t.source !== "sec_form4"), value: sum(y.map((t) => t.value)),
+      contracts: home ? sum(home.contracts.map((r) => r.amount)) : 0, lobbying: home ? sum(home.lobbying.filter((r) => r.year === year).map((r) => r.amount)) : 0 };
   })
   .sort((a, b) => (b.ins.length + b.con.length) - (a.ins.length + a.con.length) || a.s.ticker.localeCompare(b.s.ticker));
 const active = rows.filter((r) => r.ins.length + r.con.length > 0);
-const answer = `${plural(rows.length, "ticker")} are tracked; ${plural(active.length, "of them has", "of them have")} disclosed insider or congressional activity in the last 12 months. The tracked set is about 70 large or frequently traded names plus every ticker that appears in a congressional filing.`;
-const description = "Every tracked stock with its insider trades (SEC Form 4) and congressional trades (STOCK Act) over the last 12 months.";
+// Companies on file with no ticker page of their own (a fund or trust with insiders on file).
+const others = [...model.companies.values()].filter((c) => c.slug && !c.stockPath)
+  .map((c) => ({ c, y: c.txns.filter((t) => withinDays(t.disclosedAt, 365)) }))
+  .sort((a, b) => b.y.length - a.y.length || a.c.name.localeCompare(b.c.name));
+const answer = `${plural(rows.length, "ticker")} are tracked; ${plural(active.length, "of them has", "of them have")} disclosed insider or congressional activity in the last 12 months. A company and its stock share one page, listed here by ticker, with the company's federal contracts and lobbying beside its trades. The tracked set is about 70 large or frequently traded names plus every ticker that appears in a congressional filing.`;
+const description = "Every tracked stock and company: insider trades (SEC Form 4), congressional trades (STOCK Act), federal contracts and lobbying on one page each.";
 ---
-<BaseLayout title="Stocks: Insider and Congress Trading by Ticker" description={description} section="Stocks">
-  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }]} />
+<BaseLayout title="Stocks and Companies: Insider and Congress Trading" description={description} section="Stocks">
+  <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks and companies", path: "/stocks/" }]} />
   <p class="eyebrow">Follow the Money <span class="x">/</span> Stocks</p>
-  <h1>By ticker</h1>
-  <Answer text={answer} updated={model.builtAt} sourceNote="Sources: SEC EDGAR; House Clerk" />
+  <h1>Stocks and companies</h1>
+  <Answer text={answer} updated={model.builtAt} sourceNote="Sources: SEC EDGAR; House Clerk; Senate eFD; USAspending; Senate LDA" />
+  {industryCount > 0 && <p class="section-note" data-industries-link>The same companies are also listed <a href="/industries/">by industry</a>, using the industry code the SEC assigns to each.</p>}
+  {finCount > 0 && <p class="section-note" data-finscreen-link-companies>Figures from the companies' own annual and quarterly reports are in the <a href="/company-financials/">company financials screener</a>: {num(finCount)} companies, with filters for industry, revenue, net income and total assets.</p>}
   {rows.length === 0 ? <p class="empty-reason">No securities tracked yet. The universe job seeds them on the first ingest run.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Ticker</th><th>Name</th><th class="num">Insider txns (12m)</th><th class="num">Congress trades (12m)</th><th class="num">Value at reported prices</th></tr></thead><tbody>
-      {rows.map((r) => <tr><td class="mono"><a href={securityPath(r.s)}>{r.s.ticker}</a></td><td>{r.name}</td><td class="num">{num(r.ins.length)}</td><td class="num">{num(r.con.length)}</td><td class="num">{money(r.value)}</td></tr>)}
+    <div class="tablewrap"><table class="data" data-sortable data-stock-list><thead><tr><th>Ticker</th><th>Company or fund</th><th class="num">Insider txns (12m)</th><th class="num">Congress trades (12m)</th><th class="num">Value at reported prices</th><th class="num">Contracts (180d)</th><th class="num">Lobbying (YTD)</th></tr></thead><tbody>
+      {rows.map((r) => <tr><td class="mono"><a href={securityPath(r.s)}>{r.s.ticker}</a></td><td>{r.name}</td><td class="num">{num(r.ins.length)}</td><td class="num">{num(r.con.length)}</td><td class="num">{money(r.value)}</td><td class="num">{r.contracts ? money(r.contracts) : "—"}</td><td class="num">{r.lobbying ? money(r.lobbying) : "—"}</td></tr>)}
     </tbody></table></div>
   )}
+  {others.length > 0 && (
+    <section aria-labelledby="no-ticker" data-company-only>
+      <h2 id="no-ticker">Companies with no ticker here</h2>
+      <p class="section-note">Companies with insiders on file whose shares have no ticker page on this site, mostly funds and trusts. Each keeps a page of its own.</p>
+      <div class="tablewrap"><table class="data"><thead><tr><th>Company</th><th class="num">Insiders</th><th class="num">Insider txns (12m)</th></tr></thead><tbody>
+        {others.map((r) => <tr><td><a href={companyPath(r.c)!}>{r.c.name}</a></td><td class="num">{num(r.c.insiders.length)}</td><td class="num">{num(r.y.length)}</td></tr>)}
+      </tbody></table></div>
+    </section>
+  )}
+  <div class="prose">
   <AdSlot />
 
+  <h2 id="about-this-page">What this page shows</h2>
+  <p>Each row is one ticker page. Where the ticker is a company's stock, that page is the company's page too: it lists the insiders who filed a Form 4, the members of Congress who traded the stock, and the company's federal contracts and lobbying. A Form 4 is the report an insider files with the Securities and Exchange Commission, usually within two business days, when they buy, sell or are granted shares of their own company. The <a href="/guides/what-is-form-4/">guide to Form 4</a> explains the form.</p>
+  <p>The columns count transactions disclosed in the last 12 months, federal contract awards that started in the last 180 days, and lobbying spending reported so far this year. Contracts and lobbying are matched to a company by its exact name, so a subsidiary that files under a different name is not included. A company with several share classes has one row, under its main ticker.</p>
+  <h2 id="where-from">Where the data comes from</h2>
+  <p>Insider transactions come from the SEC's EDGAR system, congressional trades from the House Clerk and the Senate, contract awards from USAspending.gov, and lobbying reports from the Senate's Lobbying Disclosure Act database. The site reads each source once a day and shows the figures as filed. It follows a set list of companies, not the whole market: the largest companies plus every stock a member of Congress has traded. The <a href="/methodology/">Methodology</a> has the rules behind every total.</p>
+  </div>
+
   <p class="disclaimer"><strong>Not investment advice.</strong> Public disclosures shown as filed.</p>
-  <JsonLd data={dataCatalogLd({ path: "/stocks/", name: "Insider and congressional activity by ticker", description, datasets: rows.slice(0, 500).map((r) => ({ name: `${r.s.ticker} insider and congressional transactions`, path: securityPath(r.s) })) })} />
+  <JsonLd data={dataCatalogLd({ path: "/stocks/", name: "Insider and congressional activity by ticker and company", description, datasets: rows.slice(0, 500).map((r) => ({ name: `${r.s.ticker} insider and congressional transactions`, path: securityPath(r.s) })) })} />
   <SectionFaq section="stocks" />
 </BaseLayout>

@@ -82,8 +82,7 @@ const feeds = [
     {model.txns.some((t) => t.isPublished && t.source === "sec_form4") && <a href="#charts">Charts</a>}
     <a href="#newest">Newest</a>
     {feeds.map((f) => <a href={`#${f.id}`}>{f.title.replace(/ \(.*\)$/, "")}</a>)}
-    <a href="/stocks/">By ticker</a>
-    <a href="/companies/">By company</a>
+    <a href="/stocks/">By stock or company</a>
   </nav>
 
   <VizInsiders />

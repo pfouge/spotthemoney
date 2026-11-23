@@ -23,9 +23,8 @@ export const NAV: NavGroup[] = [
     { href: "/large-holders/", label: "Large holders", desc: "Owners of more than 5 percent of a company", live: true },
     { href: "/institutional-holders/", label: "Institutional holders", desc: "What funds report holding each quarter", live: true },
   ] },
-  { key: "companies", label: "Companies", href: "/companies/", items: [
-    { href: "/stocks/", label: "Stocks", desc: "Insider and Congress activity by ticker", live: true },
-    { href: "/companies/", label: "Companies", desc: "Insiders, contracts and lobbying by company", live: true },
+  { key: "companies", label: "Companies", href: "/stocks/", items: [
+    { href: "/stocks/", label: "Stocks and companies", desc: "Trades, contracts and lobbying, one page per company", live: true },
     { href: "/industries/", label: "Industries", desc: "Companies grouped by SEC industry code", live: true },
     { href: "/company-financials/", label: "Financials screener", desc: "Filed revenue, income and assets side by side", live: true },
     { href: "/company-events/", label: "Company events", desc: "Filings that announce company news", live: true },
