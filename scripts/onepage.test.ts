@@ -34,7 +34,7 @@ test("a company with a ticker page of its own is shown there; the rest keep a co
   assert.equal(at(14), "/stocks/echo/", "no main ticker: its own share, not its warrant");
   assert.equal(at(15), "/companies/some-fund/");
   assert.equal(at(16), null, "a company with no page gets none");
-  assert.deepEqual(stats, { companies: 6, onTicker: 4, companyOnly: 2, tickers: 7, tickerOnly: 3 });
+  assert.deepEqual(stats, { companies: 6, onTicker: 4, companyOnly: 2, tickers: 5, tickerOnly: 1, classes: 2, classCompanies: 2 });
   assert.match(onePageLog(stats), /^one page per company: 6 companies with a page, 4 shown on their ticker page/);
 });
 
@@ -61,4 +61,50 @@ test("the page security of a ticker is its equity row; records test", () => {
   assert.equal(homeSecurity(m.companies.get(15), pageSecurities(m), m.securities), null);
   assert.equal(companyHasRecords(m.companies.get(15)), false);
   assert.equal(companyHasRecords({ ...m.companies.get(15), contracts: [{}] }), true);
+});
+
+test("a company's other share classes are shown on its main ticker's page", async () => {
+  const { assignCompanyPages, pageTxns, pageTicker, stockRedirects } = await import("../web/src/lib/onepage");
+  const { securityPath } = await import("../web/src/lib/flagship-core");
+  const t = (id: number, d: string) => ({ id, disclosedAt: d }) as any;
+  const sec = (id: number, ticker: string, type: string, companyId: number | null, txns: any[]) => ({ id, ticker, type, name: null, companyId, txns, insiderTxns: [], congressTxns: [], underReview: false }) as any;
+  const securities = new Map<number, any>([
+    [1, sec(1, "GOOGL", "equity", 10, [t(1, "2026-01-02")])],
+    [2, sec(2, "GOOG", "equity", 10, [t(2, "2026-01-05")])],
+    [3, sec(3, "GOOG", "option", 10, [t(3, "2026-01-03")])],
+    [4, sec(4, "SPY", "etf", null, [t(4, "2026-01-01")])],
+    [5, sec(5, "OTHR", "equity", 11, [])],
+  ]);
+  const companies = new Map<number, any>([
+    [10, { id: 10, slug: "alphabet", primaryTicker: "GOOGL", securityIds: [1, 2, 3], txns: [], contracts: [], lobbying: [] }],
+    [11, { id: 11, slug: "other", primaryTicker: "OTHR", securityIds: [5], txns: [], contracts: [], lobbying: [] }],
+  ]);
+  const stats = assignCompanyPages({ securities, companies } as any);
+  assert.equal(stats.classes, 1);
+  assert.equal(stats.classCompanies, 1);
+  assert.equal(stats.tickers, 3);
+  assert.equal(securityPath(securities.get(2)), "/stocks/googl/");
+  assert.equal(securityPath(securities.get(3)), "/stocks/googl/");
+  assert.equal(securityPath(securities.get(1)), "/stocks/googl/");
+  assert.equal(securityPath(securities.get(4)), "/stocks/spy/");
+  assert.equal(pageTicker(securities.get(3)), "googl");
+  assert.deepEqual(pageTxns({ securities } as any, securities.get(1)).map((x: any) => x.id), [2, 3, 1]);
+  assert.deepEqual(pageTxns({ securities } as any, securities.get(4)).map((x: any) => x.id), [4]);
+  assert.deepEqual(stockRedirects({ securities } as any), { goog: "/stocks/googl/" });
+  // run twice: same answer
+  assignCompanyPages({ securities, companies } as any);
+  assert.deepEqual(stockRedirects({ securities } as any), { goog: "/stocks/googl/" });
+});
+
+test("the SEC list's first ticker for a company is its page, not a secondary listing", () => {
+  const securities = new Map<number, any>([[1, sec(1, "BABAF", 20, "equity", 9)], [2, sec(2, "BABA", 20, "equity", 1)], [3, sec(3, "ZZZ", 21)]]);
+  const companies = new Map<number, any>([
+    [20, co(20, "Alibaba", "alibaba", "BABAF", [1, 2], { secTickers: ["BABA", "BABAF", "BBAAY"] })],
+    [21, co(21, "Zed", "zed", "ZZZ", [3], { secTickers: ["NOPE"] })],
+  ]);
+  assignCompanyPages({ securities, companies } as any);
+  assert.equal(companyPath(companies.get(20)), "/stocks/baba/");
+  assert.deepEqual(securities.get(2).classTickers, ["babaf"]);
+  assert.equal(securities.get(1).pagePath, "/stocks/baba/");
+  assert.equal(companyPath(companies.get(21)), "/stocks/zzz/", "a listed ticker with no security here falls back to the main ticker");
 });

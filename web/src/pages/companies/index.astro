@@ -5,7 +5,7 @@ import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
-import { getFlagship, withinDays, num, plural, companyPath, money, sum } from "../../lib/flagship";
+import { getFlagship, withinDays, num, plural, companyPath, money, sum, mainTicker } from "../../lib/flagship";
 import { dataCatalogLd } from "../../lib/seo";
 import { siteIndustries } from "../../lib/industries-build";
 import { siteFinScreen } from "../../lib/finscreen-build";
@@ -27,7 +27,7 @@ const description = "Companies with SEC insiders on file: insider transactions, 
   {finCount > 0 && <p class="section-note" data-finscreen-link-companies>Figures from the companies' own annual and quarterly reports are in the <a href="/company-financials/">company financials screener</a>: {num(finCount)} companies, with filters for industry, revenue, net income and total assets.</p>}
   {rows.length === 0 ? <p class="empty-reason">No issuers on file yet. Companies are created from Form 4 filings by the daily sec_form4 job.</p> : (
     <div class="tablewrap"><table class="data"><thead><tr><th>Company</th><th>Ticker</th><th class="num">Insiders</th><th class="num">Insider txns (12m)</th><th class="num">Contracts (180d)</th><th class="num">Lobbying (YTD)</th></tr></thead><tbody>
-      {rows.map((r) => <tr><td><a href={companyPath(r.c)!}>{r.c.name}</a></td><td class="mono">{r.c.primaryTicker ?? "—"}</td><td class="num">{num(r.c.insiders.length)}</td><td class="num">{num(r.y.length)}</td><td class="num">{r.contracts ? money(r.contracts) : "—"}</td><td class="num">{r.lobbying ? money(r.lobbying) : "—"}</td></tr>)}
+      {rows.map((r) => <tr><td><a href={companyPath(r.c)!}>{r.c.name}</a></td><td class="mono">{mainTicker(r.c) ?? "—"}</td><td class="num">{num(r.c.insiders.length)}</td><td class="num">{num(r.y.length)}</td><td class="num">{r.contracts ? money(r.contracts) : "—"}</td><td class="num">{r.lobbying ? money(r.lobbying) : "—"}</td></tr>)}
     </tbody></table></div>
   )}
   <div class="prose">

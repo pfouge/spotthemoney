@@ -3,7 +3,7 @@
 // Worked out once per build; the page, the data file, the industry pages, the sitemap and the
 // search index read the same result, so they cannot disagree.
 import type { Company, Flagship } from "./flagship";
-import { companyPath } from "./flagship";
+import { companyPath, mainTicker } from "./flagship";
 import { financialsOf } from "./financials-build";
 import { sourceFilings, type Period } from "./financials";
 import { industryOf } from "./entity";
@@ -34,7 +34,7 @@ export function finScreenCompanies(m: Flagship): FsCompany[] {
     seen.add(cik);
     const ind = industryOf(m, c);
     out.push({
-      name: c.name, path: companyPath(c), ticker: c.primaryTicker ?? "", cik,
+      name: c.name, path: companyPath(c), ticker: mainTicker(c) ?? "", cik,
       division: ind?.division ? { name: ind.division, slug: divisionSlug(ind.division) } : null, sic: ind?.code ?? "", unit: f.unit, year, quarter,
     });
   }

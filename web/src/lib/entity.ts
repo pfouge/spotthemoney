@@ -141,11 +141,15 @@ export function relatedTickers(m: Flagship, ticker: string, txns: Txn[], limit =
   const self = ticker.toLowerCase();
   const people = [...new Set(txns.map((t) => t.personId).filter((x): x is number => x != null))];
   const byPerson = tickersByPerson(m), pages = tickerPages(m);
+  const selfPage = pages.get(self);
+  const selfPath = selfPage ? securityPath(selfPage) : null;
   const shared = new Map<string, number[]>();
   for (const pid of people) for (const tk of byPerson.get(pid) ?? []) { if (tk === self) continue; const a = shared.get(tk); if (a) a.push(pid); else shared.set(tk, [pid]); }
   return [...shared].map(([tk, pids]) => ({ tk, pids, s: pages.get(tk) }))
     .filter((x): x is { tk: string; pids: number[]; s: Security } => !!x.s && x.s.txns.length > 0)
     .sort((a, b) => b.pids.length - a.pids.length || b.s.txns.length - a.s.txns.length || a.tk.localeCompare(b.tk))
+    // Share classes of one company are one page (lib/onepage.ts): list a page once, never the page itself.
+    .filter((x, i, all) => securityPath(x.s) !== selfPath && all.findIndex((y) => securityPath(y.s) === securityPath(x.s)) === i)
     .slice(0, limit)
     .map(({ pids, s }) => ({ ticker: s.ticker, name: s.name ?? (s.companyId != null ? m.companies.get(s.companyId)?.name ?? null : null), path: securityPath(s), shared: pids.length,
       who: pids.map((id) => m.people.get(id)?.name).filter((n): n is string => !!n).sort().slice(0, 3) }));

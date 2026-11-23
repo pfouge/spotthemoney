@@ -92,7 +92,7 @@ print(trades[["filer", "ticker", "side", "amount_low", "amount_high", "disclosed
     <h3 id="one-file">One member or one ticker</h3>
     <ul>
       <li data-per="member" data-count={t.memberFiles}><code>{SITE_URL}/downloads/congress/<em>member-page-name</em>.csv</code>: every trade on record for one member of Congress. {num(t.memberFiles)} such files exist{exMember && <>; for example <a href={exMember.path}>{exMember.path}</a> ({plural(exMember.rows, "row")})</>}. The page name is the last part of the member's page address and is the <code>key</code> in the catalogue.</li>
-      <li data-per="ticker" data-count={t.tickerFiles}><code>{SITE_URL}/downloads/stocks/<em>ticker</em>.csv</code>, ticker in lower case: every insider and congressional trade on record in one ticker. {num(t.tickerFiles)} such files exist{exTicker && <>; for example <a href={exTicker.path}>{exTicker.path}</a> ({plural(exTicker.rows, "row")})</>}.</li>
+      <li data-per="ticker" data-count={t.tickerFiles}><code>{SITE_URL}/downloads/stocks/<em>ticker</em>.csv</code>, ticker in lower case: every insider and congressional trade on record in one ticker. A company with several share classes has one file, under its main ticker, with a row's own ticker in the <code>ticker</code> column. {num(t.tickerFiles)} such files exist{exTicker && <>; for example <a href={exTicker.path}>{exTicker.path}</a> ({plural(exTicker.rows, "row")})</>}.</li>
     </ul>
     <p>A member or ticker with no trades on record has no file, and its address answers "not found". Read the list in the catalogue to know which exist. Corporate insiders have no file each: an insider's rows are in the file of the ticker they report for and in the quarterly insider files.</p>
     <h3 id="csv-format">Format</h3>

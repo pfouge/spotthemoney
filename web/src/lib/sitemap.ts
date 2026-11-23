@@ -4,6 +4,7 @@
 // lastmod is the newest filing/record date behind the page (or the build date for static pages),
 // which is also what scripts/indexnow-ping.mjs uses to decide which URLs to ping.
 
+import { pageTxns } from "./onepage";
 import { screenerTxns } from "./screener";
 import { getFlagship, personPath, companyPath, securityPath } from "./flagship";
 import { SITE_URL } from "./seo";
@@ -135,7 +136,8 @@ export async function buildSitemaps(): Promise<ChildSitemap[]> {
   for (const s of [...model.securities.values()].sort((a, b) => (a.type === "equity" ? -1 : 1) - (b.type === "equity" ? -1 : 1))) {
     const loc = securityPath(s);
     if (seen.has(loc)) continue;
-    if (s.txns.length === 0) continue; // empty stock pages are noindex
+    if (s.pagePath) continue;         // another share class: shown on the main ticker's page
+    if (pageTxns(model, s).length === 0) continue; // empty stock pages are noindex
     seen.add(loc);
     stocks.push({ loc, lastmod: day(s.txns[0]?.filedAt, built), changefreq: "weekly", priority: 0.6 });
   }

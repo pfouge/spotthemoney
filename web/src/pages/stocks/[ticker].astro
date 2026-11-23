@@ -27,7 +27,7 @@ import { holdersOf, holdingsOf } from "../../lib/schedule13";
 import { statementsFiledBy } from "../../lib/schedule13-build";
 import ReportedHoldings from "../../components/ReportedHoldings.astro";
 import WashingtonRecords from "../../components/WashingtonRecords.astro";
-import { companyHasRecords } from "../../lib/onepage";
+import { companyHasRecords, pageTxns } from "../../lib/onepage";
 import { getDownloads } from "../../lib/downloads";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
@@ -54,15 +54,19 @@ export async function getStaticPaths() {
     const key = s.ticker.toLowerCase();
     if (!byTicker.has(key)) byTicker.set(key, s.id);
   }
-  return [...byTicker.entries()].map(([ticker, id]) => ({ params: { ticker }, props: { id } }));
+  // A ticker that is another share class of a company has no page: its rows are on the main ticker's page (lib/onepage.ts).
+  return [...byTicker.entries()].filter(([, id]) => !model.securities.get(id)!.pagePath).map(([ticker, id]) => ({ params: { ticker }, props: { id } }));
 }
 
 const { id } = Astro.props as { id: number };
 const model = await getFlagship();
 const hasSenate = senateShown(model);
 const s = model.securities.get(id)!;
-const siblings = [...model.securities.values()].filter((x) => x.ticker.toLowerCase() === s.ticker.toLowerCase());
-const txns = siblings.flatMap((x) => x.txns).sort((a, b) => (b.disclosedAt ?? "").localeCompare(a.disclosedAt ?? ""));
+// The company's other share classes are on this page too (GOOG on GOOGL's).
+const classTickers = (s.classTickers ?? []).map((t) => t.toUpperCase());
+const pageTickers = [s.ticker.toUpperCase(), ...classTickers];
+const siblings = [...model.securities.values()].filter((x) => pageTickers.includes(x.ticker.toUpperCase()));
+const txns = pageTxns(model, s);
 const insider = txns.filter((t) => t.source === "sec_form4");
 const onTicker = new Set(txns.map((t) => t.id));
 const congress = txns.filter((t) => t.source !== "sec_form4");
@@ -113,7 +117,7 @@ const downloads = await getDownloads();
 const insiderList = insiderRows(model, insider);
 const memberList = memberRows(model, congress);
 const codes = codeRows(insider);
-const related = relatedTickers(model, s.ticker, txns);
+const related = relatedTickers(model, s.ticker, txns).filter((r) => r.path !== path);
 const size = sizeOf(model, s.ticker);
 const industry = industryOf(model, company);
 const industryLink = industry ? industryHref(industry.code) : null;
@@ -172,6 +176,7 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   <dl class="facts" data-entity-facts>
     {company && <div><dt>Company</dt><dd>{cpath && !home ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     <div><dt>Security</dt><dd>{s.type === "etf" ? "ETF" : s.type === "adr" ? "ADR" : s.type.charAt(0).toUpperCase() + s.type.slice(1)}</dd></div>
+    {classTickers.length > 0 && <div data-share-classes><dt>Share classes on this page</dt><dd>{pageTickers.join(", ")}</dd></div>}
     {industry && <div data-industry><dt>Industry, as the SEC classifies it</dt><dd>{industryLink ? <a href={industryLink}>{industry.label}</a> : industry.label}</dd></div>}
     {size && <div><dt>Size, estimated from filings</dt><dd>{size.label} ({size.range})</dd></div>}
     {insiderList.length > 0 && <div><dt>Insiders on record</dt><dd><a href="#insiders">{num(insiderList.length)}</a></dd></div>}
@@ -204,7 +209,7 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   {periods.length > 0 && (
     <section aria-labelledby="insider-summary" data-entity-periods>
       <h2 id="insider-summary">Insider buying and selling in {s.ticker}: 3 and 12 months</h2>
-      <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
+      <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{classTickers.length > 0 && ` The figures cover every share class on this page (${pageTickers.join(", ")}); share counts add classes together, and one share of one class need not be worth one share of another.`}{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
       <div class="tablewrap">
         <table class="data periods">
           <thead><tr><th>Open-market trades</th>{periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
@@ -272,7 +277,7 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
     </section>
   )}
 
-  <DownloadCsv file={downloads.stock.get(s.ticker.toLowerCase())} note="insider and congressional rows for this ticker" />
+  <DownloadCsv file={downloads.stock.get(s.ticker.toLowerCase())} note={classTickers.length ? `insider and congressional rows for ${pageTickers.join(", ")}` : "insider and congressional rows for this ticker"} />
 
   <h2 id="insider-transactions">Insider transactions</h2>
   <TxnTable model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
@@ -286,7 +291,7 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   )}
 
   <h2 id="congress-trades">Congressional trades</h2>
-  <ScreenerLink ticker={s.ticker} n={screenerCountsFor(model, personPath).ticker.get(s.ticker.toUpperCase()) ?? 0} of={`in ${s.ticker} by members of Congress`} />
+  {pageTickers.map((tk) => <ScreenerLink ticker={tk} n={screenerCountsFor(model, personPath).ticker.get(tk) ?? 0} of={`in ${tk} by members of Congress`} />)}
   <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
 
   <PlannedSales model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "notices")} />

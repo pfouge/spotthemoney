@@ -137,6 +137,21 @@ ok((await get("/downloads/congress/no-such-member-xyz.csv")).status === 404, "a 
 // 4. Tickers: found through the stocks index.
 const stocksIndex = (await get("/stocks/")).text;
 const tickers = [...new Set([...stocksIndex.matchAll(/href="\/stocks\/([a-z0-9.\-]+)\/"/g)].map((m) => m[1]))];
+// A company's other share classes have no page: their rows are on the main ticker's page and in its file.
+const classMap = await get("/data/stock-redirects.json").then((r) => (r.status === 200 ? JSON.parse(r.text) : {})).catch(() => ({}));
+for (const [cls, to] of Object.entries(classMap)) {
+  ok(/^\/stocks\/[a-z0-9.\-]+\/$/.test(to) && !classMap[to.split("/")[2]], `stock-redirects: ${cls} points at ${to}, which is not a page`);
+  ok(!tickers.includes(cls), `/stocks/ links to /stocks/${cls}/, a share class with no page of its own`);
+  const st = (await get(`/stocks/${cls}/`)).status;
+  ok(st === 404 || st === 301, `/stocks/${cls}/ answers ${st}: a share class shown on ${to} should have no page`);
+  const home = await get(to);
+  const fact = home.text.match(/data-share-classes[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "";
+  ok(home.status === 200 && fact.toUpperCase().includes(cls.toUpperCase()), `${to} does not name ${cls.toUpperCase()} among its share classes`);
+  const f = await csv(`/downloads/stocks/${to.split("/")[2]}.csv`);
+  ok((await get(`/downloads/stocks/${cls}.csv`)).status === 404, `/downloads/stocks/${cls}.csv exists although ${cls} has no page`);
+  if (f) ok([...home.text.matchAll(/<tr\b[^>]*\bid="t(\d+)"/g)].every((m) => f.rows.some((r) => r.trade_id === m[1])), `${to}: a trade shown is missing from its file`);
+}
+const classesOn = (tk) => new Set(Object.entries(classMap).filter(([, to]) => to === `/stocks/${tk}/`).map(([k]) => k));
 const tstep = Math.max(1, Math.floor(tickers.length / sampleN));
 let stockFiles = 0;
 for (const tk of tickers.filter((_, i) => i % tstep === 0).slice(0, sampleN)) {
@@ -147,7 +162,7 @@ for (const tk of tickers.filter((_, i) => i % tstep === 0).slice(0, sampleN)) {
   const t = await csv(filePath);
   checkTrades(filePath, t);
   if (!t) continue;
-  ok(t.rows.length > 0 && t.rows.every((r) => r.ticker.toLowerCase() === tk), `${filePath}: holds a row for another ticker`);
+  ok(t.rows.length > 0 && t.rows.every((r) => r.ticker.toLowerCase() === tk || classesOn(tk).has(r.ticker.toLowerCase())), `${filePath}: holds a row for another ticker`);
   const ids = new Set(t.rows.map((r) => r.trade_id));
   ok([...page.text.matchAll(/<tr\b[^>]*\bid="t(\d+)"/g)].every((m) => ids.has(m[1])), `${filePath}: a trade shown on /stocks/${tk}/ is missing from the file`);
 }

@@ -3,6 +3,7 @@
 // insiders' holdings have changed, and the company's lobbying and federal contracts.
 // "Prices insiders traded at" is drawn from the prices reported on the Form 4s themselves. A true
 // market-price line with trade markers waits on a price feed licensed for public display (docs/04).
+import { pageTxns } from "../lib/onepage";
 import Viz from "./Viz.astro";
 import { getFlagship, securityPath, type Security, type Company } from "../lib/flagship";
 import { pairBarsSvg, stepLinesSvg, columnsSvg, rankBarsSvg, tradePricesSvg, usd, PHONE_W } from "../lib/viz";
@@ -10,7 +11,7 @@ import { whoIsTrading, holdingsSeries, lobbyingByQuarter, contractsByAgency, tra
 interface Props { security?: Security; company?: Company | null; embedOnly?: boolean }
 const { security: s, company: c = null, embedOnly = false } = Astro.props;
 const model = await getFlagship();
-const who = s ? whoIsTrading(model, s.txns) : c ? whoIsTrading(model, c.txns) : [];
+const who = s ? whoIsTrading(model, pageTxns(model, s)) : c ? whoIsTrading(model, c.txns) : [];
 const held = s ? holdingsSeries(model, s) : [];
 const lobby = c ? lobbyingByQuarter(c) : [];
 const agencies = c ? contractsByAgency(c) : [];

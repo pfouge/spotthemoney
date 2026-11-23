@@ -104,12 +104,16 @@ for (const f of pick(pm.files, sample)) {
   ok(r.status === 200 && c.rows.length === f.rows, `${f.path}: answers ${r.status} with ${c.rows.length} rows, catalogue says ${f.rows}`);
   if (tradeHead) ok(JSON.stringify(c.head) === JSON.stringify(tradeHead), `${f.path}: not the trade header`);
 }
+// A company's other share classes are in its main ticker's file (/data/stock-redirects.json: class to page).
+const classMap = await get("/data/stock-redirects.json").then((r) => (r.status === 200 ? JSON.parse(r.text) : {})).catch(() => ({}));
+const classesOn = (key) => new Set(Object.entries(classMap).filter(([, to]) => to === `/stocks/${key}/`).map(([k]) => k));
+ok(Object.keys(classMap).every((k) => !pt.files.some((f) => f.key === k)), "a ticker that is another share class has a file of its own");
 for (const f of pick(pt.files, sample)) {
   const r = await get(f.path); const c = parseCsv(r.text);
   ok(r.status === 200 && c.rows.length === f.rows, `${f.path}: answers ${r.status} with ${c.rows.length} rows, catalogue says ${f.rows}`);
   if (tradeHead) ok(JSON.stringify(c.head) === JSON.stringify(tradeHead), `${f.path}: not the trade header`);
   const iT = c.head.indexOf("ticker");
-  ok(f.key === f.key.toLowerCase() && c.rows.every((row) => row[iT].toLowerCase() === f.key), `${f.path}: holds a row for another ticker`);
+  ok(f.key === f.key.toLowerCase() && c.rows.every((row) => row[iT].toLowerCase() === f.key || classesOn(f.key).has(row[iT].toLowerCase())), `${f.path}: holds a row for another ticker`);
 }
 ok(pm.files.every((f, i) => i === 0 || pm.files[i - 1].key < f.key) && pt.files.every((f, i) => i === 0 || pt.files[i - 1].key < f.key), "the per-member or per-ticker list is not in order");
 ok((await get("/downloads/congress/no-such-member-zz.csv")).status === 404, "a made-up member file does not answer 404");

@@ -7,16 +7,16 @@ import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, withinDays, num, plural, securityPath, money, sum } from "../../lib/flagship";
+import { pageTxns } from "../../lib/onepage";
 import { dataCatalogLd } from "../../lib/seo";
 
 const model = await getFlagship();
 const seen = new Set<string>();
 const rows = [...model.securities.values()]
   .sort((a, b) => (a.type === "equity" ? -1 : 1) - (b.type === "equity" ? -1 : 1))
-  .filter((s) => { const k = s.ticker.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+  .filter((s) => { if (s.pagePath) return false; const k = s.ticker.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
   .map((s) => {
-    const sib = [...model.securities.values()].filter((x) => x.ticker.toLowerCase() === s.ticker.toLowerCase());
-    const y = sib.flatMap((x) => x.txns).filter((t) => withinDays(t.disclosedAt, 365));
+    const y = pageTxns(model, s).filter((t) => withinDays(t.disclosedAt, 365));
     return { s, name: (s.companyId != null ? model.companies.get(s.companyId)?.name : null) ?? s.name ?? "", ins: y.filter((t) => t.source === "sec_form4"), con: y.filter((t) => t.source !== "sec_form4"), value: sum(y.map((t) => t.value)) };
   })
   .sort((a, b) => (b.ins.length + b.con.length) - (a.ins.length + a.con.length) || a.s.ticker.localeCompare(b.s.ticker));

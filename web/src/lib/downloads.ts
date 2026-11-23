@@ -13,6 +13,9 @@
 //   - One file per member with trades and per ticker with trades; none per corporate insider
 //     (that would double the file count, which is capped at 20,000 on the current plan) —
 //     an insider's rows are in the ticker file of the company they report for.
+import { pageTicker } from "./onepage";
+import { mainTicker } from "./flagship-core";
+const tk = (c: Company | null | undefined) => (c ? mainTicker(c) : null);
 import type { Flagship, Person, Security, Txn, LobbyingRow, ContractRow, Company } from "./flagship";
 import { getFlagship, flagshipSql, personPath, companyPath, roleLabel, isLate } from "./flagship";
 import { cleanSicCode, sicDivision } from "@stm/shared";
@@ -222,7 +225,7 @@ async function build(): Promise<Downloads> {
   const companyCols: Column<Company>[] = [
     { key: "company", about: "Company name as the SEC states it.", get: (c) => c.name },
     { key: "cik", about: "The company's SEC Central Index Key, ten digits.", get: (c) => (c.cik ? c.cik.padStart(10, "0") : null) },
-    { key: "ticker", about: "Primary ticker symbol, when the company has one.", get: (c) => c.primaryTicker },
+    { key: "ticker", about: "Primary ticker symbol, when the company has one.", get: (c) => mainTicker(c) },
     { key: "tickers", about: "Every ticker of the company's securities on this site, separated by semicolons.", get: (c) => [...new Set(c.securityIds.map((id) => m.securities.get(id)?.ticker).filter(Boolean))].sort().join(";") || null },
     { key: "sic_code", about: "Four-digit Standard Industrial Classification code the SEC has assigned to the company. Empty when the SEC lists none.", get: (c) => sicOf(c)?.code },
     { key: "sic_description", about: "The SEC's wording for that code.", get: (c) => sicOf(c)?.description },
@@ -278,7 +281,7 @@ async function build(): Promise<Downloads> {
     { key: "form_type", about: "144 for a notice, 144/A for an amended notice.", get: (n) => n.formType },
     { key: "amendment", about: "true for an amended notice (144/A). An amendment repeats the notice it corrects and the form does not say which one, so do not add rows together.", get: (n) => isAmendment(n) },
     { key: "company", about: "The company whose shares the notice is about, as this site names it.", get: (n) => co(n)?.name },
-    { key: "ticker", about: "The company's main ticker on this site.", get: (n) => co(n)?.primaryTicker },
+    { key: "ticker", about: "The company's main ticker on this site.", get: (n) => tk(co(n)) },
     { key: "issuer_cik", about: "The company's SEC number (CIK), ten digits.", get: (n) => n.issuerCik },
     { key: "seller", about: "The person or entity for whose account the shares are to be sold, as filed.", get: (n) => cleanText(n.sellerName, 200) },
     { key: "seller_sec_number", about: "SEC number (CIK) of the filer of the notice, ten digits, when the submission gives one.", get: (n) => n.filerCik },
@@ -314,7 +317,7 @@ async function build(): Promise<Downloads> {
     { key: "schedule", about: "13D (the long form, which states a purpose) or 13G (the short form for passive and institutional holders).", get: (x) => x.schedule },
     { key: "amendment", about: "true for an amendment. An amendment does not say which statement it replaces; this site matches statements by the filer's SEC number and the company.", get: (x) => x.isAmendment },
     { key: "company", about: "The company whose shares the statement is about, as this site names it.", get: (x) => sco(x)?.name },
-    { key: "ticker", about: "The company's main ticker on this site.", get: (x) => sco(x)?.primaryTicker },
+    { key: "ticker", about: "The company's main ticker on this site.", get: (x) => tk(sco(x)) },
     { key: "issuer_cik", about: "The company's SEC number (CIK), ten digits.", get: (x) => x.issuerCik },
     { key: "holder", about: "The first reporting person named on the statement's cover pages, as filed.", get: (x) => cleanText(x.reporterName, 200) },
     { key: "holder_sec_number", about: "SEC number (CIK) of the filer of the statement, ten digits.", get: (x) => x.filerCik },
@@ -350,7 +353,7 @@ async function build(): Promise<Downloads> {
     const instCols: Column<InstCsvRow>[] = [
       { key: "company", about: "The company the position is in, as this site names it.", get: (r) => ico(r)?.name },
       { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
-      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => ico(r)?.primaryTicker },
+      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => tk(ico(r)) },
       { key: "quarter_end", about: "The last day of the quarter the positions are as of (YYYY-MM-DD).", get: () => instPeriod },
       { key: "manager", about: "The institutional manager that filed the Form 13F, as filed.", get: (r) => instName(r.m.name, 200) },
       { key: "manager_sec_number", about: "The manager's SEC number (CIK), ten digits.", get: (r) => r.m.cik },
@@ -367,7 +370,7 @@ async function build(): Promise<Downloads> {
     const coCols: Column<{ cik: string; c: import("./inst13f").InstCompany }>[] = [
       { key: "company", about: "The company, as this site names it.", get: (r) => ico(r)?.name },
       { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
-      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => ico(r)?.primaryTicker },
+      { key: "ticker", about: "The company's main ticker on this site.", get: (r) => tk(ico(r)) },
       { key: "quarter_end", about: "The last day of the quarter the positions are as of.", get: () => instPeriod },
       { key: "managers", about: "Managers that report shares in the company for the quarter.", get: (r) => r.c.managers },
       { key: "shares_summed", about: "Shares reported by all those managers added together. Two managers can report the same shares, so this can count shares twice and is not a share of the company.", get: (r) => r.c.shares },
@@ -399,7 +402,7 @@ async function build(): Promise<Downloads> {
   };
   const finCols: Column<FinCsvRow>[] = [
     { key: "company", about: "The company, as this site names it.", get: (r) => fco(r)?.name },
-    { key: "ticker", about: "The company's main ticker on this site.", get: (r) => fco(r)?.primaryTicker },
+    { key: "ticker", about: "The company's main ticker on this site.", get: (r) => tk(fco(r)) },
     { key: "cik", about: "The company's SEC number (CIK), ten digits.", get: (r) => r.cik },
     { key: "period", about: "fiscal_year or quarter, told by the length of the period (350 to 380 days, 80 to 100 days). A fourth fiscal quarter is not filed on its own and has no row.", get: (r) => (r.period.kind === "year" ? "fiscal_year" : "quarter") },
     { key: "period_start", about: "First day of the period (YYYY-MM-DD).", get: (r) => r.period.start },
@@ -422,7 +425,7 @@ async function build(): Promise<Downloads> {
   for (const c of [...byCik.values()].filter((x) => x.slug).sort((a, b) => a.name.localeCompare(b.name) || a.cik!.localeCompare(b.cik!))) {
     const k = c.cik!.padStart(10, "0");
     const path = companyPath(c);
-    const base = { company: c.name, cik: k, ticker: c.primaryTicker ?? "", pagePath: path ? SITE_URL + path : null };
+    const base = { company: c.name, cik: k, ticker: mainTicker(c) ?? "", pagePath: path ? SITE_URL + path : null };
     for (const e of sortEvents(m.events.byCik.get(k) ?? [])) evRows.push({ ...base, e });
     for (const y of sortYears(m.execPay.byCik.get(k) ?? [])) payRows.push({ ...base, y });
   }
@@ -491,15 +494,17 @@ async function build(): Promise<Downloads> {
   const stock = new Map<string, DownloadFile>();
   // Same rows as /stocks/<ticker>/: securities that share a ticker (the share and its options, say) are one page, so one file.
   const byTicker = new Map<string, Txn[]>();
+  const classOf = new Map<string, string[]>();
   for (const s of m.securities.values()) {
-    const key = s.ticker.toLowerCase();
+    const key = pageTicker(s); // another share class of a company is in its main ticker's file (lib/onepage.ts)
+    if (s.classTickers?.length) classOf.set(key, s.classTickers.map((t) => t.toUpperCase()));
     const xs = byTicker.get(key); if (xs) xs.push(...s.txns); else byTicker.set(key, [...s.txns]);
   }
   for (const [key, txns] of byTicker) {
     if (!txns.length) continue;
     txns.sort((a, b) => (b.disclosedAt ?? "").localeCompare(a.disclosedAt ?? "") || b.id - a.id);
     const T = key.toUpperCase();
-    stock.set(key, file({ dir: "stocks", name: `${key}.csv`, group: "insiders", kind: "trades", title: `${T}: insider and congressional trades`, about: `Every trade on record in ${T}.`, updated: newest(txns.map((t) => t.disclosedAt)) }, cols, txns));
+    stock.set(key, file({ dir: "stocks", name: `${key}.csv`, group: "insiders", kind: "trades", title: `${T}: insider and congressional trades`, about: classOf.has(key) ? `Every trade on record in ${T} and the company's other share classes (${classOf.get(key)!.join(", ")}).` : `Every trade on record in ${T}.`, updated: newest(txns.map((t) => t.disclosedAt)) }, cols, txns));
   }
   return { files, member, stock, rowTotal: files.reduce((n, f) => n + f.rows, 0) };
 }

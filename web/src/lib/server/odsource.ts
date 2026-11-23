@@ -43,19 +43,26 @@ export function guideLinks(url: URL): Promise<Record<string, GuideLink>> {
   return guides;
 }
 
-let moved: Promise<Record<string, string>> | null = null;
-/** The ticker page that replaced /companies/<slug>/ (lib/onepage.ts), or null. From the static file the build writes. */
-export async function companyMovedTo(slug: string, url: URL): Promise<string | null> {
-  moved ??= (async () => {
-    try {
-      const res = await E.ASSETS!.fetch(new Request(new URL("/data/company-redirects.json", url)));
-      if (!res.ok) return {};
-      return (await res.json()) as Record<string, string>;
-    } catch { return {}; }
-  })();
-  const to = (await moved)[slug.toLowerCase()];
+const moved = new Map<string, Promise<Record<string, string>>>();
+async function movedTo(file: string, key: string, url: URL): Promise<string | null> {
+  let p = moved.get(file);
+  if (!p) {
+    p = (async () => {
+      try {
+        const res = await E.ASSETS!.fetch(new Request(new URL(file, url)));
+        if (!res.ok) return {};
+        return (await res.json()) as Record<string, string>;
+      } catch { return {}; }
+    })();
+    moved.set(file, p);
+  }
+  const to = (await p)[key.toLowerCase()];
   return typeof to === "string" && /^\/stocks\/[a-z0-9._-]+\/$/.test(to) ? to : null;
 }
+/** The ticker page that replaced /companies/<slug>/ (lib/onepage.ts), or null. From the static file the build writes. */
+export const companyMovedTo = (slug: string, url: URL) => movedTo("/data/company-redirects.json", slug, url);
+/** The page that shows a ticker with no page of its own (another share class), or null. */
+export const stockMovedTo = (ticker: string, url: URL) => movedTo("/data/stock-redirects.json", ticker, url);
 
 const SEG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/;
 /** The one path segment an on-demand route accepts (/insiders/<slug>/); anything else is a 404. */

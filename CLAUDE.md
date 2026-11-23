@@ -3999,3 +3999,33 @@ it in the pull request that changes a cell.**
 - Not done (in the page map and the parity queue): the `/washington/` hub rebuild, the home page's
   "this week in filings" tiles, donations on member pages, executive pay columns in the financials
   screener, the new sections on the on-demand pages.
+
+### One page per company, stage 2a: share classes on the company's page (2026-11-23, interactive session)
+
+- **Rule.** A company's other tickers (GOOG beside GOOGL, BRK.A, a preferred share) have no page.
+  Their rows are on the company's page, which names them ("Share classes on this page",
+  `div[data-share-classes]`), and `/stocks/<other>/` answers 301 to it. On production 8 companies,
+  12 tickers.
+- **Which ticker is the page:** the first of the company's tickers in the SEC's list
+  (`sec_tickers` by rank, read into `company.secTickers` in `flagship.ts`) that is a security the
+  company owns here; with none, the old rule (main ticker, then own security). This moved three
+  pages: Alibaba to BABA (was BABAF), International Paper to IP (was INPAP), Sony to SONY (was SNEJF).
+- **Code** (`web/src/lib/onepage.ts`): `assignCompanyPages` sets `security.pagePath` on every
+  security of a folded ticker and `security.classTickers` on the home one; `securityPath(s)`
+  returns `pagePath` first, so every link to a class goes to the page. `pageTxns(model, s)` is the
+  one list of rows a ticker page shows (stock page, stocks index, VizStock's who-is-trading, the
+  sitemap); `pageTicker(s)` keys the per-ticker CSV, so a class has no file and its rows are in the
+  main ticker's file. `mainTicker(c)` (`flagship-core.ts`) is the ticker of the company's page: use
+  it, not `primaryTicker`, wherever a company's ticker is printed or written to a file.
+- **Redirect:** `/data/stock-redirects.json` (class to page), read by `stocks/[...rest].astro`
+  through `stockMovedTo` before the on-demand lookup.
+- **Not folded on purpose:** the trade map, the screener and the watch cards stay per ticker (a
+  GOOG tile links to `/stocks/goog/`, which redirects). The stock page prints one screener link per
+  class. The page's charts of holdings and prices (`vizdata.ts`) read the main class only.
+- The 3 and 12 month table adds share counts across classes and says so.
+- `verify-downloads` checks every entry of the redirect file (no page, no file, named on the home
+  page, rows in the home file); `verify-developers` accepts class rows in a ticker file. Seed:
+  `SWAP.B`, a second class of the SWAP parent.
+- **Not done:** the same for on-demand (market) companies; `/embed/stocks/`; one list in place of
+  `/stocks/` and `/companies/`.
+
