@@ -97,7 +97,7 @@ const server = createServer((req, res) => {
   if (m) {
     const year = Number(m[1]);
     const roll = Number(m[2]);
-    return HOUSE[year] && roll >= 1 && roll <= HOUSE[year] ? send(200, houseXml(year, roll)) : send(404, "not found", "text/plain");
+    return HOUSE[year] && roll >= 1 && roll <= HOUSE[year] ? send(200, houseXml(year, roll)) : (process.env.FAKE_HOUSE_SOFT404 ? send(200, "<html><body>Page not found</body></html>", "text/html") : send(404, "not found", "text/plain"));
   }
   m = /^\/legislative\/LIS\/roll_call_lists\/vote_menu_119_([12])\.xml$/.exec(path);
   if (m) return send(200, menuXml(m[1]));

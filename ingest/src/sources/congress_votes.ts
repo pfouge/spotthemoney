@@ -259,10 +259,12 @@ export async function ingestCongressVotes(): Promise<IngestRunResult> {
     }
 
     if (ch === "house") {
+      let houseOnFile = false;
       for (let year = FIRST_YEAR; year <= nowYear; year++) {
         const { congress, session } = congressSession(year);
         const have = await storedRolls(ch, congress, session);
         const max = have.size ? Math.max(...have) : 0;
+        if (max > 0) houseOnFile = true;
         // 2. Gaps below the highest stored roll.
         let gaps = 0;
         for (let r = 1; r < max && gaps < gapMax; r++) {
@@ -279,7 +281,12 @@ export async function ingestCongressVotes(): Promise<IngestRunResult> {
           if (overBudget()) { stoppedOnBudget = true; c.stopped = 1; return { fatal, stored }; }
           const res = await step(congress, session, year, roll, false);
           if (!res.go) return { fatal, stored };
-          if (res.outcome === "notfound") miss++;
+          // Past a year's last roll call the Clerk answers with a web page, not a 404 (seen on the
+          // first live run: 2025 ended at roll 362 and five such answers stopped the House before
+          // 2026). Once the House layout is proven (a roll stored this run, or on file for this
+          // year or an earlier one), an answer without the layout here is the end of the year.
+          if (res.outcome === "odd" && (stored > 0 || max > 0 || houseOnFile)) { miss++; oddRun = 0; c.odd_answers--; c.not_found++; }
+          else if (res.outcome === "notfound") miss++;
           else if (res.outcome === "stored" || res.outcome === "odd") miss = 0;
           // failed or skipped: move on; a failed roll below the highest stored one is a gap next run
           roll++;
