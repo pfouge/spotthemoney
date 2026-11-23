@@ -115,10 +115,6 @@ export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, compa
        and exists (select 1 from lobby_contribution_items i where i.filing_uuid = f.filing_uuid)
      group by 1 order by 1 desc`)) as { date: string; filings: number }[]).map((r) => ({ date: r.date, filings: Number(r.filings) }));
 
-  // Honoree names of counted items, with counts; matching is done once per distinct name.
-  const honorees = (await sql.unsafe(`select i.honoree_name as h, f.filing_year as year, count(*)::int as n
-      from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid) join (${COUNTED}) c using (filing_uuid)
-     where i.honoree_name is not null and btrim(i.honoree_name) <> '' group by 1, 2`)) as { h: string; year: number; n: number }[];
   // Items tied to a member: by the honoree, or (the payee rule) by a payee equal to a linked committee's name.
   // Matching is done once per distinct name, then the matching items are read by name.
   const honorees = (await sql.unsafe(`select distinct i.honoree_name as h
