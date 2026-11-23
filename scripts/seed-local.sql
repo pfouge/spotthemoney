@@ -603,6 +603,21 @@ insert into company_financials (cik, concept, tag, unit, period_start, period_en
   ('0000789019', 'long_term_debt', 'ifrs-full:Borrowings', 'CNY', null, '2025-12-31', 1200000000, '20-F', '2026-04-20', '0000789019-26-000004'),
   ('0000789019', 'long_term_debt', 'us-gaap:LongTermDebt', 'USD', null, '2023-12-31', 90000000, '20-F', '2024-04-18', '0000789019-24-000003'),
   ('0009996703', 'long_term_debt', 'us-gaap:LongTermDebtAndCapitalLeaseObligations', 'USD', null, '2025-12-31', 5000000, '10-K', '2026-03-02', '0009996703-26-000002');
+-- AMD here stopped reporting: its newest fiscal year ended in 2023 and its newest quarter in
+-- March 2024, so the financials screener's "Ended in the last 18 months" filter leaves it out of
+-- both views (web/src/lib/finscreen.ts; scripts/verify-finscreen.mjs).
+insert into company_financials (cik, concept, tag, unit, period_start, period_end, value, form, filed, accession) values
+  ('0000002488', 'revenue', 'us-gaap:Revenues', 'USD', '2023-01-01', '2023-12-30', 22680000000, '10-K', '2024-01-31', '0000002488-24-000012'),
+  ('0000002488', 'net_income', 'us-gaap:NetIncomeLoss', 'USD', '2023-01-01', '2023-12-30', 854000000, '10-K', '2024-01-31', '0000002488-24-000012'),
+  ('0000002488', 'eps_diluted', 'us-gaap:EarningsPerShareDiluted', 'USD/shares', '2023-01-01', '2023-12-30', 0.53, '10-K', '2024-01-31', '0000002488-24-000012'),
+  ('0000002488', 'assets', 'us-gaap:Assets', 'USD', null, '2023-12-30', 67885000000, '10-K', '2024-01-31', '0000002488-24-000012'),
+  ('0000002488', 'liabilities', 'us-gaap:Liabilities', 'USD', null, '2023-12-30', 11993000000, '10-K', '2024-01-31', '0000002488-24-000012'),
+  ('0000002488', 'liabilities_and_equity', 'us-gaap:LiabilitiesAndStockholdersEquity', 'USD', null, '2023-12-30', 67885000000, '10-K', '2024-01-31', '0000002488-24-000012'),
+  ('0000002488', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2023-12-30', 55892000000, '10-K', '2024-01-31', '0000002488-24-000012'),
+  ('0000002488', 'revenue', 'us-gaap:Revenues', 'USD', '2023-12-31', '2024-03-30', 5473000000, '10-Q', '2024-05-02', '0000002488-24-000056'),
+  ('0000002488', 'net_income', 'us-gaap:NetIncomeLoss', 'USD', '2023-12-31', '2024-03-30', 123000000, '10-Q', '2024-05-02', '0000002488-24-000056'),
+  ('0000002488', 'assets', 'us-gaap:Assets', 'USD', null, '2024-03-30', 67895000000, '10-Q', '2024-05-02', '0000002488-24-000056'),
+  ('0000002488', 'equity', 'us-gaap:StockholdersEquity', 'USD', null, '2024-03-30', 56204000000, '10-Q', '2024-05-02', '0000002488-24-000056');
 insert into company_financials_checked (cik, checked_at, status, rows, newest_filed)
 select cik, now(), 'ok', count(*), max(filed) from company_financials group by cik;
 

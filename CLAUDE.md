@@ -4235,3 +4235,36 @@ it in the pull request that changes a cell.**
 - **Production before the change (SQL, 2026-11-23):** 4,784 tickers outside the tracked set, 161 of
   them move to another ticker's page (157 pages gain rows); 4,612 companies redirect; 3 keep a
   company page (their home ticker's page shows another company).
+
+### Financials screener: "Ended in the last 18 months" (2026-11-23, scheduled parity run) — small screener follow-up after A1-b
+
+- **What.** `/company-financials/` has one more filter, "Period end": "Any period end" (the view the page
+  opens on) or "Ended in the last 18 months". Hash key `recent=1`. A paragraph on the page (`p#recent`)
+  says why and states how many fiscal years and quarters pass. No migration, no data job change, no new
+  file, the data file's layout is unchanged, nothing stored in the browser.
+- **Why.** A company stays in the table with the last period it reported. On production (SQL,
+  2026-11-23) 21 of 918 newest fiscal years ended more than 548 days ago and 11 of 893 newest quarters:
+  companies taken over or no longer filing. They are still listed by default, each with its date.
+- **Rule** (`RECENT_DAYS` = 548, `recentCutoff`, `isRecent`, `RECENT_OPTION` in
+  `web/src/lib/finscreen.ts`; test in `scripts/finscreen.test.ts`): a period is recent when its last day
+  is at most 548 days before the day the data file was built and not after it. `unpackFinScreen` sets
+  `FsPeriod.recent` from the file's `built`; the flag is NOT stored in the file. `finMatches` reads the
+  flag, so rows that never went through `unpackFinScreen` pass no `recent` filter. 18 months, not 12: a
+  fiscal year stays the newest for up to about 15 months after it ends. One window for both periods.
+  The filter goes by the date alone; the page says it "says nothing about a company".
+- **Build log** line `[web] financials screener: ...` gained `ended in the last 548 days: N of M fiscal
+  years, K of L quarters`, and the last line of `verify-finscreen` prints the same four numbers from the
+  CSV with its own date arithmetic: **the two must agree after a deploy.** SQL for it: per company, the
+  newest `period_end` of rows 350 to 380 (or 80 to 100) days long, `>= <build day> - 548`.
+- **Verifier.** `verify-finscreen` (440 checks on the seed, was 388): the control's options, the counts
+  the page states, the filter as an option in both periods, four more combined views, the address,
+  Reset, a junk value, the download and its name, and that the data file holds no `recent` key.
+  `recent` is in `FS_KEYS`, in `FIN_KEYS` of `verify-links` and in `KEYS` and `offered` of
+  `verify-finscreen` (the three places a new hash key goes).
+- The seed's AMD has figures now: a fiscal year that ended in 2023 and a quarter that ended in March
+  2024, nothing newer. **The seed's other financial dates are fixed calendar dates; from mid-2027 they
+  too fall outside the 18 months, which only changes the seed's counts.**
+- Guide `what-is-form-4` (one sentence in `#financials`, one label) re-read and accepted; methodology
+  `#financials-screener` gained a sentence.
+- Not done: a link from a company page's Financials section into the screener at its division; cash as
+  an optional column; saved screens (privacy page first, key `stm.screens.financials`).

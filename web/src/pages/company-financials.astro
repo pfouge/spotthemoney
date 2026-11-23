@@ -21,7 +21,7 @@ import { siteFinScreen } from "../lib/finscreen-build";
 import {
   finScreen, fsSummaryLine, fsCellText, fsPayText, fsShortDate, reportUrl, divisionPagePath, rowsFor, revMinLabel, revMaxLabel, assetMinLabel, stepLabel, firstFsDir,
   columnsOf, fsRatioText, ratioInputs, FS_COLUMNS, COLS, COLS_OPTION, RATIO_VIEW_NOTE,
-  DEFAULT_FS_VIEW, DEFAULT_PER, PER_PAGE, PERIODS, PERIOD_OPTION, REV_MIN_STEPS, REV_MAX_STEPS, ASSET_MIN_STEPS, NI_SIGNS, NI_OPTION, FIN_SCREENER_DATA, type FsSortKey,
+  DEFAULT_FS_VIEW, DEFAULT_PER, PER_PAGE, PERIODS, PERIOD_OPTION, REV_MIN_STEPS, REV_MAX_STEPS, ASSET_MIN_STEPS, NI_SIGNS, NI_OPTION, FIN_SCREENER_DATA, RECENT_OPTION, RECENT_DAYS, type FsSortKey,
 } from "../lib/finscreen";
 import { MIN_IMPLIED_SHARES, RATIOS, RATIO_NA } from "../lib/financials";
 
@@ -31,6 +31,7 @@ const first = finScreen(all, DEFAULT_FS_VIEW);
 const years = rowsFor(all, "year"), quarters = rowsFor(all, "quarter");
 const units = [...new Set(all.map((c) => c.unit))].sort((a, b) => (a === "USD" ? -1 : b === "USD" ? 1 : a.localeCompare(b)));
 const notUsd = all.filter((c) => c.unit !== "USD").length;
+const recentYears = years.filter((r) => r.p.recent).length, recentQuarters = quarters.filter((r) => r.p.recent).length;
 const newestFiled = [...years, ...quarters].map((r) => r.p.filed).sort().at(-1) ?? null;
 const lastUpdated = newestFiled ?? model.builtAt;
 
@@ -59,6 +60,9 @@ const cap = (i: number) => RATIOS[i]!.cap.toLocaleString("en-US");
         <div class="ctl"><label class="lbl" for="fs-q">Company or ticker</label><input id="fs-q" class="hm-input" data-fs="q" type="search" placeholder="Company or ticker" autocomplete="off" maxlength="60" /></div>
         <div class="ctl"><span class="lbl">Period</span>
           <select data-fs="period" aria-label="Which period the table shows">{PERIODS.map((p) => <option value={p}>{PERIOD_OPTION[p]}</option>)}</select>
+        </div>
+        <div class="ctl"><span class="lbl">Period end</span>
+          <select data-fs="recent" aria-label="How long ago the period ended"><option value="0">Any period end</option><option value="1">{RECENT_OPTION}</option></select>
         </div>
         {data.divisions.length > 0 && (
           <div class="ctl"><span class="lbl">Industry</span>
@@ -142,6 +146,7 @@ const cap = (i: number) => RATIOS[i]!.cap.toLocaleString("en-US");
 
   <h2 id="about">What this table shows</h2>
   <p>One row for each company this site tracks whose annual or quarterly reports to the SEC are on file here. "Newest fiscal year" shows the latest full fiscal year the company has reported; "Newest quarter" shows the latest quarter it has reported on its own. The columns are revenue, net income, diluted earnings per share, total assets and shareholders' equity, each exactly as the company filed it, with the last day of the period and a link to the newest report the figures were taken from (its form, for example 10-K or 10-Q; the filing date is in the download). Companies have different fiscal years, so the periods in one view do not all end on the same day: the "ended" column says which period each row is.</p>
+  <p id="recent">A company stays in the table with the last fiscal year or quarter it reported, however long ago that was, so a few rows are old: a company that was taken over, stopped filing or changed its reporting keeps its final period. "{RECENT_OPTION}", under Period end, leaves those rows out. It keeps a row whose period ended at most {num(RECENT_DAYS)} days before the day this page was built; {num(recentYears)} of the {num(years.length)} fiscal years and {num(recentQuarters)} of the {num(quarters.length)} quarters do. Eighteen months is wide on purpose: an annual report arrives two to three months after the year ends, and the year it covers stays the newest for twelve months after that. The filter goes by the date alone and says nothing about a company.</p>
   <p>No amount here is estimated or converted, and the columns the table opens on hold filed figures only. An empty cell means the report gave no such figure under a heading this site reads. A fourth fiscal quarter is not filed on its own, so "Newest quarter" is never a fourth quarter. "not shown" marks a figure this site holds back because, as stored, it fails one of three checks (for example earnings per share that would mean fewer than {num(MIN_IMPLIED_SHARES)} shares); the <a href="/methodology/#financials">methodology</a> lists them, and the <a href="/downloads/">CSV file</a> keeps the filed figure. A held-back figure passes no filter on its column.</p>
   <p id="currencies">Amounts are in the currency the company reports in, and that currency is printed with every amount that is not in U.S. dollars. The revenue and total-assets filters are in U.S. dollars: "{revMinLabel(REV_MIN_STEPS[1])}" keeps companies whose filed revenue for the period is {stepLabel(REV_MIN_STEPS[1])} or higher, and a company that reports in another currency passes neither filter, because this site converts nothing. For the same reason, sorting by an amount lists the dollar figures first and the others, with empty cells, after them. "{NI_OPTION.pos}" and "{NI_OPTION.neg}" go by the sign of the filed figure and cover every currency.</p>
   <p>The industry is the division of the SEC's industry code (SIC) for the company, the same label as on the <a href="/industries/">industry pages</a>; it is a classification, not a judgement. Sorting a column orders the companies by what that column holds and by nothing else. This table has no score, rating or forecast, and no figure that needs a share price. "CEO pay, as reported" is the principal executive officer's total in the Summary Compensation Table, from the Pay Versus Performance table of the company's proxy statement, for the newest fiscal year the company has one for; "Pay year" is the last day of that fiscal year. Pay is in dollars as the company tagged it for the SEC, belongs to the company rather than to the period shown, and is not set against any other figure here; a company with none on file shows an empty cell and sorts last. The <a href="/executive-pay/">executive pay page</a> has all four figures. A company's page has more: three fiscal years and four quarters, cash and total liabilities, and cash flow for fiscal years. How the figures are read: <a href="/methodology/#financials-screener">methodology</a>. What the figures are: <a href="/guides/what-is-form-4/#financials">the guide</a>.</p>
