@@ -210,7 +210,7 @@
       "web/src/lib/server/od.ts": "43610fdee104e98d",
       "web/src/components/OdPageView.astro": "5a94f9549888f514",
       "web/src/lib/market.ts": "5efe96a0e16473e4",
-      "web/src/pages/stocks/[ticker].astro": "07fdf7340bea92f4",
+      "web/src/pages/stocks/[ticker].astro": "b99aebcbebb838ee",
       "web/src/pages/insiders/[slug].astro": "f0ad9f2febae04a5",
       "web/src/pages/companies/[slug].astro": "d97fa931602b0dc0",
       "web/src/lib/form144.ts": "5792da219a57b938",
