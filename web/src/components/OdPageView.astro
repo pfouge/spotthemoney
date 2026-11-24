@@ -125,7 +125,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     <section class="panel" data-panel aria-labelledby="insider-summary" data-entity-periods>
       <h2 id="insider-summary">Insider buying and selling in {insiderWord}: 3 and 12 months</h2>
       <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
-      <div class="tablewrap" data-preview="6">
+      <div class="tablewrap" data-nocap>
         <table class="data periods">
           <thead><tr><th>Open-market trades</th>{f.periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
           <tbody>

@@ -227,7 +227,7 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
       <h2 id="insider-summary">Insider buying and selling in {s.ticker}: 3 and 12 months</h2>
       <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{classTickers.length > 0 && ` The figures cover every share class on this page (${pageTickers.join(", ")}); share counts add classes together, and one share of one class need not be worth one share of another.`}{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
       {monthSvg && <figure class="pn-monthbars" data-month-bars><div set:html={monthSvg} /><figcaption>Open-market purchases above the line and sales below it, by month of disclosure, last 12 months.</figcaption></figure>}
-      <div class="tablewrap" data-preview="6">
+      <div class="tablewrap" data-nocap>
         <table class="data periods">
           <thead><tr><th>Open-market trades</th>{periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
           <tbody>

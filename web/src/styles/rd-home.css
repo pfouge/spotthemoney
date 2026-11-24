@@ -86,7 +86,7 @@ html.js .home-answer .answer-text:not([data-open]) { display: -webkit-box; -webk
 .nf-detail { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); padding: 0 0 var(--s-2); font-size: var(--t-xs); line-height: var(--lh-xs); }
 .nf-detail[hidden] { display: none; }
 .nf-detail .nf-src { color: var(--accent); }
-.nf-list[data-preview] .nf-item:nth-child(n+9) { display: none; }
+.nf-list[data-preview] .nf-item:nth-child(n+13) { display: none; }
 .nf-more-row { margin: var(--s-2) 0 0; }
 .nf-about { margin: var(--s-3) 0 0; font-size: var(--t-xs); line-height: var(--lh-xs); }
 .nf-about summary { cursor: pointer; color: var(--accent); padding: var(--s-1) 0; }
@@ -98,7 +98,6 @@ html.js .home-answer .answer-text:not([data-open]) { display: -webkit-box; -webk
 }
 @media (max-width: 640px) {
   .nf-list { display: block; }
-  .nf-list[data-preview] .nf-item:nth-child(n+7) { display: none; }
   .nf-item { grid-template-columns: 44px minmax(0, 1fr) 88px 32px; grid-template-rows: auto; min-height: 44px; gap: 0 var(--s-2); }
   .nf-item .nf-val, .nf-item .nf-who { display: none; }
   .nf-item .nf-act { font-size: var(--t-xs); }
