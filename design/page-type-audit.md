@@ -1454,3 +1454,52 @@ The verifiers in `scripts/verify-*.mjs` (guides, links, filters, share, a11y, sc
 ## Redesign, second pass: stock and company pages (E2)
 
 How each principle was applied: summary first (identity row with Follow, Cite, Share; compact facts; answer clamped to two lines; eight glance tiles; one row of compact charts), detail on demand (panels with previews of 5 rows, 8 for the two transaction tables; trailing columns marked `data-col="more"` on the insiders and members tables; "More figures" and the codes table closed), one place per figure (Cite and Share beside the h1 only; panel notes clamp to two lines, full text stays in the DOM), grouping (Trading, Ownership, Company, Washington, About, each a 12-column `.panels` grid; a group with no panels is absent). Numbers (desktop 1280 / phone 390, big data): /stocks/vmfk/ 14807 to 9314 / 18823 to 12613; /stocks/spy/ 4345 to 3761 / 5033 to 4157; /stocks/nvda/ 13297 to 9082 / 17107 to 12109. Short of the 60% target; see report-E2.
+
+## Redesign, finishing pass (task F, 2026-11-24)
+
+Measured on the high-volume database (`stm_big_tpl`), before = http://127.0.0.1:4870 (no second-pass change), screens of
+800px at 1280 and 844px at 390. "Rows before Show all": the most rows any table shows before its "Show all N rows".
+
+### Stock / company page (3.2)
+- Overview first: crumbs, identity line (h1, Follow, Cite, Share), facts as one label/value row, answer in two lines with the date and "Show more" on one line under it, glance tiles 4 across (2 on a phone) with the sparkline in its own column, the charts as one `.viz-grid` row; all one `.entity-top` wrapper, so the top ad comes after the charts.
+- Grouping: the group bar is a tab set (Trading, Ownership, Company, Washington, About this record, All); one group shows at a time, Trading first, the choice remembered per page type for the visit.
+- One meaning per attribute: the chosen tab is accent with a 600 label; green/red only for bought/sold.
+- Data-ink: share price chart half width beside the 3 and 12 month table; month bars 96px; Reading and Embed share one line.
+- Hierarchy by contrast: glance figure and label on one line, note muted; panel heads with the CSV link quiet at the right.
+- Consistency: the same skeleton as member and insider pages (and OdPageView, compiled only).
+- Progressive disclosure: other groups one click away; any link, hash or glance tile opens the group, details and table around its target (scripts/reveal.ts).
+- Before/after: /stocks/vmfk/ 18.5 to 5.0 screens at 1280, 22.3 to 6.6 at 390; first figure y 341 to 310; rows before Show all 8 (insider transactions), 5 elsewhere. /companies/seed-swapped-trust/ 6.2 to 2.8 / 7.6 to 3.1.
+
+### Member page (3.3)
+- Overview first: the stock page's skeleton; the figure strip that repeated the glance tiles is in the closed "More figures".
+- Grouping: tabs Trading (most-traded stocks, disclosed trades, year by year), Washington, About this record (comparison and filings now here, as context), All.
+- One meaning per attribute: unchanged colours; seat and party muted after the name.
+- Data-ink: one chart row, compact; bar cells ink.
+- Hierarchy by contrast: panel h2 at --t-md, notes --t-xs muted.
+- Consistency: Cite and Share beside the h1 as on stock pages (no second pair in the answer).
+- Progressive disclosure: questions about the member are a closed disclosure between the two ads.
+- Before/after: /congress/zion-nakamura/ 10.2 to 4.3 screens at 1280, 12.7 to 5.0 at 390; first figure y 234 to 317 (the identity line now carries the actions and lede); rows before Show all 8.
+
+### Insider page (3.4)
+- Overview first: the same skeleton; More figures closed.
+- Grouping: Trading (transactions, then rows by code and year), Ownership (Form 144 notices the person filed, large holdings reported), About this record (filings, other insiders, sources).
+- One meaning per attribute, data-ink, hierarchy, consistency: as on stock pages.
+- Progressive disclosure: guides closed between the two ads.
+- Before/after: /insiders/kingsley-fay/ 7.0 to 3.7 screens at 1280, 8.6 to 4.4 at 390; rows before Show all 8.
+
+### Committee, industry and lobbying-issue pages (3.5 to 3.7)
+- Overview first: figures row (facts as figures), answer, then panels two per row.
+- Grouping: committee Members beside Most-traded stocks, trades full width, lobbyist contributions; issue clients beside registrants.
+- One meaning per attribute: bar cells ink; codes left-aligned (a code column sorted as text is no longer right-aligned).
+- Data-ink: secondary columns (role, 12-month trades, latest, sales) marked `data-col="more"` in the 6-wide panels.
+- Hierarchy by contrast: each panel opens with one to three headline figures (PanelFigs) taken from its own summary sentence.
+- Consistency: previews of 5 (8 for the main trades/filings/companies table; industries' companies table cut from 10 to 8).
+- Progressive disclosure: About this page and the related lists stay closed between the mid ad and the multiplex.
+- Before/after (1280 / 390): committee house-financial-services 5.3 to 3.5 / 6.2 to 4.5; industry manufacturing 3.7 to 3.0 / 4.4 to 3.6; issue aviation 4.9 to 3.1 / 5.7 to 4.1; first figure now at y 214 (none before).
+
+### Rates pages (3.9)
+- Headline rates at --t-lg on the yield-curve and TIPS strips (`.rates-strip`); the low ad sits before "How to read", so it is never next to the multiplex. /rates/treasury-yields/ 5.3 to 3.7 screens at 1280.
+
+### Site chrome (every page)
+- Footer at most 260px on a desktop (258 measured): brand and copyright, one muted paragraph for the disclaimer and sources, six compact link columns (the About column in two). On a phone each link group folds under a chevron button beside its heading; every link stays in the page, and without JavaScript the lists are open.
+- Ads: no page shows two ad blocks with nothing between them; the top ad of guides and articles now follows the title block inside the `<article>` (it had fallen to the end of the page).

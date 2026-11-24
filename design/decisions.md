@@ -46,3 +46,32 @@ Each entry: the decision, why, and how to reverse it.
     filings" and the leaderboards (top 5, "Show all"); the trade map with one control line and the other filters under
     "More filters (n)"; one row of compact charts; the rates strip. Height at 1280: 11,114 to about 4,400 px; at 390:
     19,080 to about 6,400 px. The top ad follows the answer because `adplace` keeps the answer with the title block.
+13. **Entity pages show one group at a time (task F).** The group bar is a tab set with an "All" tab at the end; Trading
+    opens first and the visitor's choice is remembered per page type for the visit in `stm.ui` (`tabs`). Every group stays
+    in the page; without JavaScript all groups show stacked as before. Why: /stocks/vmfk/ was 9,458px with every group
+    stacked. Reverse: remove `initTabs()` from `scripts/reveal.ts` (the bar falls back to jump links).
+14. **One reveal for every hidden target (task F).** `scripts/reveal.ts` opens the hidden tab, the closed `<details>` and the
+    previewed table row around a hash target, on load, on hashchange and on a click of a link to the current hash.
+    `ui.ts` and `tablecap.ts` no longer have their own versions. Reverse: restore `openToHash` (ui.ts) and `revealTarget`
+    (tablecap.ts) from commit b97ec4e.
+15. **Mid and low ads sit after the tab panels, separated by visible content (task F).** With one group shown, ads between
+    groups would have touched. Order now: groups, mid ad, "Guides for this page" (members: their questions), low ad,
+    disclaimer, multiplex. Which pages carry ads is unchanged. Reverse: move the two `AdSlot`s back between the groups.
+16. **Filings and the comparison table move to "About this record" on member and insider pages; Form 144 notices an insider
+    filed move to "Ownership" (task F).** They are reference and ownership material, and the Trading tab had to fit the
+    height targets. Headings, ids and rows are unchanged. Reverse: move the sections back into the Trading group.
+17. **Headline figures per panel (`PanelFigs.astro`) on committee, industry and lobbying-issue pages (task F).** One to three
+    figures the panel's own sentence or the page's facts already state, printed large at the top of the panel. Reverse:
+    delete the `<PanelFigs>` lines.
+18. **Preview counts on these pages are 5 (kit default) and at most 8 (task F).** `data-preview` is the kit's presentation
+    attribute, not one a verifier reads; the industries table went from 10 to 8 to meet "no table over 8 before Show all".
+    Note: the kit has no rule for `data-preview="5"`; leave the attribute off for 5.
+19. **Footer link groups fold on phones with a chevron button (task F).** A `<summary>` holding the group's heading link
+    failed axe (nested-interactive), so the heading stays a link and a separate button folds the list. Reverse: delete the
+    footer block in `ui.ts` and section 5 of `rd-final.css`.
+20. **The top ad of guides and articles is placed inside the `<article>`, after the title block (task F, lib/adplace.ts).**
+    The whole guide is one `<article>`, so the ad had landed after it, next to the multiplex. Reverse: drop the
+    `el.tag === "article"` branch in `splitForAd`.
+21. **New CSS for this pass is in `styles/rd-final.css` (task F).** Dead first-pass rules removed: `rd-entity.css` section 1
+    (every `main > .container.flow-entity ... { order }` rule) and `rd-people.css` section 1 and its trailing answer-meta
+    rules; no page carries `.title-row` at the top level any more, so BaseLayout's `flowEntity` class is now never set.
