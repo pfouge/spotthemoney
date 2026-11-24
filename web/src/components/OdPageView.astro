@@ -188,26 +188,26 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
 
   {kind === "insider" && page.colleagues.length > 0 && (
     <section aria-labelledby="colleagues" data-related>
-      <h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2>
+      <details class="ref" data-remember id="ref-colleagues"><summary><h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2></summary><div class="ref-body">
       <ul class="mates two">
         {page.colleagues.map((r) => <li><span><a href={r.path}>{r.name}</a> <span class="soft">{r.role}</span></span> <span>{plural(r.rows, "row")}</span></li>)}
       </ul>
       {cpath && <p class="section-note">Everyone on file: <a href={cpath}>{company!.name}</a>.</p>}
-    </section>
+    </div></details></section>
   )}
 
   {guideItems.length > 0 && (
     <section class="learn-more" aria-labelledby="learn-more" data-learn-more>
-      <h2 id="learn-more">Guides for this page</h2>
+      <details class="ref" data-remember id="ref-learn-more"><summary><h2 id="learn-more">Guides for this page</h2></summary><div class="ref-body">
       <ul class="mates">
         {guideItems.map((g) => <li><a href={`/guides/${g.slug}/`}>{g.title}</a> {g.fact && <span>{g.fact}</span>}</li>)}
       </ul>
-    </section>
+    </div></details></section>
   )}
 
   <AdSlot pos="low" show={hasRows} />
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <div class="source-panel" data-sources>
     <div class="tablewrap">
       <table class="data">
@@ -233,6 +233,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     The lag is the filing date minus the trade date; Form 4 is due within two business days. Amendments (4/A) are not merged.
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
   </p>
+</div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade and may be amended later. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>

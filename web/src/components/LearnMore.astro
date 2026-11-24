@@ -10,9 +10,13 @@ const items = slugs.map((s) => all.find((g) => g.slug === s)).filter((g): g is N
 ---
 {items.length > 0 && (
   <section class="learn-more" aria-labelledby="learn-more" data-learn-more>
-    <h2 id="learn-more">{heading}</h2>
-    <ul class="mates">
-      {items.map((g) => <li><a href={guidePath(g.slug)}>{g.title}</a> <span>{g.keyFacts[0]}</span></li>)}
-    </ul>
+    <details class="ref" data-remember id="ref-learn-more">
+      <summary><h2 id="learn-more">{heading}</h2></summary>
+      <div class="ref-body">
+        <ul class="mates">
+          {items.map((g) => <li><a href={guidePath(g.slug)}>{g.title}</a> <span>{g.keyFacts[0]}</span></li>)}
+        </ul>
+      </div>
+    </details>
   </section>
 )}

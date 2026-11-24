@@ -8,3 +8,25 @@ const { id, label } = Astro.props;
   <p class="pgroup-label" aria-hidden="true">{label}</p>
   <slot />
 </div>
+<script>
+  // Fixed caveats longer than two lines fold to two lines with a Show more button; nothing is removed.
+  const sel = "[data-ps-caveat],[data-lh-caveat],.ps-note,.lh-note";
+  function fold() {
+    document.querySelectorAll<HTMLElement>(".pgroup " + sel).forEach((p) => {
+      if (p.dataset.clamped) return;
+      p.dataset.clamped = "1";
+      p.classList.add("caveat-clamp");
+      if (p.scrollHeight <= p.clientHeight + 1) { p.classList.remove("caveat-clamp"); return; }
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "caveat-more"; b.textContent = "Show more";
+      b.setAttribute("aria-expanded", "false");
+      b.addEventListener("click", () => {
+        const open = p.classList.toggle("caveat-clamp") === false;
+        b.textContent = open ? "Show less" : "Show more";
+        b.setAttribute("aria-expanded", String(open));
+      });
+      p.after(b);
+    });
+  }
+  fold();
+</script>

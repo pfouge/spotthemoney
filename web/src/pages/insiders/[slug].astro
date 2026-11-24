@@ -19,6 +19,7 @@ import { holdingsOf } from "../../lib/schedule13";
 import { statementsFiledBy } from "../../lib/schedule13-build";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import { monthlyCounts, monthlyDirection } from "../../lib/glancespark";
 import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
@@ -64,7 +65,7 @@ const filedN = noticesInWindow(noticesFiledBy(model, p.cik), model.builtAt).leng
 const holdingsN = holdingsOf(statementsFiledBy(model, p.cik), model.builtAt).length;
 const noData = txns.length === 0;
 const glance = noData ? [] : [
-  { label: "Transactions", value: num(txns.length), note: lastTrade ? `Latest ${formatDate(lastTrade)}` : undefined, href: "#transactions" },
+  { label: "Transactions", value: num(txns.length), bars: monthlyDirection(txns.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: lastTrade ? `Latest ${formatDate(lastTrade)}` : undefined, href: "#transactions" },
   { label: "Open-market buys", value: num(openMarketBuys.length), href: "#by-type" },
   { label: "Sales", value: num(sells.length), href: "#by-type" },
   ...(filedN ? [{ label: "Planned sales", value: num(filedN), note: "Form 144 notices, 12 months", href: "#filed-notices" }] : []),
@@ -193,17 +194,17 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
   <PageGroup id="record" label="About this record">
   {peers.length > 0 && (
     <section aria-labelledby="colleagues" data-related>
-      <h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2>
+      <details class="ref" data-remember id="ref-colleagues"><summary><h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2></summary><div class="ref-body">
       <ul class="mates two">
         {peers.map((r) => <li><span><a href={r.path}>{r.person.name}</a> <span class="soft">{r.role}</span></span> <span>{plural(r.rows, "row")}</span></li>)}
       </ul>
       {cpath && <p class="section-note">Everyone on file, with contracts and lobbying under the company's name: <a href={cpath}>{company!.name}</a>.</p>}
-    </section>
+    </div></details></section>
   )}
 
   <LearnMore slugs={["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", ...(txns.some((t) => t.is10b51) ? ["rule-10b5-1-trading-plans"] : []), ...(txns.some((t) => t.isDerivative) ? ["insider-options-and-derivatives"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={txns} filings={p.filings} edgarId={p.cik} />
   <p>
     Every row comes from the reporting owner's Form 4 as filed with the SEC (EDGAR ownership XML), read daily.
@@ -211,6 +212,7 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     The lag is the filing date minus the trade date; Form 4 is due within two business days. Amendments (4/A) are not merged.
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
   </p>
+  </div></details>
   </PageGroup>
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade and may be amended later. No recommendation is made or implied.</p>

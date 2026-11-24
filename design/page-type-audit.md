@@ -247,6 +247,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | company-sponsor-390 | 7.8 | 289 | 851 | 1636 | 15 | 3 | 5 | 4 | 16 | 1 | 0 | 0 | 5 | 5/5 | 0 (none) |
 | stock-pltr-1280-dark | 20.2 | 293 | 748 | 3436 | 20 | 3 | 6 | 4 | 49 | 1 | 0 | 0 | 19 | 14/16 | 0 (none) |
 
+**Redesign: how each principle was applied (Stock and company, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): stock PLTR: 20.2 to 14.6 screens at 1280, 27.8 to 19.8 at 390; first figure y 733 to 467 / 823 to 611; first table y 3436 to 3126 / 4880 to 4435. Company sponsor page: 5.5 to 4.5 and 7.8 to 6.1 screens.
 
 ### 3.3 Member of Congress page
 
@@ -319,6 +329,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | member-priya-390 | 6.2 | 118 | 594 | 1306 | 12 | 3 | 4 | 4 | 11 | 0 | 0 | 0 | 2 | 1/1 | 0 (none) |
 | member-elena-1280-dark | 13.7 | 293 | 641 | 1159 | 19 | 4 | 6 | 4 | 31 | 1 | 0 | 0 | 14 | 10/12 | 0 (none) |
 
+**Redesign: how each principle was applied (Member, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): member Elena Marsh: 13.7 to 9.7 screens at 1280, 19.8 to 13.6 at 390; first figure y 626 to 396 / 799 to 533; first table y 1159 to 928 / 1652 to 1333.
 
 ### 3.4 Insider (Form 4 filer) page
 
@@ -382,6 +402,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | insider-fund-1280 | 4.6 | 293 | 641 | 1514 | 16 | 3 | 5 | 3 | 14 | 1 | 0 | 0 | 5 | 4/5 | 0 (none) |
 | insider-fund-390 | 6.4 | 261 | 812 | 1841 | 16 | 3 | 6 | 3 | 14 | 1 | 0 | 0 | 5 | 4/5 | 0 (none) |
 
+**Redesign: how each principle was applied (Insider, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): insider Karp: 7.0 to 5.5 screens at 1280, 9.8 to 7.9 at 390; first figure y 688 to 396 / 831 to 605; first table y 2065 to 1744 / 2778 to 2537.
 
 ### 3.5 Committee page
 
@@ -431,6 +461,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | committee-senag-1280 | 3.1 | 293 | - | 767 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 2 | 2/2 | 0 (none) |
 | committee-senag-390 | 4.7 | 310 | - | 1090 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 2 | 2/2 | 0 (none) |
 
+**Redesign: how each principle was applied (Committee, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): committee House Agriculture: 6.5 to 4.1 screens at 1280, 8.5 to 5.5 at 390; no figure strip; first table y 793 to 728 / 1120 to 1017.
 
 ### 3.6 Industry division page
 
@@ -473,6 +513,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | industry-services-1280 | 3.2 | 293 | - | 793 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 2 | 1/2 | 0 (none) |
 | industry-services-390 | 4.8 | 289 | - | 1080 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 2 | 1/2 | 0 (none) |
 
+**Redesign: how each principle was applied (Industry division, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): industry Manufacturing: 3.4 to 2.8 screens at 1280, 5.0 to 3.9 at 390; no figure strip; first table y 793 to 772 / 1080 to 1041.
 
 ### 3.7 Lobbying issue page
 
@@ -519,6 +569,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | lobbyissue-trade-1280 | 3.5 | 293 | - | 786 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 3 | 3/3 | 0 (none) |
 | lobbyissue-trade-390 | 5.1 | 289 | - | 1016 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 3 | 3/3 | 0 (none) |
 
+**Redesign: how each principle was applied (Lobbying issue, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): issue Defense: 3.5 to 2.9 screens at 1280, 4.9 to 3.9 at 390; no figure strip; first table y 786 to 720 / 933 to 941.
 
 ### 3.8 Section landing pages
 

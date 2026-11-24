@@ -90,16 +90,16 @@ const tables = [
 
   <AdSlot />
 
-  <h2 id="about">About this page</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">About this page</h2></summary><div class="ref-body">
   <p>"{i.name}" is one of the 79 general issue areas a lobbying report can name (code {i.code}). The wording is the Senate's. This page lists the reports that name it, whether or not they name other issues as well.</p>
   <p>A report states one amount for the quarter, not an amount for each issue. Every amount on this page is therefore the whole amount of reports that name this issue, and overlaps with the amounts on other issue pages. It is not what was spent on {i.name} alone. The report also does not say which bill or rule was lobbied, what was asked for, or what came of it; the specific description is on the Senate's record, linked from each row.</p>
-  <p>Where a report was later amended, only the latest version is counted. A company that lobbies for itself and also hires outside firms appears under several registrants. See <a href={ISSUES_PATH}>all issue areas</a>, the <a href="/lobbying/">lobbying page</a>, the <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a>, the <a href="/methodology/#lobbying-issues">methodology</a> and the <a href="/downloads/">downloads page</a>.</p>
+  <p>Where a report was later amended, only the latest version is counted. A company that lobbies for itself and also hires outside firms appears under several registrants. See <a href={ISSUES_PATH}>all issue areas</a>, the <a href="/lobbying/">lobbying page</a>, the <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a>, the <a href="/methodology/#lobbying-issues">methodology</a> and the <a href="/downloads/">downloads page</a>.</p></div></details>
 
   {others.length > 0 && (
     <section aria-labelledby="others">
-      <h2 id="others">Other issue areas</h2>
+      <details class="ref" data-remember id="ref-others"><summary><h2 id="others">Other issue areas</h2></summary><div class="ref-body">
       <ul class="cols">{others.map((o) => <li><a href={o.path}>{o.name}</a></li>)}</ul>
-    </section>
+    </div></details></section>
   )}
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />

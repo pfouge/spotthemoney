@@ -177,16 +177,16 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
 
   <AdSlot />
 
-  <h2 id="about">About this page</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">About this page</h2></summary><div class="ref-body">
   <p>The member list is the committee's current membership from the public congress-legislators project, refreshed daily. A member who sits only on one of the committee's subcommittees is included. Members who have left Congress are not listed.</p>
   <p>The trades are the periodic transaction reports those members filed, shown as filed: dollar ranges, the owner named on the report, and the days between the trade and its disclosure. This site holds no history of past assignments, so the list includes trades made before a member joined the committee and leaves out trades by members who have since left it.</p>
-  <p>A committee seat is shown for context only. This site does not compare any trade with the committee's work, and a seat on a committee is not evidence about any trade. See <a href={COMMITTEES_PATH}>all committees</a>, the <a href="/congress-members/">member directory</a>, the <a href="/methodology/#committees">methodology</a> and <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>.</p>
+  <p>A committee seat is shown for context only. This site does not compare any trade with the committee's work, and a seat on a committee is not evidence about any trade. See <a href={COMMITTEES_PATH}>all committees</a>, the <a href="/congress-members/">member directory</a>, the <a href="/methodology/#committees">methodology</a> and <a href="/guides/how-to-read-a-congressional-trade-report/">how to read a congressional trade report</a>.</p></div></details>
 
   {others.length > 0 && (
     <section aria-labelledby="others">
-      <h2 id="others">Other {CHAMBER_LABEL[c.chamber]} committees</h2>
+      <details class="ref" data-remember id="ref-others"><summary><h2 id="others">Other {CHAMBER_LABEL[c.chamber]} committees</h2></summary><div class="ref-body">
       <ul class="cols">{others.map((o) => <li><a href={o.path}>{o.name}</a></li>)}</ul>
-    </section>
+    </div></details></section>
   )}
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
   <JsonLd data={ld} />

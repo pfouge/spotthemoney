@@ -6,6 +6,7 @@
 import LearnMore from "../../components/LearnMore.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
+import { monthlyCounts, monthlyDirection } from "../../lib/glancespark";
 import PageGroup from "../../components/PageGroup.astro";
 import { shownYears, shownQuarters } from "../../lib/financials";
 import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, industryOf, insiderPeriods, isOpenSale } from "../../lib/entity";
@@ -135,16 +136,16 @@ const assistRows = home ? (model.assistance.byCompany.get(company!.id) ?? []) : 
 const lcf = home ? model.lobbyContrib.companies.get(company!.id) : undefined;
 const lcfItems = lcf ? lcf.years.reduce((a, y) => a + y.items, 0) : 0;
 const glance = [
-  ...(insider.length ? [{ label: "Insider transactions", value: num(insider.length), note: latestOf(insider) ? `Latest ${formatDate(latestOf(insider)!)}` : undefined, href: "#insider-transactions" }] : []),
-  ...(congress.length ? [{ label: "Congress trades", value: num(congress.length), note: latestOf(congress) ? `Latest ${formatDate(latestOf(congress)!)}` : undefined, href: "#congress-trades" }] : []),
+  ...(insider.length ? [{ label: "Insider transactions", value: num(insider.length), bars: monthlyDirection(insider.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: latestOf(insider) ? `Latest ${formatDate(latestOf(insider)!)}` : undefined, href: "#insider-transactions" }] : []),
+  ...(congress.length ? [{ label: "Congress trades", value: num(congress.length), bars: monthlyDirection(congress.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: latestOf(congress) ? `Latest ${formatDate(latestOf(congress)!)}` : undefined, href: "#congress-trades" }] : []),
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
   ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(instN ? [{ label: "Institutional holders", value: num(instN), note: `as of ${formatDate(model.inst.period!)}`, href: "#institutional-holders" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
   ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
-  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
-  ...(contracts.length ? [{ label: "Federal contracts", value: num(contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
+  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), bars: monthlyCounts(evRows.map((e) => e.filed), model.builtAt), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
+  ...(contracts.length ? [{ label: "Federal contracts", value: num(contracts.length), bars: monthlyCounts(contracts.map((c) => c.actionDate), model.builtAt), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
   ...(home && assistRows.length ? [{ label: "Grants and loans", value: num(assistRows.length), note: `Newest started ${formatDate(assistRows[0]!.startDate)}`, href: "#assistance" }] : []),
   ...(lobbying.length ? [{ label: "Lobbying filings", value: num(lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
   ...(home && lcfItems ? [{ label: "Lobbyist contributions", value: num(lcf!.years[0]?.items ?? 0), note: `Items in ${lcf!.years[0]?.year}, filed by the company`, href: "#filer-contributions" }] : []),
@@ -328,20 +329,21 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   <PageGroup id="record" label="About this record">
   {related.length > 0 && (
     <section aria-labelledby="related" data-related>
-      <h2 id="related">Related stocks</h2>
+      <details class="ref" data-remember id="ref-related"><summary><h2 id="related">Related stocks</h2></summary><div class="ref-body">
       <p class="section-note">Tickers traded by the same people who traded {s.ticker}, by number of filers in common. It shows overlap in public filings and nothing else.</p>
       <ul class="mates two">
         {related.map((r) => <li><span><a class="mono" href={r.path}>{r.ticker}</a> {r.name && <span class="soft">{r.name}</span>}</span> <span>{plural(r.shared, "filer")} in common</span></li>)}
       </ul>
-    </section>
+    </div></details></section>
   )}
 
   <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5).concat([...(contracts.length ? ["federal-contracts-usaspending"] : []), ...(lobbying.length ? ["lobbying-disclosure-reports"] : [])])} />
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={txns} edgarId={s.ticker}
     extra={home ? [{ name: "USAspending, federal contract awards", records: contracts.length, unit: contracts.length === 1 ? "award" : "awards", href: SOURCES.usaspending.url, linkLabel: "USAspending" }, { name: "Lobbying disclosure filings", records: lobbying.length, unit: lobbying.length === 1 ? "filing" : "filings", href: SOURCES.lda.url, linkLabel: "LDA.gov search" }] : undefined} />
   <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress.{home && " Contracts and lobbying are matched by exact normalized name (suffixes like Inc. and Corp. ignored) to USAspending recipients and LDA clients, a conservative match that misses subsidiaries on purpose."} See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  </div></details>
   </PageGroup>
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures are shown as filed and may lag the trade or be amended. No recommendation is made or implied.</p>

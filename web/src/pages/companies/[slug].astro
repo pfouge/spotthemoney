@@ -16,6 +16,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import { monthlyCounts, monthlyDirection } from "../../lib/glancespark";
 import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
@@ -96,15 +97,15 @@ const lcfItems = lcf ? lcf.years.reduce((a, y) => a + y.items, 0) : 0;
 const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || companyShown || plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0 || assistRows.length > 0 || lcfItems > 0;
 const latestInsider = txns.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 const glance = [
-  ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
+  ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), bars: monthlyDirection(txns.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
   ...(instN ? [{ label: "Institutional holders", value: num(instN), note: `as of ${formatDate(model.inst.period!)}`, href: "#institutional-holders" }] : []),
   ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
   ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
-  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
-  ...(c.contracts.length ? [{ label: "Federal contracts", value: num(c.contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
+  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), bars: monthlyCounts(evRows.map((e) => e.filed), model.builtAt), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
+  ...(c.contracts.length ? [{ label: "Federal contracts", value: num(c.contracts.length), bars: monthlyCounts(c.contracts.map((x) => x.actionDate), model.builtAt), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
   ...(assistRows.length ? [{ label: "Grants and loans", value: num(assistRows.length), note: `Newest started ${formatDate(assistRows[0]!.startDate)}`, href: "#assistance" }] : []),
   ...(c.lobbying.length ? [{ label: "Lobbying filings", value: num(c.lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
   ...(lcfItems ? [{ label: "Lobbyist contributions", value: num(lcf!.years[0]?.items ?? 0), note: `Items in ${lcf!.years[0]?.year}, filed by the company`, href: "#filer-contributions" }] : []),
@@ -225,20 +226,21 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <PageGroup id="record" label="About this record">
   {relatedCos.length > 0 && (
     <section aria-labelledby="related" data-related>
-      <h2 id="related">Related companies</h2>
+      <details class="ref" data-remember id="ref-related"><summary><h2 id="related">Related companies</h2></summary><div class="ref-body">
       <p class="section-note">Companies whose stock was traded by the same people who traded {c.primaryTicker}, by number of filers in common. It shows overlap in public filings and nothing else.</p>
       <ul class="mates two">
         {relatedCos.map((r) => <li><span><a href={r.path}>{r.company.name}</a> <span class="soft mono">{r.ticker}</span></span> <span>{plural(r.shared, "filer")} in common</span></li>)}
       </ul>
-    </section>
+    </div></details></section>
   )}
 
   <LearnMore slugs={["what-is-form-4", "insider-buying-vs-insider-selling", ...(c.contracts.length ? ["federal-contracts-usaspending"] : []), ...(c.lobbying.length ? ["lobbying-disclosure-reports"] : []), "what-disclosure-data-cannot-tell-you"]} />
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={c.txns} edgarId={c.cik ?? c.primaryTicker}
     extra={[{ name: "USAspending, federal contract awards", records: c.contracts.length, unit: c.contracts.length === 1 ? "award" : "awards", href: SOURCES.usaspending.url, linkLabel: "USAspending" }, { name: "Lobbying disclosure filings", records: c.lobbying.length, unit: c.lobbying.length === 1 ? "filing" : "filings", href: SOURCES.lda.url, linkLabel: "LDA.gov search" }]} />
   <p>Insiders and their transactions come from SEC EDGAR Form 4 filings for this issuer. Contracts and lobbying are matched by exact normalized name (suffixes like Inc./Corp. ignored) to USAspending recipients and LDA clients. This is a conservative match that misses subsidiaries on purpose. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  </div></details>
   </PageGroup>
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no recommendation is made or implied.</p>
