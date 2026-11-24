@@ -4638,3 +4638,50 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
 - The home notable feed previews 12 rows at every width (`PREVIEW_ROWS` and `PREVIEW_ROWS_PHONE` in
   `lib/notable.ts`, one `nth-child(n+13)` rule in `rd-home.css`; the phone rule is gone). Guide
   `how-to-use-the-trade-map` says twelve.
+
+### Military parts orders from nsnexplorer.com (2026-11-24) — Peter: "integrate in a nicely designed manner", "a live connection"
+
+- **What.** Company and stock pages (Washington group, after grants) carry "Military parts orders
+  (Defense Logistics Agency, last 12 months)" (`web/src/components/MilitaryOrders.astro`,
+  `section[data-dla]`, anchor `#parts-orders`): three headline figures, order value by month,
+  "Parts ordered most" (25, previewed at 5) and "Latest orders" (25), the supplier codes counted
+  and how each matched, links to nsnexplorer.com (dashed NSN, CAGE) and to each DIBBS record.
+  Methodology `#parts-orders`; a section and a FAQ in guide `federal-contracts-usaspending`
+  (shown only when orders were read: `ctx.dlaShown`).
+- **Live read, no copy.** The build reads nsnexplorer's Supabase project (`slprnvtdgzmpeqsmemgq`)
+  through `NSN_DATABASE_URL` (GitHub secret; Session pooler, port 5432, SSL required), login `stm_reader`:
+  NOINHERIT, read-only by default, 120 s statement timeout, select on `pub.contract_actions`,
+  `pub.suppliers`, `pub.nsns` only. Never grant it `ops` or the account tables. `deploy.yml`
+  declares the secret and every caller (ingest, Congress PTR, publish, backfill) passes it;
+  `qa.yml` reads it too; `check-build-secrets.mjs` checks its password is not in the output.
+  Without the secret, or if the read fails, the section, methodology paragraph and guide section
+  are left out and the build goes on (`lib/dla-build.ts`, own try/catch in `flagship.ts`).
+- **Window.** nsnexplorer's daily DIBBS record really starts in **July 2026** (60k–100k records a
+  month since; a few dozen stray older records before). The window is 365 days back or the first
+  month holding 20% of the busiest month's records (`coverageStart`, `windowStart`), whichever is
+  later; headings say "since July 2026" until a full year exists (`windowLabel`), then "last 12 months".
+- **Rules** (`web/src/lib/dla.ts`, pure; tests `scripts/dla.test.ts`): rows are DIBBS records
+  (`raw ? 'cage'`) in the window, never after today, obligation > 0. **An order is a record with
+  a delivery order number, or one whose PIID's ninth character is not D, G or A**: base contracts
+  and agreements are posted with their ceiling (one respirator-cartridge contract reads $60B).
+  Supplier → company: (1) same name under `orgKey` (normalizeOrgName, " DIV "/" DBA " cut,
+  "/DE/" suffixes dropped), unique; (2) prefix of a company name of 2+ words and 8+ characters,
+  longest wins; (3) `SUBSIDIARIES` (hand-checked: Sikorsky→LMT, Collins/Hamilton Sundstrand/
+  Raytheon/Pratt & Whitney→RTX, Bell→TXT, Aviall→BA, Electric Boat/Bath/Gulfstream→GD, Newport
+  News/Ingalls→HII, Oshkosh Defense→OSK, AAR units→AIR, L3→LHX, GE Aviation→GE, Medline
+  Industries→MDLN; LORD exact→PH). `NOT_THE_COMPANY` blocks a same-name false match (VIKING).
+  **Add to either list only after checking the supplier list by hand.** Matched against
+  companies with a static page only (the on-demand pages show nothing).
+- **Coverage measured 2026-11-24** (12 months, tracked companies): $1.89B of $17.57B of orders
+  matched to 47 companies (RTX $484M, BA $294M, NOC $216M, LMT $186M, PSX $165M, PH $128M ...).
+  The rest are mostly small suppliers with no listed parent, or CAGE codes with no name (6HW96
+  alone $793M). The page says the figures are a floor.
+- **Build log:** `[web] military parts orders (DLA via nsnexplorer): N supplier codes with orders
+  in 365 days, M matched to C companies; O orders, $V M; newest order D; top (orders/value): ...`.
+- **Verifier:** `node scripts/verify-dla.mjs <base> [--db <nsn url>] [--require]` (reads stock and
+  company sitemaps; recounts each panel from the database by its CAGE codes with its own SQL).
+  Local stand-in: `scripts/seed-nsn-local.sql` into a database `nsn` (reseed does it).
+- **Rebuild trigger.** nsnexplorer's `ingest-daily.yml` gained a job `notify-spotthemoney` (after
+  the DIBBS load) that dispatches spotthemoney's `deploy.yml` with secret `STM_DISPATCH_TOKEN`
+  (fine-grained token `nsnexplorer-dispatch-spotthemoney` on pfouge/spotthemoney, Actions read and
+  write, **expires 2027-11-24**: renew it before then). Without the secret it only warns.

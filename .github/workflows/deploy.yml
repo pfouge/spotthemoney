@@ -42,6 +42,11 @@ on:
       # Read-only role for the build (migration 0023). Without it the build uses DATABASE_URL.
       BUILD_DATABASE_URL:
         required: false
+      # Read-only login on nsnexplorer.com's database (role stm_reader: pub.contract_actions,
+      # pub.suppliers, pub.nsns). The build reads military parts orders through it; without it the
+      # section is left out (web/src/lib/dla-build.ts).
+      NSN_DATABASE_URL:
+        required: false
       CLOUDFLARE_API_TOKEN:
         required: true
       CLOUDFLARE_ACCOUNT_ID:
@@ -90,6 +95,7 @@ jobs:
       - name: Build site from the database
         env:
           DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL || secrets.DATABASE_URL }}
+          NSN_DATABASE_URL: ${{ secrets.NSN_DATABASE_URL }}
         run: |
           set -o pipefail
           npm run build --workspace=@stm/web 2>&1 | tee build.log
@@ -103,6 +109,7 @@ jobs:
       - name: Check the build output for secrets
         env:
           BUILD_DATABASE_URL: ${{ secrets.BUILD_DATABASE_URL }}
+          NSN_DATABASE_URL: ${{ secrets.NSN_DATABASE_URL }}
         run: node scripts/check-build-secrets.mjs web/dist
 
       # Discovery plumbing must be valid in every build (roadmap B.2): sitemap index + children,

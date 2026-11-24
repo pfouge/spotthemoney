@@ -16,7 +16,7 @@ const values = Object.entries(process.env)
   .filter(([k, v]) => SECRET_ENV.test(k) && !k.startsWith("PUBLIC_") && typeof v === "string" && v.length >= 12)
   .map(([k, v]) => ({ rule: `value of $${k}`, needle: v }));
 // The password alone, in case the URL is rebuilt with different options around it.
-for (const name of ["DATABASE_URL", "BUILD_DATABASE_URL"]) {
+for (const name of ["DATABASE_URL", "BUILD_DATABASE_URL", "NSN_DATABASE_URL"]) {
   try {
     const pw = decodeURIComponent(new URL(process.env[name] ?? "").password);
     if (pw.length >= 8) values.push({ rule: `password inside $${name}`, needle: pw });
