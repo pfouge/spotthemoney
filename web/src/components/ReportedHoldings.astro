@@ -26,7 +26,6 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 const attrText = (t: string) => t.toLowerCase().replace(/[<>"]/g, "");
 ---
 {holdings.length > 0 && (
-  <section class="panel" data-panel aria-labelledby="reported-holdings" data-reported-holdings data-cik={cik!.trim().padStart(10, "0")} data-companies={holdings.length}>
   <section class="panel" data-panel data-span="12" aria-labelledby="reported-holdings" data-reported-holdings data-cik={cik!.trim().padStart(10, "0")} data-companies={holdings.length}>
     <h2 id="reported-holdings">Large holdings this filer reports: Schedules 13D and 13G</h2>
     <p data-rh-summary>{holdingsSentence(name, holdings)}</p>
