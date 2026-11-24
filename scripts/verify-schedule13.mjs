@@ -138,12 +138,42 @@ ok(order, "the file is not newest filing first");
 // overlap in time; a number last used before another was first used has been replaced by it; a
 // holder with a statement that gives no number is never split.
 const classKey = (c) => { const k = String(unguard(c ?? "")).replace(/\s+/g, "").toUpperCase(); return !k || /^0+$/.test(k) ? "" : k.length === 12 && k.startsWith("US") ? k.slice(2, 11) : k; };
-let splitHolders = 0, changedNumbers = 0;
+// A number that cannot be a CUSIP number (wrong length, or its ninth character is not the check
+// digit of the first eight) joins the one valid number of the same holder and company that is
+// nearest to it, when that is at most two characters away and no other valid number is as near.
+const cusipOk = (k) => {
+  if (k.length !== 9) return false;
+  let sum = 0;
+  for (let i = 0; i < 8; i++) {
+    const ch = k[i]; let v = /[0-9]/.test(ch) ? Number(ch) : /[A-Z]/.test(ch) ? ch.charCodeAt(0) - 55 : ["*", "@", "#"].indexOf(ch) + 36;
+    if (v < 36 && !/[0-9A-Z]/.test(ch)) return false;
+    if (i % 2) v *= 2;
+    sum += Math.trunc(v / 10) + (v % 10);
+  }
+  return k[8] === String((10 - (sum % 10)) % 10);
+};
+const apart = (a, b) => {
+  if (a.length === b.length) return [...a].filter((ch, i) => ch !== b[i]).length;
+  const [l, s] = a.length > b.length ? [a, b] : [b, a];
+  if (l.length - s.length !== 1) return Infinity;
+  return [...l].some((_, i) => l.slice(0, i) + l.slice(i + 1) === s) ? 1 : Infinity;
+};
+let splitHolders = 0, changedNumbers = 0, mistypedNumbers = 0;
 const splitPages = new Set();
 function classRows(rs) { // one holder's statements about one company, newest first
-  const keys = [...new Set(rs.map((r) => classKey(r.cusip)))];
-  if (keys.length < 2 || keys.includes("")) return [{ r: rs[0], n: rs.length }];
-  const spans = keys.map((k) => { const mine = rs.filter((r) => classKey(r.cusip) === k); const days = mine.map((r) => r.filed_date).sort(); return { k, newest: mine[0], n: mine.length, first: days[0], last: days[days.length - 1] }; });
+  const typed = [...new Set(rs.map((r) => classKey(r.cusip)))];
+  if (typed.length < 2 || typed.includes("")) return [{ r: rs[0], n: rs.length }];
+  const meant = new Map(typed.map((k) => [k, k]));
+  const good = typed.filter(cusipOk);
+  for (const k of typed.filter((x) => !cusipOk(x))) {
+    const near = good.map((g) => ({ g, d: apart(k, g) })).sort((a, b) => a.d - b.d);
+    if (near.length && near[0].d <= 2 && (near.length === 1 || near[1].d > near[0].d)) meant.set(k, near[0].g);
+  }
+  const keyOf = (r) => meant.get(classKey(r.cusip));
+  const keys = [...new Set(rs.map(keyOf))];
+  if (keys.length < typed.length) mistypedNumbers++;
+  if (keys.length < 2) return [{ r: rs[0], n: rs.length }];
+  const spans = keys.map((k) => { const mine = rs.filter((r) => keyOf(r) === k); const days = mine.map((r) => r.filed_date).sort(); return { k, newest: mine[0], n: mine.length, first: days[0], last: days[days.length - 1] }; });
   const live = spans.filter((a) => !spans.some((b) => b.k !== a.k && b.first > a.last));
   const gone = spans.filter((a) => !live.includes(a));
   if (gone.length) changedNumbers++;
@@ -322,6 +352,8 @@ ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
   ok(ht.includes(`${nf(pairs)} ${pairs === 1 ? "holder" : "holders"} of ${nf(companies)} ${companies === 1 ? "company" : "companies"}${newest.length > pairs ? `, in ${nf(newest.length)} rows` : "."}`), `HUB: count line should state ${pairs} holders of ${companies} companies${newest.length > pairs ? ` in ${newest.length} rows` : ""}`);
   ok(/has a row for each class/.test(ht), "HUB: says a holder that reports on two classes has a row for each");
   ok(/overlap in time/.test(text(meth)) && /is taken to have changed/.test(text(meth)), "the methodology states how two classes are told from a number that changed");
+  ok(/fails the check digit/.test(text(meth)) && /is read as that number mistyped/.test(text(meth)) && /happens to pass the check is not caught/.test(text(meth)), "the methodology states when a mistyped number is recognised and when it is not");
+  ok((meth.match(/id="schedule-13"/g) ?? []).length === 1, "the methodology has the large holders paragraph more than once");
   const below = newest.filter((r) => r.percent_of_class !== "" && Number(r.percent_of_class) < 5).length;
   ok(below === 0 || /below 5%/.test(hub.text), "HUB: a statement under 5% is marked");
   ok(/not a report of a trade/i.test(ht) && /not to be added together/i.test(ht), "HUB: says a statement is not a trade and rows are not added");
@@ -336,5 +368,5 @@ ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
 }
 
 const holdersAll = withRows.reduce((a, x) => a + x.holders.length, 0), holdersDistinct = withRows.reduce((a, x) => a + x.distinct, 0);
-console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersDistinct} holders in ${holdersAll} rows by newest statement and class, ${splitHolders} holders with more than one class on ${splitPages.size} companies, ${changedNumbers} with a number that changed; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
+console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersDistinct} holders in ${holdersAll} rows by newest statement and class, ${splitHolders} holders with more than one class on ${splitPages.size} companies, ${changedNumbers} with a number that changed, ${mistypedNumbers} with a mistyped number read as the right one; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
 process.exit(failures ? 1 : 0);
