@@ -3,7 +3,7 @@
 // counts once. Pure (no database, no Node APIs): lib/flagship.ts feeds it every row at build time,
 // and lib/server/od.ts feeds it one entity's rows when the Worker renders a page on demand, so the
 // two can never disagree about a number.
-import { tradeValue, unitPrice, median, priceUnusable, WEAK_REF_ROWS, MAX_UNCONFIRMED_PRICE, MAX_IMPLIED_COMPANY_VALUE } from "@stm/shared";
+import { tradeValue, unitPrice, median, priceUnusable, WEAK_REF_ROWS, MAX_UNCONFIRMED_PRICE, MAX_IMPLIED_COMPANY_VALUE, IMPLIED_TEST_MIN_PRICE } from "@stm/shared";
 import { jointDuplicates, type JointRow } from "./joint";
 import { heldAfter, holdingsChange } from "./holdings";
 import type { Txn } from "./flagship-core";
@@ -55,18 +55,18 @@ export function unusablePriceLog(rows: Iterable<RawTxn>, refStats: Map<number, {
   for (const t of rows) {
     if (t.security_id == null || t.is_derivative === true || !(t.shares != null && t.shares > 0)) continue;
     const s = refStats.get(t.security_id);
-    if (!priceUnusable({ shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice: s?.price ?? null, refRows: s?.rows ?? 0, sharesOutstanding: soOf(t.security_id) })) continue;
+    if (!priceUnusable({ shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice: s?.price ?? null, refRows: s?.rows ?? 0, sharesOutstanding: soOf(t.security_id), code: t.txn_code })) continue;
     n++; const k = tickerOf(t.security_id) ?? "(no ticker)"; per.set(k, (per.get(k) ?? 0) + 1);
   }
   const list = [...per].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, c]) => `${k} ${c}`).join(", ");
-  return `[web] prices not used (${label}): ${n} Form 4 stock ${n === 1 ? "row" : "rows"} of stocks with fewer than ${WEAK_REF_ROWS} open-market trades state a price above ${MAX_UNCONFIRMED_PRICE} a share or one that values the company above ${MAX_IMPLIED_COMPANY_VALUE}${n ? `: ${list}` : ""}`;
+  return `[web] prices not used (${label}): ${n} Form 4 stock ${n === 1 ? "row" : "rows"} of stocks with fewer than ${WEAK_REF_ROWS} open-market trades state a price above ${MAX_UNCONFIRMED_PRICE} a share or a purchase or sale price above ${IMPLIED_TEST_MIN_PRICE} that values the company above ${MAX_IMPLIED_COMPANY_VALUE}${n ? `: ${list}` : ""}`;
 }
 
 /** The Txn a stored row stands for (before the joint-filing rule). */
 export function buildTxn(t: RawTxn, f: FilingFacts, refPrice: number | null | undefined, ref: RefExtra = {}): Txn {
   // A security with no open-market row at all has no yardstick either: zero rows, the weak case.
   const refRows = ref.rows ?? (refPrice == null ? 0 : null);
-  const basis = { shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice, refRows, sharesOutstanding: ref.sharesOutstanding ?? null };
+  const basis = { shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice, refRows, sharesOutstanding: ref.sharesOutstanding ?? null, code: t.txn_code };
   const value = tradeValue(basis) ?? (t.shares != null && t.price != null && t.price > 0 ? null : t.amount_high ?? null);
   const price = unitPrice(basis) ?? t.price;
   // Options, warrants and other derivative rows are not purchases or sales of the stock: a put

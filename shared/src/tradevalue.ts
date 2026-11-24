@@ -18,9 +18,16 @@
 // boxes hold a total and others a price in another currency, such as Infosys rows in rupees):
 //   · a price above MAX_UNCONFIRMED_PRICE a share (no stock in the data trades near it; the one
 //     real case, Berkshire Hathaway class A, has no open-market insider trades);
-//   · a price that, times the company's shares outstanding, would make it worth more than
-//     MAX_IMPLIED_COMPANY_VALUE (only where the shares outstanding are known).
-// Checked on production 2026-11-24: every row the two tests catch was a mistake.
+//   · on a purchase, sale or shares handed back (codes P, S, D, F), a price above
+//     IMPLIED_TEST_MIN_PRICE that, times the company's shares outstanding, would make it worth
+//     more than MAX_IMPLIED_COMPANY_VALUE (only where the shares outstanding are known). Limited
+//     to those codes and to prices above $100 because a foreign company's shares outstanding can
+//     be counted in ordinary shares while its insiders report ADS prices: Akari (AKTX) grants at
+//     $3 to $13 "valued" it above $600 billion. Grants, exercises and other codes rest on the
+//     per-share ceiling alone.
+// Checked on production 2026-11-24 (first deploy): the two tests caught 50 rows; with this scope
+// the ones left are all mistakes (Mizuho rows in yen, Infosys and Wipro in rupees, price boxes
+// holding a total).
 
 export const DERIVATIVE_PRICE_FACTOR = 3;
 export const STOCK_PRICE_FACTOR = 50;
@@ -33,6 +40,9 @@ export const WEAK_REF_ROWS = 5;
 export const MAX_UNCONFIRMED_PRICE = 100_000;
 /** Company value (price × shares outstanding) no weakly referenced stock row may imply. */
 export const MAX_IMPLIED_COMPANY_VALUE = 5e11;
+/** The company-value test only applies above this price, and only to these Form 4 codes. */
+export const IMPLIED_TEST_MIN_PRICE = 100;
+export const IMPLIED_TEST_CODES = ["P", "S", "D", "F"];
 
 export interface TradeValueInput {
   shares: number | null | undefined;
@@ -44,6 +54,8 @@ export interface TradeValueInput {
   refRows?: number | null;
   /** The issuer's shares outstanding, when known (company_size). */
   sharesOutstanding?: number | null;
+  /** Form 4 transaction code; unset applies the company-value test as for a sale. */
+  code?: string | null;
 }
 
 /** True when a stock row of a weakly referenced stock states a price that cannot be a dollar price per share. */
@@ -51,6 +63,7 @@ export function priceUnusable(t: TradeValueInput): boolean {
   const { price } = t;
   if (t.isDerivative || price == null || !(price > 0) || t.refRows == null || t.refRows >= WEAK_REF_ROWS) return false;
   if (price > MAX_UNCONFIRMED_PRICE) return true;
+  if (price <= IMPLIED_TEST_MIN_PRICE || (t.code != null && !IMPLIED_TEST_CODES.includes(t.code))) return false;
   const so = t.sharesOutstanding;
   return so != null && so > 0 && price * so > MAX_IMPLIED_COMPANY_VALUE;
 }

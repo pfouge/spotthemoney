@@ -4615,7 +4615,12 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   them "$51B"; it reached the home feed's large sales and leaderboards through the market slice). Now,
   for a stock with fewer than 5 open-market rows (`WEAK_REF_ROWS`), a stock row stating more than
   $100,000 a share, or a price that times shares outstanding exceeds $500B, gets no dollar value (listed
-  as filed). Production: exactly 12 rows caught, all mistakes (SPPL, REEMF, MYNZ, SCTH, REBN, and INFY and
+  as filed). **Follow-up the same hour:** the first deploy's build log showed the company-value test also
+  hit real low prices of foreign issuers whose shares outstanding are in ordinary shares (Akari grants at
+  $3 to $13, two RITE exercises) and a Wells Fargo code J row at $1,000; it now applies only above $100 a
+  share and to codes P, S, D, F (`IMPLIED_TEST_MIN_PRICE`, `IMPLIED_TEST_CODES`). Production before the
+  follow-up: 12 P/S rows by the first check, 63 rows of any code in the build log; all remaining catches are
+  mistakes (Mizuho in yen, Infosys and Wipro in rupees, totals in the box). First check: 12 rows, all mistakes (SPPL, REEMF, MYNZ, SCTH, REBN, and INFY and
   WIT rows in rupees). `refStatsMap` (txnbuild) gives the row count; the static build reads
   `company_size.shares_outstanding`; the on-demand pages count rows on the page and apply only the
   per-share ceiling (no migration). LONA, also reported, was already caught by the old rule.
