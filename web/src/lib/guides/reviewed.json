@@ -147,15 +147,15 @@
   "how-to-use-the-trade-map": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/lib/notable.ts": "1311804488343b01",
-      "web/src/components/NotableFeed.astro": "ce6ab08c10ce4f73",
-      "web/src/components/Heatmap.astro": "02dc9bcb5c349d6c",
+      "web/src/lib/notable.ts": "3034bd3fb6b6e431",
+      "web/src/components/NotableFeed.astro": "4de78f6e45fcbf67",
+      "web/src/components/Heatmap.astro": "25d750f42ae8cb4f",
       "web/src/scripts/heatmap.ts": "6951fe4f66db5b37",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
       "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
       "web/src/components/MiniCharts.astro": "c26496438d1fe52a",
       "web/src/components/MiniHeatmap.astro": "c6c11a50c9af0e2f",
-      "web/src/components/VizHome.astro": "56b1a5d1f2bdbd8e",
+      "web/src/components/VizHome.astro": "270b05b10ac733be",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
       "web/src/scripts/share.ts": "d701447fb386a23e"

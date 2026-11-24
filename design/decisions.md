@@ -37,3 +37,12 @@ Each entry: the decision, why, and how to reverse it.
     `PUBLIC_HOME_DIR=b` (both directions stay in `web/src/components/HomeTop.astro`).
 11. **The top advertisement moves below each page's title block.** It sat above the breadcrumb and title (115px on
     most pages), so no first screen began with what the page is. Its reserved height is unchanged.
+12. **Direction B removed; the homepage is rebuilt as panels (task H2, second pass).** Direction A won in entry 10, so
+    `PUBLIC_HOME_DIR=b` and the B markup are gone from `HomeTop.astro` (the source before removal is saved as
+    `design/home/direction-b/HomeTop.original.astro`; the scoring note in entry 10 still describes both). The page is
+    now one band (what the site is, search, "Recently active" at the left; the dataset tiles, four across, at the right),
+    the answer as two muted lines with "What is covered" folded beside it, then panels: notable trades (8 one-line rows,
+    6 on a phone, chevron opens details in place, "Show more", "About this list" folded) beside a rail with "This week in
+    filings" and the leaderboards (top 5, "Show all"); the trade map with one control line and the other filters under
+    "More filters (n)"; one row of compact charts; the rates strip. Height at 1280: 11,114 to about 4,400 px; at 390:
+    19,080 to about 6,400 px. The top ad follows the answer because `adplace` keeps the answer with the title block.

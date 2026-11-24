@@ -1,0 +1,11 @@
+---
+// The home page's choice of whose trades the map shows (All insiders, Congress, Corporate insiders). One copy sits in each
+// map's control line (the maps are three instances; scripts/home.ts keeps the copies in step). Only the first copy carries
+// the id the page has always had (#hmSwitch).
+interface Props { current: "all" | "congress" | "insiders"; first?: boolean }
+const { current, first = false } = Astro.props;
+const panes = [["all", "All insiders"], ["congress", "Congress"], ["insiders", "Corporate insiders"]] as const;
+---
+<div class="seg hm-panesw" id={first ? "hmSwitch" : undefined} role="tablist" aria-label="Choose whose trades to show">
+  {panes.map(([p, label]) => <button type="button" class:list={[{ on: current === p }]} data-pane={p} role="tab" aria-selected={current === p ? "true" : "false"}>{label}</button>)}
+</div>

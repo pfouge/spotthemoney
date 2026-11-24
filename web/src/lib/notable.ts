@@ -33,6 +33,9 @@ export const CLUSTER_SELL_MIN_PCT = 10;
 export const WINDOWS = [1, 7, 30] as const;
 export type Win = (typeof WINDOWS)[number];
 export const FEED_PAGE = 60;
+/** Rows the home list shows before "Show more" (all FEED_PAGE rows are in the page; the rest are hidden by CSS; 6 on a phone). */
+export const PREVIEW_ROWS = 8;
+export const PREVIEW_ROWS_PHONE = 6;
 export const TOP_N = 5;
 
 export type Reason = "insider-buy" | "stake-change" | "large-sale" | "congress";

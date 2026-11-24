@@ -1,0 +1,36 @@
+---
+// The home page's leaderboards, in the right rail beside the notable trades (redesign pass 2). Same three boards and the
+// same tabs as before (scripts/viz.ts wires [data-viz-tabs]); each board shows its top 5 and "Show all" opens the rest
+// (both drawings are in the page). Drawn from the same model as the rest of the page.
+import { getFlagship } from "../lib/flagship";
+import { rankBarsSvg, PHONE_W } from "../lib/viz";
+import { leaderboards } from "../lib/vizdata";
+const TOP = 5;
+const ALL_W = 460; // wide enough that no label is cut: the full list keeps every name as written
+const model = await getFlagship();
+const lb = leaderboards(model);
+const def = [
+  { id: "members", label: "Most active members", rows: lb.members, alt: "Members of Congress by trades disclosed, last 90 days" },
+  { id: "buys", label: "Biggest buys", rows: lb.buys, alt: "Largest single purchases, last 90 days" },
+  { id: "tickers", label: "Most-traded tickers", rows: lb.tickers, alt: "Tickers by dollars traded, last 90 days" },
+];
+const tabs = def.map((d) => ({ ...d, top: rankBarsSvg(d.rows.slice(0, TOP), d.alt, PHONE_W), all: rankBarsSvg(d.rows, d.alt, ALL_W), more: d.rows.length > TOP })).filter((t) => t.all);
+---
+{tabs.length > 0 && (
+  <figure class="viz rail-card lb" id="chart-leaderboards" data-lb>
+    <figcaption class="viz-head">
+      <div class="viz-top"><h3 class="rail-h">Leaderboards</h3><button type="button" class="share-btn share-btn-quiet" data-share="chart" aria-label="Share this chart: Leaderboards"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg><span>Share</span></button></div>
+      <p class="viz-q rail-cap">Who and what was most active in the last 90 days?</p>
+    </figcaption>
+    <div class="viz-body"><div data-viz-tabs>
+      <div class="viz-tabs" role="tablist">{tabs.map((t, i) => <button type="button" role="tab" data-tab={t.id} class:list={[{ on: i === 0 }]} aria-selected={i === 0 ? "true" : "false"}>{t.label}</button>)}</div>
+      {tabs.map((t, i) => (
+        <div data-panel={t.id} hidden={i !== 0}>
+          <div class="vz-a lb-top" set:html={t.top} />
+          {t.more && <div class="vz-a lb-all" data-lb-all hidden set:html={t.all} />}
+          {t.more && <button type="button" class="btn lb-more" data-lb-more aria-expanded="false">Show all</button>}
+        </div>
+      ))}
+    </div></div>
+  </figure>
+)}

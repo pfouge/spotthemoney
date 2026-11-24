@@ -159,6 +159,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | home-home-1280-dark | 6.2 | 272 | 1224 | - | 19 | 4 | 8 | 6 | 36 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+**Redesign: how each principle was applied (Home, task H2)**
+
+- Overview first: the band says what the site is, offers search and shows twelve routes with one live figure each before any table; the answer follows in two muted lines.
+- Grouping: notable trades and the week's filings sit side by side as panels; the map has one control line (pane, window, view) and everything else under "More filters (n)" with Reset beside it.
+- One meaning per attribute: accent is links and the current choice, green and red are bought and sold only, ink is data, muted is labels; rule tags are text.
+- Data-ink: no card frames on the rail or the rows; the week's counts carry one thin bar each; the charts are one compact row.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px; every panel title is 16 px.
+- Consistency: panel head, caveat line, preview rows and "Show more / Show all" behave the same in notable trades, tiles and leaderboards.
+- Progressive disclosure: notable rows 8 (6 on a phone), tiles 6 on a phone, leaderboards top 5, coverage and "About this list" folded, details in place under a chevron; nothing is removed, every hidden item is one click away.
+- Numbers (1280 / 390): page height 11,114 to about 4,400 px and 19,080 to about 6,400 px (60 and 66 percent shorter); first screen at 1280 holds the title, search, 11 dataset tiles with sparklines and the answer; at 390 the title, search, 6 tiles and the answer.
+
 ### 3.2 Stock / company entity page
 
 **Routes:** `/stocks/[ticker]/` (one per company with a ticker; other share classes 301 to it), `/companies/[slug]/` (companies without a ticker page), `/stocks/[...rest]`, `/companies/[...rest]` (on-demand, not measured)

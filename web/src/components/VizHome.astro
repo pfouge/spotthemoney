@@ -1,12 +1,12 @@
 ---
 // Home page chart deck: headline tiles, the direction charts for everyone, Congress vs insiders
-// and the leaderboards. Everything here is drawn from the same in-memory model as the page.
+// (the leaderboards moved to the right rail: HomeLeaderboards.astro). Everything here is drawn from the same in-memory model as the page.
 import MiniHeatmap from "./MiniHeatmap.astro";
 import Viz from "./Viz.astro";
 import VizFlow from "./VizFlow.astro";
 import { getFlagship } from "../lib/flagship";
-import { sparklineSvg, scatterSvg, rankBarsSvg, usd, PHONE_W } from "../lib/viz";
-import { headlineTiles, agreementPoints, leaderboards, isInsiderTxn } from "../lib/vizdata";
+import { sparklineSvg, scatterSvg, usd, PHONE_W } from "../lib/viz";
+import { headlineTiles, agreementPoints, isInsiderTxn } from "../lib/vizdata";
 const model = await getFlagship();
 const h = headlineTiles(model);
 const tiles = [
@@ -17,12 +17,6 @@ const tiles = [
 ];
 const pts = agreementPoints(model);
 const agree = pts.filter((p) => Math.sign(p.x) === Math.sign(p.y)).length;
-const lb = leaderboards(model);
-const tabs = [
-  { id: "members", label: "Most active members", svg: rankBarsSvg(lb.members, "Members of Congress by trades disclosed, last 90 days"), phone: rankBarsSvg(lb.members, "Members of Congress by trades disclosed, last 90 days", PHONE_W) },
-  { id: "buys", label: "Biggest buys", svg: rankBarsSvg(lb.buys, "Largest single purchases, last 90 days"), phone: rankBarsSvg(lb.buys, "Largest single purchases, last 90 days", PHONE_W) },
-  { id: "tickers", label: "Most-traded tickers", svg: rankBarsSvg(lb.tickers, "Tickers by dollars traded, last 90 days"), phone: rankBarsSvg(lb.tickers, "Tickers by dollars traded, last 90 days", PHONE_W) },
-].filter((t) => t.svg);
 const signal = model.txns.filter((t) => t.isPublished);
 ---
 {model.txns.length > 0 && (
@@ -33,19 +27,11 @@ const signal = model.txns.filter((t) => t.isPublished);
         <div class="viz-tile"><div class="k">{t.k}</div><div class="v">{t.v}</div><Fragment set:html={sparklineSvg(t.series, `${t.k}, last 13 weeks`)} /><div class="d">{t.d}</div></div>
       ))}
     </div>
-    <div class="viz-grid">
+    <div class="viz-grid home-charts">
       <VizFlow txns={signal.filter(isInsiderTxn)} who="corporate insiders" gauge={true} />
       <Viz compact tall title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock."
         svg={scatterSvg(pts)} svgPhone={scatterSvg(pts, PHONE_W)}
         summary={pts.length ? `${pts.length} stocks were traded by both groups in the last year; in ${agree} of them Congress and insiders moved the same way. Dot size is total dollars traded; both axes are log scales.` : undefined} />
-      {tabs.length > 0 && (
-        <Viz compact tall title="Leaderboards" question="Who and what was most active in the last 90 days?" show={true}>
-          <div data-viz-tabs>
-            <div class="viz-tabs" role="tablist">{tabs.map((t, i) => <button type="button" role="tab" data-tab={t.id} class:list={[{ on: i === 0 }]} aria-selected={i === 0 ? "true" : "false"}>{t.label}</button>)}</div>
-            {tabs.map((t, i) => <div data-panel={t.id} hidden={i !== 0}><div class="vz-a" set:html={t.phone} /></div>)}
-          </div>
-        </Viz>
-      )}
       <MiniHeatmap kind="all" />
     </div>
   </section>
