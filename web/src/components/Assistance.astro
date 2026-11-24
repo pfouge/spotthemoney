@@ -21,7 +21,7 @@ const heads = [
 const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 ---
 {rows.length > 0 && (
-  <section aria-labelledby="assistance" data-assistance data-awards={rows.length}>
+  <section class="panel" data-panel aria-labelledby="assistance" data-assistance data-awards={rows.length}>
     <h2 id="assistance">Federal grants, loans and direct payments (USAspending, awards started in the last 180 days)</h2>
     <p data-as-summary>{name} is named as the recipient of {kindSentence(rows, (n) => money(n))}. Kinds are listed apart and are not added together.</p>
     <p class="as-note" data-as-caveat>{ASSISTANCE_CAVEAT} <a href="/guides/federal-contracts-usaspending/#assistance">How to read these awards</a>.</p>
