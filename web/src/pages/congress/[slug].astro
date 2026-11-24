@@ -134,7 +134,7 @@ const glance = noindex ? [] : [
   ...(p.filings.length ? [{ label: "Filings", value: num(p.filings.length), note: "Periodic transaction reports", href: "#filings" }] : []),
   ...(showCompare && rank ? [{ label: "Rank by trades", value: ordinal(rank), note: `Of ${num(peers.members)} members`, href: "#compare" }] : []),
 ];
-const groupList = noindex ? [] : [
+const groupList = [
   { id: "trading", label: "Trading" },
   ...(groups.length || hasVotes || hasOutside || hasCampaign || lcItems ? [{ id: "washington", label: "Washington" }] : []),
   { id: "record", label: "About this record" },
