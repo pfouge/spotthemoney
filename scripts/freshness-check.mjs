@@ -86,6 +86,7 @@ const CHECKS = [
   { code: "senate_lda_contributions", label: "Lobbyist contributions (LD-203)", runDays: 2 },
   { code: "sec_company_events", label: "SEC company events (8-K)", runDays: 2 },
   { code: "sec_exec_pay", label: "SEC executive pay (XBRL frames)", runDays: 2 },
+  { code: "sec_proxy_pay", label: "SEC executive pay (proxy statements)", runDays: 2 },
   { code: "congress_votes", label: "House and Senate roll-call votes", runDays: 2 },
   { code: "fec_independent_expenditures", label: "FEC independent expenditures", runDays: 2 },
   { code: "usaspending_assistance", label: "USAspending grants, loans, direct payments", runDays: 2 },
