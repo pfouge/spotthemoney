@@ -20,9 +20,10 @@ test("the ad goes after the h1 and the lede or facts that follow it", () => {
 });
 
 test("an h1 inside a wrapper: the ad goes after the whole wrapper", () => {
-  const h = `<div class="home-top"><section class="hero"><h1>T</h1></section><nav>tiles</nav></div><section class="answer">a</section>`;
+  const h = `<div class="home-top"><section class="hero"><h1>T</h1></section><nav>tiles</nav></div><section class="answer">a</section><section class="feed">f</section>`;
   const { before, after } = splitForAd(h);
-  assert.equal(after, `<section class="answer">a</section>`);
+  // the answer block directly after the title block belongs to it
+  assert.equal(after, `<section class="feed">f</section>`);
   assert.equal(before + after, h);
 });
 
