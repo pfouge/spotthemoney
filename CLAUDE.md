@@ -4580,3 +4580,10 @@ measured before, principles applied), `design/home/` (the two homepage direction
   checked in a browser; pages with very little data are mostly their two ad blocks; `flowEntity` in
   `BaseLayout` is now never true (dead code); "N traded" counts sales under a 10b5-1 plan; real
   phones and Safari were not tested (Chromium only).
+- **Home charts row (same day, Peter):** "Congress vs. insiders" and the small "Trade heatmap" were taken
+  off the home page (both are views of the trade map above them). The row is three charts: buy/sell
+  pressure, activity calendar, weekly flow; one column under 720px, three across from 720px. `/congress/`
+  and `/insiders/` keep both under "More views". Also fixed: the trade map's summary line made the home
+  page scroll sideways by a few pixels between 640 and 799px.
+- **AdSense (same day, Peter's yes):** in-page Auto ads (Banner ads) switched off for spotthemoney.com;
+  they were filling the new columns and cards. The four labelled slots and the overlay formats stay.

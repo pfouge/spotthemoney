@@ -182,15 +182,11 @@ html.js .home-answer .answer-text:not([data-open]) { display: -webkit-box; -webk
 }
 
 /* ── 5. Charts row and rates ─────────────────────────────────────────────────────────────────────────── */
-.home-charts { margin: var(--s-5) 0; gap: var(--s-4); }
-@media (min-width: 1280px) {
-  .home-charts { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .home-charts > .mini-map { grid-column: span 1; }
-}
-@media (max-width: 639px) {
-  .home-charts { position: relative; display: flex; overflow-x: auto; scroll-snap-type: x proximity; gap: var(--s-3); scrollbar-width: none; margin-inline: calc(-1 * clamp(16px, 3vw, 32px)); padding-inline: clamp(16px, 3vw, 32px); }
-  .home-charts > * { flex: 0 0 82%; min-width: 0; scroll-snap-align: start; }
-}
+section[aria-label="Charts"] > .viz-grid.home-charts { display: grid; overflow: visible; padding-bottom: 0; margin: var(--s-5) 0; gap: var(--s-6); grid-template-columns: minmax(0, 1fr); }
+section[aria-label="Charts"] > .viz-grid.home-charts > .viz { flex: none; min-width: 0; }
+/* Three charts (buy/sell pressure, activity calendar, weekly flow): one column on a phone, three across from 720px. */
+@media (min-width: 720px) { section[aria-label="Charts"] > .viz-grid.home-charts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); } }
+@media (min-width: 1024px) { section[aria-label="Charts"] > .viz-grid.home-charts { gap: var(--s-6); } .home-charts .viz { --viz-maxh: 220px; } }
 .home-rates { margin: var(--s-3) 0 var(--s-4); }
 .home-rates .cell { padding-block: 0; }
 .home-rates .v { font-size: var(--t-md); line-height: var(--lh-md); margin-top: 0; }
@@ -208,3 +204,5 @@ figure.viz.rail-card { border: 0; padding: 0; background: none; box-shadow: none
 /* anchors on this page clear the sticky header (and the tape) */
 #howMap, #nfAbout, #hmSwitch, #hmMore, #htTiles, #notableH, .hp-map [id], .home-cov, .ht-band [id] { scroll-margin-top: 96px; }
 .nf-item .nf-act b { white-space: nowrap; }
+.home-charts .viz-legend { flex-wrap: wrap; row-gap: 2px; }
+@media (max-width: 899px) { .heatmap:not([data-compact="true"]) { min-width: 0; max-width: 100%; } .heatmap:not([data-compact="true"]) .hm-summary { max-width: 100%; min-width: 0; box-sizing: border-box; } }
