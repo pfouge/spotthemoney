@@ -53,7 +53,7 @@ export const WORKING_FILES: WorkingFile[] = [
     about: "The notable trades and cluster purchases of the last 30 days that the home page lists.",
     top: ["built", "newest", "companies", "senateThrough", "items", "clusters"] },
   { path: "/data/financials-screener.json", title: "Company financials screener rows", usedBy: "/company-financials/", instead: "/downloads/company-financials.csv",
-    about: "One short list per company this site tracks with the figures of its newest fiscal year and its newest quarter, as filed with the SEC. A figure a page holds back is left out of this file; the CSV file keeps it. The two ratios the screener can show are worked out in the browser from these figures and are not in the file.",
+    about: "One short list per company this site tracks with the figures of its newest fiscal year and its newest quarter, as filed with the SEC, including cash and total liabilities for the screener's other column sets. A figure a page holds back is left out of this file; the CSV file keeps it. The two ratios the screener can show are worked out in the browser from these figures and are not in the file.",
     top: ["built", "divisions", "companies"] },
   { path: "/data/company-events.json", title: "Company events rows", usedBy: "/company-events/", instead: "/downloads/company-events.csv",
     about: "Every Form 8-K report filed in the last 12 months by a company with a page here: one short list per report with its filing and event dates, item numbers and the address of the report at the SEC. The CSV file has every report on record.",

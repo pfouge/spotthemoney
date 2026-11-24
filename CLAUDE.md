@@ -4301,3 +4301,56 @@ it in the pull request that changes a cell.**
 - Not done: cash as an optional screener column; saved screens (privacy page first, key
   `stm.screens.financials`); a link to the company's own row in the screener (the search box has no
   exact-company key).
+
+### Daily Form 4 pass: a 404 is not an outage (2026-11-24, scheduled parity run) — PR #95, ingest only
+
+- **Fault.** The scheduled ingest of 2026-11-23 (run 45268191378, started 21:43 UTC, U.S. afternoon)
+  ended red: `sec_form4` and its retry both stopped as "SEC EDGAR is not answering" after 210 of
+  1,235 tickers. The five failures in a row were HTTP 404 on `index.json` of five Form 4s one filer
+  had just submitted: the EDGAR listing names a filing a few minutes before its folder is served.
+- **Rule** (`isNotFound` in `ingest/src/sources/sec_form4.ts`; test beside it): in the daily and
+  history loops a filing whose request answers 404 is counted in `stats.filings_not_yet_served`
+  (sample in `filings_not_yet_served_sample`, one log line), is NOT quarantined (40 of them would
+  trip the 50-row breaker) and does NOT count toward the outage stop. Nothing is stored, so the
+  next run asks again. 5xx, 403, 429 and network failures count as before. A filing that stays
+  404 for days is asked once a day and shows in the sample: look if the same accession repeats.
+- The tracked companies' filings of that afternoon were not lost: `sec_form4_index` stores them
+  from the next daily index.
+
+### Financials screener: a third set of columns, "Balance-sheet figures", with cash (2026-11-24, scheduled parity run) — small screener follow-up
+
+- **What.** The "Columns" control on `/company-financials/` has a third choice, "Balance-sheet
+  figures" (hash `cols=balance`): Cash and equivalents, Total assets, Total liabilities,
+  Shareholders' equity, each as filed, as of the last day of the period. Nothing is worked out in
+  that view. Cash can be sorted (key `cash`, that set only). The download of the rows gained a
+  `cash` column (after `eps_diluted`). A paragraph on the page (`p#balance`) says what the cash
+  heading takes in and how many fiscal years and quarters have a cash figure. No migration, no
+  data job change, no new file, no new hash key (a new VALUE of `cols`), nothing stored in the browser.
+- **Decisions.** A third set, not a fifth column in the opening view (already the widest) and not
+  an on/off column (one control stays one control). Cash is "cash and equivalents" by the stored
+  heading (`shared/src/fundamentals.ts`: CashAndCashEquivalentsAtCarryingValue, else the heading
+  that also takes in restricted cash, else the IFRS one), never with short-term investments; the
+  page says a bank's cash is not like a manufacturer's and calls the column "not a measure of
+  anything". No cash ratio, no filter on cash. Choosing the set keeps the current order when the
+  set can show it, else the opening order by revenue (which the set does not show; the page says so).
+- **Rules** (`web/src/lib/finscreen.ts`; tests `scripts/finscreen.test.ts`): `FsCols` is
+  `figures | ratios | balance`; `asCols` reads a stored or typed value (anything else is the
+  opening set) and is the ONE place a set name is recognised (`colsOf`, `parseFinHash`, the
+  browser script). `FS_COLUMNS` lists every column once, in table order, with its sets.
+  `FS_EXTRA` is total liabilities, then cash.
+- **Data file.** A packed period has 13 entries: cash follows total liabilities (mask bit 6 when
+  held back by `cash_over_assets`). A file with 12 entries still unpacks. Top-level layout unchanged.
+- **Build log** line `[web] financials screener: ...` gained `balance-sheet columns: cash on file N
+  of M fiscal years, K of L quarters`; the last line of `verify-finscreen` prints the same four
+  numbers from the CSV: **the two must agree after a deploy.**
+- **Verifier.** `verify-finscreen`: cash in the data file against `company-financials.csv`, the
+  three sets in the Columns control and each column's `data-cols`, the balance view cell for cell
+  in both periods, sorting by cash and total liabilities by clicks, addresses that name a sort the
+  set cannot show, four more combined views, 390 px, the page's paragraph and its counts.
+  **A new set of columns goes in `COLS`, `COLS_OPTION` and `FS_COLUMNS`, and in `SETS`, `SORTS`
+  and `SET_NAMES` of `verify-finscreen.mjs`.**
+- Guide `what-is-form-4` (three sentences in `#financials`, one label) re-read and accepted;
+  `how-to-cite-and-reuse` re-read (it covers `datafiles.ts`), unchanged. Methodology
+  `#financials-screener` gained a sentence.
+- Not done: saved screens (privacy page first, key `stm.screens.financials`); cash flow or debt as
+  screener columns (cash flow is a fiscal-year figure only; debt needs a heading filter).
