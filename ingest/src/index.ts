@@ -31,6 +31,7 @@ import { ingestSecCompanySic } from "./sources/sec_company_sic.js";
 import { ingestSecCompanyFinancials } from "./sources/sec_company_financials.js";
 import { ingestSecCompanyEvents } from "./sources/sec_company_events.js";
 import { ingestSecExecPay } from "./sources/sec_exec_pay.js";
+import { ingestSecProxyPay } from "./sources/sec_proxy_pay.js";
 import { ingestSecCompanyTickers, readRepair } from "./sources/sec_company_tickers.js";
 import { ingestTwelvedataEod } from "./sources/twelvedata_eod.js";
 import { ingestUniverse } from "./sources/universe.js";
@@ -74,6 +75,8 @@ const REGISTRY: Record<string, { label: string; cadence: string; daily: boolean;
   sec_company_events: { label: "SEC 8-K events and item codes (stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecCompanyEvents },
   // Pay Versus Performance executive-pay facts from the SEC XBRL frames API (migration 0039; stored, not yet shown).
   sec_exec_pay: { label: "SEC executive pay (Pay Versus Performance, XBRL frames; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecExecPay },
+  // The same four pay figures read from each tracked company's own proxy statement, which also has the ones filed per person (migration 0042; stored, not yet shown).
+  sec_proxy_pay: { label: "SEC executive pay from proxy statements (DEF 14A XBRL; stored, not yet shown)", cadence: "daily", daily: true, run: ingestSecProxyPay },
   // The SEC's list of which filer owns each ticker; ends with repair_ticker_owners() (migration 0031).
   sec_company_tickers: { label: "SEC ticker owners (which filer each ticker belongs to)", cadence: "daily", daily: true, run: ingestSecCompanyTickers },
   fec_schedule_a_history: { label: "FEC Schedule A history pass (back to 2025-10-01, capped per committee)", cadence: "on_demand", daily: false, run: ingestFecScheduleAHistory },

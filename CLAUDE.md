@@ -4417,3 +4417,60 @@ it in the pull request that changes a cell.**
   dictionary and the data catalogue's description say it.
 - Not done: the class in the tile counts (above); a check of a CUSIP's check digit (would catch
   typos, not built); the same rule for market-only companies (no page shows their statements).
+
+### Executive pay from each company's own proxy statement, stage 1: stored, not shown (2026-11-24, scheduled parity run) — queue item (m2), A2 item 7
+
+- **Why.** `exec_pay` (frames, `sec_exec_pay`) held a figure for 394 of the 998 companies with a
+  page and a principal executive's pay for 256 (SQL, 2026-11-24; 872 of the 998 file annual
+  reports). The frames API serves only facts with no dimension, and many companies tag the
+  principal executive's pay with the person it belongs to (`ecd:IndividualAxis`). The companyfacts
+  answers `sec_company_financials` fetches come from the same store and are not kept, so they
+  cannot help. The company's own filing has every figure.
+- **Migration 0042**: `exec_pay_proxy` (cik, measure, fiscal_year_end, `seq`, tag, period_start,
+  value, `persons`, `dimensioned`, accession, filed) and `exec_pay_proxy_checked` (cik, checked_at,
+  status ok / no_proxy / no_instance / no_facts / not_found, accession, filed, rows). Row-level
+  security on, no policy, no API grants; `site_build` may read. `exec_pay` is unchanged and nothing
+  on the site reads the new tables. Next free migration number: 0043.
+- **Source `sec_proxy_pay`** (`ingest/src/sources/sec_proxy_pay.ts`; readers in
+  `ingest/src/lib/proxypay.ts`, tests beside it): per TRACKED company, the submissions file
+  (`filings.recent`, the layout `sec_company_events` already reads) gives the newest DEF 14A
+  filings since 2023-01-01; the filing folder's `index.json` gives the file named `*_htm.xml`
+  (EDGAR's "extracted XBRL instance document"; the naming was read from two real filing index
+  pages on 2026-11-24); that file gives the four `ecd` tags of `shared/src/execpay.ts`. Up to
+  three proxy statements are tried, newest first (a special-meeting proxy has no pay table). A
+  company whose newest proxy is the one already read costs one request.
+- **Reading rules.** A fact is kept when its context is this company's, covers 300 to 380 days and
+  has no dimension, or only `IndividualAxis` and/or `ExecutiveCategoryAxis` with the member that
+  fits the tag. Facts under any other axis (the adjustment tables) are skipped; the axis names met
+  are in `stats.other_axes`. Per measure and fiscal year: a figure with no person is one row
+  (`seq` 0, `persons` = how many people the tag was also filed for); a principal executive's
+  figure filed only per person is one row per person, largest first (`dimensioned` true); an
+  average filed only per person is skipped (`skipped_neo_per_person`). **The person is never
+  stored or logged** (no member name, no `PeoName`; a unit test checks).
+- **Writing.** Per company in one transaction: the stored rows of every fiscal year the filing
+  states are replaced; years only an older filing stated are kept.
+- **Guards.** 40-minute budget (`partial`, `remaining`); five failed requests in a row = `failed`;
+  a 404 for a folder or instance is not an outage. **Shape guard:** nothing is written and no
+  company is marked until one instance has yielded a figure (this run, or rows already in the
+  table); 25 companies with a proxy statement and no figure, none with, end the run `failed`.
+  `SEC_PROXY_LIMIT` reads only the first N of the queue.
+- **Where it runs:** daily, its own matrix group `proxy-pay` in `ingest.yml` (both lists); never
+  asked first, then at most 150 a run of those asked more than 30 days ago. In
+  `scripts/freshness-check.mjs` by run. Test fake: `scripts/fake-sec-proxy.mjs` through
+  `SEC_DATA_BASE` and `SEC_EDGAR_BASE` (tests only; modes ok, newer, noshape, down; `FAKE_SLOW_MS`).
+- **The instance's inner layout (contexts, facts as elements) was written from knowledge of XBRL,
+  not from a file seen whole** (sec.gov is not reachable from the cloud sandbox, and the fetch
+  route strips markup). The first run on a GitHub runner is the proof: see the note below.
+- **For stage 2 (showing them), not started:** the web loader (`web/src/lib/execpay-build.ts`) reads
+  `exec_pay` only. Decide there: a proxy figure with `seq` 0 and `persons` at most 1 can fill a
+  year frames lack; a year with several people needs wording of its own (two figures, never a
+  name, never added together); compare the two sources where both have a figure before trusting
+  either (`select ... from exec_pay e join exec_pay_proxy p using (cik, measure, fiscal_year_end)
+  where p.seq = 0 and e.value <> p.value`). The methodology and `ExecutivePay.astro` say
+  "frames": change the wording with the loader, after the redesign branch has merged.
+- **13F trim (the other half of the queue item): no code needed.** `inst_holdings` holds four
+  quarters (3.7 million rows, 917 MB) because the first load ran with `keep_periods` 4. The source
+  already deletes everything older than the newest two periods at the end of every run, also when
+  every data set is already loaded, and the monthly `form13f-bulk` run of the 20th uses the default
+  of 2. So the table trims itself on 2026-12-20. A delete does not shrink the file on disk; the
+  space is reused. Not done by hand: an unattended delete of 1.8 million rows is not this run's call.
