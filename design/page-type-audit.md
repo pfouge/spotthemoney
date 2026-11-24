@@ -1419,3 +1419,7 @@ Each line is a selector that exists in the current build on that page type. Take
 - **Embeds:** `EmbedLayout` single chart, canonical link to the full page, noindex
 
 The verifiers in `scripts/verify-*.mjs` (guides, links, filters, share, a11y, screener, directory and others) read many of these selectors; a selector removed from the page breaks that verifier by design.
+
+## Redesign, second pass: stock and company pages (E2)
+
+How each principle was applied: summary first (identity row with Follow, Cite, Share; compact facts; answer clamped to two lines; eight glance tiles; one row of compact charts), detail on demand (panels with previews of 5 rows, 8 for the two transaction tables; trailing columns marked `data-col="more"` on the insiders and members tables; "More figures" and the codes table closed), one place per figure (Cite and Share beside the h1 only; panel notes clamp to two lines, full text stays in the DOM), grouping (Trading, Ownership, Company, Washington, About, each a 12-column `.panels` grid; a group with no panels is absent). Numbers (desktop 1280 / phone 390, big data): /stocks/vmfk/ 14807 to 9314 / 18823 to 12613; /stocks/spy/ 4345 to 3761 / 5033 to 4157; /stocks/nvda/ 13297 to 9082 / 17107 to 12109. Short of the 60% target; see report-E2.

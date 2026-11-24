@@ -4,6 +4,7 @@
 // this address redirects to it (pages/companies/[...rest].astro). Insiders, their transactions,
 // and the same company's federal contracts and lobbying (components/WashingtonRecords.astro).
 import LearnMore from "../../components/LearnMore.astro";
+import EntityActions from "../../components/EntityActions.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
 import PageGroup from "../../components/PageGroup.astro";
@@ -112,7 +113,7 @@ const glance = [
 ];
 const groupList = hasData ? [
   { id: "trading", label: "Trading" },
-  ...(holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []),
+  ...(plannedN || holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []),
   ...(companyShown ? [{ id: "company", label: "Company" }] : []),
   { id: "washington", label: "Washington" },
   { id: "record", label: "About this record" },
@@ -131,8 +132,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 ---
 <BaseLayout title={[`${c.name} Insider Trades, Contracts & Lobbying`, `${c.name} Insider Trades & Contracts`, `${c.name} Insider Trades`]} description={description} section="Companies">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks and companies", path: "/stocks/" }, { name: c.name, path }]} />
-  <p class="eyebrow">Company{c.cik ? <> <span class="x">/</span> CIK {c.cik}</> : null}</p>
-  <div class="title-row"><h1>{c.name}</h1><Follow kind="company" entity={c.slug!} label={c.name} /></div>
+  <div class="entity-top" data-entity-top>
+  <div class="entity-id"><h1>{c.name}</h1><Follow kind="company" entity={c.slug!} label={c.name} /><EntityActions /></div>
   <dl class="facts" data-entity-facts>
     {securities.length > 0 && <div><dt>{securities.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{[...new Map(securities.map((s) => [s.ticker, s])).values()].map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}</dd></div>}
     {industry && <div data-industry><dt>Industry, as the SEC classifies it</dt><dd>{industryLink ? <a href={industryLink}>{industry.label}</a> : industry.label}</dd></div>}
@@ -145,16 +146,20 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     {lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(lastTrade)}</dd></div>}
   </dl>
 
-  <Answer text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
+
+  <Answer actions={false} text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
   <ReviewNote show={c.underReview} what="Insider rows" />
 
   <Glance items={hasData ? glance : []} />
 
+  <VizStock company={c} />
+  </div>
+
   <GroupBar groups={groupList} />
 
   <PageGroup id="trading" label="Trading">
-  <VizStock company={c} />
-
+  <div class="panels" data-trading-panels>
+  <section class="panel" data-panel aria-labelledby="insiders">
   <h2 id="insiders">Insiders</h2>
   {c.insiders.length === 0 ? <p class="empty-reason">No reporting owners on file for this issuer yet.</p> : (
     <div class="tablewrap">
@@ -169,9 +174,10 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </div>
   )}
   {c.insiders.length > 0 && <p class="section-note">Rows are this company's Form 4 rows for each person. "Bought" and "sold" count open-market purchases (code P) and sales only. More in <a href="/guides/insider-buying-vs-insider-selling/">insider buying and insider selling</a>.</p>}
+  </section>
 
   {memberList.length > 0 && (
-    <section aria-labelledby="members" data-entity-members>
+    <section class="panel" data-panel aria-labelledby="members" data-entity-members>
       <h2 id="members">Members of Congress who traded {c.primaryTicker ?? "this stock"}</h2>
       <p class="section-note">From periodic transaction reports that name the company's stock. Amounts are the sums of the ranges as filed. Every row is on the {primarySec ? <a href={securityPath(primarySec)}>{primarySec.ticker} page</a> : "stock page"}.</p>
       <div class="tablewrap">
@@ -187,31 +193,38 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </section>
   )}
 
+  <section class="panel" data-panel data-span="12" aria-labelledby="insider-transactions">
   <h2 id="insider-transactions">Insider transactions</h2>
   <DownloadCsv file={c.primaryTicker ? (await getDownloads()).stock.get(c.primaryTicker.toLowerCase()) : undefined} note="insider and congressional rows for this ticker" />
-  <TxnTable model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
+  <TxnTable preview={8} model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
+  </section>
+  </div>
 
-  <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
 
   </PageGroup>
 
   <AdSlot label="Advertisement" />
 
-  {(holdersN > 0 || holdingsN > 0 || instN > 0) && (
+  {(plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
+      <div class="panels" data-ownership-panels>
+  <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
       <LargeHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
 
       <InstHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "inst")} />
 
       <ReportedHoldings model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+      </div>
     </PageGroup>
   )}
 
   {companyShown && (
     <PageGroup id="company" label="Company">
+      <div class="panels" data-company-panels>
       <Financials model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "financials")} />
       <ExecutivePay model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "execpay")} />
       <CompanyEvents model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "events")} />
+      </div>
     </PageGroup>
   )}
 

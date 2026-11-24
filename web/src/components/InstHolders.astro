@@ -26,7 +26,7 @@ const heads = [
 ];
 ---
 {c && s && inst.period && (
-  <section aria-labelledby="institutional-holders" data-inst-holders data-cik={cik!.padStart(10, "0")} data-managers={c.managers} data-options={c.options} data-period={inst.period} data-prior={inst.prior ?? ""}>
+  <section class="panel" data-panel aria-labelledby="institutional-holders" data-inst-holders data-cik={cik!.padStart(10, "0")} data-managers={c.managers} data-options={c.options} data-period={inst.period} data-prior={inst.prior ?? ""}>
     <h2 id="institutional-holders">Institutional holders: Form 13F</h2>
     <p data-ih-summary>{instSentence(name, inst.period, inst.prior, s)}</p>
     <p class="ih-note" data-ih-caveat>{INST_CAVEAT} <a href="/guides/form-13f-institutional-holdings/">What Form 13F is</a>.</p>

@@ -17,7 +17,7 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 const heads = [{ l: "Date", t: "num" }, { l: "Type", t: "text" }, { l: "Contributor", t: "text" }, { l: "Payee", t: "text" }, { l: "Honoree, as typed", t: "text" }, { l: "Amount", t: "num" }];
 ---
 {s && total > 0 && (
-  <section aria-labelledby="filer-contributions" data-lobby-filer data-items={total}>
+  <section class="panel" data-panel aria-labelledby="filer-contributions" data-lobby-filer data-items={total}>
     <h2 id="filer-contributions">Contributions this company's lobbying filings report</h2>
     <p data-lf-summary>{companySummary(s.registrants[0] ?? name, s.years, fmt)}</p>
     <p class="lc-note" data-lf-caveat>{LOBBY_CONTRIB_FILER_CAVEAT} <a href="/lobbyist-contributions/">All lobbyist contributions</a> · <a href="/guides/lobbying-disclosure-reports/#contributions">How to read an LD-203 report</a>.</p>

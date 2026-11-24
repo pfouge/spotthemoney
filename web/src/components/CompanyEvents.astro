@@ -19,7 +19,7 @@ const counts = itemCounts(rows);
 const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 ---
 {rows.length > 0 && (
-  <section aria-labelledby="company-events" id="company-events-section" data-company-events data-cik={cik!.padStart(10, "0")} data-reports={rows.length} data-amendments={s.amendments}>
+  <section class="panel" data-panel aria-labelledby="company-events" id="company-events-section" data-company-events data-cik={cik!.padStart(10, "0")} data-reports={rows.length} data-amendments={s.amendments}>
     <h2 id="company-events">Company events: Form 8-K reports</h2>
     <p data-ev-summary>{summarySentence(name, s)}</p>
     <p class="ev-note" data-ev-caveat>{EVENT_CAVEAT} <a href="/guides/form-8-k-company-events/">What a Form 8-K is</a>.</p>

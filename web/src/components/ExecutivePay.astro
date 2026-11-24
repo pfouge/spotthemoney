@@ -18,7 +18,7 @@ let marks = 0;
 for (const y of years) for (const k of PAY_KEYS) if (payMarked(k, y.values[k])) marks++;
 ---
 {years.length > 0 && (
-  <section aria-labelledby="executive-pay" id="executive-pay-section" data-executive-pay data-cik={k10} data-years={all.length} data-shown={years.length}>
+  <section class="panel" data-panel aria-labelledby="executive-pay" id="executive-pay-section" data-executive-pay data-cik={k10} data-years={all.length} data-shown={years.length}>
     <h2 id="executive-pay">Executive pay, as filed</h2>
     <p data-pay-summary>{paySummary(name, all)}</p>
     <p class="pay-note" data-pay-caveat>{PAY_CAVEAT} <a href="/guides/executive-pay-pay-versus-performance/">How to read the table</a>.</p>

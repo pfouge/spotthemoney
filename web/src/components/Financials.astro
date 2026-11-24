@@ -36,7 +36,7 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
 ];
 ---
 {f && all.length > 0 && (
-  <section aria-labelledby="financials" data-financials data-cik={cik10} data-unit={f.unit} data-years={years.length} data-quarters={quarters.length} data-debt={debtLine ? f.debtTags[0] : debtSeveral ? "several" : ""}>
+  <section class="panel" data-panel data-span="12" aria-labelledby="financials" data-financials data-cik={cik10} data-unit={f.unit} data-years={years.length} data-quarters={quarters.length} data-debt={debtLine ? f.debtTags[0] : debtSeveral ? "several" : ""}>
     <h2 id="financials">Financials, as filed</h2>
     <p data-fin-summary>{summarySentence(name, f)}</p>
     <p class="fin-note" data-fin-caveat>{FIN_CAVEAT} <a href="/methodology/#financials">How these figures are read</a>. The newest figures of every tracked company are side by side in the <a href="/company-financials/">company financials screener</a>.</p>
