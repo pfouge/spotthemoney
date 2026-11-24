@@ -34,10 +34,11 @@ const ld = { "@context": "https://schema.org", "@type": "FAQPage", "@id": `${SIT
         <h2 id={g.key}>{g.label}</h2>
         <div class="faq-list">
           {g.guides.flatMap((x) => x.faqs.map((f) => (
-            <div class="faq-item" id={slug(f.q)}>
-              <h3>{f.q}</h3>
-              <p>{f.a} <a class="faq-more" href={guidePath(x.slug)}>{x.title}&nbsp;→</a></p>
-            </div>
+            <details class="faq-item" id={slug(f.q)} data-remember>
+              <summary><h3>{f.q}</h3></summary>
+              <p>{f.a}</p>
+              <p><a class="faq-more" href={guidePath(x.slug)}>{x.title}&nbsp;→</a></p>
+            </details>
           )))}
         </div>
       </section>

@@ -6,6 +6,7 @@
 // for the EEA, the UK and Switzerland. Update POLICY_UPDATED and the text together whenever a
 // third-party script, a form or an account feature is added. Not reviewed by a lawyer yet.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ProseBody from "../components/ProseBody.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
@@ -33,7 +34,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p class="lede">What this site learns about you when you visit, and what it does not.</p>
   <Answer text="Everything on Spot the Money can be read without an account; a free account, needed only for watchlists, holds your email address and the pages you follow, and the site does not sell personal information. Visits are counted with Cloudflare Web Analytics and Google Analytics, which uses cookies outside Europe; the site is paid for by advertising from Google AdSense, which uses cookies, and visitors from Europe are asked for consent first. The share-price charts and the advertising come from other companies and follow their own privacy rules." updated={POLICY_UPDATED} sourceNote="Privacy policy" />
 
-  <div class="prose">
+  <ProseBody min={3}>
   <h2 id="short">The short version</h2>
   <p>You can read everything on spotthemoney.com without an account. If you choose to create a free account to follow members, insiders, stocks or companies, it holds your email address and your watchlists, and you can delete it at any time. The site never asks for a payment. We do not sell personal information. We count visits with two tools: Cloudflare Web Analytics, which uses no cookies, and Google Analytics, which uses cookies for visitors outside the European Economic Area, the UK and Switzerland. Two other things on the site come from other companies and follow those companies' own privacy rules: the share-price charts on stock pages, and the advertising, which is served by Google AdSense and pays for the site.</p>
 
@@ -91,6 +92,6 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
 
   <h2 id="contact">Contact</h2>
   <p>spotthemoney.com is operated by a Wyoming limited liability company. Questions and requests about privacy: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. See also the <a href="/terms/">Terms of use</a> and <a href="/about/">About</a>.</p>
-  </div>
+  </ProseBody>
   <JsonLd data={ld} />
 </BaseLayout>

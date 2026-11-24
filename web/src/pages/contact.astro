@@ -3,6 +3,7 @@
 // request. A page of its own (the footer used to carry only a mailto link) so that every page
 // links to a real contact page. No form: the site collects nothing, so contact is by email.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ProseBody from "../components/ProseBody.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
@@ -22,7 +23,7 @@ const ld = { "@context": "https://schema.org", "@type": "ContactPage", "@id": `$
 
   <Answer text={`To contact Spot the Money, email ${CONTACT_EMAIL}. Reports of an error are answered within five working days, and privacy requests within 30 days.`} updated={PAGE_UPDATED} sourceNote="Contact" />
 
-  <div class="prose">
+  <ProseBody min={5}>
   <h2 id="email">Email</h2>
   <p><a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
   <p>Mail is read by a person. Please write in English and include the address of the page you are writing about.</p>
@@ -43,6 +44,6 @@ const ld = { "@context": "https://schema.org", "@type": "ContactPage", "@id": `$
 
   <h2 id="not">What we cannot help with</h2>
   <p>We do not give investment, legal or tax advice, we cannot place or recommend trades, and we cannot change what a filer reported to the government. For a filing that is itself wrong, the remedy is an amended filing with the body that received it.</p>
-  </div>
+  </ProseBody>
   <JsonLd data={ld} />
 </BaseLayout>

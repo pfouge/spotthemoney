@@ -9,6 +9,7 @@ import { DESCRIPTION_SHOWN } from "../lib/contracts";
 import { ASSISTANCE_WINDOW_DAYS } from "../lib/assistance";
 import { shareText } from "../lib/lobbygifts";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ProseBody from "../components/ProseBody.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { getFlagship, CONGRESS_DEADLINE_DAYS, num } from "../lib/flagship";
@@ -58,7 +59,8 @@ import { COUNT_RULE, OUTSIDE_ROWS, CANDIDATE_MIN_ROWS, DESCRIPTION_SHOWN as OS_D
   <p class="lede">Every figure on this site is a public record, shown as filed, with the rule that produced it written down here. Site built {formatDate(model.builtAt)}.</p>
   <Answer text={`Spot the Money shows public U.S. government records as filed: SEC Form 4 insider trades, House STOCK Act trade reports, FEC contributions, Senate lobbying filings, USAspending contracts and Treasury rates, read once a day from the official sources. A transaction is shown only if its filing parsed cleanly, congressional trades count as late after ${CONGRESS_DEADLINE_DAYS} days, and every row links to its source filing.`} updated={model.builtAt} sourceNote="Rules below apply to every page" />
 
-  <h2 id="sources">Sources and cadence</h2>
+  <ProseBody>
+  <details class="sec" id="sec-sources" data-remember open><summary><h2 id="sources">Sources and cadence</h2></summary><div class="sec-body">
   <p>We read only official primary sources, once a day, with a client that identifies this site and its contact address on every request and never exceeds one request every 1.5 seconds per host:</p>
   <ul>
     <li><a href={SOURCES.edgar.url}>SEC EDGAR</a>: Form 4 ownership filings (XML) for a tracked set of about 70 large or frequently traded U.S. tickers plus every ticker that appears in a congressional filing. The record starts with filings made on or after {form4FloorText}; a few hundred older filings are stored but not shown, because a handful of rows from an earlier year would read as that whole year. Amendments (Form 4/A) are not merged into the original.</li>
@@ -70,16 +72,20 @@ import { COUNT_RULE, OUTSIDE_ROWS, CANDIDATE_MIN_ROWS, DESCRIPTION_SHOWN as OS_D
     <li><a href={SOURCES.treasury.url}>U.S. Treasury</a>: the daily par yield curve and the daily real (TIPS) yield curve; <a href={SOURCES.fiscaldata.url}>Treasury Fiscal Data</a>: I-Bond rates; <a href={SOURCES.bls.url}>BLS</a>: CPI-U, the input to the I-Bond variable rate.</li>
   </ul>
 
-  <h2 id="publishing-bar">The publishing bar</h2>
+  </div></details>
+  <details class="sec" id="sec-publishing-bar" data-remember open><summary><h2 id="publishing-bar">The publishing bar</h2></summary><div class="sec-body">
   <p>A row is shown only if its filing parsed cleanly (review approved, confidence at least 0.9). Rows from a source whose first sample has not yet been checked by an editor are shown with an "under review" note on the page and are excluded from the data feed and from the daily social thread until the check is complete. Nothing is inferred, filled in or estimated: a blank cell means the filing did not state it.</p>
 
-  <h2 id="lag">Disclosure lag and late filings</h2>
+  </div></details>
+  <details class="sec" id="sec-lag" data-remember><summary><h2 id="lag">Disclosure lag and late filings</h2></summary><div class="sec-body">
   <p>Lag is the disclosure date minus the trade date, in calendar days. Members of Congress must file within {CONGRESS_DEADLINE_DAYS} days of a trade (STOCK Act); a row is marked late when the report's filing date is later than that. Corporate insiders must file Form 4 within two business days; a row is marked late when the filing date is more than four calendar days after the trade (a conservative rule that never marks a weekend or holiday as late).</p>
 
-  <h2 id="values">Values</h2>
+  </div></details>
+  <details class="sec" id="sec-values" data-remember><summary><h2 id="values">Values</h2></summary><div class="sec-body">
   <p>For Form 4 rows, value is shares × the price reported on the filing (a weighted average when the filing says so); rows with no price, such as grants or option exercises at zero, show no value and never count as buys or sales. Options, warrants and other derivative rows are listed in the tables, marked derivative, but are left out of every buy and sell total and off the trade maps: a put bought is not a purchase of the stock, and the dollars are a premium. Where a filer typed the total for a row into the price box, the per-unit price is worked out from it. When the same trade is reported in more than one Form 4, as when funds or trusts that own a stake together each file their own, it is counted once in totals, under the first filing received. Two rows are the same trade when the stock, date, share count, price and the shares owned afterwards all match and the trade is worth $250,000 or more; the repeated rows stay in the tables, marked as also in another filing. Congressional filings report ranges, so those rows show the range as filed and any total uses the top of the range. A few House reports give an exact dollar amount in place of a range; such a row shows that one figure, rounded to the dollar. A range with no stated top ("over $50,000,000", or "over $1,000,000" for an asset held only by a spouse or dependent child) is shown as "over" that figure. Contract amounts are federal obligations on the action, which can be negative. Lobbying amounts are the income or expense reported for the quarter.</p>
 
-  <h2 id="notable">Notable trades on the home page</h2>
+  </div></details>
+  <details class="sec" id="sec-notable" data-remember><summary><h2 id="notable">Notable trades on the home page</h2></summary><div class="sec-body">
   <p>The feed on the home page lists filings that meet one of five written rules. Only published rows count. A row is left out when it is a derivative, a repeat of a trade already counted from another filing, has no ticker, or has a trade date that is missing or later than its filing date. The rules say what a filing shows and nothing about why someone traded. Windows count from the date a trade was disclosed; "Today" means the newest disclosure date in the data. The feed opens on clusters over 7 days, and shows 30 days instead when no cluster was filed in the last 7.</p>
   <ul>
     <li><strong>Insider buy</strong>: a Form 4 open-market purchase (code P) that is not under a 10b5-1 plan.</li>
@@ -91,7 +97,8 @@ import { COUNT_RULE, OUTSIDE_ROWS, CANDIDATE_MIN_ROWS, DESCRIPTION_SHOWN as OS_D
   </ul>
   <p>Insider values are shares times the filed price. Congress values are the range as filed. The feed covers every company whose insiders have filed Form 4 with the SEC since October 2025, not only the companies on the map. When a window holds more insider buys or large sales than the page can carry, the feed keeps the largest by value (up to {FEED_CAPS.buys[1]}, {FEED_CAPS.buys[7]} and {FEED_CAPS.buys[30]} buys and {FEED_CAPS.sales[1]}, {FEED_CAPS.sales[7]} and {FEED_CAPS.sales[30]} large sales for 1, 7 and 30 days) and states the true total in a line above the list. Clusters, stake changes and congressional trades are never cut. Pages for companies outside the large-company set are built when opened, not in advance.</p>
 
-  <h2 id="flags">Flags and feeds</h2>
+  </div></details>
+  <details class="sec" id="sec-flags" data-remember><summary><h2 id="flags">Flags and feeds</h2></summary><div class="sec-body">
   <ul>
     <li><strong>Open-market buy</strong>: Form 4 transaction code P. This is the only code counted as a "buy" in ratios and feeds.</li>
     <li><strong>Cluster buy</strong>: three or more distinct insiders with code-P purchases of the same ticker within 30 days.</li>
@@ -100,7 +107,8 @@ import { COUNT_RULE, OUTSIDE_ROWS, CANDIDATE_MIN_ROWS, DESCRIPTION_SHOWN as OS_D
     <li><strong>Late</strong>: see above. <strong>First filing</strong>: the first filing by that person in our records, which start with the launch of each source.</li>
   </ul>
 
-  <h2 id="matching">Matching people and companies</h2>
+  </div></details>
+  <details class="sec" id="sec-matching" data-remember><summary><h2 id="matching">Matching people and companies</h2></summary><div class="sec-body">
   <p><strong>Market cap.</strong> The Market cap filter on the trade maps sorts companies into bands: mega ($200B and up), large ($10B–$200B), mid ($2B–$10B), small ($300M–$2B) and micro (under $300M). The figure behind a band is an estimate from SEC filings, not a market quote: the shares outstanding on the cover of the company's latest quarterly or annual report, multiplied by the median price of its most recent open-market insider trades. Where a company reports shares by class, or has no recent insider trade, the public float stated in its latest annual report is used instead. Funds, ETFs and foreign companies that file annual reports on Form 20-F report no public float and are left out when a market cap band is selected, as are companies whose insider filings have not been loaded yet.</p>
   <p>Insiders are identified by their SEC CIK. Members of Congress are matched by normalized name and chamber (the House index gives no stable id); a state and district come from the filing. Company pages match federal contracts and lobbying clients by exact normalized name (corporate suffixes ignored), which deliberately misses subsidiaries and alternate spellings rather than guess.</p>
   <p id="one-page"><strong>One page per company.</strong> A company with a ticker has one page, at the address of its main ticker (for example /stocks/nvda/). It holds the trades in that ticker, the company's ownership filings and financial figures, and its federal contracts and lobbying filings. An older address under /companies/ opens that page. When a company has several share classes or listings with records here (GOOGL and GOOG, a preferred share), they are on that one page, addressed by the ticker the SEC's list of company tickers gives first for the company; the address of another class opens the same page, and the page names every class it covers. A company with no ticker on this site keeps a page under /companies/. There is one list of them all, at /stocks/: every ticker page, then the companies with no ticker; the old list address /companies/ opens it. For companies outside the tracked set, whose pages hold insider filings only, the rule is the same: one page, at one ticker's address. When filings name such a company under several tickers (the symbol changed, there is a second class, or a filing states it differently), the page is at the first of them in the SEC's list of company tickers, or at the company's main ticker when the list names none; it lists the rows filed under every one of them and says which, and the other addresses open it.</p>
@@ -135,16 +143,20 @@ import { COUNT_RULE, OUTSIDE_ROWS, CANDIDATE_MIN_ROWS, DESCRIPTION_SHOWN as OS_D
   <p id="committees"><strong>Committee pages.</strong> Each full committee with a member on record has <a href="/congress-committees/">a page</a>: its current members, the tickers that appear most often in the reports they disclosed in the last 365 days, and their trades, newest disclosure first. A member who sits only on a subcommittee is listed under the full committee. The roster gives today's assignments and no history, so a committee's trades are every trade on record for its current members, including trades made before a member joined, and trades by members who have left the committee are not on its page. "Trades, 12 months" goes by disclosure date. Nothing on these pages compares a trade with a committee's work; a seat is context and not evidence about any trade. When lobbyist contributions are on the site, a committee page also lists its current members who are named as honoree on at least one Form LD-203 item (the member pages' own matching), with counts of items and filers and the newest item date; no amounts are added across members and a contribution is not tied to the committee's work.</p>
   <p id="lobbying-issues"><strong>Lobbying by issue.</strong> A lobbying report names one or more of the 79 general issue areas and states one amount for the quarter. Lobbying tables list every issue area a filing names. The <a href="/lobbying-issues/">issue pages</a> count a filing under every issue it names, so their rows add up to more than the number of filings, and the amount beside an issue is the total on the filings that name it: a filing that names several issues adds its whole amount to each. Those amounts overlap, are never added together on this site, and do not say what was spent on one issue. The chart on the <a href="/lobbying/">lobbying page</a> counts each filing once, under its first issue. Figures are for the current filing year, one row per registrant, client and period (the latest posted version of an amended report); registrations usually name no issue. The lobbying CSV files carry every issue code of each filing.</p>
 
-  <h2 id="social">The daily thread</h2>
+  </div></details>
+  <details class="sec" id="sec-social" data-remember><summary><h2 id="social">The daily thread</h2></summary><div class="sec-body">
   <p>Once a day a scripted thread lists notable published filings (the largest by value, late filings, first filings, cluster buys) with a link to the page and to the source document. It contains facts and links only.</p>
 
-  <h2 id="never">What this site never does</h2>
+  </div></details>
+  <details class="sec" id="sec-never" data-remember><summary><h2 id="never">What this site never does</h2></summary><div class="sec-body">
   <p>No buy or sell recommendations, no forward-looking scores, no trade execution or copy-trading, no inference of motive or wrongdoing from any filing. Historical performance, when shown, is computed only from disclosed trades against a stated benchmark and is not a prediction.</p>
 
-  <h2 id="corrections">Corrections</h2>
+  </div></details>
+  <details class="sec" id="sec-corrections" data-remember><summary><h2 id="corrections">Corrections</h2></summary><div class="sec-body">
   <p>Errors are fixed within five working days of a report; see <a href="/corrections/">the corrections page</a>.</p>
 
-  <h2 id="coverage">What is covered, and what is not</h2>
+  </div></details>
+  <details class="sec" id="sec-coverage" data-remember><summary><h2 id="coverage">What is covered, and what is not</h2></summary><div class="sec-body">
   <p>These counts are rebuilt with every update of the site, straight from the database; the same figures, by source and month, are in <a href="/data/coverage.json">/data/coverage.json</a>.</p>
   <ul>
     <li><strong>House trades.</strong> {num(sum(houseYear.map((f) => f.filings)))} periodic transaction reports filed in {thisYear} are on file here{houseIndex != null ? <span>; the House Clerk's {thisYear} index lists {num(houseIndex)}</span> : null}. {num(sum(houseYear.map((f) => f.published)))} of ours are shown; {num(sum(houseYear.map((f) => f.filings - f.published)))} are held back, mostly scanned or handwritten reports that software cannot read reliably and a person has not yet transcribed. A member who files only on paper will be missing from the maps and tables until then.</li>
@@ -170,7 +182,10 @@ import { COUNT_RULE, OUTSIDE_ROWS, CANDIDATE_MIN_ROWS, DESCRIPTION_SHOWN as OS_D
     </div>
   )}
 
-  <h2 id="status">Data status</h2>
+  </div></details>
+  <details class="sec" id="sec-status" data-remember><summary><h2 id="status">Data status</h2></summary><div class="sec-body">
   <p class="mono small">people {num(model.counts.people ?? 0)} · companies {num(model.counts.companies ?? 0)} · securities {num(model.counts.securities ?? 0)} · filings {num(model.counts.filings ?? 0)} · transactions {num(model.counts.txns ?? 0)} · lobbying {num(model.counts.lobbying ?? 0)} · contracts {num(model.counts.contracts ?? 0)} · built {model.builtAt}</p>
+  </div></details>
+  </ProseBody>
   <JsonLd data={ld} />
 </BaseLayout>

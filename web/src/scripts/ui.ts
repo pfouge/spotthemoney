@@ -154,3 +154,29 @@ if ("MutationObserver" in window) {
   const mo = new MutationObserver(() => { clearTimeout(scrollerTimer); scrollerTimer = window.setTimeout(markScrollers, 150); });
   for (const el of document.querySelectorAll(".summary, .hm-bar")) mo.observe(el, { childList: true });
 }
+
+// Redesign (2026-11-23): a link or address that points inside a closed disclosure opens it.
+// Remembered disclosures (uistate.ts) restore their last state on load, so this also runs on
+// `load` and `hashchange`, and the address wins over what was remembered.
+function openToHash(scroll: boolean): void {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  let changed = false;
+  for (let p = el.closest("details"); p; p = p.parentElement?.closest("details") ?? null) {
+    if (!p.open) { p.open = true; changed = true; }
+  }
+  if (changed || scroll) el.scrollIntoView();
+}
+openToHash(false);
+window.addEventListener("load", () => openToHash(true));
+window.addEventListener("hashchange", () => openToHash(true));
+
+// The contents list sits open beside the text on a wide screen and folds on a phone.
+const tocMq = window.matchMedia("(min-width: 1024px)");
+const syncToc = (): void => {
+  document.querySelectorAll<HTMLDetailsElement>("details[data-toc]").forEach((d) => { d.open = tocMq.matches; });
+};
+syncToc();
+tocMq.addEventListener("change", syncToc);

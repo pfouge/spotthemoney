@@ -1,0 +1,13 @@
+---
+// "On this page" contents list (redesign, 2026-11-23). Closed on a phone, open beside the text from
+// 1024px up (scripts/ui.ts sets that; without JavaScript it simply stays open). Built from the
+// headings the page really has, by ProseBody, so it cannot list a section that is not there.
+interface Props { items: { id: string; text: string }[]; label?: string }
+const { items, label = "On this page" } = Astro.props;
+---
+{items.length > 1 && (
+  <details class="toc" open data-toc>
+    <summary>{label}</summary>
+    <ol>{items.map((i) => <li><a href={`#${i.id}`}>{i.text}</a></li>)}</ol>
+  </details>
+)}

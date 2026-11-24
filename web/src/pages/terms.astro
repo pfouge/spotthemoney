@@ -4,6 +4,7 @@
 // (5 U.S.C. § 13107(c) for congressional reports, 52 U.S.C. § 30111(a)(4) for FEC filings).
 // Update TERMS_UPDATED and the text together. Not reviewed by a lawyer yet.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ProseBody from "../components/ProseBody.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
@@ -25,7 +26,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <p class="lede">The rules for using this site and reusing what it publishes.</p>
   <Answer text="Spot the Money republishes public U.S. government records as information, not investment advice, and every figure should be checked against its linked source before it is relied on. Figures may be quoted with a credit and a link, within the legal limits on reusing congressional and FEC records." updated={TERMS_UPDATED} sourceNote="Terms of use" />
 
-  <div class="prose">
+  <ProseBody min={3}>
   <h2 id="short">The short version</h2>
   <p>Spot the Money is a free reference site that republishes public U.S. government records. It is information, not advice. Check any figure against the linked source before you rely on it. You may quote and reuse what you find here with a credit and a link, within the limits the law puts on some of the underlying records. By using the site you agree to these terms; if you do not agree, please do not use it.</p>
 
@@ -80,6 +81,6 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
 
   <h2 id="contact">Contact</h2>
   <p>Questions about these terms: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. See also the <a href="/privacy/">Privacy policy</a> and <a href="/about/">About</a>.</p>
-  </div>
+  </ProseBody>
   <JsonLd data={ld} />
 </BaseLayout>
