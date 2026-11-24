@@ -11,6 +11,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
+import HubFigures from "../components/HubFigures.astro";
 import JsonLd from "../components/JsonLd.astro";
 import DownloadCsv from "../components/DownloadCsv.astro";
 import HubStyles from "../components/HubStyles.astro";
@@ -46,6 +47,7 @@ const th = (k: LhSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_LH_VIEW.sor
   <p class="lede">Holders that filed a Schedule 13D or 13G with the SEC about a company on this site, each by its newest statement.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR, Schedules 13D and 13G" />
+  <HubFigures items={[{k:"Statements on record",v:num(all.length)},{k:"Companies",v:num(companies)},{k:"Matching the default view",v:num(first.total)}]} />
 
   {!shown ? <p class="empty-reason">Schedule 13D and 13G statements are being refreshed. Check back after the next daily update.</p> : (
     <div class="hubscr" data-hub-root data-src={LARGE_DATA} data-total={all.length} data-built={built}>
@@ -69,8 +71,6 @@ const th = (k: LhSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_LH_VIEW.sor
         </div>
       </div>
       <p class="section-note hub-count"><span data-hub="count" aria-live="polite">{lhSummaryLine(first)}</span> <button type="button" class="linklike" data-hub="reset" hidden>Reset filters</button></p>
-      <DownloadCsv file={csv} note="every statement on record for these companies, not only the rows filtered here" />
-      <p class="dl-row hub-dl"><button type="button" class="dl" data-hub="download">Download these rows (CSV)</button> <span class="dl-meta">The holders that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
 
       <div class="tablewrap"><table class="data hub-table">
         <thead><tr>
@@ -83,7 +83,7 @@ const th = (k: LhSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_LH_VIEW.sor
         <tbody data-hub="rows">
           {first.rows.map((r) => (
             <tr data-statement={r.accession}>
-              <td><a href={r.c.path}>{r.c.name}</a>{r.c.ticker && <span class="soft small mono"> {r.c.ticker}</span>}</td>
+              <td><span class="ent"><a href={r.c.path}>{r.c.name}</a>{r.c.ticker && <span class="tk"> {r.c.ticker}</span>}</span></td>
               <td class="wrap">{r.path ? <a href={r.path}>{r.holder}</a> : r.holder}{r.persons > 1 && <span class="lh-sub">with {num(r.persons - 1)} other reporting {r.persons - 1 === 1 ? "person" : "persons"}</span>}</td>
               <td>Schedule {r.schedule}</td>
               <td class="num">{r.percent != null ? percentText(r.percent) : ""}{r.percent != null && r.percent < FILING_THRESHOLD && <span class="lh-sub">below {FILING_THRESHOLD}%</span>}</td>
@@ -102,13 +102,16 @@ const th = (k: LhSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_LH_VIEW.sor
         <button type="button" class="chip" data-hub="next" disabled={first.pages <= 1}>Next</button>
         <label class="hub-per soft">Rows per page <select data-hub-ctl="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
       </div>
+      <p class="dl-row hub-dl"><button type="button" class="dl" data-hub="download">Download these rows (CSV)</button> <span class="dl-meta">The holders that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+      <DownloadCsv file={csv} note="every statement on record for these companies, not only the rows filtered here" />
       <noscript><p class="section-note">These are the first {num(first.rows.length)} of {num(first.total)} holders, newest statement first. The filters need JavaScript; the CSV file above has every statement on record.</p></noscript>
     </div>
   )}
 
-  <h2 id="about">What this table shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this table shows</h2></summary><div class="ref-body">
   <p>One row for each holder and company: the holder's newest Schedule 13D or 13G statement about a company with a page on this site. A holder files a statement after passing {FILING_THRESHOLD}% of a class of a company's voting shares, and again when it falls below {FILING_THRESHOLD}%, so a row under {FILING_THRESHOLD}% is a notice that the holder is no longer above that mark.</p>
   <p>A statement says what the filer says it owned on the event date, not what it traded. When a statement names several reporting persons, the percent and shares are the largest that any one of them states, never a sum, and rows are not added together: this page counts holders and companies only. The record starts with statements published from {RECORD_START_LABEL} on, so it is not a full list of shareholders. A holder's name links to a page here only when the filer's SEC number belongs to exactly one person or company with a page. See the <a href="/methodology/#schedule-13">methodology</a> and the <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">guide to Schedules 13D and 13G</a>.</p>
+  </div></details>
   <AdSlot />
   <p class="disclaimer"><strong>Not investment advice.</strong> Statements shown as filed with the SEC; no judgement about any holder is made or implied.</p>
   {ld && <JsonLd data={ld} />}

@@ -7,6 +7,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, personPath, num, plural, senateShown } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -42,6 +43,7 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
   <p class="lede">Who sits on each committee today, and the stock trades those members have disclosed.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: congress-legislators committee data; House Clerk and Senate eFD PTRs" : "Sources: congress-legislators committee data; House Clerk PTRs"} />
+  <HubFigures items={[{k:"Committees",v:num(committees.length)},{k:"Members seated",v:num(seated.size)},{k:"Members with trades",v:num(trading.size)}]} />
 
   {committees.length === 0 ? <p class="empty-reason">No committee assignments on record yet.</p> : (
     <section aria-labelledby="list" data-committees>
@@ -69,10 +71,11 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
 
   <AdSlot />
 
-  <h2 id="about">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this page shows</h2></summary><div class="ref-body">
   <p>One row for each full committee that has a member on record: the standing and select committees of the House and Senate, and the joint committees. A member who sits only on a subcommittee is counted under its full committee. A member on several committees is counted on each, so the columns do not add up to the number of members of Congress.</p>
   <p>The assignments are today's, from the public congress-legislators project, refreshed daily. This site has no history of past assignments. A committee's trades are therefore every trade its current members have disclosed, including trades made before a member joined the committee. Members who have left Congress are not listed on any committee.</p>
   <p>A committee seat is shown for context only. This site does not compare a trade with a committee's work, and a seat on a committee is not evidence about any trade. To filter members by committee together with chamber, party and state, use the <a href="/congress-members/">member directory</a>. To filter and sort the trades of one committee's members, open the committee's page and follow its link to the <a href="/congress-trades/">trade screener</a>. How the figures are built: <a href="/methodology/#committees">methodology</a>.</p>
+  </div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>

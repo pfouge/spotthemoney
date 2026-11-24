@@ -643,6 +643,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | landing-washington-390 | 7.8 | 261 | - | - | 14 | 3 | 4 | 2 | 36 | 0 | 7 | 0 | 0 | 0/0 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.8 section landings)**
+
+- Overview first: each landing opens with a figure row; the Common questions block is closed.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: /congress/ 11.6 to 7.5 screens at 1280, 14.8 to 10.2 at 390; first figure y 774 to 544; first table y 3185 to 3129. /stocks/ 4.2 to 2.9 and 5.6 to 3.5; /washington/ 4.3 to 3.3 and 7.3 to 5.4. Route tiles with a live figure each were not built (skipped).
+
 ### 3.9 Rates and markets detail pages
 
 **Routes:** `/rates/i-bonds/`, `/rates/tips/`, `/rates/treasury-yields/`, `/markets/largest-stock-exchanges/`
@@ -695,6 +706,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | ratedetail-exchanges-390 | 12.3 | 261 | - | 3439 | 14 | 4 | 4 | 3 | 10 | 0 | 0 | 0 | 4 | 4/4 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.9 rates and markets pages)**
+
+- Overview first: headline figures not added on rates pages (skipped); reference blocks on tips, treasury-yields and markets are closed.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: treasury-yields page 5.3 to 4.7 screens at 1280, 5.7 to 4.9 at 390; first figure y 631 to 544; first table y 1792 to 1675. Markets 8.9 to 5.9 screens at 1280, 11.5 to 7.1 at 390.
+
 ### 3.10 Dataset hub (client-side filter)
 
 **Routes:** `/company-events/`, `/executive-pay/`, `/institutional-holders/`, `/planned-sales/`, `/large-holders/`, `/congress-votes/`, `/outside-spending/`, `/grants/`, `/lobbyist-contributions/`
@@ -740,6 +762,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | hub-grants-1280 | 8.2 | 293 | 657 | 998 | 13 | 3 | 3 | 2 | 4 | 0 | 0 | 0 | 5 | 5/5 | 0 (none) |
 | hub-grants-390 | 11.9 | 261 | 710 | 1216 | 12 | 3 | 4 | 2 | 4 | 0 | 0 | 0 | 5 | 5/5 | 0 (none) |
 
+
+**Redesign: how each principle was applied (3.10 dataset hubs)**
+
+- Overview first: 3 to 5 headline figures sit above the filters on company-events, executive-pay, planned-sales, large-holders, institutional-holders and congress-votes.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: company-events 2.9 to 2.5 screens at 1280, 4.1 to 3.4 at 390; first figure y none to 576 (665 at 390); first table y 803 to 708 (975 to 797).
 
 ### 3.11 Dataset page, server-rendered
 
@@ -794,6 +827,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | serverhub-disclosures-390 | 9.5 | 261 | - | 615 | 11 | 3 | 5 | 3 | 3 | 0 | 0 | 0 | 1 | 0/0 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.11 server-rendered dataset pages)**
+
+- Overview first: lobbying, contracts, donations and disclosures open with a figure row.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: lobbying 4.4 to 3.7 screens at 1280, 5.8 to 4.7 at 390; first figure y none to 520; first table y 1406 to 1345. Contracts 5.6 to 4.8 and 7.0 to 5.8; figure y 592.
+
 ### 3.12 Screener / directory
 
 **Routes:** `/congress-trades/`, `/congress-members/`, `/company-financials/`
@@ -840,6 +884,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | screener-company-financials-390 | 6.8 | 261 | - | 1069 | 11 | 3 | 4 | 2 | 5 | 0 | 0 | 0 | 1 | 1/1 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.12 screeners and directories)**
+
+- Overview first: congress-trades, company-financials and congress-members open with a figure row before any control.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: congress-trades 6.3 to 4.6 screens at 1280, 8.1 to 5.4 at 390; first figure y none to 576; first table y 930 to 844. company-financials 4.3 to 2.6 and 6.4 to 3.4.
+
 ### 3.13 List pages (committees, industries, lobbying issues)
 
 **Routes:** `/congress-committees/`, `/industries/`, `/lobbying-issues/`
@@ -882,6 +937,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | list-lobbying-issues-1280 | 2.9 | 293 | - | 662 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 1 | 1/1 | 0 (none) |
 | list-lobbying-issues-390 | 4.1 | 261 | - | 724 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 1 | 1/1 | 0 (none) |
 
+
+**Redesign: how each principle was applied (3.13 list pages)**
+
+- Overview first: committees, industries and lobbying-issues index pages open with a figure row.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: industries 2.8 to 2.3 screens at 1280, 3.9 to 2.9 at 390; first figure y none to 552; first table y 746 to 748.
 
 ### 3.14 Guides hub and FAQ
 

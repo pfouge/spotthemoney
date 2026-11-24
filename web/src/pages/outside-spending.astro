@@ -118,10 +118,11 @@ const newHeads: H[] = [["Date", "num"], ["Spender", "text"], ["Candidate", "text
     </>
   )}
 
-  <h2 id="about">How these numbers are counted</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">How these numbers are counted</h2></summary><div class="ref-body">
   <p>An independent expenditure is money a person or group spends on a communication that expressly advocates the election or defeat of a clearly identified federal candidate, without coordination with the candidate. The candidate does not receive it. Spenders report each one on a 24-hour or 48-hour notice and again on their next regular report, so the FEC's raw data lists many of them twice.</p>
   <p>{COUNT_RULE} A row with no amount or no stated side is listed and left out of the totals. Support and opposition are never added together or netted, and no figure here is "spent on" a member in the sense of a payment to them. Amounts are as reported: the FEC and the spender can amend them later. What the terms mean: <a href="/guides/campaign-donations-fec-data/#independent-expenditures">the guide</a>. How the page is built: <a href="/methodology/#outside-spending">methodology</a>.</p>
   <p>The payee a spender paid (a media buyer, a printer) is not shown, and individual donors to the spenders are not shown; the FEC's own search has both.</p>
+  </div></details>
   <JsonLd data={ld} />
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures as the spenders reported them to the FEC; this page does not say why anyone spent money.</p>
 </BaseLayout>

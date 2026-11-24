@@ -1,0 +1,15 @@
+---
+// Headline figures for a hub, screener or directory: three to five label/value tiles built from
+// numbers the page already computes. Placed before any control. Uses the shared .datastrip tiles.
+interface Item { k: string; v: string | number; n?: string; attr?: string }
+interface Props { items: Item[]; label?: string }
+const { items, label = "Headline figures" } = Astro.props;
+const shown = items.filter((i) => i.v !== "" && i.v != null).slice(0, 5);
+---
+{shown.length >= 2 && (
+  <div class="datastrip hubfigs" role="group" aria-label={label}>
+    {shown.map((i) => (
+      <div class="cell"><div class="k">{i.k}</div><div class="v">{typeof i.v === "number" ? i.v.toLocaleString("en-US") : i.v}</div>{i.n && <div class="delta">{i.n}</div>}</div>
+    ))}
+  </div>
+)}

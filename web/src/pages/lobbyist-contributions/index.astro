@@ -144,12 +144,14 @@ const th = (label: string, type: string, cls = "") => ({ label, type, cls });
   )}
 
   <div class="prose">
-  <h2 id="about-this-page">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about-this-page"><summary><h2 id="about-this-page">What this page shows</h2></summary><div class="ref-body">
   <p>Under the Lobbying Disclosure Act, every registered lobbyist and every lobbying firm files a Form LD-203 twice a year. It lists contributions to federal candidates, party committees and leadership PACs, payments for events honoring officials, and some other items, and it says whether the filer made none. This page totals those reports and lists the filers, the names that appear most, and the newest items. Lobbying filings, which say what is lobbied on, are on the <a href="/lobbying/">lobbying page</a>.</p>
   <p data-match-note>Some items name a member of Congress. This site ties an item to a member's page by one of two rules. First, the honoree field, once titles such as "Rep." and bracketed tags are removed, equals the member's full name, or equals first and last name where one member has that pair. Second, when the honoree does not name a member, the payee equals the name of that member's campaign committee, which this site links to the member by ids. A surname alone, a field naming several people, or a payee that only resembles a committee name matches nobody. {d.match.items > 0 ? `In ${d.newestYear}, ${num(d.match.matched)} of ${num(d.match.items)} items (${shareText(d.match)}) are tied to a member by these rules.` : ""} See <a href="/methodology/#lobbyist-contributions">methodology</a> and the <a href="/guides/lobbying-disclosure-reports/#contributions">guide to LD-203 reports</a>.</p>
   <p>A report is the filer's statement. It does not say why a contribution was made, and nothing on this site links one to a vote, a trade or any other action.</p>
-  <h2 id="where-from">Where the data comes from</h2>
+  </div></details>
+  <details class="ref" data-remember id="ref-where-from"><summary><h2 id="where-from">Where the data comes from</h2></summary><div class="ref-body">
   <p>The Senate Lobbying Disclosure database at lda.gov. {SENATE_NOTICE}</p>
+  </div></details>
   </div>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />

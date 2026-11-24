@@ -1,0 +1,74 @@
+/* Hubs, screeners, directories, landings (task U). Tokens from global.css only. */
+
+/* Entity cell: ticker or name in 600 first, the muted second part after it. The DOM keeps
+   "name ticker" order; row-reverse shows the ticker first. */
+.ent { display: inline-flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: var(--s-2); flex-wrap: wrap; }
+.ent > .tk { font-weight: 600; color: var(--ink); font-size: var(--t-sm); }
+.ent > a { font-weight: 400; color: var(--ink-2); text-decoration: none; }
+.ent > a:hover { color: var(--accent); text-decoration: underline; }
+.ent > a:only-child { font-weight: 600; color: var(--ink); }
+.ent .sub { color: var(--ink-2); font-size: var(--t-xs); font-weight: 400; }
+
+/* Headline figures */
+.hubfigs { margin: var(--s-2) 0 var(--s-4); }
+
+/* Filter row: one line on desktop, one swipeable line on phones. */
+.evhub .controls, .hubscr .controls, .paycompare .controls, .votes-hub .controls, .scr-controls, .fs-controls, .dir-controls {
+  display: flex; flex-wrap: nowrap; align-items: center; gap: var(--s-2); overflow-x: auto; scrollbar-width: none; padding: var(--s-1) 0; margin: var(--s-2) 0;
+}
+.evhub .controls::-webkit-scrollbar, .hubscr .controls::-webkit-scrollbar, .paycompare .controls::-webkit-scrollbar, .votes-hub .controls::-webkit-scrollbar { display: none; }
+.evhub .controls > *, .hubscr .controls > *, .paycompare .controls > *, .votes-hub .controls > * { flex: none; }
+.evhub .controls .ctl, .hubscr .controls .ctl, .paycompare .controls .ctl, .votes-hub .controls .ctl { position: relative; }
+.evhub .controls select, .hubscr .controls select, .paycompare .controls select, .votes-hub .controls select { max-width: 220px; }
+
+/* Quiet download button and note */
+.dl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: var(--s-3) 0; font-size: var(--t-sm); color: var(--ink-2); }
+.dl-row a.dl, .dl-row button.dl { display: inline-flex; align-items: center; gap: var(--s-2); height: 32px; padding: 0 var(--s-3); border: 1px solid var(--line-2); border-radius: var(--r-1); background: transparent; color: var(--accent); font: inherit; font-size: var(--t-sm); font-weight: 400; text-decoration: none; cursor: pointer; }
+.dl-row a.dl:hover, .dl-row button.dl:hover { background: var(--bg-2); }
+.dl-row .dl-meta { font-size: var(--t-xs); color: var(--ink-2); }
+
+/* Paged hub tables: wrapping cells, sticky head relative to the page, under the site header. */
+@media (min-width: 1024px) {
+  .evhub .tablewrap, .hubscr .tablewrap, .votes-hub .tablewrap { overflow: visible; max-height: none; }
+  .evhub table.data thead th, .hubscr table.data thead th, .votes-hub table.data thead th { top: var(--hdr); }
+  .evhub table.data td, .hubscr table.data td, .votes-hub table.data td { white-space: normal; }
+}
+@media (max-width: 1023px) {
+  .evhub .tablewrap, .hubscr .tablewrap, .votes-hub .tablewrap { max-height: 70vh; overflow: auto; }
+}
+.paycompare .tablewrap { max-height: 70vh; overflow: auto; }
+
+/* Pager */
+.ev-pager, .hub-pager, .pc-pager, .vt-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: var(--s-3) 0; font-size: var(--t-sm); }
+
+/* Reference blocks: closed details whose summary holds the unchanged heading. */
+details.ref { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: var(--s-5) 0; padding: 0; max-width: 100ch; }
+details.ref > summary { cursor: pointer; padding: var(--s-3) 0; list-style: none; }
+details.ref > summary::-webkit-details-marker { display: none; }
+details.ref > summary h2, details.ref > summary h3 { display: inline; margin: 0; font-size: var(--t-md); line-height: var(--lh-md); font-weight: 600; }
+details.ref > summary::after { content: "Show"; float: right; font-size: var(--t-xs); color: var(--accent); }
+details.ref[open] > summary::after { content: "Hide"; }
+details.ref > .ref-body { padding-bottom: var(--s-3); }
+
+/* Section landings: tiles that route to the section's pages */
+.routes { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-3) 0; margin: var(--s-3) 0 var(--s-5); }
+.routes a { display: block; padding: var(--s-1) var(--s-4); border-left: 1px solid var(--line); color: var(--ink); text-decoration: none; min-width: 0; }
+.routes a:first-child { padding-left: 0; border-left: 0; }
+.routes .k { font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--accent); }
+.routes .v { font-size: var(--t-lg); line-height: var(--lh-lg); font-weight: 600; margin-top: var(--s-1); }
+.routes .n { font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); margin-top: var(--s-1); }
+.routes a:hover .k { text-decoration: underline; }
+@media (max-width: 1023px) {
+  .routes { display: flex; overflow-x: auto; scrollbar-width: none; gap: 0 var(--s-5); }
+  .routes a { flex: none; min-width: 9rem; }
+}
+
+/* Dates, filing links and actions stay on one line in wrapping hub tables. */
+.evhub table.data td.mono, .hubscr table.data td.mono, .votes-hub table.data td.mono,
+.evhub table.data td:last-child, .hubscr table.data td:last-child { white-space: nowrap; }
+.ent { flex-wrap: nowrap; min-width: 0; }
+.ent > a { min-width: 0; }
+.ent > .tk { flex: none; }
+
+/* One quiet button style for both download controls. */
+p.dl-row button.dl, p.dl-row a.dl, .dl-row.scr-dl button.dl { height: 32px; padding: 0 var(--s-3); font-size: var(--t-sm); font-weight: 400; border-radius: var(--r-1); border: 1px solid var(--line-2); background: transparent; color: var(--accent); }

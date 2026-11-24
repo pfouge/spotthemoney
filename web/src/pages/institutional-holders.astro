@@ -8,6 +8,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
+import HubFigures from "../components/HubFigures.astro";
 import JsonLd from "../components/JsonLd.astro";
 import DownloadCsv from "../components/DownloadCsv.astro";
 import { getDownloads } from "../lib/downloads";
@@ -50,6 +51,7 @@ if (shown) console.log(`[web] institutional holders hub: ${companies.length} com
   <p class="lede">What funds and other institutional managers report holding each quarter, from SEC Form 13F.</p>
 
   <Answer text={answer} updated={inst.lastFiled ?? model.builtAt} sourceNote="Source: SEC EDGAR, Form 13F-HR filings" />
+  <HubFigures items={[{k:"Companies",v:num(companies.length)},{k:"Managers",v:num(managers.length)}]} />
 
   {!shown ? <p class="empty-reason">Form 13F figures are being refreshed. Check back after the next daily update.</p> : (
     <>
@@ -103,10 +105,11 @@ if (shown) console.log(`[web] institutional holders hub: ${companies.length} com
 
   <div class="prose">
   <AdSlot />
-  <h2 id="about">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this page shows</h2></summary><div class="ref-body">
   <p>An institutional investment manager that oversees at least $100 million in covered securities files a Form 13F with the SEC each quarter, up to 45 days after the quarter ends. It lists the manager's long positions on the quarter's last day. This page counts, for each company on this site, the managers that list it, and adds up the values they report.</p>
   <p>The figures are sums of what managers reported, as filed. An adviser and the fund it runs can report the same shares, so a sum can count shares twice, and this page never states what share of a company is held. Put and call options are left out of the share and value figures. A filing shows positions on one day, not trades during the quarter.</p>
   <p>{shown ? <>The newest quarter loaded is {quarterDate(inst.period!)}, with filings up to {formatDate(inst.lastFiled ?? built)}.</> : null} The section on a company's page only appears while the newest quarter's filings are recent, so a stalled load hides it. See the <a href="/methodology/#institutional-holders">methodology</a> and the <a href="/guides/form-13f-institutional-holdings/">guide to Form 13F</a>.</p>
+  </div></details>
   </div>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   {ld && <JsonLd data={ld} />}

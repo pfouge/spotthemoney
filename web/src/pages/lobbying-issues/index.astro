@@ -6,6 +6,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural, money } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -40,6 +41,7 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
   <p class="lede">Every issue area that lobbying filings list, and who lists it.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: Senate Office of Public Records (LDA)" />
+  <HubFigures items={[{k:"Issue areas",v:num(listed.length)},{k:"Filings this year",v:num(ytd.length)},{k:"List several issues",v:num(several)}]} />
 
   {issues.length === 0 ? <p class="empty-reason">No lobbying filings on record yet.</p> : (
     <section aria-labelledby="list" data-issues-list>
@@ -67,10 +69,11 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
 
   <AdSlot />
 
-  <h2 id="about">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this page shows</h2></summary><div class="ref-body">
   <p>A lobbying report names the general issue areas the lobbying covered, chosen from a fixed list of 79 codes kept by the Senate and the House, such as taxation, defense or health. Many reports name several. This page counts each report under every issue it names, so the rows add up to more than the number of reports. {issues.length > 0 && <>For {year}, {num(several)} of {num(ytd.length)} filings name more than one issue and {num(none)} name none (most of those are registrations, which do not report lobbying activity).</>}</p>
   <p><strong>The amounts overlap.</strong> A report states one amount for the quarter, not an amount for each issue. "Reported on those filings" is the total on the reports that name the issue. A report that names taxation and trade adds its whole amount to both rows, so the amounts of two issues must not be added together, and no row says how much was spent on that issue alone. "Only issue listed" counts the reports that name that issue and no other.</p>
   <p>The issue area is a broad label. It does not say which bill or rule was lobbied, what was asked for, or what came of it. Where a report was later amended, only the latest version is counted. See the <a href="/lobbying/">lobbying page</a> for the largest clients and firms, the <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a> and the <a href="/methodology/#lobbying-issues">methodology</a>.</p>
+  </div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />
 </BaseLayout>
