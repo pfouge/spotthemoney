@@ -123,7 +123,7 @@
       "web/src/components/TxnTable.astro": "e308d7ee77201988",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "73e22421d986ce3f",
+      "web/src/pages/congress/[slug].astro": "1ebd84037b605c2c",
       "web/src/lib/directory.ts": "0466a663969706ab",
       "web/src/pages/congress-members.astro": "7f963f509f3e04b3",
       "web/src/lib/committees.ts": "b0ef39eec547918e",
