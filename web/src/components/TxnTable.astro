@@ -16,6 +16,8 @@ import { historyFor } from "../lib/screener";
 import { histFlags, histTitle, isHistFlag } from "../lib/tickerhistory";
 
 interface Props {
+  /** Rows shown before "Show all N rows" (3 to 12; the kit default is 5). */
+  preview?: number;
   model: Flagship;
   txns: Txn[];
   showPerson?: boolean;
@@ -24,7 +26,7 @@ interface Props {
   emptyReason?: string;
   caption?: string;
 }
-const { model, txns, showPerson = false, showSecurity = false, limit = 200, emptyReason = "No disclosed transactions in this set yet.", caption } = Astro.props;
+const { model, txns, showPerson = false, showSecurity = false, limit = 200, emptyReason = "No disclosed transactions in this set yet.", caption, preview } = Astro.props;
 const rows = txns.slice(0, limit);
 // Row anchors (#t<id>) for "share this trade". A trade can sit in two tables on one page (the
 // preset feeds on /insiders/): only its first appearance gets the id, so ids stay unique.
@@ -72,7 +74,7 @@ const valueKey = (t: Txn) => numKey(t.value ?? t.amountHigh ?? t.amountLow);
   <Empty reason={emptyReason} />
 ) : (
   <>
-  <div class="tablewrap">
+  <div class="tablewrap" data-preview={preview}>
     <table class="data txns" data-sortable>
       {caption && <caption>{caption}</caption>}
       <thead>

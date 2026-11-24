@@ -1,0 +1,95 @@
+/* Stock and company pages, second pass (task E2): one overview screen, then groups of panels.
+   Applies to the pages that carry .entity-top (stock and company pages); everything is keyed on it or on .panels. */
+
+/* ── 1. Identity: h1, Follow, Cite and Share in source order, one compact row ───────────────────────────────────── */
+.entity-top { margin-top: var(--s-2); }
+.entity-id { display: flex; align-items: center; gap: var(--s-2) var(--s-3); flex-wrap: wrap; }
+.entity-id h1 { margin: 0 auto 0 0; min-width: 0; }
+.entity-actions { display: flex; gap: var(--s-2); flex: none; }
+.entity-top .eyebrow { display: none; }
+.entity-top dl.facts { display: flex; flex-wrap: wrap; gap: 0 var(--s-5); margin: var(--s-2) 0 var(--s-2); font-size: var(--t-xs); line-height: var(--lh-xs); }
+.entity-top dl.facts > div { display: flex; gap: var(--s-1); align-items: baseline; min-width: 0; }
+.entity-top dl.facts dt { color: var(--ink-2); }
+.entity-top dl.facts dt::after { content: ":"; }
+.entity-top dl.facts dd { margin: 0; color: var(--ink); }
+
+/* The answer: two lines, then "more" (ui.ts adds the button when it overflows). */
+.entity-top .answer { margin: var(--s-2) 0 var(--s-3); }
+html.js .entity-top .answer-text:not(.open) { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.entity-top .answer-text { font-size: var(--t-sm); line-height: var(--lh-sm); max-width: 100ch; margin-bottom: var(--s-1); }
+.entity-top .answer-foot { margin: 0; }
+.entity-top .answer-meta { margin: 0; font-size: var(--t-xs); }
+
+/* "More figures": the strip cells that repeat a glance tile, kept but closed. */
+details.more-figs { margin: var(--s-3) 0 0; }
+details.more-figs > summary { cursor: pointer; font-size: var(--t-sm); color: var(--ink-2); }
+details.more-figs[open] > summary { margin-bottom: var(--s-2); }
+
+/* ── 2. Overview charts: one compact row under the glance tiles ─────────────────────────────────────────────────── */
+.entity-top > section[aria-label="Charts"] { margin-top: var(--s-3); }
+.entity-top > section[aria-label="Charts"] > h2 { font-size: var(--t-sm); line-height: var(--lh-sm); font-weight: 600; margin: 0 0 var(--s-2); }
+.entity-top .viz-grid { gap: var(--s-3) var(--s-4); }
+@media (min-width: 1024px) { .entity-top .viz-grid { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); } }
+.entity-top .viz-grid .viz { --viz-maxh: 150px; }
+@media (max-width: 639px) {
+  .entity-top .viz-grid { display: flex; gap: var(--s-3); overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: var(--s-2); }
+  .entity-top .viz-grid > * { flex: 0 0 min(78vw, 300px); scroll-snap-align: start; }
+}
+
+/* ── 3. Panels: headings, summaries and notes in the quiet panel voice ─────────────────────────────────────────── */
+.panel > h2, .panel > summary > h2 { font-size: var(--t-md); line-height: var(--lh-md); font-weight: 600; margin: 0 0 var(--s-1); }
+.panel > h3 { font-size: var(--t-sm); line-height: var(--lh-sm); font-weight: 600; margin: var(--s-3) 0 var(--s-1); }
+.panel > p, .panel > .section-note { font-size: var(--t-sm); line-height: var(--lh-sm); margin: 0 0 var(--s-2); max-width: none; }
+.panel > .section-note, .panel > p[class$="-note"], .panel > p[data-ps-caveat], .panel > p[data-lh-caveat] { font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); }
+.panel > .tablewrap { margin-top: var(--s-2); }
+.panel > .tablewrap + .tablewrap { margin-top: var(--s-4); }
+.panel > .dl-row { margin: 0 0 var(--s-2); font-size: var(--t-xs); }
+.panel > .pn-monthbars { margin: var(--s-2) 0; }
+.panel .pn-monthbars svg { display: block; width: 100%; max-height: 120px; }
+.panel .pn-monthbars figcaption { font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); }
+.panel details.dict { margin-top: var(--s-2); }
+.panels { margin: var(--s-5) 0; gap: var(--s-6) var(--s-5); }
+.pgroup > .panels:first-of-type { margin-top: var(--s-3); }
+/* Several panels in a row stay level: an odd last panel is as wide as its column unless it is span 12. */
+
+/* Washington panels sit inside the section component's own .panels grid */
+.panels > .panels { grid-column: 1 / -1; margin: 0; }
+
+/* ── 4. Share price: span 12, 380px (300px on a phone) ────────────────────────────────────────────────────────── */
+.panels > .tv { margin: 0; }
+.panels > .tv > h2 { font-size: var(--t-md); line-height: var(--lh-md); font-weight: 600; margin: 0 0 var(--s-1); }
+.panels > .tv .tv-info { min-height: 0; }
+.panels > .tv .tv-chart { height: 380px; }
+@media (max-width: 640px) { .panels > .tv .tv-chart { height: 300px; } .panels > .tv .tv-info { min-height: 0; } }
+
+/* ── 5. Financials: fiscal years and quarters side by side from 1100px ─────────────────────────────────────────── */
+@media (min-width: 1100px) {
+  .panel[data-financials] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s-5); align-items: start; }
+  .panel[data-financials] > :not(.tablewrap):not(h3) { grid-column: 1 / -1; }
+}
+
+/* ── 6. Phones: the group bar scrolls sideways, panels are one column ─────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .entity-top dl.facts { gap: 0 var(--s-4); }
+  .panels { margin: var(--s-4) 0; gap: var(--s-5); }
+}
+
+/* Second pass, tightening: notes clamp to two lines (full text stays in the DOM and in methodology), compact chart row hides its extras behind the card's own disclosures. */
+.panels > .panel > p.section-note, .panels > .panel > p.ps-note, .panels > .panel > p.lh-note {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-block: var(--s-1);
+}
+.panels > .panel:has(> p:target), .panels > .panel > p.section-note:focus-within { -webkit-line-clamp: unset; }
+.entity-top .viz-grid .viz details, .entity-top .viz-grid .viz .viz-embed { font-size: var(--t-xs); }
+.entity-top .viz-grid .viz p.viz-sub, .entity-top .viz-grid .viz .viz-q { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.panel .tablewrap { margin-bottom: var(--s-1); }
+.entity-top, .entity-top > section { min-width: 0; max-width: 100%; }
+.entity-top .viz-grid { min-width: 0; max-width: 100%; box-sizing: border-box; }
+@media (max-width: 639px) { .entity-top .viz-grid > .viz { max-width: 78vw; } }
+.entity-top .viz-grid { position: relative; }
+@media (min-width: 1024px) { .entity-top .glance { grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: var(--s-2) 0; } .entity-top .glance a { padding-inline: var(--s-3); } }
+@media (max-width: 639px) {
+  .entity-top .glance { display: flex; overflow-x: auto; scroll-snap-type: x proximity; gap: 0; position: relative; margin-block: var(--s-3); }
+  .entity-top .glance > .glance-t { flex: 0 0 min(42vw, 160px); scroll-snap-align: start; }
+  .panel > .dl-row { font-size: var(--t-xs); }
+  .panel > .dl-row .dl-meta { display: none; }
+}

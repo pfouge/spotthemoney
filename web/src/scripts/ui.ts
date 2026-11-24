@@ -43,29 +43,6 @@ function initNavMenus(): void {
   nav.addEventListener("focusout", (e) => { const to = (e as FocusEvent).relatedTarget as Node | null; if (to && !nav.contains(to)) closeAll(); });
 }
 
-// The group bar of an entity page: mark the group in view (aria-current="true" on its link).
-function initGroupBar(): void {
-  const bar = document.querySelector<HTMLElement>("nav.groupbar");
-  if (!bar || !("IntersectionObserver" in window)) return;
-  const groups = [...document.querySelectorAll<HTMLElement>(".pgroup[id]")];
-  if (groups.length === 0) return;
-  const links = new Map<string, HTMLAnchorElement>();
-  for (const a of bar.querySelectorAll<HTMLAnchorElement>("a[href^='#']")) links.set(a.getAttribute("href")!.slice(1), a);
-  const visible = new Set<string>();
-  const mark = (): void => {
-    const first = groups.find((g) => visible.has(g.id));
-    for (const [id, a] of links) { if (first && id === first.id) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); }
-    const cur = first ? links.get(first.id) : null;
-    if (cur && bar.scrollWidth > bar.clientWidth) { const x = cur.offsetLeft - 16; if (Math.abs(bar.scrollLeft - x) > 40) bar.scrollTo({ left: x }); }
-  };
-  const hdr = document.getElementById("siteHeader")?.offsetHeight ?? 64;
-  const io = new IntersectionObserver((entries) => {
-    for (const en of entries) { if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id); }
-    mark();
-  }, { rootMargin: `-${hdr + bar.offsetHeight + 8}px 0px -55% 0px` });
-  for (const g of groups) io.observe(g);
-}
-
 type Row = [kind: string, title: string, sub: string, url: string, weight: number];
 
 function initSearch(): void {
@@ -130,7 +107,6 @@ function initAnswerMore(): void {
 initTheme();
 initMenu();
 initNavMenus();
-initGroupBar();
 initSearch();
 initAnswerMore();
 
@@ -154,3 +130,57 @@ if ("MutationObserver" in window) {
   const mo = new MutationObserver(() => { clearTimeout(scrollerTimer); scrollerTimer = window.setTimeout(markScrollers, 150); });
   for (const el of document.querySelectorAll(".summary, .hm-bar")) mo.observe(el, { childList: true });
 }
+
+// Redesign: a link or address that points inside a closed disclosure, a previewed table or a hidden group tab opens it
+// and lands on it (one implementation for all three: reveal.ts, which also runs the entity pages' group tabs).
+import "./reveal";
+
+// The contents list sits open beside the text on a wide screen and folds on a phone.
+const tocMq = window.matchMedia("(min-width: 1024px)");
+const syncToc = (): void => {
+  document.querySelectorAll<HTMLDetailsElement>("details[data-toc]").forEach((d) => { d.open = tocMq.matches; });
+};
+syncToc();
+tocMq.addEventListener("change", syncToc);
+
+// Panel caveats (components/Panel.astro): one line, with "more" when the text is longer. Without JavaScript the
+// whole note shows (the clamp in rd-kit.css only applies under html.js).
+function initPanelNotes(): void {
+  for (const note of document.querySelectorAll<HTMLElement>(".pn-note-wrap > .pn-note")) {
+    if (note.scrollHeight <= note.clientHeight + 1 && note.scrollWidth <= note.clientWidth + 1) continue;
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "pn-note-more";
+    btn.setAttribute("aria-expanded", "false");
+    if (!note.id) note.id = `pn-note-${Math.random().toString(36).slice(2, 8)}`;
+    btn.setAttribute("aria-controls", note.id);
+    btn.textContent = "more";
+    btn.addEventListener("click", () => {
+      const open = !note.hasAttribute("data-open");
+      if (open) note.setAttribute("data-open", ""); else note.removeAttribute("data-open");
+      btn.setAttribute("aria-expanded", String(open));
+      btn.textContent = open ? "less" : "more";
+    });
+    note.after(btn);
+  }
+}
+initPanelNotes();
+
+// Footer link groups (BaseLayout): on a phone each group's list is folded under a chevron button beside its heading;
+// from 640px the lists are open and the buttons are hidden. Without JavaScript every list is open.
+const footMq = window.matchMedia("(max-width: 639px)");
+const footGroups = [...document.querySelectorAll<HTMLElement>("footer.site .foot-cols > nav")].map((nav, i) => {
+  const head = nav.querySelector<HTMLElement>(".foot-h"), list = nav.querySelector<HTMLUListElement>("ul");
+  if (!head || !list) return null;
+  if (!list.id) list.id = `foot-list-${i}`;
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "foot-tog";
+  btn.setAttribute("aria-controls", list.id);
+  btn.setAttribute("aria-label", `${(head.textContent ?? "").trim()}: show or hide the links`);
+  head.appendChild(btn);
+  const set = (open: boolean): void => { list.hidden = !open; btn.setAttribute("aria-expanded", String(open)); nav.classList.toggle("open", open); };
+  btn.addEventListener("click", () => set(Boolean(list.hidden)));
+  return set;
+}).filter((f): f is (open: boolean) => void => !!f);
+const syncFoot = (): void => { for (const set of footGroups) set(!footMq.matches); };
+syncFoot();
+footMq.addEventListener("change", syncFoot);

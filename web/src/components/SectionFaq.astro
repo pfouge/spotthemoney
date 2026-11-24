@@ -11,15 +11,17 @@ const items = sectionFaqs(await getGuides(), section, limit);
 ---
 {items.length > 0 && (
   <section class="section-faq" aria-labelledby="common-questions">
-    <h2 id="common-questions">Common questions</h2>
+    <details class="ref" data-remember id="ref-common-questions"><summary><h2 id="common-questions">Common questions</h2></summary><div class="ref-body">
     <div class="faq-list">
       {items.map((f) => (
-        <div class="faq-item">
-          <h3>{f.q}</h3>
-          <p>{f.a} <a class="faq-more" href={guidePath(f.guide.slug)}>{f.guide.title}&nbsp;→</a></p>
-        </div>
+        <details class="faq-item">
+          <summary><h3>{f.q}</h3></summary>
+          <p>{f.a}</p>
+          <p><a class="faq-more" href={guidePath(f.guide.slug)}>{f.guide.title}&nbsp;→</a></p>
+        </details>
       ))}
     </div>
     <p class="faq-all"><a href="/guides/">All guides</a> · <a href="/faq/">All questions and answers</a></p>
+    </div></details>
   </section>
 )}

@@ -10,6 +10,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural, money, sum, personPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -32,9 +33,10 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
   <h1>Campaign donations</h1>
   <p class="lede">Itemized receipts as reported to the FEC, aggregated. Draft presentation, donor names withheld pending review.</p>
   <Answer text={answer} updated={committees[0]?.latest ?? model.builtAt} sourceNote="Source: FEC Schedule A (OpenFEC)" />
+  <HubFigures items={[{k:"Committees with receipts held",v:num(committees.length)},{k:"Receipts held",v:money(total)}]} />
   {(() => { const byState = new Map(model.donationsByState.filter((r) => isMapState(r.key)).map((r) => [r.key, r.total] as [string, number])); const top = [...byState.entries()].sort((a, b) => b[1] - a[1])[0]; return (
     <div class="viz-grid">
-      <Viz title="Donations by state" question={`Where does the money come from? Itemized receipts held for the last ${model.donationWindowDays} days, by the donor's state.`} wide={true}
+      <Viz compact tall title="Donations by state" question={`Where does the money come from? Itemized receipts held for the last ${model.donationWindowDays} days, by the donor's state.`}
         svg={tileMapSvg(byState, "in itemized receipts held", undefined, 1120)} svgNarrow={tileMapSvg(byState, "in itemized receipts held")} svgPhone={tileMapSvg(byState, "in itemized receipts held", undefined, 360)}
         summary={top ? `Donors in ${byState.size - (byState.has("DC") ? 1 : 0)} states${byState.has("DC") ? " and DC" : ""} appear in the receipts held; ${top[0]} is the largest source. This reflects the sample of receipts on this site, not every contribution.` : undefined} />
     </div>); })()}
@@ -68,14 +70,17 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
   </div>
 
   <div class="prose">
-  <h2 id="about-this-page">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about-this-page"><summary><h2 id="about-this-page">What this page shows</h2></summary><div class="ref-body">
   <p>Campaign committees must report the contributions they receive to the Federal Election Commission. This page shows recent itemized receipts for the committees this site follows, which are the campaign committees of members of Congress and the largest political action committees, grouped by committee, by the employer donors named, and by the state they gave from.</p>
   <p>It is a recent sample of what those committees have reported, not a total of everything they raised, and it should not be read as one. Individual donors are not named here. The <a href="/guides/campaign-donations-fec-data/">guide to campaign donation data</a> explains what the FEC records contain and what they leave out.</p>
-  <h2 id="where-from">Where the data comes from</h2>
+  </div></details>
+  <details class="ref" data-remember id="ref-where-from"><summary><h2 id="where-from">Where the data comes from</h2></summary><div class="ref-body">
   <p>The records come from the FEC's public data service, from the schedule of itemized receipts that each committee files. This site reads them once a day, a set of committees at a time, so the newest receipts for a given committee can take some days to appear.</p>
+  </div></details>
   </div>
-  <h2>How to read this</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read this</h2></summary><div class="ref-body">
   <p>Only itemized contributions (those the committee must report individually, generally over $200 in a cycle) appear in Schedule A; small unitemized giving is not in the data. Employer and state are as the donor stated on the contribution. Names of individual donors are not shown on this site. See <a href="/methodology/">methodology</a>.</p>
+  </div></details>
   <p class="disclaimer"><strong>Draft: needs review.</strong> Public FEC records shown as filed; no inference is made about any donor or committee.</p>
   <JsonLd data={ld} />
 </BaseLayout>

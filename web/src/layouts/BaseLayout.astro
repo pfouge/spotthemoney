@@ -1,6 +1,15 @@
 ---
 import "../styles/global.css";
 import "../styles/writing.css";
+import "../styles/rd-entity.css";
+import "../styles/rd-hubs.css";
+import "../styles/rd-prose.css";
+import "../styles/rd-kit.css";
+import "../styles/rd-home.css";
+import "../styles/rd-stock.css";
+import "../styles/rd-people.css";
+import "../styles/rd-landing.css";
+import "../styles/rd-final.css";
 import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
 import Wordmark from "../components/Wordmark.astro";
@@ -8,6 +17,7 @@ import Wordmark from "../components/Wordmark.astro";
 import { fitTitle, fitDescription } from "../lib/seo";
 import { adClient } from "../lib/ads";
 import AdSlot from "../components/AdSlot.astro";
+import { splitForAd, topHasClass } from "../lib/adplace";
 import { FEEDS } from "../lib/feeds";
 import { NAV, FOOT_ABOUT, liveItems, groupFor } from "../lib/nav";
 
@@ -57,6 +67,11 @@ const NAV_ICON: Record<string, string> = {
   washington: "M4 20h16M6 20v-7M18 20v-7M10 20v-4h4v4M5 13h14M12 4a6 6 0 0 1 6 6H6a6 6 0 0 1 6-6zM12 2v2",
   markets: "M4 19l5-6 4 3 7-9M15 7h5v5",
 };
+// The page content is rendered once here so the top advertisement can follow the title block
+// (lib/adplace.ts) instead of sitting above it, with no script and no reordering in the browser.
+const pageHtml = await Astro.slots.render("default");
+const { before: pageBefore, after: pageAfter } = splitForAd(pageHtml);
+const flowEntity = topHasClass(pageHtml, "title-row");
 ---
 <!doctype html>
 <html lang="en">
@@ -201,25 +216,31 @@ const NAV_ICON: Record<string, string> = {
     {Tape && <Tape />}
 
     <main id="main" tabindex="-1">
-      <div class="container">
+      <div class:list={["container", flowEntity && "flow-entity"]}>
+        <Fragment set:html={pageBefore} />
         {adsense && <AdSlot pos="top" />}
-        <slot />
+        <Fragment set:html={pageAfter} />
         {adsense && <AdSlot pos="multiplex" />}
       </div>
     </main>
 
     <footer class="site">
-      <div class="container">
-        <div class="foot-top">
-          <Mark size={24} />
-          <Wordmark height={10} />
+      <div class="container foot-grid">
+        <div class="foot-brand">
+          <div class="foot-top">
+            <Mark size={24} />
+            <Wordmark height={10} />
+          </div>
+          <p class="foot-copy">© {year} spotthemoney.com</p>
         </div>
-        <p class="disclaimer">
-          <strong>Not investment advice.</strong> Figures are based on public, official data and
-          disclosures that may lag actual events. Spot the Money provides transparency and historical
-          information only, with no buy/sell recommendations and no trade execution.
-        </p>
-        <p>Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, Senate eFD, FEC, USAspending, Senate LDA. An independent site, not affiliated with any government body, campaign or broker.</p>
+        <div class="foot-text">
+          <p class="disclaimer">
+            <strong>Not investment advice.</strong> Figures are based on public, official data and
+            disclosures that may lag actual events. Spot the Money provides transparency and historical
+            information only, with no buy/sell recommendations and no trade execution.
+          </p>
+          <p>Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, Senate eFD, FEC, USAspending, Senate LDA. An independent site, not affiliated with any government body, campaign or broker.</p>
+        </div>
         <div class="foot-cols">
           {NAV.map((g) => (
             <nav aria-label={g.label}>
@@ -232,7 +253,6 @@ const NAV_ICON: Record<string, string> = {
             <ul>{FOOT_ABOUT.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
           </nav>
         </div>
-        <p>© {year} spotthemoney.com</p>
       </div>
     </footer>
 

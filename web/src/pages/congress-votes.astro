@@ -10,6 +10,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
+import HubFigures from "../components/HubFigures.astro";
 import JsonLd from "../components/JsonLd.astro";
 import DownloadCsv from "../components/DownloadCsv.astro";
 import { getDownloads } from "../lib/downloads";
@@ -44,6 +45,7 @@ const sortable = new Set(["date", "chamber", "bill", "result", "yeas", "nays", "
   <p class="lede">Every recorded vote of the House and the Senate on file, with the question put, the result and the official totals. Open a roll call to see how each member voted.</p>
 
   <Answer text={answer} updated={newest ?? built} sourceNote="Source: Clerk of the House and Secretary of the Senate" />
+  <HubFigures items={[{k:"Roll calls",v:num(v.rolls.length)},{k:"House",v:num(house)},{k:"Senate",v:num(senate)},{k:"Newest vote",v:(newest ?? "").slice(0,10)}]} />
 
   {!v.shown ? <p class="empty-reason">No roll call votes on file yet.</p> : (
     <div class="votes-hub" data-votes-hub data-src={VOTES_DATA} data-total={first.all}>
@@ -61,8 +63,6 @@ const sortable = new Set(["date", "chamber", "bill", "result", "yeas", "nays", "
       </div>
       <p class="section-note" data-vt="pins" hidden></p>
       <p class="section-note vt-count"><span data-vt="count" aria-live="polite">{summaryLine(first)}</span> <button type="button" class="linklike" data-vt="reset" hidden>Reset filters</button></p>
-      <DownloadCsv file={csv} note="every roll call on file, not only the rows filtered here" />
-      <p class="dl-row vt-dl"><button type="button" class="dl" data-vt="download">Download these rows (CSV)</button> <span class="dl-meta">The roll calls that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
 
       <div class="tablewrap"><table class="data vt-table">
         <thead><tr>
@@ -97,14 +97,17 @@ const sortable = new Set(["date", "chamber", "bill", "result", "yeas", "nays", "
         <button type="button" class="chip" data-vt="next" disabled={first.pages <= 1}>Next</button>
         <label class="vt-per soft">Rows per page <select data-vt="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
       </div>
+      <p class="dl-row vt-dl"><button type="button" class="dl" data-vt="download">Download these rows (CSV)</button> <span class="dl-meta">The roll calls that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+      <DownloadCsv file={csv} note="every roll call on file, not only the rows filtered here" />
       <noscript><p class="section-note">These are the first {num(first.rows.length)} roll calls of the last 90 days. The filters and the member positions need JavaScript; the CSV file above has every roll call.</p></noscript>
     </div>
   )}
 
-  <h2 id="about">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this page shows</h2></summary><div class="ref-body">
   <p>One row for each roll call on file: a vote in which the chamber recorded each member's position by name. Voice votes and votes by unanimous consent record no positions and are not here. The totals are the official ones for the vote; "Positions" opens the roll call to list who voted yea, nay, present and not voting, grouped by party, each name linking to the member's page here when there is one. "Result" is the chamber's own wording, so filters group results only when the words are identical.</p>
   <p>{VOTES_CAVEAT} What the terms mean, and what a roll call can and cannot show: <a href="/guides/how-to-read-a-roll-call-vote/">how to read a roll call vote</a>. How the page is built: <a href="/methodology/#votes">methodology</a>.</p>
   <p>To see one member's positions on every roll call of their chamber, use the link in the "Recorded votes" section of their page. The "Position" column then appears here.</p>
+  </div></details>
   <AdSlot />
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Positions are shown as the chambers recorded them; nothing here scores a vote or says why a member voted as they did.</p>

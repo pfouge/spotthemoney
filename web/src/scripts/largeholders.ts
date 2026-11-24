@@ -12,7 +12,7 @@ export const largeRow = (r: LhRow): HTMLTableRowElement => {
   const others = r.persons > 1 ? r.persons - 1 : 0;
   const label = `Schedule ${r.schedule}${r.amend ? "/A (amendment)" : ""}`;
   return h("tr", { "data-statement": r.accession },
-    h("td", {}, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "soft small mono" }, ` ${r.c.ticker}`) : null),
+    h("td", {}, h("span", { class: "ent" }, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "tk" }, ` ${r.c.ticker}`) : null)),
     h("td", { class: "wrap" }, r.path ? h("a", { href: r.path }, r.holder) : r.holder,
       others > 0 ? h("span", { class: "lh-sub" }, `with ${nf(others)} other reporting ${others === 1 ? "person" : "persons"}`) : null),
     h("td", {}, `Schedule ${r.schedule}`),

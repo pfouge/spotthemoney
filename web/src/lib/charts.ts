@@ -1,7 +1,7 @@
 // Build-time SVG charts. Pure functions returning markup — no client library, no runtime
 // dependency. The page adds a tiny hover script that reads the data-* attributes these emit.
 // Mark specs follow the dataviz house rules: 2px lines, ≥8px markers with a 2px surface ring,
-// hairline solid gridlines, text in ink tokens (never series color), one y-axis.
+// hairline solid gridlines (at most three), text in ink tokens (never series color), one y-axis, no frame.
 
 // Series identity is a CSS class, not a hex, so the theme decides the color:
 // `.s-primary` → var(--chart-1), `.s-compare` → var(--chart-2) (both validated per mode in global.css).
@@ -41,7 +41,7 @@ export function yieldCurveSvg(series: CurveSeries[], opts: { width?: number; hei
   const X = (m: number) => pad.l + ((lx(m) - xmin) / (xmax - xmin || 1)) * iw;
 
   const vals = series.flatMap((s) => s.points.map((p) => p.value)).filter((v): v is number => v != null);
-  const ticks = niceTicks(Math.min(...vals) - 0.15, Math.max(...vals) + 0.15, 5);
+  const ticks = niceTicks(Math.min(...vals) - 0.15, Math.max(...vals) + 0.15, 3);
   const ymin = ticks[0]!, ymax = ticks[ticks.length - 1]!;
   const Y = (v: number) => pad.t + (1 - (v - ymin) / (ymax - ymin || 1)) * ih;
 
@@ -88,7 +88,7 @@ export function trendSvg(points: { date: string; value: number }[], opts: { cls?
   const t0 = Date.parse(points[0]!.date), t1 = Date.parse(points[points.length - 1]!.date);
   const X = (d: string) => pad.l + ((Date.parse(d) - t0) / (t1 - t0 || 1)) * iw;
   const vals = points.map((p) => p.value);
-  const ticks = niceTicks(Math.min(...vals) - 0.1, Math.max(...vals) + 0.1, 4);
+  const ticks = niceTicks(Math.min(...vals) - 0.1, Math.max(...vals) + 0.1, 3);
   const ymin = ticks[0]!, ymax = ticks[ticks.length - 1]!;
   const Y = (v: number) => pad.t + (1 - (v - ymin) / (ymax - ymin || 1)) * ih;
 

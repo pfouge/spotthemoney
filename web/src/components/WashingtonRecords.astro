@@ -21,6 +21,8 @@ const issueIdx = issueIndex(model.lobbying, model.issueNames);
 // filings report (Form LD-203) after lobbying. Each prints nothing when it has nothing.
 const dlFiles = (await getDownloads()).files;
 ---
+<div class="panels" data-washington>
+<section class="panel" data-panel aria-labelledby="contracts">
 <h2 id="contracts">Federal contracts (USAspending, awards started in the last 180 days)</h2>
 {c.contracts.length === 0 ? <p class="empty-reason">No contract award starting in the last 180 days was found for a recipient named exactly "{c.name}". Subsidiaries and differently-spelled recipients are not matched. Search <a href="/contracts/">contracts</a>.</p> : (
   <div class="tablewrap">
@@ -35,8 +37,11 @@ const dlFiles = (await getDownloads()).files;
   </div>
 )}
 
+</section>
+
 <Assistance model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "assistance")} />
 
+<section class="panel" data-panel aria-labelledby="lobbying">
 <h2 id="lobbying">Lobbying (Senate LDA, as client)</h2>
 {c.lobbying.length === 0 ? <p class="empty-reason">No LDA filing posted since October 2025 names "{c.name}" as the client. Filings under a subsidiary or trade-association name are not matched. Search <a href="/lobbying/">lobbying</a>.</p> : (
   <div class="tablewrap">
@@ -50,7 +55,9 @@ const dlFiles = (await getDownloads()).files;
     </table>
   </div>
 )}
+</section>
 <LobbyContribFiler model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "lobbycontrib")} />
+</div>
 <style>
   .con-sub { display: block; font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.2; margin-top: var(--s-1); }
   td.con-naics { min-width: 150px; max-width: 230px; padding-top: var(--s-1); padding-bottom: var(--s-1); }

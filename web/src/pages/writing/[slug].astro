@@ -67,10 +67,10 @@ const ld = [
         <h2 id="questions">Questions and answers</h2>
         <div class="faq-list">
           {a.faqs.map((f) => (
-            <div class="faq-item">
-              <h3>{f.q}</h3>
+            <details class="faq-item">
+              <summary><h3>{f.q}</h3></summary>
               <p>{f.a}</p>
-            </div>
+            </details>
           ))}
         </div>
       </section>

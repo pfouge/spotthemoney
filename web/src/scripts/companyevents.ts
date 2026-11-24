@@ -59,7 +59,7 @@ async function start(root: HTMLElement): Promise<void> {
     const its = orderItems(r.e.items), url = safeUrl(r.e.sourceUrl), am = isAmendment(r.e);
     return h("tr", { "data-cik": r.c.cik, "data-event": r.e.accession },
       h("td", { class: "mono" }, hubShortDate(r.e.filed)),
-      h("td", {}, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "soft small mono" }, ` ${r.c.ticker}`) : null),
+      h("td", {}, h("span", { class: "ent" }, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "tk" }, ` ${r.c.ticker}`) : null)),
       h("td", {}, r.c.division ? h("a", { href: `/industries/${r.c.division.slug}/` }, r.c.division.name) : null),
       h("td", { "data-ev-form": "" }, r.e.form, am ? h("span", { class: "soft small" }, " amendment") : null),
       h("td", { class: "wrap ev-items", "data-ev-items": "" }, ...(its.length ? its.map((i) => h("span", { class: i === EXHIBITS_ITEM ? "ev-item ev-soft" : "ev-item", "data-item": i }, itemLabel(i))) : ["—"])),

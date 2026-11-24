@@ -8,7 +8,7 @@ import Answer from "../../components/Answer.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import { getLatestIBondRate, getCpiSeries, getIBondHistory } from "../../lib/db";
 import Viz from "../../components/Viz.astro";
-import { rateStepsSvg } from "../../lib/viz";
+import { rateStepsSvg, PHONE_W } from "../../lib/viz";
 import { formatPercent, formatDate } from "../../lib/format";
 import { resetOutlook, monthLabel } from "../../lib/ibond";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -56,8 +56,8 @@ const description = hasData
   )}
 
   <div class="viz-grid">
-    <Viz title="I-Bond rate history" question="How has the I-Bond rate moved at each six-month reset?" wide={true}
-      legend={[["v-one", "Composite rate"], ["v-muted", "Fixed-rate part"]]} svg={rateStepsSvg(history, true)} svgNarrow={rateStepsSvg(history)}
+    <Viz compact title="I-Bond rate history" question="How has the I-Bond rate moved at each six-month reset?"
+      legend={[["v-one", "Composite rate"], ["v-muted", "Fixed-rate part"]]} svg={rateStepsSvg(history, true)} svgNarrow={rateStepsSvg(history)} svgPhone={rateStepsSvg(history, false, PHONE_W)}
       summary={peak ? `Over the last ${history.length} rate periods the composite rate peaked at ${peak.composite!.toFixed(2)}% for bonds issued from ${formatDate(peak.date)}. The fixed-rate part stays with a bond for its life; the rest resets with inflation.` : undefined} />
   </div>
 
@@ -109,7 +109,9 @@ const description = hasData
     <p class="disclaimer" id="note"></p>
   </section>
 
-  <h2>How the I-Bond rate works</h2>
+  <AdSlot pos="low" />
+
+  <details class="ref" data-remember id="ref-how-the-i-bond-rate-works"><summary><h2 id="how-the-i-bond-rate-works">How the I-Bond rate works</h2></summary><div class="ref-body">
   <p>
     A Series I savings bond earns a <strong>composite rate</strong> that combines a
     <strong>fixed rate</strong> (set for the life of the bond at purchase) and a
@@ -123,8 +125,8 @@ const description = hasData
     <strong>3 months</strong> of interest. Figures here are estimates that assume the current rate
     persists; the actual rate your bond earns resets every six months.
   </p>
+  </div></details>
 
-  <AdSlot pos="low" />
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "i-bond-rates.csv")?.path], name: "Series I savings bond rates", path: "/rates/i-bonds/", description, dateModified: rate?.effectiveDate ?? new Date().toISOString().slice(0, 10), keywords: ["I-Bond", "I bond rate", "savings bonds", "inflation"], sources: [SOURCES.fiscaldata, SOURCES.bls], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
 

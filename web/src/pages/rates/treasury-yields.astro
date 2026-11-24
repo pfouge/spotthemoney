@@ -68,13 +68,14 @@ const description = hasData
 
   {hasData ? (
     <>
-      <section class="datastrip">
+      <section class="datastrip rates-strip">
         <div class="cell"><div class="k">10-year</div><div class="v">{pct(t10?.latest)}</div><div class="delta">{bp(chg(t10?.latest ?? null, t10?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">2-year</div><div class="v">{pct(t2?.latest)}</div><div class="delta">{bp(chg(t2?.latest ?? null, t2?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">10Y − 2Y spread</div><div class={`v ${s10v2 != null && s10v2 < 0 ? "neg" : ""}`}>{bp(s10v2)}</div><div class="delta">{s10v2 != null && s10v2 < 0 ? "inverted" : "normal slope"}</div></div>
         <div class="cell"><div class="k">10Y − 3M spread</div><div class={`v ${s10v3m != null && s10v3m < 0 ? "neg" : ""}`}>{bp(s10v3m)}</div><div class="delta">{s10v3m != null && s10v3m < 0 ? "inverted" : "normal slope"}</div></div>
       </section>
 
+      <div class="panels">
       <section class="panel chartpanel">
         <div class="chart-head">
           <h2>The curve today</h2>
@@ -89,12 +90,22 @@ const description = hasData
         </div>
         <p class="disclaimer">Maturity is on a log scale so short and long tenors both read clearly. Hover or tap a maturity for exact values.</p>
       </section>
+      {trend && (
+        <section class="panel chartpanel">
+          <div class="chart-head"><h2>10-year yield, year to date</h2></div>
+          <div class="chartwrap" data-series={JSON.stringify(["10-year"])}>
+            <Fragment set:html={trend} />
+            <div class="tip" hidden></div>
+          </div>
+        </section>
+      )}
+      </div>
 
       <AdSlot label="Advertisement" />
 
       <h2>Every maturity</h2>
       <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")} note="every day held, one column per maturity" />
-      <div class="tablewrap">
+      <div class="tablewrap" data-preview="8">
         <table class="data">
           <thead>
             <tr>
@@ -123,15 +134,6 @@ const description = hasData
       </div>
       <p class="disclaimer">Changes in basis points (1 bp = 0.01%). "1 month" compares with {curve!.monthAgoDate ? formatDate(curve!.monthAgoDate) : "—"}; "year to date" with {curve!.yearStartDate ? formatDate(curve!.yearStartDate) : "—"}.</p>
 
-      {trend && (
-        <section class="panel chartpanel">
-          <div class="chart-head"><h2>10-year yield, year to date</h2></div>
-          <div class="chartwrap" data-series={JSON.stringify(["10-year"])}>
-            <Fragment set:html={trend} />
-            <div class="tip" hidden></div>
-          </div>
-        </section>
-      )}
     </>
   ) : (
     <section class="panel">
@@ -142,7 +144,7 @@ const description = hasData
 
   {playbackSvg && (
     <div class="viz-grid">
-      <Viz title="Yield curve playback" question="How has the shape of the curve changed over the last year? Drag the slider or press play." wide={true} svg={playbackSvg} svgNarrow={playbackNarrow} svgPhone={playbackPhone}
+      <Viz compact title="Yield curve playback" question="How has the shape of the curve changed over the last year? Drag the slider or press play." svg={playbackSvg} svgNarrow={playbackNarrow} svgPhone={playbackPhone}
         legend={[["v-one", "Selected month"], ["v-muted", `${playback.frames[0]!.label} (start)`]]}
         summary={`Month-end Treasury par yields from ${playback.frames[0]!.label} to ${playback.frames[playback.frames.length - 1]!.label}, ${playback.tenors[0]} to ${playback.tenors[playback.tenors.length - 1]}. Without scripting the chart shows the latest month against the first.`}>
         <div class="viz-ctl"><button type="button" data-curve-play>▶ Play</button><input type="range" min="0" max={playback.frames.length - 1} value={playback.frames.length - 1} data-curve-range aria-label="Month" /><b data-curve-label>{playback.frames[playback.frames.length - 1]!.label}</b></div>
@@ -150,7 +152,9 @@ const description = hasData
     </div>
   )}
 
-  <h2>How to read the yield curve</h2>
+  <AdSlot pos="low" />
+
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read the yield curve</h2></summary><div class="ref-body">
   <p>
     The yield curve plots what the U.S. government pays to borrow for different lengths of time, from one
     month to thirty years. Normally it slopes upward because lenders want more to lock money up longer. When
@@ -164,7 +168,7 @@ const description = hasData
     Source: U.S. Department of the Treasury, Daily Treasury Par Yield Curve Rates.
   </p>
 
-  <AdSlot pos="low" />
+  </div></details>
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")?.path], name: "U.S. Treasury par yield curve (daily)", path: "/rates/treasury-yields/", description, dateModified: curve?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["Treasury yields", "yield curve", "10-year Treasury", "2s10s spread"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
 

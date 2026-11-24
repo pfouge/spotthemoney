@@ -46,16 +46,18 @@ const description = hasData
 
   {hasData ? (
     <>
-      <section class="datastrip">
+      <section class="datastrip rates-strip">
         <div class="cell"><div class="k">10-year real yield</div><div class="v">{pct(t10?.latest)}</div><div class="delta">{bp(chg(t10?.latest ?? null, t10?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">5-year real yield</div><div class="v">{pct(t5?.latest)}</div><div class="delta">{bp(chg(t5?.latest ?? null, t5?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">10-year breakeven</div><div class="v">{pct(be10)}</div><div class="delta">nominal − real</div></div>
         <div class="cell"><div class="k">5-year breakeven</div><div class="v">{pct(be5)}</div><div class="delta">nominal − real</div></div>
       </section>
 
+      {trend && <section class="panel chartpanel"><div class="chart-head"><h2>10-year TIPS real yield, year to date</h2></div><div class="chartwrap" set:html={trend}></div></section>}
+
       <h2>Every maturity</h2>
       <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "tips-real-yields.csv")} note="every day held, one column per maturity" />
-      <div class="tablewrap">
+      <div class="tablewrap" data-preview="8">
         <table class="data">
           <thead><tr><th>Maturity</th><th class="num">Real yield</th><th class="num">1d</th><th class="num">1m</th><th class="num">YTD</th><th class="num">Nominal</th><th class="num">Breakeven</th></tr></thead>
           <tbody>
@@ -65,7 +67,6 @@ const description = hasData
           </tbody>
         </table>
       </div>
-      {trend && <section class="panel chartpanel"><div class="chart-head"><h2>10-year TIPS real yield, year to date</h2></div><div class="chartwrap" set:html={trend}></div></section>}
     </>
   ) : (
     <section class="panel"><div class="bignum pending">data pending</div><p class="disclaimer">The <code>treasury_real_yield_curve</code> job has not run yet. Once it has, this page fills with the live Treasury real yield curve.</p></section>
@@ -74,13 +75,16 @@ const description = hasData
   <AdSlot label="Advertisement" />
 
   <div class="prose">
-  <h2 id="about-this-page">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about-this-page"><summary><h2 id="about-this-page">What this page shows</h2></summary><div class="ref-body">
   <p>TIPS are U.S. Treasury bonds whose value rises with consumer prices. This page shows the yield on them at five maturities, from 5 to 30 years, as the Treasury published it for the latest business day, how each has moved, and the inflation rate that the gap between ordinary Treasury yields and TIPS yields implies.</p>
-  <h2 id="where-from">Where the data comes from</h2>
+  </div></details>
+  <details class="ref" data-remember id="ref-where-from"><summary><h2 id="where-from">Where the data comes from</h2></summary><div class="ref-body">
   <p>The figures are the Treasury Department's daily par real yield curve rates, read from the Treasury once a day and shown without adjustment. The <a href="/guides/tips-real-yields-and-breakeven-inflation/">guide to TIPS real yields</a> explains how to use them.</p>
+  </div></details>
   </div>
-  <h2>How to read TIPS yields</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read TIPS yields</h2></summary><div class="ref-body">
   <p>A TIPS real yield is what the bond pays <em>on top of</em> inflation: the principal is adjusted with CPI-U and the coupon is paid on the adjusted principal. The <strong>breakeven inflation rate</strong> is the nominal Treasury yield of the same maturity minus the real yield, which is roughly the average inflation at which a TIPS and a regular Treasury would return the same. Treasury publishes these par real yields each business day for the 5-, 7-, 10-, 20- and 30-year points.</p>
+  </div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Official U.S. Treasury data, shown as published.</p>
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "tips-real-yields.csv")?.path], name: "TIPS real yield curve (daily)", path: "/rates/tips/", description, dateModified: real?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["TIPS", "real yield", "breakeven inflation", "Treasury"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>

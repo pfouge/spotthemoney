@@ -1,0 +1,35 @@
+---
+// One block of data = one panel (design/system.md section 8): the section's own h2 (passed in the `title` slot, so
+// the heading text stays the caller's), quiet actions at the right (CSV, open in a hub), a summary of one to three
+// figures with at most one small chart beside them, the table preview (the table's wrapper carries data-preview;
+// scripts/tablecap.ts adds "Show all N rows"), and the caveat as one line with "more". Every slot is optional.
+// Several panels go in <div class="panels">; a panel spans 6 of 12 columns from 1100px, or 12 with span={12}.
+interface Link { href: string; label: string }
+interface Props {
+  id?: string;
+  span?: 6 | 12;
+  csv?: Link | null;
+  open?: Link | null;
+}
+const { id, span = 6, csv = null, open = null } = Astro.props;
+const has = (n: string): boolean => Astro.slots.has(n);
+---
+<section class="panel" id={id} data-span={span === 12 ? "12" : undefined} data-panel>
+  <header class="pn-head">
+    <slot name="title" />
+    {(csv || open) && (
+      <div class="pn-acts">
+        {csv && <a href={csv.href} download>{csv.label}</a>}
+        {open && <a href={open.href}>{open.label}</a>}
+      </div>
+    )}
+  </header>
+  {(has("figures") || has("chart")) && (
+    <div class="pn-sum">
+      {has("figures") && <div class="pn-figs"><slot name="figures" /></div>}
+      {has("chart") && <div class="pn-chart"><slot name="chart" /></div>}
+    </div>
+  )}
+  {Astro.slots.has("default") && <div class="pn-body"><slot /></div>}
+  {has("note") && <div class="pn-note-wrap"><p class="pn-note"><slot name="note" /></p></div>}
+</section>

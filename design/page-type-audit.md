@@ -159,6 +159,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | home-home-1280-dark | 6.2 | 272 | 1224 | - | 19 | 4 | 8 | 6 | 36 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+**Redesign: how each principle was applied (Home, task H2)**
+
+- Overview first: the band says what the site is, offers search and shows twelve routes with one live figure each before any table; the answer follows in two muted lines.
+- Grouping: notable trades and the week's filings sit side by side as panels; the map has one control line (pane, window, view) and everything else under "More filters (n)" with Reset beside it.
+- One meaning per attribute: accent is links and the current choice, green and red are bought and sold only, ink is data, muted is labels; rule tags are text.
+- Data-ink: no card frames on the rail or the rows; the week's counts carry one thin bar each; the charts are one compact row.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px; every panel title is 16 px.
+- Consistency: panel head, caveat line, preview rows and "Show more / Show all" behave the same in notable trades, tiles and leaderboards.
+- Progressive disclosure: notable rows 8 (6 on a phone), tiles 6 on a phone, leaderboards top 5, coverage and "About this list" folded, details in place under a chevron; nothing is removed, every hidden item is one click away.
+- Numbers (1280 / 390): page height 11,114 to about 4,400 px and 19,080 to about 6,400 px (60 and 66 percent shorter); first screen at 1280 holds the title, search, 11 dataset tiles with sparklines and the answer; at 390 the title, search, 6 tiles and the answer.
+
 ### 3.2 Stock / company entity page
 
 **Routes:** `/stocks/[ticker]/` (one per company with a ticker; other share classes 301 to it), `/companies/[slug]/` (companies without a ticker page), `/stocks/[...rest]`, `/companies/[...rest]` (on-demand, not measured)
@@ -247,6 +258,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | company-sponsor-390 | 7.8 | 289 | 851 | 1636 | 15 | 3 | 5 | 4 | 16 | 1 | 0 | 0 | 5 | 5/5 | 0 (none) |
 | stock-pltr-1280-dark | 20.2 | 293 | 748 | 3436 | 20 | 3 | 6 | 4 | 49 | 1 | 0 | 0 | 19 | 14/16 | 0 (none) |
 
+**Redesign: how each principle was applied (Stock and company, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): stock PLTR: 20.2 to 14.6 screens at 1280, 27.8 to 19.8 at 390; first figure y 733 to 467 / 823 to 611; first table y 3436 to 3126 / 4880 to 4435. Company sponsor page: 5.5 to 4.5 and 7.8 to 6.1 screens.
 
 ### 3.3 Member of Congress page
 
@@ -319,6 +340,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | member-priya-390 | 6.2 | 118 | 594 | 1306 | 12 | 3 | 4 | 4 | 11 | 0 | 0 | 0 | 2 | 1/1 | 0 (none) |
 | member-elena-1280-dark | 13.7 | 293 | 641 | 1159 | 19 | 4 | 6 | 4 | 31 | 1 | 0 | 0 | 14 | 10/12 | 0 (none) |
 
+**Redesign: how each principle was applied (Member, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): member Elena Marsh: 13.7 to 9.7 screens at 1280, 19.8 to 13.6 at 390; first figure y 626 to 396 / 799 to 533; first table y 1159 to 928 / 1652 to 1333.
 
 ### 3.4 Insider (Form 4 filer) page
 
@@ -382,6 +413,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | insider-fund-1280 | 4.6 | 293 | 641 | 1514 | 16 | 3 | 5 | 3 | 14 | 1 | 0 | 0 | 5 | 4/5 | 0 (none) |
 | insider-fund-390 | 6.4 | 261 | 812 | 1841 | 16 | 3 | 6 | 3 | 14 | 1 | 0 | 0 | 5 | 4/5 | 0 (none) |
 
+**Redesign: how each principle was applied (Insider, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): insider Karp: 7.0 to 5.5 screens at 1280, 9.8 to 7.9 at 390; first figure y 688 to 396 / 831 to 605; first table y 2065 to 1744 / 2778 to 2537.
 
 ### 3.5 Committee page
 
@@ -431,6 +472,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | committee-senag-1280 | 3.1 | 293 | - | 767 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 2 | 2/2 | 0 (none) |
 | committee-senag-390 | 4.7 | 310 | - | 1090 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 2 | 2/2 | 0 (none) |
 
+**Redesign: how each principle was applied (Committee, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): committee House Agriculture: 6.5 to 4.1 screens at 1280, 8.5 to 5.5 at 390; no figure strip; first table y 793 to 728 / 1120 to 1017.
 
 ### 3.6 Industry division page
 
@@ -473,6 +524,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | industry-services-1280 | 3.2 | 293 | - | 793 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 2 | 1/2 | 0 (none) |
 | industry-services-390 | 4.8 | 289 | - | 1080 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 2 | 1/2 | 0 (none) |
 
+**Redesign: how each principle was applied (Industry division, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): industry Manufacturing: 3.4 to 2.8 screens at 1280, 5.0 to 3.9 at 390; no figure strip; first table y 793 to 772 / 1080 to 1041.
 
 ### 3.7 Lobbying issue page
 
@@ -519,6 +580,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | lobbyissue-trade-1280 | 3.5 | 293 | - | 786 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 3 | 3/3 | 0 (none) |
 | lobbyissue-trade-390 | 5.1 | 289 | - | 1016 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 3 | 3/3 | 0 (none) |
 
+**Redesign: how each principle was applied (Lobbying issue, task E)**
+
+- Overview first: crumbs, the identity line (h1 with Follow, Cite and Share), facts, the top ad, glance tiles and a plain answer paragraph come before any table; the group bar follows.
+- Grouping: facts, tiles and the figure row read as one group; sections sit in Trading, Ownership, Company, Washington; reference blocks (sources, guides, related, questions) are closed `details` under "About this record".
+- One meaning per attribute: accent is links and the current group, green and red are bought and sold only, ink is data, muted is labels; flags are text tags.
+- Data-ink: no card frames or tile boxes; charts are small multiples without frames; each tile carries a 12-month sparkline from the dataset's own dates.
+- Hierarchy by contrast: only 12, 14, 16 and 24 px and weights 400 and 600; the h1 is 24 px, section h2 is the one step below the page title.
+- Consistency: one section header (h2, summary, caveat, CSV link on the heading line, table in its scroll box) on every page type.
+- Progressive disclosure: caveats longer than two lines fold behind "Show more"; long tables keep the 12-row box with "Show all rows"; reference blocks start closed and remember their state.
+- Numbers (screens = page height / 900 at 1280, / 844 at 390; first figure and first table y at 1280 / 390): issue Defense: 3.5 to 2.9 screens at 1280, 4.9 to 3.9 at 390; no figure strip; first table y 786 to 720 / 933 to 941.
 
 ### 3.8 Section landing pages
 
@@ -583,6 +654,27 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | landing-washington-390 | 7.8 | 261 | - | - | 14 | 3 | 4 | 2 | 36 | 0 | 7 | 0 | 0 | 0/0 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.8 section landings)**
+
+- Overview first: each landing opens with a figure row; the Common questions block is closed.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: /congress/ 11.6 to 7.5 screens at 1280, 14.8 to 10.2 at 390; first figure y 774 to 544; first table y 3185 to 3129. /stocks/ 4.2 to 2.9 and 5.6 to 3.5; /washington/ 4.3 to 3.3 and 7.3 to 5.4. Route tiles with a live figure each were not built (skipped).
+
+**Redesign: how each principle was applied** (L2, /congress/, /insiders/, /stocks/, /washington/, /disclosures/)
+1. Answer first: title, answer clamped to two lines with "more", then route tiles (`RouteTiles`, class `hubfigs`, so the top ad follows the tiles; the title block is crumbs, h1, lede, answer).
+2. One screen, one idea: tiles route to the screener, directory, committees, votes, outside spending, late filers (congress); filings, planned sales, large and institutional holders, clusters (insiders); each carries a live figure already in scope.
+3. Dashboard grid: trade map in a span-12 panel, one `.viz-grid` row of compact charts, tables as panels with 5 to 8 row previews and "Show all N rows"; /insiders/ puts every feed under tabs over one panel (all rows stay in the DOM).
+4. Fold the rest: "More views", FAQ, explanations and /washington/ newest filings are closed details; hash links open them.
+5. One table per question: previews replace stacked 100-row tables; each panel links to its screener or hub.
+6. Phones: charts are one swipeable row, tiles two across, tables scroll inside their wrapper; no page-level sideways scroll.
+7. Kit tokens only: sizes 12/14/16/24, weights 400/600; the heatmap's own tile text (11 to 18px) is not changed.
+Numbers (1280 / 390, px): congress 7640/9846 to 4570/6362; insiders 9173/11773 to 4068/5119; stocks 2743/3275 to 2806/3558; washington 2977/4896 to 2772/4307; disclosures 2384/2908 to 2327/2851. About 480px of each page is reserved ad space and the heatmap panel is 959px; neither is changed here.
+
 ### 3.9 Rates and markets detail pages
 
 **Routes:** `/rates/i-bonds/`, `/rates/tips/`, `/rates/treasury-yields/`, `/markets/largest-stock-exchanges/`
@@ -635,6 +727,27 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | ratedetail-exchanges-390 | 12.3 | 261 | - | 3439 | 14 | 4 | 4 | 3 | 10 | 0 | 0 | 0 | 4 | 4/4 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.9 rates and markets pages)**
+
+- Overview first: headline figures not added on rates pages (skipped); reference blocks on tips, treasury-yields and markets are closed.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: treasury-yields page 5.3 to 4.7 screens at 1280, 5.7 to 4.9 at 390; first figure y 631 to 544; first table y 1792 to 1675. Markets 8.9 to 5.9 screens at 1280, 11.5 to 7.1 at 390.
+
+**Redesign: how each principle was applied** (L2, /rates/ and its three detail pages, /markets/largest-stock-exchanges/)
+1. Answer first: headline figure as the `--t-lg` number (datastrip, bignum) under the answer; /rates/ opens with four route tiles (I bonds, Treasury 10-year, TIPS 10-year real, world markets).
+2. One screen, one idea: chart before table; the curve and the 10-year year-to-date chart sit side by side as panels; the two world-market bar charts sit side by side from 1100px.
+3. Tables are 8-row previews with "Show all N rows"; the four markets tables are panels in a 2-column grid.
+4. Fold the rest: what-each-page-covers, how-the-three-rates-differ, where-the-numbers-come-from and how-the-I-Bond-rate-works are closed details; the I-Bond calculator keeps its ids and script and stays open.
+5. Chart SVGs are held to 320px; the `.panel` name clash with the kit is neutralised for the formula line (`p.panel`).
+6. Phones: single column, no sideways page scroll.
+7. Kit tokens only.
+Numbers (1280 / 390): rates 2400/3387 to 2086/2661; i-bonds 3408/4118 to 3059/3724; treasury-yields 4216/4333 to 3416/4326; tips 2660/3102 to 2673/3115; markets 5333/6309 to 4077/5980.
+
 ### 3.10 Dataset hub (client-side filter)
 
 **Routes:** `/company-events/`, `/executive-pay/`, `/institutional-holders/`, `/planned-sales/`, `/large-holders/`, `/congress-votes/`, `/outside-spending/`, `/grants/`, `/lobbyist-contributions/`
@@ -680,6 +793,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | hub-grants-1280 | 8.2 | 293 | 657 | 998 | 13 | 3 | 3 | 2 | 4 | 0 | 0 | 0 | 5 | 5/5 | 0 (none) |
 | hub-grants-390 | 11.9 | 261 | 710 | 1216 | 12 | 3 | 4 | 2 | 4 | 0 | 0 | 0 | 5 | 5/5 | 0 (none) |
 
+
+**Redesign: how each principle was applied (3.10 dataset hubs)**
+
+- Overview first: 3 to 5 headline figures sit above the filters on company-events, executive-pay, planned-sales, large-holders, institutional-holders and congress-votes.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: company-events 2.9 to 2.5 screens at 1280, 4.1 to 3.4 at 390; first figure y none to 576 (665 at 390); first table y 803 to 708 (975 to 797).
 
 ### 3.11 Dataset page, server-rendered
 
@@ -734,6 +858,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | serverhub-disclosures-390 | 9.5 | 261 | - | 615 | 11 | 3 | 5 | 3 | 3 | 0 | 0 | 0 | 1 | 0/0 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.11 server-rendered dataset pages)**
+
+- Overview first: lobbying, contracts, donations and disclosures open with a figure row.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: lobbying 4.4 to 3.7 screens at 1280, 5.8 to 4.7 at 390; first figure y none to 520; first table y 1406 to 1345. Contracts 5.6 to 4.8 and 7.0 to 5.8; figure y 592.
+
 ### 3.12 Screener / directory
 
 **Routes:** `/congress-trades/`, `/congress-members/`, `/company-financials/`
@@ -780,6 +915,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | screener-company-financials-390 | 6.8 | 261 | - | 1069 | 11 | 3 | 4 | 2 | 5 | 0 | 0 | 0 | 1 | 1/1 | 0 (none) |
 
 
+**Redesign: how each principle was applied (3.12 screeners and directories)**
+
+- Overview first: congress-trades, company-financials and congress-members open with a figure row before any control.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: congress-trades 6.3 to 4.6 screens at 1280, 8.1 to 5.4 at 390; first figure y none to 576; first table y 930 to 844. company-financials 4.3 to 2.6 and 6.4 to 3.4.
+
 ### 3.13 List pages (committees, industries, lobbying issues)
 
 **Routes:** `/congress-committees/`, `/industries/`, `/lobbying-issues/`
@@ -822,6 +968,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | list-lobbying-issues-1280 | 2.9 | 293 | - | 662 | 11 | 3 | 3 | 2 | 3 | 0 | 0 | 0 | 1 | 1/1 | 0 (none) |
 | list-lobbying-issues-390 | 4.1 | 261 | - | 724 | 11 | 3 | 4 | 2 | 3 | 0 | 0 | 0 | 1 | 1/1 | 0 (none) |
 
+
+**Redesign: how each principle was applied (3.13 list pages)**
+
+- Overview first: committees, industries and lobbying-issues index pages open with a figure row.
+- Grouping: filters, count line, table and download controls sit in that order with one gap between groups; reference text is a closed block at the foot.
+- One meaning per attribute: accent is only the active filter and links; green and red stay on bought and sold; ticker is 600 and the company name is muted wherever an entity row appears.
+- Data-ink: borders removed between figure tiles and rows, no extra boxes; the two download buttons share one quiet outline style.
+- Hierarchy by contrast: only 12, 14, 16 and 24px and weights 400 and 600; figures are 24px, labels 12px muted.
+- Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
+- Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
+- Numbers: industries 2.8 to 2.3 screens at 1280, 3.9 to 2.9 at 390; first figure y none to 552; first table y 746 to 748.
 
 ### 3.14 Guides hub and FAQ
 
@@ -866,6 +1023,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | guidehub-faq-390 | 30.2 | 261 | - | - | 9 | 3 | 4 | 2 | 125 | 0 | 0 | 19 ({'s': 'a.faq-more', 'right': 409, 'w': 393}) | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Guides hub and FAQ, 2026-11-23)
+- overview first: Answer block and group chips first; each FAQ group is a heading with its questions under it.
+- grouping: Questions sit under the existing group headings; the group chips jump to them.
+- one meaning per attribute: Plus/minus marks only the disclosure; links are accent, nothing else uses accent.
+- data-ink: Hairlines between questions, no boxes; every row is a question.
+- hierarchy by contrast: Questions are 14px semibold summaries, answers regular 16px.
+- consistency: Same `details` pattern as the methodology and the guides' own Q&A; `a.faq-more` now wraps.
+- progressive disclosure: 70 answers closed behind their questions; `data-remember` and the address hash open one.
+- before/after: /faq/ 18.1 screens at 1280 and 30.2 at 390 before; 8.1 and 10.7 after (14,492px prose block to 7,306px page); no table on the page.
+
 ### 3.15 Guide page
 
 **Routes:** `/guides/[slug]/`
@@ -897,6 +1065,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | guide-what-is-form-4-1280 | 10.9 | 293 | - | - | 10 | 3 | 3 | 2 | 12 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 | guide-what-is-form-4-390 | 18.7 | 261 | - | - | 11 | 3 | 4 | 2 | 12 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Guide page, 2026-11-23)
+- overview first: Title, answer, In brief, then a contents list (sticky at 1280, closed disclosure at 390).
+- grouping: Sections, questions, sources, related guides are separate h2 groups listed in the contents.
+- one meaning per attribute: Accent is link only; the contents list uses ink.
+- data-ink: No extra frames; the list has one hairline.
+- hierarchy by contrast: One 68ch column, h2 semibold, body regular.
+- consistency: Same `Toc` and `prose-grid` as methodology, legal and corrections pages.
+- progressive disclosure: Guide questions are closed `details`; contents closed on a phone.
+- before/after: what-is-form-4: 10.9 screens at 1280 and 18.7 at 390 before; 6.9 and 10.5 after; no table before the first section.
 
 ### 3.16 Writing hub
 
@@ -932,6 +1111,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | writinghub-writing-390 | 3.5 | 261 | - | - | 7 | 3 | 4 | 2 | 6 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Writing hub, 2026-11-23)
+- overview first: Empty state or list of article cards, newest first.
+- grouping: One card per article with title, deck, author and read time.
+- one meaning per attribute: Tag chips only for Draft.
+- data-ink: Cards are hairline rows in the same grid as guide cards.
+- hierarchy by contrast: Title semibold, deck regular, meta in ink-2.
+- consistency: `guide-cards` grid shared with the guides hub, `minmax(280px,1fr)`.
+- progressive disclosure: Nothing hidden.
+- before/after: No change in height beyond the shared grid (empty hub in this build).
+
 ### 3.17 Article
 
 **Routes:** `/writing/[slug]/`
@@ -960,6 +1150,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | article-late-1280 | 5 | 293 | - | 1145 | 12 | 4 | 3 | 2 | 10 | 0 | 0 | 0 | 1 | 0/1 | 0 (none) |
 | article-late-390 | 7.8 | 289 | - | 1576 | 11 | 4 | 4 | 2 | 10 | 0 | 0 | 0 | 1 | 0/1 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Article, 2026-11-23)
+- overview first: Title, deck, byline, summary, then the body at 68ch.
+- grouping: Body, questions, tags, author box, more writing are separate blocks.
+- one meaning per attribute: Numeric table columns right-aligned with tabular figures; links accent.
+- data-ink: The author box has one top hairline only.
+- hierarchy by contrast: h2 semibold with 32px above; byline in ink-2.
+- consistency: Questions use the shared `details.faq-item`.
+- progressive disclosure: Article questions closed.
+- before/after: Late-trades article: 4.5 screens at 1280 and 7.2 at 390 after (5.0 and 7.8 before); first table y 819 at 1280.
 
 ### 3.18 Author page
 
@@ -995,6 +1196,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | author-stm-1280 | 2 | 293 | - | - | 10 | 3 | 3 | 2 | 6 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 | author-stm-390 | 3.2 | 261 | - | - | 9 | 3 | 4 | 2 | 6 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Author page, 2026-11-23)
+- overview first: Name, bio and links in the title block, then the list of articles.
+- grouping: Articles are the one list.
+- one meaning per attribute: Accent only on links.
+- data-ink: No boxes.
+- hierarchy by contrast: Name is the h1.
+- consistency: Cards as on the writing hub.
+- progressive disclosure: None needed.
+- before/after: Unchanged height; only the shared card grid applies.
 
 ### 3.19 Reference and static pages
 
@@ -1096,6 +1308,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | reference-corrections-390 | 3.5 | 261 | - | - | 8 | 3 | 4 | 3 | 3 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Reference and static pages, 2026-11-23)
+- overview first: Answer block, then a contents list; methodology opens with the first two sections only.
+- grouping: Methodology sections are one disclosure each; legal pages are plain h2 sections; downloads and developers keep their jump pills.
+- one meaning per attribute: Plus/minus is the only marker; accent is link only.
+- data-ink: Legal pages are body text only, no boxes.
+- hierarchy by contrast: h2 semibold, 68ch text, sticky contents at 1024px and up.
+- consistency: One `ProseBody`/`Toc` pair builds the contents from the page's own h2s on methodology, privacy, terms, about, contact and corrections; headings with no id (corrections) get one from their text.
+- progressive disclosure: 10 of 12 methodology sections closed, remembered per visit; a link to any id inside a closed section (there are about 35 paragraph anchors in 'matching') opens it (`openToHash` in ui.ts).
+- before/after: methodology 20.5 screens at 1280 and 41.1 at 390 before; 3.6 and 5.4 after. privacy 7.5 and 12.1, terms 5.3 and 7.9, developers 6.7 and 11.9 (9.8 and 18.5 before). The methodology table is inside the 'coverage' disclosure.
+
 ### 3.20 Account (watchlist, shared watchlist)
 
 **Routes:** `/watchlist/`, `/watchlist/shared/`; also `/alerts/unsubscribe` (not measured)
@@ -1126,6 +1349,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | account-shared-390 | 1.7 | 118 | - | - | 3 | 2 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Account (watchlist, shared watchlist), 2026-11-23)
+- overview first: Sign-in prompt or the lists, nothing else on the page.
+- grouping: One body, filled by script.
+- one meaning per attribute: Accent for the sign-in button only.
+- data-ink: No new frames.
+- hierarchy by contrast: h1 then lede.
+- consistency: Page width limited to 68ch on a phone and tablet, full width from 1024px.
+- progressive disclosure: Rows are filled by the script; unchanged.
+- before/after: Unchanged (script-filled; not signed in here).
+
 ### 3.21 Embeds
 
 **Routes:** `/embed/congress/[slug]/`, `/embed/stocks/[ticker]/`
@@ -1150,6 +1384,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | embed-stock-390 | 1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 
 
+
+**Redesign: how each principle was applied** (Embeds, 2026-11-23)
+- overview first: The chart alone with a source line.
+- grouping: One chart and one footer.
+- one meaning per attribute: Tokens only.
+- data-ink: No chrome added.
+- hierarchy by contrast: Footer in ink-2 12px.
+- consistency: Uses the same tokens as the site via global.css.
+- progressive disclosure: None.
+- before/after: Unchanged.
+
 ### 3.22 Search dialog (layout)
 
 **Routes:** in `BaseLayout.astro` (`#searchDlg`), index `/data/search.json`
@@ -1171,6 +1416,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | search-home-1280 | 6.2 | 272 | 1224 | - | 19 | 4 | 8 | 6 | 36 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 | search-home-390 | 9.9 | 240 | 1658 | - | 18 | 4 | 8 | 6 | 35 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Search dialog and share dialog, 2026-11-23)
+- overview first: Input first, results under it.
+- grouping: Share channels, extras and cite are three groups.
+- one meaning per attribute: Accent only on the primary button.
+- data-ink: One border, one shadow.
+- hierarchy by contrast: Radius 8px, 4px controls.
+- consistency: Touch targets grow to 44px at 640px and below; the dialogs use the shared tokens.
+- progressive disclosure: Cite stays folded into the share dialog as before.
+- before/after: Unchanged height.
 
 ## 4. Blocks per page type that must survive the redesign (regression list)
 
@@ -1194,3 +1450,56 @@ Each line is a selector that exists in the current build on that page type. Take
 - **Embeds:** `EmbedLayout` single chart, canonical link to the full page, noindex
 
 The verifiers in `scripts/verify-*.mjs` (guides, links, filters, share, a11y, screener, directory and others) read many of these selectors; a selector removed from the page breaks that verifier by design.
+
+## Redesign, second pass: stock and company pages (E2)
+
+How each principle was applied: summary first (identity row with Follow, Cite, Share; compact facts; answer clamped to two lines; eight glance tiles; one row of compact charts), detail on demand (panels with previews of 5 rows, 8 for the two transaction tables; trailing columns marked `data-col="more"` on the insiders and members tables; "More figures" and the codes table closed), one place per figure (Cite and Share beside the h1 only; panel notes clamp to two lines, full text stays in the DOM), grouping (Trading, Ownership, Company, Washington, About, each a 12-column `.panels` grid; a group with no panels is absent). Numbers (desktop 1280 / phone 390, big data): /stocks/vmfk/ 14807 to 9314 / 18823 to 12613; /stocks/spy/ 4345 to 3761 / 5033 to 4157; /stocks/nvda/ 13297 to 9082 / 17107 to 12109. Short of the 60% target; see report-E2.
+
+## Redesign, finishing pass (task F, 2026-11-24)
+
+Measured on the high-volume database (`stm_big_tpl`), before = http://127.0.0.1:4870 (no second-pass change), screens of
+800px at 1280 and 844px at 390. "Rows before Show all": the most rows any table shows before its "Show all N rows".
+
+### Stock / company page (3.2)
+- Overview first: crumbs, identity line (h1, Follow, Cite, Share), facts as one label/value row, answer in two lines with the date and "Show more" on one line under it, glance tiles 4 across (2 on a phone) with the sparkline in its own column, the charts as one `.viz-grid` row; all one `.entity-top` wrapper, so the top ad comes after the charts.
+- Grouping: the group bar is a tab set (Trading, Ownership, Company, Washington, About this record, All); one group shows at a time, Trading first, the choice remembered per page type for the visit.
+- One meaning per attribute: the chosen tab is accent with a 600 label; green/red only for bought/sold.
+- Data-ink: share price chart half width beside the 3 and 12 month table; month bars 96px; Reading and Embed share one line.
+- Hierarchy by contrast: glance figure and label on one line, note muted; panel heads with the CSV link quiet at the right.
+- Consistency: the same skeleton as member and insider pages (and OdPageView, compiled only).
+- Progressive disclosure: other groups one click away; any link, hash or glance tile opens the group, details and table around its target (scripts/reveal.ts).
+- Before/after: /stocks/vmfk/ 18.5 to 5.0 screens at 1280, 22.3 to 6.6 at 390; first figure y 341 to 310; rows before Show all 8 (insider transactions), 5 elsewhere. /companies/seed-swapped-trust/ 6.2 to 2.8 / 7.6 to 3.1.
+
+### Member page (3.3)
+- Overview first: the stock page's skeleton; the figure strip that repeated the glance tiles is in the closed "More figures".
+- Grouping: tabs Trading (most-traded stocks, disclosed trades, year by year), Washington, About this record (comparison and filings now here, as context), All.
+- One meaning per attribute: unchanged colours; seat and party muted after the name.
+- Data-ink: one chart row, compact; bar cells ink.
+- Hierarchy by contrast: panel h2 at --t-md, notes --t-xs muted.
+- Consistency: Cite and Share beside the h1 as on stock pages (no second pair in the answer).
+- Progressive disclosure: questions about the member are a closed disclosure between the two ads.
+- Before/after: /congress/zion-nakamura/ 10.2 to 4.3 screens at 1280, 12.7 to 5.0 at 390; first figure y 234 to 317 (the identity line now carries the actions and lede); rows before Show all 8.
+
+### Insider page (3.4)
+- Overview first: the same skeleton; More figures closed.
+- Grouping: Trading (transactions, then rows by code and year), Ownership (Form 144 notices the person filed, large holdings reported), About this record (filings, other insiders, sources).
+- One meaning per attribute, data-ink, hierarchy, consistency: as on stock pages.
+- Progressive disclosure: guides closed between the two ads.
+- Before/after: /insiders/kingsley-fay/ 7.0 to 3.7 screens at 1280, 8.6 to 4.4 at 390; rows before Show all 8.
+
+### Committee, industry and lobbying-issue pages (3.5 to 3.7)
+- Overview first: figures row (facts as figures), answer, then panels two per row.
+- Grouping: committee Members beside Most-traded stocks, trades full width, lobbyist contributions; issue clients beside registrants.
+- One meaning per attribute: bar cells ink; codes left-aligned (a code column sorted as text is no longer right-aligned).
+- Data-ink: secondary columns (role, 12-month trades, latest, sales) marked `data-col="more"` in the 6-wide panels.
+- Hierarchy by contrast: each panel opens with one to three headline figures (PanelFigs) taken from its own summary sentence.
+- Consistency: previews of 5 (8 for the main trades/filings/companies table; industries' companies table cut from 10 to 8).
+- Progressive disclosure: About this page and the related lists stay closed between the mid ad and the multiplex.
+- Before/after (1280 / 390): committee house-financial-services 5.3 to 3.5 / 6.2 to 4.5; industry manufacturing 3.7 to 3.0 / 4.4 to 3.6; issue aviation 4.9 to 3.1 / 5.7 to 4.1; first figure now at y 214 (none before).
+
+### Rates pages (3.9)
+- Headline rates at --t-lg on the yield-curve and TIPS strips (`.rates-strip`); the low ad sits before "How to read", so it is never next to the multiplex. /rates/treasury-yields/ 5.3 to 3.7 screens at 1280.
+
+### Site chrome (every page)
+- Footer at most 260px on a desktop (258 measured): brand and copyright, one muted paragraph for the disclaimer and sources, six compact link columns (the About column in two). On a phone each link group folds under a chevron button beside its heading; every link stays in the page, and without JavaScript the lists are open.
+- Ads: no page shows two ad blocks with nothing between them; the top ad of guides and articles now follows the title block inside the `<article>` (it had fallen to the end of the page).

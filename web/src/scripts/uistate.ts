@@ -1,9 +1,9 @@
 // What the visitor chose for this visit: row density, which sections they opened, which long tables
-// they expanded. One sessionStorage key, `stm.ui`, JSON `{density, open: {<id>: 0|1}, tables: {<key>: 1}}`.
+// they expanded. One sessionStorage key, `stm.ui`, JSON `{density, open: {<id>: 0|1}, tables: {<key>: 1}, tabs: {<page type>: <group id>}}`.
 // Session storage ends with the tab and is never sent anywhere (the privacy page says so). Every
 // access is wrapped: a browser that refuses storage simply forgets, and nothing breaks.
 export const UI_KEY = "stm.ui";
-export interface UiState { density?: "compact" | "comfortable"; open?: Record<string, 0 | 1>; tables?: Record<string, 1> }
+export interface UiState { density?: "compact" | "comfortable"; open?: Record<string, 0 | 1>; tables?: Record<string, 1>; tabs?: Record<string, string> }
 
 export function readUi(): UiState {
   try {

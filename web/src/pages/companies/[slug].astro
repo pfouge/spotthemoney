@@ -4,6 +4,7 @@
 // this address redirects to it (pages/companies/[...rest].astro). Insiders, their transactions,
 // and the same company's federal contracts and lobbying (components/WashingtonRecords.astro).
 import LearnMore from "../../components/LearnMore.astro";
+import EntityActions from "../../components/EntityActions.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
 import PageGroup from "../../components/PageGroup.astro";
@@ -16,6 +17,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import { monthlyCounts, monthlyDirection } from "../../lib/glancespark";
 import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
@@ -96,22 +98,22 @@ const lcfItems = lcf ? lcf.years.reduce((a, y) => a + y.items, 0) : 0;
 const hasData = c.txns.length > 0 || c.contracts.length > 0 || c.lobbying.length > 0 || companyShown || plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0 || assistRows.length > 0 || lcfItems > 0;
 const latestInsider = txns.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 const glance = [
-  ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
+  ...(txns.length ? [{ label: "Insider transactions", value: num(txns.length), bars: monthlyDirection(txns.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: latestInsider ? `Latest ${formatDate(latestInsider)}` : undefined, href: "#insider-transactions" }] : []),
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
   ...(instN ? [{ label: "Institutional holders", value: num(instN), note: `as of ${formatDate(model.inst.period!)}`, href: "#institutional-holders" }] : []),
   ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
   ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
-  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
-  ...(c.contracts.length ? [{ label: "Federal contracts", value: num(c.contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
+  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), bars: monthlyCounts(evRows.map((e) => e.filed), model.builtAt), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
+  ...(c.contracts.length ? [{ label: "Federal contracts", value: num(c.contracts.length), bars: monthlyCounts(c.contracts.map((x) => x.actionDate), model.builtAt), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
   ...(assistRows.length ? [{ label: "Grants and loans", value: num(assistRows.length), note: `Newest started ${formatDate(assistRows[0]!.startDate)}`, href: "#assistance" }] : []),
   ...(c.lobbying.length ? [{ label: "Lobbying filings", value: num(c.lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
   ...(lcfItems ? [{ label: "Lobbyist contributions", value: num(lcf!.years[0]?.items ?? 0), note: `Items in ${lcf!.years[0]?.year}, filed by the company`, href: "#filer-contributions" }] : []),
 ];
 const groupList = hasData ? [
   { id: "trading", label: "Trading" },
-  ...(holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []),
+  ...(plannedN || holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []),
   ...(companyShown ? [{ id: "company", label: "Company" }] : []),
   { id: "washington", label: "Washington" },
   { id: "record", label: "About this record" },
@@ -130,8 +132,8 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 ---
 <BaseLayout title={[`${c.name} Insider Trades, Contracts & Lobbying`, `${c.name} Insider Trades & Contracts`, `${c.name} Insider Trades`]} description={description} section="Companies">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks and companies", path: "/stocks/" }, { name: c.name, path }]} />
-  <p class="eyebrow">Company{c.cik ? <> <span class="x">/</span> CIK {c.cik}</> : null}</p>
-  <div class="title-row"><h1>{c.name}</h1><Follow kind="company" entity={c.slug!} label={c.name} /></div>
+  <div class="entity-top" data-entity-top>
+  <div class="entity-id"><h1>{c.name}</h1><Follow kind="company" entity={c.slug!} label={c.name} /><EntityActions /></div>
   <dl class="facts" data-entity-facts>
     {securities.length > 0 && <div><dt>{securities.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{[...new Map(securities.map((s) => [s.ticker, s])).values()].map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}</dd></div>}
     {industry && <div data-industry><dt>Industry, as the SEC classifies it</dt><dd>{industryLink ? <a href={industryLink}>{industry.label}</a> : industry.label}</dd></div>}
@@ -144,16 +146,20 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     {lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(lastTrade)}</dd></div>}
   </dl>
 
-  <Answer text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
+
+  <Answer actions={false} text={answer} updated={lastUpdated} sourceNote="Sources: SEC EDGAR; USAspending; Senate LDA" />
   <ReviewNote show={c.underReview} what="Insider rows" />
 
   <Glance items={hasData ? glance : []} />
 
+  <VizStock company={c} />
+  </div>
+
   <GroupBar groups={groupList} />
 
   <PageGroup id="trading" label="Trading">
-  <VizStock company={c} />
-
+  <div class="panels" data-trading-panels>
+  <section class="panel" data-panel aria-labelledby="insiders">
   <h2 id="insiders">Insiders</h2>
   {c.insiders.length === 0 ? <p class="empty-reason">No reporting owners on file for this issuer yet.</p> : (
     <div class="tablewrap">
@@ -168,9 +174,10 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </div>
   )}
   {c.insiders.length > 0 && <p class="section-note">Rows are this company's Form 4 rows for each person. "Bought" and "sold" count open-market purchases (code P) and sales only. More in <a href="/guides/insider-buying-vs-insider-selling/">insider buying and insider selling</a>.</p>}
+  </section>
 
   {memberList.length > 0 && (
-    <section aria-labelledby="members" data-entity-members>
+    <section class="panel" data-panel aria-labelledby="members" data-entity-members>
       <h2 id="members">Members of Congress who traded {c.primaryTicker ?? "this stock"}</h2>
       <p class="section-note">From periodic transaction reports that name the company's stock. Amounts are the sums of the ranges as filed. Every row is on the {primarySec ? <a href={securityPath(primarySec)}>{primarySec.ticker} page</a> : "stock page"}.</p>
       <div class="tablewrap">
@@ -186,31 +193,37 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </section>
   )}
 
+  <section class="panel" data-panel data-span="12" aria-labelledby="insider-transactions">
   <h2 id="insider-transactions">Insider transactions</h2>
   <DownloadCsv file={c.primaryTicker ? (await getDownloads()).stock.get(c.primaryTicker.toLowerCase()) : undefined} note="insider and congressional rows for this ticker" />
-  <TxnTable model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
+  <TxnTable preview={8} model={model} txns={txns} showPerson showSecurity emptyReason="No approved Form 4 transactions for this issuer yet." />
+  </section>
+  </div>
 
-  <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
 
   </PageGroup>
 
-  <AdSlot label="Advertisement" />
 
-  {(holdersN > 0 || holdingsN > 0 || instN > 0) && (
+  {(plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
+      <div class="panels" data-ownership-panels>
+  <PlannedSales model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
       <LargeHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
 
       <InstHolders model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "inst")} />
 
       <ReportedHoldings model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+      </div>
     </PageGroup>
   )}
 
   {companyShown && (
     <PageGroup id="company" label="Company">
+      <div class="panels" data-company-panels>
       <Financials model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "financials")} />
       <ExecutivePay model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "execpay")} />
       <CompanyEvents model={model} cik={c.cik} name={c.name} file={(await getDownloads()).files.find((f) => f.kind === "events")} />
+      </div>
     </PageGroup>
   )}
 
@@ -220,26 +233,33 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 
   </PageGroup>
 
-  <AdSlot pos="low" />
 
   <PageGroup id="record" label="About this record">
   {relatedCos.length > 0 && (
     <section aria-labelledby="related" data-related>
-      <h2 id="related">Related companies</h2>
+      <details class="ref" data-remember id="ref-related"><summary><h2 id="related">Related companies</h2></summary><div class="ref-body">
       <p class="section-note">Companies whose stock was traded by the same people who traded {c.primaryTicker}, by number of filers in common. It shows overlap in public filings and nothing else.</p>
       <ul class="mates two">
         {relatedCos.map((r) => <li><span><a href={r.path}>{r.company.name}</a> <span class="soft mono">{r.ticker}</span></span> <span>{plural(r.shared, "filer")} in common</span></li>)}
       </ul>
-    </section>
+    </div></details></section>
   )}
 
-  <LearnMore slugs={["what-is-form-4", "insider-buying-vs-insider-selling", ...(c.contracts.length ? ["federal-contracts-usaspending"] : []), ...(c.lobbying.length ? ["lobbying-disclosure-reports"] : []), "what-disclosure-data-cannot-tell-you"]} />
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={c.txns} edgarId={c.cik ?? c.primaryTicker}
     extra={[{ name: "USAspending, federal contract awards", records: c.contracts.length, unit: c.contracts.length === 1 ? "award" : "awards", href: SOURCES.usaspending.url, linkLabel: "USAspending" }, { name: "Lobbying disclosure filings", records: c.lobbying.length, unit: c.lobbying.length === 1 ? "filing" : "filings", href: SOURCES.lda.url, linkLabel: "LDA.gov search" }]} />
   <p>Insiders and their transactions come from SEC EDGAR Form 4 filings for this issuer. Contracts and lobbying are matched by exact normalized name (suffixes like Inc./Corp. ignored) to USAspending recipients and LDA clients. This is a conservative match that misses subsidiaries on purpose. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  </div></details>
   </PageGroup>
+
+  <AdSlot label="Advertisement" />
+
+  <LearnMore slugs={["what-is-form-4", "insider-buying-vs-insider-selling", ...(c.contracts.length ? ["federal-contracts-usaspending"] : []), ...(c.lobbying.length ? ["lobbying-disclosure-reports"] : []), "what-disclosure-data-cannot-tell-you"]} />
+
+
+  <AdSlot pos="low" />
+
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no recommendation is made or implied.</p>
   <JsonLd data={ld} />

@@ -17,6 +17,8 @@ import { weekCounts } from "../lib/washhub-build";
 import { weekLog, WEEK_DAYS } from "../lib/washhub";
 import VizHome from "../components/VizHome.astro";
 import HomeTop from "../components/HomeTop.astro";
+import HomePaneSwitch from "../components/HomePaneSwitch.astro";
+import HomeLeaderboards from "../components/HomeLeaderboards.astro";
 import { homeRoutes, recentlyActive } from "../lib/hometop-build";
 import { routesLog } from "../lib/hometop";
 
@@ -45,7 +47,7 @@ const ibondRate = ibond?.compositeRate != null ? formatPercent(ibond.compositeRa
 const curve = await getYieldCurve();
 const tenY = curve?.tenors.find((t) => t.label === "10Y")?.latest ?? null;
 const tenYRate = tenY != null ? formatPercent(tenY) : "—";
-const homeDir = import.meta.env.PUBLIC_HOME_DIR === "b" ? "b" : "a";
+const weekMax = Math.max(0, ...weekRow.map((w) => w.count));
 const routes = homeRoutes(model, feed.companies, tenY != null && ibond?.compositeRate != null ? { tenYear: tenYRate, ibond: ibondRate } : null);
 console.log(routesLog(routes));
 const active = recentlyActive(model);
@@ -59,82 +61,78 @@ const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", 
 const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling: disclosed trades on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
 ---
 <BaseLayout title="Notable Insider & Congress Stock Trades | Spot the Money" description="Notable stock trades by corporate insiders and members of Congress as filed: cluster buys, large sales, big stake changes. Free, with links to each filing." section="Heatmap">
-  <HomeTop dir={homeDir} routes={routes} feed={feed} active={active} />
+  <HomeTop routes={routes} active={active} />
 
-  <section class="answer" data-answer>
-    <p class="answer-text">{answer}</p>
-    <p class="answer-meta"><span>Last updated {lastDisclosed ? new Date(lastDisclosed + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "no filings yet"}</span><span> · Sources: House Clerk PTRs; Senate eFD reports; SEC EDGAR Form 4</span></p>
-  </section>
-  <p class="note nf-coverage">{coverage} <a href="/methodology/#coverage">What is covered</a>.</p>
-
-  <NotableFeed data={feed} />
-
-  {weekRow.length > 0 && (
-    <section data-week data-built={model.builtAt.slice(0, 10)} aria-labelledby="weekH">
-      <h2 id="weekH" class="nf-maph">This week in filings</h2>
-      <p class="soft small">Reports filed or held in the {WEEK_DAYS} days up to {longDate(model.builtAt.slice(0, 10))}, counted by each dataset's own date. Counts only; open a dataset for the records.</p>
-      <div class="datastrip wk-strip">
-        {weekRow.map((w) => (
-          <a class="cell wk-tile" data-wk={w.key} data-n={w.count} href={w.path}><div class="k">{w.label}</div><div class="v">{w.count.toLocaleString("en-US")}</div><div class="delta">{w.noun}</div></a>
-        ))}
-      </div>
-    </section>
-  )}
-
-  <h2 id="heatmap" class="nf-maph">Trade map</h2>
-  <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters, and covers about {num(mapCompanies)} companies (large companies and every stock a member of Congress has traded), not the whole market.</p>
-  <details class="nf-howto" data-remember id="howMap">
-    <summary><h3 id="howMapH">How to read the map</h3></summary>
-    <p>
-      Each dot is one stock: further right is more bought, further left more sold, and the color runs
-      from red (mostly sales) through yellow to green (mostly purchases). The switch under the chart
-      shows the same trades as a heatmap. Congress reports dollar ranges, so a congressional trade
-      counts at the top of its bracket; insider trades are shares × the reported price.
-      Open-market insider trades (codes P and S)
-      are shown by default with Rule 10b5-1 plan sales excluded; switch them on to compare.
-      Disclosures lag the trade (Congress has 45 days, insiders two business days) and every row
-      links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>
-    </p>
-  </details>
-  <div class="hm-switch">
-    <div class="seg" id="hmSwitch" role="tablist" aria-label="Choose whose trades to show">
-      <button type="button" class="on" data-pane="all" role="tab" aria-selected="true">All insiders</button>
-      <button type="button" data-pane="congress" role="tab" aria-selected="false">Congress</button>
-      <button type="button" data-pane="insiders" role="tab" aria-selected="false">Corporate insiders</button>
+  <section class="answer home-answer" data-answer>
+    <div class="ha-main">
+      <p class="answer-text">{answer}</p>
+      <p class="answer-meta"><span>Last updated {lastDisclosed ? new Date(lastDisclosed + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "no filings yet"}</span><span> · Sources: House Clerk PTRs; Senate eFD reports; SEC EDGAR Form 4</span></p>
     </div>
-    <a class="hm-more" id="hmMore" href="/congress/">Congress: late filers, most active members, filings as they arrive &rarr;</a>
+    <details class="home-cov">
+      <summary>What is covered</summary>
+      <p class="note nf-coverage">{coverage} <a href="/methodology/#coverage">What is covered</a>.</p>
+    </details>
+  </section>
+
+  <div class="panels home-panels">
+    <div class="panel hp-main" data-panel>
+      <NotableFeed data={feed} />
+    </div>
+    <div class="panel hp-rail" data-panel>
+      {weekRow.length > 0 && (
+        <section class="rail-card wk" data-week data-built={model.builtAt.slice(0, 10)} aria-labelledby="weekH">
+          <h2 id="weekH" class="rail-h">This week in filings</h2>
+          <p class="rail-cap">Reports filed or held in the {WEEK_DAYS} days up to {longDate(model.builtAt.slice(0, 10))}, counted by each dataset's own date. Counts only; open a dataset for the records.</p>
+          <ul class="wk-list">
+            {weekRow.map((w) => (
+              <li><a class="wk-row wk-tile" data-wk={w.key} data-n={w.count} href={w.path} style={`--wk:${weekMax > 0 ? Math.max(w.count > 0 ? 2 : 0, Math.round((w.count / weekMax) * 100)) : 0}%`}><span class="wk-l">{w.label}</span> <span class="wk-n">{w.count.toLocaleString("en-US")}</span> <span class="wk-noun">{w.noun}</span><span class="wk-bar" aria-hidden="true"></span></a></li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <HomeLeaderboards />
+    </div>
   </div>
-  <div class="hm-pane" data-pane="all"><Heatmap kind="all" primary={true} /></div>
-  <div class="hm-pane" data-pane="congress" hidden><Heatmap kind="congress" id="hm-congress-home" /></div>
-  <div class="hm-pane" data-pane="insiders" hidden><Heatmap kind="insiders" id="hm-insiders-home" /></div>
+
+  <section class="panel hp-map" data-span="12" aria-labelledby="heatmap" data-panel>
+    <header class="pn-head">
+      <h2 id="heatmap" class="nf-maph">Trade map</h2>
+      <div class="pn-acts"><a class="hm-more" id="hmMore" href="/congress/">Congress: late filers, most active members, filings as they arrive &rarr;</a></div>
+    </header>
+    <div class="pn-note-wrap"><p class="pn-note nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters, and covers about {num(mapCompanies)} companies (large companies and every stock a member of Congress has traded), not the whole market.</p></div>
+    <details class="nf-howto" data-remember id="howMap">
+      <summary><h3 id="howMapH">How to read the map</h3></summary>
+      <p>
+        Each dot is one stock: further right is more bought, further left more sold, and the color runs
+        from red (mostly sales) through yellow to green (mostly purchases). The switch under the chart
+        shows the same trades as a heatmap. Congress reports dollar ranges, so a congressional trade
+        counts at the top of its bracket; insider trades are shares × the reported price.
+        Open-market insider trades (codes P and S)
+        are shown by default with Rule 10b5-1 plan sales excluded; switch them on to compare.
+        Disclosures lag the trade (Congress has 45 days, insiders two business days) and every row
+        links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>
+      </p>
+    </details>
+    <div class="hm-pane" data-pane="all"><Heatmap kind="all" primary={true}><HomePaneSwitch slot="lead" current="all" first={true} /></Heatmap></div>
+    <div class="hm-pane" data-pane="congress" hidden><Heatmap kind="congress" id="hm-congress-home"><HomePaneSwitch slot="lead" current="congress" /></Heatmap></div>
+    <div class="hm-pane" data-pane="insiders" hidden><Heatmap kind="insiders" id="hm-insiders-home"><HomePaneSwitch slot="lead" current="insiders" /></Heatmap></div>
+  </section>
 
   <VizHome />
 
-  <div class="datastrip strip-compact">
+  <AdSlot label="Advertisement" />
+
+  <div class="datastrip strip-compact home-rates">
     <div class="cell"><div class="k">I-Bond composite</div><div class="v pos">{ibondRate}</div><div class="delta"><a href="/rates/i-bonds/">Next reset and calculator &rarr;</a></div></div>
     <div class="cell"><div class="k">10-year Treasury</div><div class="v pos">{tenYRate}</div><div class="delta"><a href="/rates/treasury-yields/">Yield curve and TIPS &rarr;</a></div></div>
     <div class="cell"><div class="k">Washington</div><div class="v">{washingtonLive ? `${num(model.counts.lobbying ?? 0)} + ${num(model.counts.contracts ?? 0)}` : "ingesting"}</div><div class="delta"><a href="/washington/">Lobbying filings + contract actions &rarr;</a></div></div>
     <div class="cell"><div class="k">Newest</div><div class="v">{num(pub.filter((t) => withinDays(t.disclosedAt, 7)).length)}</div><div class="delta"><a href="/disclosures/">Disclosures in the last 7 days &rarr;</a></div></div>
   </div>
 
-  <AdSlot label="Advertisement" />
   <JsonLd data={[website, catalog]} />
 
   <script>
     import "../scripts/notable";
-    const sw = document.getElementById("hmSwitch");
-    const more = document.getElementById("hmMore") as HTMLAnchorElement | null;
-    const links: Record<string, [string, string]> = {
-      all: ["/congress/", "Congress: late filers, most active members, filings as they arrive →"],
-      congress: ["/congress/", "Full Congress page: late filers, most active members, filings as they arrive →"],
-      insiders: ["/insiders/", "Full Insiders page: cluster buys, CEO purchases, officer sales →"],
-    };
-    sw?.querySelectorAll<HTMLButtonElement>("button").forEach((b) => b.addEventListener("click", () => {
-      const pane = b.dataset.pane!;
-      sw.querySelectorAll("button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b ? "true" : "false"); });
-      document.querySelectorAll<HTMLElement>(".hm-pane").forEach((p) => { p.hidden = p.dataset.pane !== pane; });
-      if (more) { more.href = links[pane]![0]; more.textContent = links[pane]![1]; }
-      window.dispatchEvent(new Event("resize"));
-    }));
+    import "../scripts/home";
   </script>
 </BaseLayout>

@@ -8,6 +8,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "./AdSlot.astro";
 import Crumbs from "./Crumbs.astro";
 import Answer from "./Answer.astro";
+import EntityActions from "./EntityActions.astro";
 import TxnTable from "./TxnTable.astro";
 import JsonLd from "./JsonLd.astro";
 import { buildOd, figures, answerText, TABLE_ROWS, WHO_ROWS, type OdDoc } from "../lib/server/od";
@@ -79,8 +80,10 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
 ---
 <BaseLayout title={titles} description={description} noindex={page.noindex} section={section} tape={false} ads={hasRows} modified={page.lastUpdated}>
   <Crumbs crumbs={crumbs} />
-  <div class="title-row">
+  <div class="entity-top" data-entity-top>
+  <div class="entity-id">
     {kind === "stock" ? <h1><span class="mono">{sec!.ticker}</span> <span class="soft">{name}</span></h1> : <h1>{name}</h1>}
+    <EntityActions />
   </div>
   {kind === "insider" && <p class="lede">{roleTitle}</p>}
 
@@ -96,8 +99,18 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     {edgarId && <div><dt>SEC filings</dt><dd><a href={edgarHref} rel="noopener" target="_blank">EDGAR ↗</a></dd></div>}
   </dl>
 
-  <Answer text={answer} updated={page.lastUpdated} sourceNote="Source: SEC EDGAR Form 4 filings" />
+  <Answer actions={false} text={answer} updated={page.lastUpdated} sourceNote="Source: SEC EDGAR Form 4 filings" />
   {otherTickers.length > 0 && <p class="section-note" data-od-tickers-note>{company?.name ?? "This company"} has Form 4 filings on record under more than one ticker: <span class="mono">{[sec!.ticker, ...otherTickers].join(", ")}</span>. It is one company, so every row is on this one page. A ticker can differ because the symbol changed, because the company has more than one class of security, or because a filing states it differently.</p>}
+
+  <details class="more-figs" data-remember id="more-figures"><summary>More figures</summary>
+  <section class="datastrip">
+    <div class="cell"><div class="k">Transactions</div><div class="v">{num(stats.rowCount)}</div></div>
+    <div class="cell"><div class="k">Open-market buys</div><div class="v pos">{num(txns.filter((t) => t.code === "P").length)}</div></div>
+    <div class="cell"><div class="k">Sales</div><div class="v neg">{num(txns.filter((t) => t.side === "sell").length)}</div></div>
+    <div class="cell"><div class="k">Avg. disclosure lag</div><div class="v">{avgLag == null ? "—" : `${avgLag.toFixed(1)}d`}</div></div>
+  </section>
+  </details>
+  </div>
 
   {jump.length > 0 && (
     <nav class="jump" aria-label="On this page">
@@ -106,18 +119,13 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     </nav>
   )}
 
-  <section class="datastrip">
-    <div class="cell"><div class="k">Transactions</div><div class="v">{num(stats.rowCount)}</div></div>
-    <div class="cell"><div class="k">Open-market buys</div><div class="v pos">{num(txns.filter((t) => t.code === "P").length)}</div></div>
-    <div class="cell"><div class="k">Sales</div><div class="v neg">{num(txns.filter((t) => t.side === "sell").length)}</div></div>
-    <div class="cell"><div class="k">Avg. disclosure lag</div><div class="v">{avgLag == null ? "—" : `${avgLag.toFixed(1)}d`}</div></div>
-  </section>
+  <div class="panels" data-od-panels>
 
   {f.periods.length > 0 && (
-    <section aria-labelledby="insider-summary" data-entity-periods>
+    <section class="panel" data-panel aria-labelledby="insider-summary" data-entity-periods>
       <h2 id="insider-summary">Insider buying and selling in {insiderWord}: 3 and 12 months</h2>
       <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
-      <div class="tablewrap">
+      <div class="tablewrap" data-preview="6">
         <table class="data periods">
           <thead><tr><th>Open-market trades</th>{f.periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
           <tbody>
@@ -139,7 +147,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
   )}
 
   {kind !== "insider" && f.who.length > 0 && (
-    <section aria-labelledby="insiders" data-entity-insiders>
+    <section class="panel" data-panel aria-labelledby="insiders" data-entity-insiders>
       <h2 id="insiders">Insiders trading {insiderWord}</h2>
       <p class="section-note">Everyone who filed a Form 4 for this {kind === "stock" ? "ticker" : "company"} in the rows shown, by number of rows. "Bought" and "sold" count open-market purchases (code P) and sales only; awards, option exercises and shares withheld for tax are in the row count but not in those two columns.{f.who.length > WHO_ROWS && ` Showing ${WHO_ROWS} of ${num(f.who.length)}.`}</p>
       <div class="tablewrap">
@@ -156,7 +164,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
   )}
 
   {hasRows && (kind === "insider" || f.codes.length > 1) && (
-    <section aria-labelledby="by-type">
+    <section class="panel" data-panel data-span="12" aria-labelledby="by-type">
       <h2 id="by-type">What kind of transactions</h2>
       <p class="section-note">Most Form 4 rows are pay arriving or tax being withheld, not a decision to buy or sell. Only code P is an open-market purchase and code S an open-market sale. What each code means: <a href="/guides/form-4-transaction-codes/">Form 4 transaction codes</a>.</p>
       <div class={kind === "insider" ? "split" : undefined}>
@@ -180,34 +188,37 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     </section>
   )}
 
-  <AdSlot show={hasRows} />
-
+  <section class="panel" data-panel data-span="12" aria-labelledby="insider-transactions">
   <h2 id="insider-transactions">Transactions</h2>
   {page.truncated && <p class="section-note">{num(stats.rowCount)} rows are on record; the figures and tables on this page cover the newest {num(txns.length)}.</p>}
-  <TxnTable model={model} txns={txns} limit={TABLE_ROWS} showPerson={kind !== "insider"} showSecurity={kind !== "stock"} emptyReason="No approved transactions yet. The filings may be amendments, holdings-only reports, or rows still under review." />
+  <TxnTable model={model} txns={txns} limit={TABLE_ROWS} showPerson={kind !== "insider"} showSecurity={kind !== "stock"} preview={8} emptyReason="No approved transactions yet. The filings may be amendments, holdings-only reports, or rows still under review." />
+  </section>
+  </div>
+
+  <AdSlot show={hasRows} />
 
   {kind === "insider" && page.colleagues.length > 0 && (
     <section aria-labelledby="colleagues" data-related>
-      <h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2>
+      <details class="ref" data-remember id="ref-colleagues"><summary><h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2></summary><div class="ref-body">
       <ul class="mates two">
         {page.colleagues.map((r) => <li><span><a href={r.path}>{r.name}</a> <span class="soft">{r.role}</span></span> <span>{plural(r.rows, "row")}</span></li>)}
       </ul>
       {cpath && <p class="section-note">Everyone on file: <a href={cpath}>{company!.name}</a>.</p>}
-    </section>
+    </div></details></section>
   )}
 
   {guideItems.length > 0 && (
     <section class="learn-more" aria-labelledby="learn-more" data-learn-more>
-      <h2 id="learn-more">Guides for this page</h2>
+      <details class="ref" data-remember id="ref-learn-more"><summary><h2 id="learn-more">Guides for this page</h2></summary><div class="ref-body">
       <ul class="mates">
         {guideItems.map((g) => <li><a href={`/guides/${g.slug}/`}>{g.title}</a> {g.fact && <span>{g.fact}</span>}</li>)}
       </ul>
-    </section>
+    </div></details></section>
   )}
 
   <AdSlot pos="low" show={hasRows} />
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <div class="source-panel" data-sources>
     <div class="tablewrap">
       <table class="data">
@@ -233,6 +244,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     The lag is the filing date minus the trade date; Form 4 is due within two business days. Amendments (4/A) are not merged.
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
   </p>
+</div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade and may be amended later. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
 </BaseLayout>

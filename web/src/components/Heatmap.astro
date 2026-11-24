@@ -6,6 +6,8 @@
 //   insiders  — scope All / Officers / Directors / 10% owners, filer picker, open-market-only
 //               and 10b5-1 switches (defaults: open-market only, plans excluded)
 // Both: window 7D/30D/90D/1Y, view Net/Buying/Selling, ticker filter, ticker/filer side list.
+// Redesign pass 2 (2026-11-23): one control line (an optional `lead` slot, window, view), every other filter in the
+// "More filters" disclosure with a count of the active ones; the chart opens 420px tall. The hooks (data-ctl, data-seg) are unchanged.
 // `primary` makes the filter state live in the URL hash (one per page).
 //
 // Two ways to draw the same filtered trades (2026-10-09, Peter): the SCATTER (one dot per
@@ -19,7 +21,7 @@ import { getFlagship, senateShown } from "../lib/flagship";
 const hasSenate = senateShown(await getFlagship());
 interface Props { kind: "congress" | "insiders" | "all"; primary?: boolean; height?: number; id?: string; compact?: boolean; chart?: "scatter" | "map"; view?: "net" | "buy" | "sell"; win?: 7 | 30 | 90 | 365; }
 const { kind, primary = false, compact = false, id = `hm-${kind}` } = Astro.props as Props;
-const { height = compact ? 320 : 560, chart = compact ? "map" : "scatter" } = Astro.props as Props;
+const { height = compact ? 320 : 420, chart = compact ? "map" : "scatter" } = Astro.props as Props;
 const { view = "net", win = 90 } = Astro.props as Props;
 // On a one-group page the scatter's second axis (the other group) comes from a small totals file.
 const cross = kind === "all" || compact ? "" : "/data/trade-cross.json";
@@ -28,66 +30,72 @@ const hasInsiders = kind !== "congress";
 ---
 <section class="heatmap" id={id} data-heatmap data-kind={kind} data-src={src} data-primary={primary ? "true" : "false"} data-compact={compact ? "true" : "false"} data-chart={chart} data-view={view} data-window={win} data-cross={cross || undefined} aria-label={kind === "congress" ? "Congressional trades heatmap" : kind === "insiders" ? "Corporate insider trades heatmap" : "Congress and corporate insider trades heatmap"}>
   <div class="controls hm-controls">
-    {kind === "all" && (
-      <div class="ctl"><span class="lbl">Who</span>
-        <select data-ctl="cls" aria-label="Class">
-          <option value="all">Everyone</option>
-          <option value="congress">Congress only</option>
-          <option value="insiders">Corporate insiders only</option>
-        </select>
-      </div>
-    )}
-    {kind !== "insiders" && (
-      <div class="ctl" data-only="congress"><span class="lbl">Chamber</span>
-        <select data-ctl="chamber" aria-label="Chamber">
-          <option value="all">Both chambers</option>
-          <option value="house">House</option>
-          <option value="senate">{hasSenate ? "Senate" : "Senate (not yet included)"}</option>
-        </select>
-        <select data-ctl="party" aria-label="Party">
-          <option value="all">Any party</option>
-          <option value="dem">Democrats</option>
-          <option value="rep">Republicans</option>
-          <option value="ind">Independents</option>
-        </select>
-      </div>
-    )}
-    {kind !== "congress" && (
-      <div class="ctl" data-only="insiders"><span class="lbl">Role</span>
-        <select data-ctl="role" aria-label="Insider role">
-          <option value="all">All roles</option>
-          <option value="officer">Officers</option>
-          <option value="director">Directors</option>
-          <option value="owner">10% owners</option>
-        </select>
-      </div>
-    )}
-    <div class="ctl"><span class="lbl">{kind === "congress" ? "Member" : kind === "insiders" ? "Filer" : "Person"}</span>
-      <select data-ctl="who" aria-label={kind === "congress" ? "Member" : kind === "insiders" ? "Filer" : "Person"}><option value="">{kind === "congress" ? "All members" : kind === "insiders" ? "All filers" : "Everyone"}</option></select>
-    </div>
-    {hasInsiders && (
-      <div class="ctl"><span class="lbl">Codes</span>
-        <div class="seg" data-seg="codes"><button type="button" data-v="open" class="on">Open-market</button><button type="button" data-v="all">All codes</button></div>
-      </div>
-    )}
-    {hasInsiders && (
-      <div class="ctl"><span class="lbl">10b5-1</span>
-        <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">No 10b5-1 plans</button><button type="button" data-v="include">With plans</button></div>
-      </div>
-    )}
-    <div class="ctl"><span class="lbl">Market cap</span>
-      <select data-ctl="cap" aria-label="Market cap" title="Market cap, estimated from SEC filings: shares outstanding times the latest insider-reported price, or public float. Not a live market cap.">
-        <option value="all">Any market cap</option>
-        {CAP_BANDS.map((b) => <option value={b.code}>{b.label} · {b.range}</option>)}
-      </select>
-    </div>
+    <slot name="lead" />
     <div class="ctl" data-keep><span class="lbl">Window</span>
       <div class="seg" data-seg="window">{([[7, "7D"], [30, "30D"], [90, "90D"], [365, "1Y"]] as const).map(([d, label]) => <button type="button" data-v={String(d)} class:list={[{ on: win === d }]}>{label}</button>)}</div>
     </div>
     <div class="ctl" data-keep><span class="lbl">View</span>
       <div class="seg" data-seg="view"><button type="button" data-v="buy" class:list={[{ on: view === "buy" }]}>Buying</button><button type="button" data-v="net" class:list={[{ on: view === "net" }]}>Net</button><button type="button" data-v="sell" class:list={[{ on: view === "sell" }]}>Selling</button></div>
     </div>
-    <div class="ctl"><span class="lbl">Tickers</span><input class="hm-input mono" data-ctl="tickers" type="text" inputmode="text" placeholder="Tickers: NVDA, AAPL" aria-label="Filter tickers" /></div>
+    <details class="hm-more-f">
+      <summary>More filters<span class="hm-fcount" data-hm-count></span></summary>
+      <div class="hm-filters">
+        {kind === "all" && (
+          <div class="ctl"><span class="lbl">Who</span>
+            <select data-ctl="cls" aria-label="Class">
+              <option value="all">Everyone</option>
+              <option value="congress">Congress only</option>
+              <option value="insiders">Corporate insiders only</option>
+            </select>
+          </div>
+        )}
+        {kind !== "insiders" && (
+          <div class="ctl" data-only="congress"><span class="lbl">Chamber</span>
+            <select data-ctl="chamber" aria-label="Chamber">
+              <option value="all">Both chambers</option>
+              <option value="house">House</option>
+              <option value="senate">{hasSenate ? "Senate" : "Senate (not yet included)"}</option>
+            </select>
+            <select data-ctl="party" aria-label="Party">
+              <option value="all">Any party</option>
+              <option value="dem">Democrats</option>
+              <option value="rep">Republicans</option>
+              <option value="ind">Independents</option>
+            </select>
+          </div>
+        )}
+        {kind !== "congress" && (
+          <div class="ctl" data-only="insiders"><span class="lbl">Role</span>
+            <select data-ctl="role" aria-label="Insider role">
+              <option value="all">All roles</option>
+              <option value="officer">Officers</option>
+              <option value="director">Directors</option>
+              <option value="owner">10% owners</option>
+            </select>
+          </div>
+        )}
+        <div class="ctl"><span class="lbl">{kind === "congress" ? "Member" : kind === "insiders" ? "Filer" : "Person"}</span>
+          <select data-ctl="who" aria-label={kind === "congress" ? "Member" : kind === "insiders" ? "Filer" : "Person"}><option value="">{kind === "congress" ? "All members" : kind === "insiders" ? "All filers" : "Everyone"}</option></select>
+        </div>
+        {hasInsiders && (
+          <div class="ctl"><span class="lbl">Codes</span>
+            <div class="seg" data-seg="codes"><button type="button" data-v="open" class="on">Open-market</button><button type="button" data-v="all">All codes</button></div>
+          </div>
+        )}
+        {hasInsiders && (
+          <div class="ctl"><span class="lbl">10b5-1</span>
+            <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">No 10b5-1 plans</button><button type="button" data-v="include">With plans</button></div>
+          </div>
+        )}
+        <div class="ctl"><span class="lbl">Market cap</span>
+          <select data-ctl="cap" aria-label="Market cap" title="Market cap, estimated from SEC filings: shares outstanding times the latest insider-reported price, or public float. Not a live market cap.">
+            <option value="all">Any market cap</option>
+            {CAP_BANDS.map((b) => <option value={b.code}>{b.label} · {b.range}</option>)}
+          </select>
+        </div>
+        <div class="ctl"><span class="lbl">Tickers</span><input class="hm-input mono" data-ctl="tickers" type="text" inputmode="text" placeholder="Tickers: NVDA, AAPL" aria-label="Filter tickers" /></div>
+      </div>
+    </details>
     <button type="button" class="hm-reset" data-ctl="reset">Reset</button>
   </div>
 
@@ -127,5 +135,7 @@ const hasInsiders = kind !== "congress";
 
 <script>
   import { initAllHeatmaps } from "../scripts/heatmap";
+  import { initFilterCounts } from "../scripts/hm-filters";
   initAllHeatmaps();
+  initFilterCounts();
 </script>

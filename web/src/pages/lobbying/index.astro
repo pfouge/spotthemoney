@@ -6,6 +6,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural, money, sum, normalizeOrgName, companyPath } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -44,9 +45,10 @@ const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filin
   <h1>Federal lobbying</h1>
   <p class="lede">Quarterly LDA filings as submitted to the Senate: who paid, who was paid, and for what.</p>
   <Answer text={answer} updated={model.lobbying[0]?.createdAt ?? model.builtAt} sourceNote="Source: Senate Office of Public Records (LDA)" />
+  <HubFigures items={[{k:"Filings, "+year,v:num(ytd.length)},{k:"Reported income",v:money(total)},{k:"Issue areas",v:num(issueList.length)}]} />
   {(() => { const issues = lobbyingIssues(model, year); const top = issues[0]; return (
     <div class="viz-grid">
-      <Viz title="Lobbying by issue" question={`What is Washington being lobbied about in ${year}? Tile size is reported spending, by each filing's first listed issue.`} wide={true}
+      <Viz compact tall title="Lobbying by issue" question={`What is Washington being lobbied about in ${year}? Tile size is reported spending, by each filing's first listed issue.`}
         svg={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 340, 1120)} svgNarrow={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 300)} svgPhone={treemapSvg(issues, `Reported lobbying spend by issue area, ${year}`, 320, 360)}
         summary={top ? `${issues.length} issue areas have reported lobbying spend in ${year}${issues.length > 14 ? "; the 14 largest are shown" : ""}. The largest is ${top.name} at ${top.label}. A filing that lists several issues is counted under its first.` : undefined} />
     </div>); })()}
@@ -89,14 +91,17 @@ const ld = datasetLd({ downloads: [lobFile?.path], name: "Federal lobbying filin
   )}
 
   <div class="prose">
-  <h2 id="about-this-page">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about-this-page"><summary><h2 id="about-this-page">What this page shows</h2></summary><div class="ref-body">
   <p>Companies, trade groups and other organisations that pay people to lobby Congress and federal agencies must say so in public. Each quarter the lobbying firm, or the organisation itself when it uses its own staff, files a report naming the client, the issues worked on and roughly how much was paid or spent. This page adds those reports up: the clients that reported the most this year, the firms that reported the most income, and the newest filings.</p>
   <p>The figures say how much was spent on lobbying and on which broad subjects. They do not say what was asked for, who was met, or what came of it. The <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a> explains the forms and their limits.</p>
-  <h2 id="where-from">Where the data comes from</h2>
+  </div></details>
+  <details class="ref" data-remember id="ref-where-from"><summary><h2 id="where-from">Where the data comes from</h2></summary><div class="ref-body">
   <p>The reports are filed under the Lobbying Disclosure Act with the Secretary of the Senate and published at lda.gov. This site reads new filings once a day and links each row to the Senate's own record.</p>
+  </div></details>
   </div>
-  <h2>How to read this</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read this</h2></summary><div class="ref-body">
   <p>Coverage is every filing the Senate has posted since October 1, 2025. Amounts are the income (or, for in-house lobbyists, expenses) a registrant reports for the quarter, rounded as filed; where a report was later amended, only the latest version is counted; "Issues" lists every general issue area the filing names (the first six when there are more), each linked to that issue's page; the chart above counts a filing under its first issue only, and the <a href={ISSUES_PATH}>issue pages</a> count it under every one. See <a href="/methodology/">methodology</a>.</p>
+  </div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />
 </BaseLayout>

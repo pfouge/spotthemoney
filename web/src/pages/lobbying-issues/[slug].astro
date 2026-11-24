@@ -6,6 +6,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import PanelFigs from "../../components/PanelFigs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import IssueList from "../../components/IssueList.astro";
@@ -45,7 +46,7 @@ const tables = [
   <h1>Lobbying on {i.name}</h1>
   <p class="lede">Filings that list this issue area, and who filed them.</p>
 
-  <dl class="facts" data-issue-facts>
+  <dl class="facts facts-figs" data-issue-facts data-people>
     <div><dt>Issue code</dt><dd class="mono">{i.code}</dd></div>
     <div><dt>Filings, {year}</dt><dd data-fact="filings">{num(i.filings)}</dd></div>
     <div><dt>Only issue listed</dt><dd data-fact="only">{num(i.only)}</dd></div>
@@ -61,45 +62,50 @@ const tables = [
     {jump.map(([href, label]) => <a href={href}>{label}</a>)}
   </nav>
 
+  <div class="panels">
   {i.filings > 0 && tables.map((t) => (
-    <section aria-labelledby={t.id} data-issue-table={t.id}>
+    <section class="panel" data-panel aria-labelledby={t.id} data-issue-table={t.id}>
       <h2 id={t.id}>{t.title}</h2>
+      <PanelFigs items={[{ v: num(t.total), k: t.label === "Client" ? (t.total === 1 ? "client" : "clients") : (t.total === 1 ? "registrant" : "registrants") }, ...(t.rows[0] ? [{ v: money(t.rows[0].amount), k: "largest, reported" }] : [])]} />
       <p class="section-note">{t.note} "Reported" is the total on that name's filings that list {i.name}; those filings may list other issues too. {t.total > t.rows.length ? `The ${t.rows.length} largest of ${num(t.total)} are shown.` : ""} Click a column title to sort.</p>
       <div class="tablewrap"><table class="data" data-sortable>
         <thead><tr>
           <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label={`Sort by ${t.label.toLowerCase()}`}>{t.label}<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by reported">Reported<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by filings">Filings<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="hb-h"><span class="sr-only">Share of the largest</span></th>
         </tr></thead>
         <tbody>
           {t.rows.map((r) => { const p = orgPath(model, r.name); return (
-            <tr><td data-v={r.name.toLowerCase()}>{p ? <a href={p}>{r.name}</a> : r.name}</td><td class="num" data-v={Math.round(r.amount)}>{money(r.amount)}</td><td class="num" data-v={r.filings}>{num(r.filings)}</td></tr>
+            <tr><td data-v={r.name.toLowerCase()}>{p ? <a href={p}>{r.name}</a> : r.name}</td><td class="num" data-v={Math.round(r.amount)}>{money(r.amount)}</td><td class="num" data-v={r.filings}>{num(r.filings)}</td><td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * r.amount / Math.max(1, ...t.rows.map((z) => z.amount))))}%`}></i></td></tr>
           ); })}
         </tbody>
       </table></div>
     </section>
   ))}
 
-  <section aria-labelledby="filings" data-issue-filings>
+  <section class="panel" data-panel data-span="12" aria-labelledby="filings" data-issue-filings>
     <h2 id="filings">Newest filings that list {i.name}</h2>
+    <PanelFigs items={[{ v: num(i.allFilings), k: "filings on record" }, { v: num(i.filings), k: `filings in ${year}` }]} />
     <p class="section-note">Newest posted first, any reporting period on record, each with a link to the Senate's record. {i.allFilings > ISSUE_FILING_ROWS ? `The table holds the ${ISSUE_FILING_ROWS} newest of ${num(i.allFilings)}; every filing is in the lobbying files on the downloads page.` : ""} The amount is the filing's whole amount.</p>
-    <div class="tablewrap"><table class="data"><thead><tr><th>Period</th><th>Type</th><th>Registrant</th><th>Client</th><th>Issues</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
+    <div class="tablewrap" data-preview="8"><table class="data"><thead><tr><th>Period</th><th>Type</th><th>Registrant</th><th>Client</th><th>Issues</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
       {i.newest.map((l) => <tr><td class="mono">{l.year}{l.quarter ? ` Q${l.quarter}` : ""}</td><td class="mono">{l.filingType ?? ""}</td><td>{orgPath(model, l.registrant) ? <a href={orgPath(model, l.registrant)!}>{l.registrant}</a> : (l.registrant ?? "")}</td><td>{orgPath(model, l.client) ? <a href={orgPath(model, l.client)!}>{l.client}</a> : (l.client ?? "")}</td><td><IssueList row={l} index={index} current={i.code} /></td><td class="num">{money(l.amount, { compact: false })}</td><td>{l.sourceRef ? <a href={l.sourceRef} rel="noopener nofollow" target="_blank">LDA ↗</a> : ""}</td></tr>)}
     </tbody></table></div>
   </section>
+  </div>
 
   <AdSlot />
 
-  <h2 id="about">About this page</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">About this page</h2></summary><div class="ref-body">
   <p>"{i.name}" is one of the 79 general issue areas a lobbying report can name (code {i.code}). The wording is the Senate's. This page lists the reports that name it, whether or not they name other issues as well.</p>
   <p>A report states one amount for the quarter, not an amount for each issue. Every amount on this page is therefore the whole amount of reports that name this issue, and overlaps with the amounts on other issue pages. It is not what was spent on {i.name} alone. The report also does not say which bill or rule was lobbied, what was asked for, or what came of it; the specific description is on the Senate's record, linked from each row.</p>
-  <p>Where a report was later amended, only the latest version is counted. A company that lobbies for itself and also hires outside firms appears under several registrants. See <a href={ISSUES_PATH}>all issue areas</a>, the <a href="/lobbying/">lobbying page</a>, the <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a>, the <a href="/methodology/#lobbying-issues">methodology</a> and the <a href="/downloads/">downloads page</a>.</p>
+  <p>Where a report was later amended, only the latest version is counted. A company that lobbies for itself and also hires outside firms appears under several registrants. See <a href={ISSUES_PATH}>all issue areas</a>, the <a href="/lobbying/">lobbying page</a>, the <a href="/guides/lobbying-disclosure-reports/">guide to lobbying disclosure reports</a>, the <a href="/methodology/#lobbying-issues">methodology</a> and the <a href="/downloads/">downloads page</a>.</p></div></details>
 
   {others.length > 0 && (
     <section aria-labelledby="others">
-      <h2 id="others">Other issue areas</h2>
+      <details class="ref" data-remember id="ref-others"><summary><h2 id="others">Other issue areas</h2></summary><div class="ref-body">
       <ul class="cols">{others.map((o) => <li><a href={o.path}>{o.name}</a></li>)}</ul>
-    </section>
+    </div></details></section>
   )}
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />

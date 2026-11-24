@@ -589,7 +589,7 @@ if (chromium) {
     }
   }
   // Nothing stored, nothing sent.
-  ok((await page.evaluate(() => [Object.keys(localStorage), Object.keys(sessionStorage)].flat())).every((k) => k === "theme" || k.startsWith("stm.screens.") || /^(_ga|google|goog)/i.test(k)), "the screener writes nothing to browser storage");
+  ok((await page.evaluate(() => [Object.keys(localStorage), Object.keys(sessionStorage)].flat())).every((k) => k === "theme" || k === "stm.ui" || k.startsWith("stm.screens.") || /^(_ga|google|goog)/i.test(k)), "the screener writes nothing to browser storage");
   requests.length = 0;
   await page.selectOption('[data-fs="ni"]', "pos"); await page.selectOption('[data-fs="rmin"]', "1000000000"); await page.fill('[data-fs="q"]', "a");
   ok(requests.filter((u) => u.startsWith(base) && !/favicon|apple-touch-icon/.test(u)).length === 0, `filtering sends no request to the site (${requests.filter((u) => u.startsWith(base) && !/favicon|apple-touch-icon/.test(u)).slice(0, 2).join(", ")})`);

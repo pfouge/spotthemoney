@@ -1,12 +1,13 @@
-// Long tables (shared by every page). CSS caps a .tablewrap that holds more than 12 body rows at the
-// head plus 12 rows, so the page stays short and the sticky head stays in view; every row is still in
-// the page (find in page, row links and the checks that count rows all work). Here:
-//  1. "Show all N rows" / "Show fewer rows" under each capped table (the cap is read from the computed
-//     style, so a table the CSS leaves uncapped, such as a screener that pages its own rows, gets no button);
-//  2. a row named by the URL hash (tr:target) is scrolled into view inside its box, on load and on hashchange;
+// Preview tables (shared by every page). A .tablewrap with more body rows than its preview count
+// (data-preview, default 5) shows only those rows (rd-kit.css, html.js only: no row leaves the page, so find in
+// page, row links and the checks that count rows all work). Here:
+//  1. "Show all N rows" / "Show fewer rows" under each previewed table; opened, the table is a scroll box of at
+//     most 20 rows with a sticky head (rd-kit.css). The state is remembered per page through the stm.ui helpers;
+//  2. a row named by the URL hash that is hidden opens its table (reveal.ts calls the opener registered here);
 //  3. a column of numbers is right-aligned even where the template printed no `num` class.
-// Without JavaScript the box still scrolls.
+// Sorting (tablesort.ts) moves rows inside tbody, so the first N rows of the new order are the ones shown.
 import { readUi, updateUi } from "./uistate";
+import { registerOpener } from "./reveal";
 
 const NUMERIC = /^[−+\-–]?\$?[\d,]*\.?\d+\s?(%|[KMBT]|bp|x|days?|d)?$/;
 
@@ -15,7 +16,7 @@ function alignNumbers(table: HTMLTableElement): void {
   const body = table.tBodies[0];
   if (!head || !body || body.rows.length === 0) return;
   [...head.cells].forEach((th, i) => {
-    if (th.classList.contains("num")) return;
+    if (th.classList.contains("num") || th.getAttribute("data-type") === "text") return; // a code column sorted as text stays left
     let seen = 0, nums = 0;
     for (const r of body.rows) {
       const c = r.cells[i];
@@ -38,49 +39,59 @@ function rowCount(wrap: HTMLElement): number {
   return n;
 }
 
-function initCaps(): void {
+/** Preview count of a wrapper: data-preview, default 5 (the same default rd-kit.css uses). */
+function previewOf(wrap: HTMLElement): number {
+  const v = Number(wrap.getAttribute("data-preview"));
+  return Number.isInteger(v) && v >= 3 && v <= 12 ? v : 5;
+}
+
+/** Open or close a previewed table; `paint` is registered per wrapper by initPreviews. */
+const painters = new Map<HTMLElement, (open: boolean, remember: boolean) => void>();
+
+function initPreviews(): void {
   const stored = readUi().tables ?? {};
   const wraps = [...document.querySelectorAll<HTMLElement>(".tablewrap")];
   wraps.forEach((wrap, i) => {
     const key = `${location.pathname}#${i}`;
-    if (getComputedStyle(wrap).maxHeight === "none" && !wrap.hasAttribute("data-open")) return;
     const n = rowCount(wrap);
-    if (n <= 12) return;
+    const keep = previewOf(wrap);
+    if (n <= keep) return;
+    // Eligible only when the stylesheet really hides row keep+1 (client-paged tables, guide tables and
+    // [data-nocap] wrappers are opted out in CSS, so they get no button).
+    const probe = wrap.querySelector("tbody tr:nth-child(" + (keep + 1) + ")") as HTMLElement | null;
+    if (!probe || getComputedStyle(probe).display !== "none") return;
+    if (!wrap.id) wrap.id = `tbl-${i}`;
     const btn = document.createElement("button");
     btn.type = "button"; btn.className = "tbl-more";
-    const paint = (open: boolean): void => {
+    btn.setAttribute("aria-controls", wrap.id);
+    const paint = (open: boolean, remember: boolean): void => {
       if (open) wrap.setAttribute("data-open", ""); else wrap.removeAttribute("data-open");
       btn.setAttribute("aria-expanded", String(open));
       btn.textContent = open ? "Show fewer rows" : `Show all ${n.toLocaleString("en-US")} rows`;
-    };
-    paint(stored[key] === 1);
-    btn.addEventListener("click", () => {
-      const open = !wrap.hasAttribute("data-open");
-      paint(open);
-      updateUi((u) => { const t = (u.tables ??= {}); if (open) t[key] = 1; else delete t[key]; });
+      if (remember) updateUi((u) => { const t = (u.tables ??= {}); if (open) t[key] = 1; else delete t[key]; });
       if (!open) wrap.scrollTop = 0;
-    });
+      // A scroll box with nothing focusable and visible inside must itself be a Tab stop (arrow keys then scroll it).
+      // Rows hidden by the preview hold links too, so "focusable" means a visible one.
+      const seen = [...wrap.querySelectorAll<HTMLElement>("a[href], button, input, select, [tabindex]")].some((e) => e.getClientRects().length > 0);
+      if (!seen && (wrap.scrollWidth > wrap.clientWidth + 1 || wrap.scrollHeight > wrap.clientHeight + 1)) { wrap.tabIndex = 0; wrap.setAttribute("data-tbl-stop", "1"); wrap.setAttribute("role", "group"); wrap.setAttribute("aria-label", "Table, scrollable"); }
+      else if (wrap.hasAttribute("data-tbl-stop")) { wrap.removeAttribute("tabindex"); wrap.removeAttribute("data-tbl-stop"); wrap.removeAttribute("role"); wrap.removeAttribute("aria-label"); }
+    };
+    painters.set(wrap, paint);
+    paint(stored[key] === 1, false);
+    btn.addEventListener("click", () => paint(!wrap.hasAttribute("data-open"), true));
     wrap.after(btn);
   });
 }
 
-/** Bring the row the URL hash names into view inside its scroll box. */
-function revealTarget(): void {
-  let id = location.hash.slice(1);
-  if (!id) return;
-  try { id = decodeURIComponent(id); } catch { /* keep as is */ }
-  const el = document.getElementById(id);
-  const wrap = el?.closest<HTMLElement>(".tablewrap");
-  if (!el || !wrap || wrap.scrollHeight <= wrap.clientHeight + 1) return;
-  const head = wrap.querySelector("thead")?.getBoundingClientRect().height ?? 0;
-  const w = wrap.getBoundingClientRect(), r = el.getBoundingClientRect();
-  const top = r.top - w.top, bottom = r.bottom - w.top;
-  if (top >= head && bottom <= wrap.clientHeight) return; // already visible
-  wrap.scrollTop += top - head - (wrap.clientHeight - head - r.height) / 2;
-}
+/** Open the previewed table around an element when its row is hidden (called by reveal.ts for links and the hash). */
+registerOpener((el) => {
+  const wrap = el.closest<HTMLElement>(".tablewrap");
+  if (!wrap) return false;
+  const row = el.closest<HTMLElement>("tr");
+  if (!row || getComputedStyle(row).display !== "none") return false;
+  painters.get(wrap)?.(true, false);
+  return true;
+});
 
 for (const t of document.querySelectorAll<HTMLTableElement>("table.data")) alignNumbers(t);
-initCaps();
-revealTarget();
-addEventListener("load", revealTarget);
-addEventListener("hashchange", () => { revealTarget(); requestAnimationFrame(revealTarget); });
+initPreviews();

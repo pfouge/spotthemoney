@@ -3,6 +3,7 @@
 // statement, and credits for everything on the site that is not ours (font, charts, roster).
 // Keep the credits list true: add a line whenever a third-party asset or service is added.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ProseBody from "../components/ProseBody.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
@@ -22,7 +23,7 @@ const ld = { "@context": "https://schema.org", "@type": "AboutPage", "@id": `${S
 
   <Answer text={`Spot the Money is an independent, free website operated by a Wyoming limited liability company that republishes public U.S. disclosure records with a link to each source. It is not a government site, gives no investment advice, and can be reached at ${CONTACT_EMAIL}.`} updated={PAGE_UPDATED} sourceNote="About" />
 
-  <div class="prose">
+  <ProseBody min={3}>
   <h2 id="what">What this is</h2>
   <p>Members of Congress and company insiders must report their stock trades. Campaigns must report their donors, lobbyists their clients, and agencies their contracts. Those reports are public, but they sit in separate government systems in formats that are hard to read. Spot the Money gathers them once a day, shows them as filed, and links every row to the original document. What is covered, what is not yet covered, and each rule used to total the figures are written down in the <a href="/methodology/">Methodology</a>.</p>
 
@@ -50,6 +51,6 @@ const ld = { "@context": "https://schema.org", "@type": "AboutPage", "@id": `${S
   </ul>
 
   <p>See also the <a href="/terms/">Terms of use</a> and the <a href="/privacy/">Privacy policy</a>.</p>
-  </div>
+  </ProseBody>
   <JsonLd data={ld} />
 </BaseLayout>

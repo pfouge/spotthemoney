@@ -6,9 +6,12 @@
 import LearnMore from "../../components/LearnMore.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
+import { monthlyCounts, monthlyDirection } from "../../lib/glancespark";
 import PageGroup from "../../components/PageGroup.astro";
 import { shownYears, shownQuarters } from "../../lib/financials";
-import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, industryOf, insiderPeriods, isOpenSale } from "../../lib/entity";
+import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, industryOf, insiderPeriods, isOpenSale, isOpenBuy } from "../../lib/entity";
+import EntityActions from "../../components/EntityActions.astro";
+import { monthBarsSvg, PHONE_W } from "../../lib/viz";
 import { industryHref } from "../../lib/industries";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import PlannedSales from "../../components/PlannedSales.astro";
@@ -127,6 +130,15 @@ const WHO_ROWS = 15;
 const periods = insider.length ? insiderPeriods(insider) : [];
 const signed = (n: number, f: (x: number) => string) => (n === 0 ? f(0) : `${n > 0 ? "+" : "\u2212"}${f(Math.abs(n))}`);
 const tone = (n: number) => (n > 0 ? "num pos" : n < 0 ? "num neg" : "num");
+// Open-market purchases (code P) and sales (code S) by month of disclosure, last 12 months, from rows already on the page.
+const monthBars = (() => {
+  const end = new Date(model.builtAt); const out: { key: string; label: string; up: number; down: number }[] = [];
+  for (let i = 11; i >= 0; i--) { const d = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1)); out.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }), up: 0, down: 0 }); }
+  for (const t of insider) { const m = out.find((x) => x.key === (t.disclosedAt ?? "").slice(0, 7)); if (!m) continue; if (isOpenBuy(t)) m.up += t.value ?? 0; else if (isOpenSale(t)) m.down += t.value ?? 0; }
+  return out;
+})();
+const monthSvg = monthBarsSvg(monthBars, { label: `${s.ticker}: open-market insider purchases above the line and sales below it, by month of disclosure, last 12 months` });
+const periodFig = (days: number) => periods.find((p) => p.days === days);
 const anyUnpriced = periods.some((p) => p.unpriced > 0);
 const latestOf = (rows: { disclosedAt: string | null }[]) => rows.map((t) => t.disclosedAt).filter(Boolean).sort().at(-1) ?? null;
 // Company-level records with no ticker of their own (grants and loans, contributions the company's
@@ -135,23 +147,23 @@ const assistRows = home ? (model.assistance.byCompany.get(company!.id) ?? []) : 
 const lcf = home ? model.lobbyContrib.companies.get(company!.id) : undefined;
 const lcfItems = lcf ? lcf.years.reduce((a, y) => a + y.items, 0) : 0;
 const glance = [
-  ...(insider.length ? [{ label: "Insider transactions", value: num(insider.length), note: latestOf(insider) ? `Latest ${formatDate(latestOf(insider)!)}` : undefined, href: "#insider-transactions" }] : []),
-  ...(congress.length ? [{ label: "Congress trades", value: num(congress.length), note: latestOf(congress) ? `Latest ${formatDate(latestOf(congress)!)}` : undefined, href: "#congress-trades" }] : []),
+  ...(insider.length ? [{ label: "Insider transactions", value: num(insider.length), bars: monthlyDirection(insider.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: latestOf(insider) ? `Latest ${formatDate(latestOf(insider)!)}` : undefined, href: "#insider-transactions" }] : []),
+  ...(congress.length ? [{ label: "Congress trades", value: num(congress.length), bars: monthlyDirection(congress.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: latestOf(congress) ? `Latest ${formatDate(latestOf(congress)!)}` : undefined, href: "#congress-trades" }] : []),
   ...(plannedN ? [{ label: "Planned sales", value: num(plannedN), note: "Form 144 notices, 12 months", href: "#planned-sales" }] : []),
   ...(holdersN ? [{ label: "Large holders", value: num(holdersN), note: "Schedules 13D and 13G", href: "#large-holders" }] : []),
   ...(holdingsN ? [{ label: "Large holdings reported", value: num(holdingsN), note: "Schedules 13D and 13G it filed", href: "#reported-holdings" }] : []),
   ...(instN ? [{ label: "Institutional holders", value: num(instN), note: `as of ${formatDate(model.inst.period!)}`, href: "#institutional-holders" }] : []),
   ...(finShown ? [{ label: finYears.length ? "Fiscal years of financials" : "Quarters of financials", value: num(finYears.length || finQuarters.length), note: finNewest ? `Newest period ends ${formatDate(finNewest.end)}` : undefined, href: "#financials" }] : []),
   ...(payTile ? [{ label: "Executive pay", value: payTile.value, note: payTile.note, href: "#executive-pay" }] : []),
-  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
-  ...(contracts.length ? [{ label: "Federal contracts", value: num(contracts.length), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
+  ...(evRows.length ? [{ label: "Company events", value: num(evRows.length), bars: monthlyCounts(evRows.map((e) => e.filed), model.builtAt), note: `Form 8-K, newest filed ${formatDate(evRows[0]!.filed)}`, href: "#company-events" }] : []),
+  ...(contracts.length ? [{ label: "Federal contracts", value: num(contracts.length), bars: monthlyCounts(contracts.map((c) => c.actionDate), model.builtAt), note: `${money(contractsTotal)} award value`, href: "#contracts" }] : []),
   ...(home && assistRows.length ? [{ label: "Grants and loans", value: num(assistRows.length), note: `Newest started ${formatDate(assistRows[0]!.startDate)}`, href: "#assistance" }] : []),
   ...(lobbying.length ? [{ label: "Lobbying filings", value: num(lobbying.length), note: "Senate LDA, as client", href: "#lobbying" }] : []),
   ...(home && lcfItems ? [{ label: "Lobbyist contributions", value: num(lcf!.years[0]?.items ?? 0), note: `Items in ${lcf!.years[0]?.year}, filed by the company`, href: "#filer-contributions" }] : []),
 ];
 // A page with any tile has something to show (a company with financials and no trades, for one).
 const hasData = txns.length > 0 || glance.length > 0 || (home && companyHasRecords(company!));
-const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), ...(home ? [{ id: "washington", label: "Washington" }] : []), { id: "record", label: "About this record" }] : [];
+const groupList = hasData ? [{ id: "trading", label: "Trading" }, ...(plannedN || holdersN || holdingsN || instN ? [{ id: "ownership", label: "Ownership" }] : []), ...(companyShown ? [{ id: "company", label: "Company" }] : []), ...(home ? [{ id: "washington", label: "Washington" }] : []), { id: "record", label: "About this record" }] : [];
 // Contracts and lobbying, one sentence, only on a company's own page.
 const washington = !home ? "" : ` ${contracts.length ? `USAspending shows ${plural(contracts.length, "federal contract award")} with a combined value of ${money(contractsTotal)} to a recipient named ${company!.name} that started in the last 180 days` : `No federal contract award that started in the last 180 days was found for a recipient named exactly ${company!.name}`}${lobbyingYtd.length ? `, and ${plural(lobbyingYtd.length, "lobbying filing")} naming it as client ${lobbyingYtd.length === 1 ? "reports" : "report"} ${money(sum(lobbyingYtd.map((r) => r.amount)))} in ${lobbyingYear}.` : "; no lobbying filing names it as client this year."}`;
 
@@ -171,8 +183,8 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
 ---
 <BaseLayout title={[`${s.ticker} Insider Trades & Congress Trades: ${name}`, `${s.ticker} Insider & Congress Trades: ${name}`, `${s.ticker} Insider Trades & Congress Trades`]} description={description} noindex={!hasData} section="Stocks">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Stocks", path: "/stocks/" }, { name: s.ticker, path }]} />
-  <p class="eyebrow">Stock <span class="x">/</span> {s.type}</p>
-  <div class="title-row"><h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1><Follow kind="stock" entity={s.ticker} label={s.ticker} /></div>
+  <div class="entity-top" data-entity-top>
+  <div class="entity-id"><h1><span class="mono">{s.ticker}</span> <span class="soft">{name}</span></h1><Follow kind="stock" entity={s.ticker} label={s.ticker} /><EntityActions /></div>
   <dl class="facts" data-entity-facts>
     {company && <div><dt>Company</dt><dd>{cpath && !home ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     <div><dt>Security</dt><dd>{s.type === "etf" ? "ETF" : s.type === "adr" ? "ADR" : s.type.charAt(0).toUpperCase() + s.type.slice(1)}</dd></div>
@@ -187,30 +199,35 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
     {lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(lastTrade)}</dd></div>}
   </dl>
 
-  <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: SEC EDGAR Form 4; House Clerk and Senate eFD PTRs" : "Sources: SEC EDGAR Form 4; House Clerk PTRs"} />
+
+  <Answer actions={false} text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: SEC EDGAR Form 4; House Clerk and Senate eFD PTRs" : "Sources: SEC EDGAR Form 4; House Clerk PTRs"} />
   <ReviewNote show={underReview} what="Some rows on this page" />
 
   <Glance items={hasData ? glance : []} />
 
+  <VizStock security={s} company={company ?? null} />
+
+  <details class="more-figs" data-remember id="more-figures"><summary>More figures</summary>
   <section class="datastrip">
     <div class="cell"><div class="k">Insider txns (12m)</div><div class="v">{num(yIns.length)}</div></div>
     <div class="cell"><div class="k">Open-market buys / sales</div><div class="v"><span class="pos">{num(buys)}</span> / <span class="neg">{num(sells)}</span></div></div>
     <div class="cell"><div class="k">Congress trades (12m)</div><div class="v">{num(yCon.length)}</div></div>
     <div class="cell"><div class="k">Distinct filers (12m)</div><div class="v">{num(insiders.size + members.size)}</div></div>
   </section>
+  </details>
+  </div>
 
   <GroupBar groups={groupList} />
 
   <PageGroup id="trading" label="Trading">
-  {["equity", "etf", "adr"].includes(s.type) && <TradingView symbol={s.ticker} name={name} />}
-
-  <VizStock security={s} company={company ?? null} />
+  <div class="panels" data-trading-panels>
 
   {periods.length > 0 && (
-    <section aria-labelledby="insider-summary" data-entity-periods>
+    <section class="panel" data-panel aria-labelledby="insider-summary" data-entity-periods>
       <h2 id="insider-summary">Insider buying and selling in {s.ticker}: 3 and 12 months</h2>
       <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{classTickers.length > 0 && ` The figures cover every share class on this page (${pageTickers.join(", ")}); share counts add classes together, and one share of one class need not be worth one share of another.`}{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
-      <div class="tablewrap">
+      {monthSvg && <figure class="pn-monthbars" data-month-bars><div set:html={monthSvg} /><figcaption>Open-market purchases above the line and sales below it, by month of disclosure, last 12 months.</figcaption></figure>}
+      <div class="tablewrap" data-preview="6">
         <table class="data periods">
           <thead><tr><th>Open-market trades</th>{periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
           <tbody>
@@ -231,16 +248,18 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
     </section>
   )}
 
+  {["equity", "etf", "adr"].includes(s.type) && <TradingView symbol={s.ticker} name={name} span={periods.length > 0 ? "6" : "12"} />}
+
   {insiderList.length > 0 && (
-    <section aria-labelledby="insiders" data-entity-insiders>
+    <section class="panel" data-panel aria-labelledby="insiders" data-entity-insiders>
       <h2 id="insiders">Insiders trading {s.ticker}</h2>
       <p class="section-note">Everyone who filed a Form 4 for this ticker, by number of rows on record. "Bought" and "sold" count open-market purchases (code P) and sales only; awards, option exercises and shares withheld for tax are in the row count but not in those two columns.{insiderList.length > WHO_ROWS && ` Showing ${WHO_ROWS} of ${num(insiderList.length)}.`}</p>
       <div class="tablewrap">
         <table class="data">
-          <thead><tr><th>Insider</th><th>Role</th><th class="num">Rows</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Value bought</th><th class="num">Value sold</th><th>Latest</th></tr></thead>
+          <thead><tr><th>Insider</th><th>Role</th><th class="num" data-col="more">Rows</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Value bought</th><th class="num" data-col="more">Value sold</th><th data-col="more">Latest</th></tr></thead>
           <tbody>
             {insiderList.slice(0, WHO_ROWS).map((r) => (
-              <tr><th scope="row">{r.path ? <a href={r.path}>{r.person.name}</a> : r.person.name}</th><td>{r.role}</td><td class="num">{num(r.rows)}</td><td class="num">{num(r.buys)}</td><td class="num">{num(r.sells)}</td><td class="num">{r.bought ? money(r.bought) : "—"}</td><td class="num">{r.sold ? money(r.sold) : "—"}</td><td class="mono">{r.last ? formatDate(r.last) : "—"}</td></tr>
+              <tr><th scope="row">{r.path ? <a href={r.path}>{r.person.name}</a> : r.person.name}</th><td>{r.role}</td><td class="num" data-col="more">{num(r.rows)}</td><td class="num">{num(r.buys)}</td><td class="num">{num(r.sells)}</td><td class="num">{r.bought ? money(r.bought) : "—"}</td><td class="num" data-col="more">{r.sold ? money(r.sold) : "—"}</td><td class="mono" data-col="more">{r.last ? formatDate(r.last) : "—"}</td></tr>
             ))}
           </tbody>
         </table>
@@ -261,15 +280,15 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   )}
 
   {memberList.length > 0 && (
-    <section aria-labelledby="members" data-entity-members>
+    <section class="panel" data-panel aria-labelledby="members" data-entity-members>
       <h2 id="members">Members of Congress trading {s.ticker}</h2>
       <p class="section-note">Members whose periodic transaction reports name this ticker. Amounts are the sums of the ranges as filed.{memberList.length > WHO_ROWS && ` Showing ${WHO_ROWS} of ${num(memberList.length)}.`}</p>
       <div class="tablewrap">
         <table class="data">
-          <thead><tr><th>Member</th><th>Seat</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th>Latest</th></tr></thead>
+          <thead><tr><th>Member</th><th>Seat</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num" data-col="more">Range as filed</th><th data-col="more">Latest</th></tr></thead>
           <tbody>
             {memberList.slice(0, WHO_ROWS).map((r) => (
-              <tr><th scope="row">{r.path ? <a href={r.path}>{r.person.name}</a> : r.person.name}</th><td>{r.seat}</td><td class="num">{num(r.trades)}</td><td class="num">{num(r.buys)}</td><td class="num">{num(r.sells)}</td><td class="num">{money(r.low)}–{money(r.high)}</td><td class="mono">{r.last ? formatDate(r.last) : "—"}</td></tr>
+              <tr><th scope="row">{r.path ? <a href={r.path}>{r.person.name}</a> : r.person.name}</th><td>{r.seat}</td><td class="num">{num(r.trades)}</td><td class="num">{num(r.buys)}</td><td class="num">{num(r.sells)}</td><td class="num" data-col="more">{money(r.low)}–{money(r.high)}</td><td class="mono" data-col="more">{r.last ? formatDate(r.last) : "—"}</td></tr>
             ))}
           </tbody>
         </table>
@@ -277,43 +296,50 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
     </section>
   )}
 
-  <DownloadCsv file={downloads.stock.get(s.ticker.toLowerCase())} note={classTickers.length ? `insider and congressional rows for ${pageTickers.join(", ")}` : "insider and congressional rows for this ticker"} />
-
+  <section class="panel" data-panel data-span="12" aria-labelledby="insider-transactions">
   <h2 id="insider-transactions">Insider transactions</h2>
-  <TxnTable model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
+  <DownloadCsv file={downloads.stock.get(s.ticker.toLowerCase())} note={classTickers.length ? `insider and congressional rows for ${pageTickers.join(", ")}` : "insider and congressional rows for this ticker"} />
+  <TxnTable preview={8} model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
+  </section>
 
   {otherInsider.length > 0 && (
-    <section aria-labelledby="other-insider-rows" data-other-insider>
+    <section class="panel" data-panel data-span="12" aria-labelledby="other-insider-rows" data-other-insider>
       <h2 id="other-insider-rows">Other insider rows for {company!.name}</h2>
       <p class="section-note">Form 4 rows filed for this company that are not in {s.ticker}: another class of its shares, or a filing that names the company without this ticker. They are not in the {s.ticker} figures above.</p>
       <TxnTable model={model} txns={otherInsider} showPerson showSecurity emptyReason="" />
     </section>
   )}
 
+  <section class="panel" data-panel data-span="12" aria-labelledby="congress-trades">
   <h2 id="congress-trades">Congressional trades</h2>
   {pageTickers.map((tk) => <ScreenerLink ticker={tk} n={screenerCountsFor(model, personPath).ticker.get(tk) ?? 0} of={`in ${tk} by members of Congress`} />)}
   <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
 
-  <PlannedSales model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "notices")} />
+  </section>
+  </div>
 
   </PageGroup>
 
-  <AdSlot label="Advertisement" show={hasData} />
 
-  {(holdersN > 0 || holdingsN > 0 || instN > 0) && (
+  {(plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
+      <div class="panels" data-ownership-panels>
+      <PlannedSales model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "notices")} />
       <LargeHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "holders")} />
       <InstHolders model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "inst")} />
 
       {home && <ReportedHoldings model={model} cik={company!.cik} name={company!.name} file={downloads.files.find((f) => f.kind === "holders")} />}
+      </div>
     </PageGroup>
   )}
 
   {companyShown && (
     <PageGroup id="company" label="Company">
+      <div class="panels" data-company-panels>
       <Financials model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "financials")} />
       <ExecutivePay model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "execpay")} />
       <CompanyEvents model={model} cik={company?.cik} name={company?.name ?? s.ticker} file={downloads.files.find((f) => f.kind === "events")} />
+      </div>
     </PageGroup>
   )}
 
@@ -323,26 +349,33 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
     </PageGroup>
   )}
 
-  <AdSlot pos="low" />
 
   <PageGroup id="record" label="About this record">
   {related.length > 0 && (
     <section aria-labelledby="related" data-related>
-      <h2 id="related">Related stocks</h2>
+      <details class="ref" data-remember id="ref-related"><summary><h2 id="related">Related stocks</h2></summary><div class="ref-body">
       <p class="section-note">Tickers traded by the same people who traded {s.ticker}, by number of filers in common. It shows overlap in public filings and nothing else.</p>
       <ul class="mates two">
         {related.map((r) => <li><span><a class="mono" href={r.path}>{r.ticker}</a> {r.name && <span class="soft">{r.name}</span>}</span> <span>{plural(r.shared, "filer")} in common</span></li>)}
       </ul>
-    </section>
+    </div></details></section>
   )}
 
-  <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5).concat([...(contracts.length ? ["federal-contracts-usaspending"] : []), ...(lobbying.length ? ["lobbying-disclosure-reports"] : [])])} />
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={txns} edgarId={s.ticker}
     extra={home ? [{ name: "USAspending, federal contract awards", records: contracts.length, unit: contracts.length === 1 ? "award" : "awards", href: SOURCES.usaspending.url, linkLabel: "USAspending" }, { name: "Lobbying disclosure filings", records: lobbying.length, unit: lobbying.length === 1 ? "filing" : "filings", href: SOURCES.lda.url, linkLabel: "LDA.gov search" }] : undefined} />
   <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress.{home && " Contracts and lobbying are matched by exact normalized name (suffixes like Inc. and Corp. ignored) to USAspending recipients and LDA clients, a conservative match that misses subsidiaries on purpose."} See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
+  </div></details>
   </PageGroup>
+
+  <AdSlot label="Advertisement" show={hasData} />
+
+  <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5).concat([...(contracts.length ? ["federal-contracts-usaspending"] : []), ...(lobbying.length ? ["lobbying-disclosure-reports"] : [])])} />
+
+
+  <AdSlot pos="low" />
+
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures are shown as filed and may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />

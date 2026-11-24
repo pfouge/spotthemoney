@@ -33,6 +33,9 @@ export const CLUSTER_SELL_MIN_PCT = 10;
 export const WINDOWS = [1, 7, 30] as const;
 export type Win = (typeof WINDOWS)[number];
 export const FEED_PAGE = 60;
+/** Rows the home list shows before "Show more" (all FEED_PAGE rows are in the page; the rest are hidden by CSS; 6 on a phone). */
+export const PREVIEW_ROWS = 8;
+export const PREVIEW_ROWS_PHONE = 6;
 export const TOP_N = 5;
 
 export type Reason = "insider-buy" | "stake-change" | "large-sale" | "congress";
@@ -87,6 +90,7 @@ export interface FeedCluster {
   k: "c"; /** 1 = cluster buy, 0 = cluster sell */ b: 0 | 1; /** latest disclosure date among members */ d: string; /** first / last trade date */ f: string; l: string;
   tk: string; tp: string | null; co: string; n: number; who: { n: string; p: string | null }[];
   v: number; vl: string; ids: number[]; u: string | null;
+  /** insiders of the company with an open-market purchase or sale (Form 4 code P or S) traded inside the cluster's dates, either direction */ tn?: number;
 }
 
 const DAY = 86400_000;
@@ -173,7 +177,30 @@ export function findClusterSells(rows: NRow[], fmt: (n: number) => string = defa
 }
 
 /** Cluster buys and cluster sells together. */
-export const findAllClusters = (rows: NRow[], fmt: (n: number) => string = defaultFmt): FeedCluster[] => [...findClusters(rows, fmt), ...findClusterSells(rows, fmt)];
+export const findAllClusters = (rows: NRow[], fmt: (n: number) => string = defaultFmt): FeedCluster[] => withTraded([...findClusters(rows, fmt), ...findClusterSells(rows, fmt)], rows);
+
+/** An open-market Form 4 purchase (code P) or sale (code S), plan or not: what "traded" counts. */
+const isOpenTrade = (r: NRow) => eligible(r) && isForm4(r) && ((r.code === "P" && r.side === "buy") || (r.code === "S" && r.side === "sell"));
+
+/**
+ * Adds `tn` to each cluster: how many different insiders of that company made an open-market
+ * purchase or sale between the cluster's first and last trade date, buyers and sellers together.
+ * It is never smaller than the cluster's own count.
+ */
+export function withTraded(clusters: FeedCluster[], rows: NRow[]): FeedCluster[] {
+  const byCo = byCompany(rows, isOpenTrade);
+  const coOf = new Map<number, string>();
+  for (const r of rows) coOf.set(r.id, r.companyKey);
+  return clusters.map((c) => {
+    const group = byCo.get(coOf.get(c.ids[0]!) ?? "") ?? [];
+    const people = new Set<string | number>();
+    for (const r of group) if (r.txnDate && r.txnDate >= c.f && r.txnDate <= c.l) people.add(personKey(r));
+    return { ...c, tn: Math.max(people.size, c.n) };
+  });
+}
+
+/** The count column of a cluster row: everyone at the company who traded in those dates. */
+export const tradedLabel = (c: FeedCluster): string => `${c.tn ?? c.n} traded`;
 
 // ── the feed data (what /data/notable.json holds) ──────────────────────────────────────────
 export interface FeedItem {
@@ -415,4 +442,9 @@ export function emptyLine(s: FeedState, offerAll = false): string {
   if (s.preset !== "all") tips.push("the All preset");
   if (s.q.trim()) tips.push("a shorter search");
   return tips.length ? `Nothing matched. Loosen a filter: try ${tips.join(", ")}.` : "Nothing matched: no notable trades were filed in this window.";
+}
+
+/** The direction cell of a feed row: "▲ Bought", or "▲ 6 Bought" when several people did (a cluster). */
+export function actLabel(buy: boolean | 0 | 1, people = 1): string {
+  return `${buy ? "▲" : "▼"} ${people > 1 ? `${people} ` : ""}${buy ? "Bought" : "Sold"}`;
 }

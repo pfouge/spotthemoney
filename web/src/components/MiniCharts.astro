@@ -16,13 +16,18 @@ const pts = scatter ? agreementPoints(model) : [];
 const agree = pts.filter((p) => Math.sign(p.x) === Math.sign(p.y)).length;
 ---
 <section class="mini-charts" aria-labelledby="more-views">
-  <h2 id="more-views">More views</h2>
+  <details class="ref" data-remember id="ref-more-views" data-mini-views><summary><h2 id="more-views">More views</h2></summary><div class="ref-body">
   <div class="viz-grid">
     {scatter && (
-      <Viz title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock traded by both groups in the last year."
+      <Viz compact tall title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock traded by both groups in the last year."
         svg={scatterSvg(pts)} svgPhone={scatterSvg(pts, PHONE_W)}
         summary={pts.length ? `${pts.length} stocks were traded by both groups in the last year; in ${agree} of them Congress and insiders moved the same way. Dot size is total dollars traded; both axes are log scales.` : undefined} />
     )}
     <MiniHeatmap kind={kind} />
   </div>
+  </div></details>
+  <script>
+    // The small heatmap measures its box when it is drawn; a closed block has none, so draw again once it opens.
+    document.querySelectorAll<HTMLDetailsElement>("details[data-mini-views]").forEach((d) => d.addEventListener("toggle", () => { if (d.open) dispatchEvent(new Event("resize")); }));
+  </script>
 </section>

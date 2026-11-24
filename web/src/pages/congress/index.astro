@@ -7,6 +7,10 @@ import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import RouteTiles from "../../components/RouteTiles.astro";
+import Panel from "../../components/Panel.astro";
+import { buildCommittees } from "../../lib/committees";
+import { washTiles } from "../../lib/washhub-build";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -37,6 +41,11 @@ const underReview = all.some((t) => !t.isPublished);
 const lastUpdated = all[0]?.filedAt ?? model.builtAt;
 const pendingOcr = [...model.filings.values()].filter((f) => f.source !== "sec_form4" && f.txnCount === 0).length;
 const avgLagAll = avg(all.map((t) => t.lagDays));
+const lateCount = all.filter(isLate).length;
+const committeeCount = hasCommittees ? buildCommittees(model, model.builtAt.slice(0, 10), personPath).length : 0;
+let tiles: ReturnType<typeof washTiles> = [];
+try { tiles = washTiles(model); } catch { tiles = []; }
+const voteTile = tiles.find((t) => t.key === "votes"), outsideTile = tiles.find((t) => t.key === "outside");
 const answer = all.length === 0
   ? `No congressional trades have met the publishing bar yet. House periodic transaction reports are parsed daily from the Clerk's disclosures; Senate reports are pending a separate decision. ${plural(members.length, "member")} and ${plural(model.filings.size - model.txns.filter((t) => t.source === "sec_form4").length, "filing")} are on record so far.`
   : `${plural(withRows.length, "member")} of Congress have ${plural(all.length, "disclosed trade")} on record, ${num(month.length)} of them disclosed in the last 30 days. The average filing came ${avgLagAll == null ? "—" : Math.round(avgLagAll)} days after the trade against the ${CONGRESS_DEADLINE_DAYS}-day STOCK Act deadline, and ${plural(all.filter(isLate).length, "trade was", "trades were")} filed late.${hasSenate ? "" : " House filings only until the Senate feed is live."}`;
@@ -50,59 +59,81 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <p class="lede">Periodic transaction reports as filed, with the days-to-report on every row and a link to the original document.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: House Clerk PTRs; Senate eFD PTRs" : "Source: House Clerk PTRs (Senate pending)"} />
+  <RouteTiles items={[
+    { href: "/congress-trades/", k: "Trade screener", v: num(all.length), n: "Disclosed trades" },
+    { href: "/congress-members/", k: "Member directory", v: num(withRows.length), n: "Members with trades" },
+    ...(hasCommittees ? [{ href: "/congress-committees/", k: "Committees", v: num(committeeCount), n: "Committee pages" }] : []),
+    ...(voteTile ? [{ href: "/congress-votes/", k: "Roll-call votes", v: voteTile.figures[0]?.value, n: voteTile.figures[0]?.label }] : []),
+    ...(outsideTile ? [{ href: "/outside-spending/", k: "Outside spending", v: outsideTile.figures[0]?.value, n: outsideTile.figures[0]?.label }] : []),
+    { href: "#late-filers", k: "Late filers", v: num(lateCount), n: "Late trades" },
+  ]} />
   <ReviewNote show={underReview} what="Congressional rows" />
   {pendingOcr > 0 && <p class="note">{plural(pendingOcr, "filing is", "filings are")} scanned PDFs awaiting human review and show no rows yet.</p>}
 
-  <h2 id="heatmap" class="hm-h2">Trade map <span class="tag live">Live</span></h2>
-  <Heatmap kind="congress" primary={true} />
-
-  <nav class="feeds" aria-label="Sections">
-    <a href="#heatmap">Trade map</a>{model.txns.some((t) => t.isPublished && t.source !== "sec_form4") && <a href="#charts">Charts</a>}<a href="#newest">Newest</a><a href="#most-active">Most active</a><a href="#late-filers">Late filers</a><a href="#most-traded">Most-traded tickers</a><a href="/congress-trades/">Trade screener</a><a href="/congress-members/">Member directory</a>{hasCommittees && <a href="/congress-committees/">Committees</a>}
-  </nav>
+  <div class="panels">
+    <Panel span={12}>
+      <h2 slot="title" id="heatmap" class="hm-h2">Trade map <span class="tag live">Live</span></h2>
+      <Heatmap kind="congress" primary={true} />
+    </Panel>
+  </div>
 
   <VizCongress />
 
-  <h2 id="newest">Newest disclosures</h2>
-  <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")} note="every congressional trade on record" />
-  <p class="section-note" data-feed-link>In a feed reader: <a href="/feeds/congress-trades.xml">RSS feed of the newest congressional trades</a> (<a href="/feeds/">about the feeds</a>).</p>
-  <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet. The daily congress-ptr job fills this table." />
+  <div class="panels">
+    <Panel span={12}>
+      <h2 slot="title" id="newest">Newest disclosures</h2>
+      <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "congress-trades.csv")} note="every congressional trade on record" />
+      <p class="section-note" data-feed-link>In a feed reader: <a href="/feeds/congress-trades.xml">RSS feed of the newest congressional trades</a> (<a href="/feeds/">about the feeds</a>).</p>
+      <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved congressional rows yet. The daily congress-ptr job fills this table." />
+      <a slot="note" href="/congress-trades/">Filter and sort every trade in the trade screener.</a>
+    </Panel>
+
+    <Panel open={{ href: "/congress-members/", label: "Member directory" }}>
+      <h2 slot="title" id="most-active">Most active traders (12 months)</h2>
+      {mostActive.length === 0 ? <p class="empty-reason">No member has approved trades in the last 12 months yet.</p> : (
+        <div class="tablewrap"><table class="data"><thead><tr><th>Member</th><th>Seat</th><th class="num">Trades (12m)</th><th class="num">Avg. days to report</th><th>Last filed</th></tr></thead><tbody>
+          {mostActive.map((p) => { const pp = personPath(p); const y = p.txns.filter((t) => withinDays(t.disclosedAt, 365)); return (
+            <tr><td>{pp ? <a href={pp}>{p.name}</a> : p.name}</td><td>{roleLabel(p, model.companies)}</td><td class="num">{num(y.length)}</td><td class="num">{avg(y.map((t) => t.lagDays))?.toFixed(0) ?? "—"}</td><td class="mono">{formatDate(p.lastFiledAt)}</td></tr>
+          ); })}
+        </tbody></table></div>
+      )}
+    </Panel>
+
+    <Panel open={{ href: "/congress-trades/#hist=run", label: "Open in the screener" }}>
+      <h2 slot="title" id="late-filers">Late filers</h2>
+      {lateBoard.length === 0 ? <p class="empty-reason">No trade on record was disclosed more than {CONGRESS_DEADLINE_DAYS} days after the transaction.</p> : (
+        <div class="tablewrap"><table class="data"><thead><tr><th>Member</th><th>Seat</th><th class="num">Late trades</th><th class="num">Avg. days to report</th></tr></thead><tbody>
+          {lateBoard.map(({ p, late, avgLag }) => { const pp = personPath(p); return (
+            <tr><td>{pp ? <a href={pp}>{p.name}</a> : p.name}</td><td>{roleLabel(p, model.companies)}</td><td class="num neg">{num(late)}</td><td class="num">{avgLag?.toFixed(0) ?? "—"}</td></tr>
+          ); })}
+        </tbody></table></div>
+      )}
+    </Panel>
+
+    <Panel>
+      <h2 slot="title" id="most-traded">Most-traded tickers (12 months)</h2>
+      {mostTraded.length === 0 ? <p class="empty-reason">No ticker-bearing trades in the last 12 months yet.</p> : (
+        <div class="tablewrap"><table class="data"><thead><tr><th>Ticker</th><th class="num">Members</th><th class="num">Buys</th><th class="num">Sales</th></tr></thead><tbody>
+          {mostTraded.map((r) => <tr><td class="mono"><a href={securityPath(r.s)}>{r.s.ticker}</a></td><td class="num">{r.members.size}</td><td class="num pos">{r.buys}</td><td class="num neg">{r.sells}</td></tr>)}
+        </tbody></table></div>
+      )}
+    </Panel>
+
+    <Panel>
+      <h2 slot="title" id="members">All members on record</h2>
+      {members.length === 0 ? <p class="empty-reason">No members on record yet.</p> : (
+        <p>{plural(members.length, "member")} of Congress {members.length === 1 ? "is" : "are"} on record, {num(withRows.length)} with at least one disclosed trade. <a href="/congress-members/">Open the member directory</a> to filter them by chamber, party, state, committee and recent activity. To filter the trades themselves, by member, ticker, side, amount and date, use the <a href="/congress-trades/">trade screener</a>.{hasCommittees && <> Or <a href="/congress-committees/">browse by committee</a>: each committee's members and the trades they have disclosed.</>}</p>
+      )}
+    </Panel>
+  </div>
 
   <AdSlot label="Advertisement" />
 
-  <h2 id="most-active">Most active traders (12 months)</h2>
-  {mostActive.length === 0 ? <p class="empty-reason">No member has approved trades in the last 12 months yet.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Member</th><th>Seat</th><th class="num">Trades (12m)</th><th class="num">Avg. days to report</th><th>Last filed</th></tr></thead><tbody>
-      {mostActive.map((p) => { const pp = personPath(p); const y = p.txns.filter((t) => withinDays(t.disclosedAt, 365)); return (
-        <tr><td>{pp ? <a href={pp}>{p.name}</a> : p.name}</td><td>{roleLabel(p, model.companies)}</td><td class="num">{num(y.length)}</td><td class="num">{avg(y.map((t) => t.lagDays))?.toFixed(0) ?? "—"}</td><td class="mono">{formatDate(p.lastFiledAt)}</td></tr>
-      ); })}
-    </tbody></table></div>
-  )}
-
-  <h2 id="late-filers">Late filers</h2>
-  {lateBoard.length === 0 ? <p class="empty-reason">No trade on record was disclosed more than {CONGRESS_DEADLINE_DAYS} days after the transaction.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Member</th><th>Seat</th><th class="num">Late trades</th><th class="num">Avg. days to report</th></tr></thead><tbody>
-      {lateBoard.map(({ p, late, avgLag }) => { const pp = personPath(p); return (
-        <tr><td>{pp ? <a href={pp}>{p.name}</a> : p.name}</td><td>{roleLabel(p, model.companies)}</td><td class="num neg">{num(late)}</td><td class="num">{avgLag?.toFixed(0) ?? "—"}</td></tr>
-      ); })}
-    </tbody></table></div>
-  )}
-
-  <h2 id="most-traded">Most-traded tickers (12 months)</h2>
-  {mostTraded.length === 0 ? <p class="empty-reason">No ticker-bearing trades in the last 12 months yet.</p> : (
-    <div class="tablewrap"><table class="data"><thead><tr><th>Ticker</th><th class="num">Members</th><th class="num">Buys</th><th class="num">Sales</th></tr></thead><tbody>
-      {mostTraded.map((r) => <tr><td class="mono"><a href={securityPath(r.s)}>{r.s.ticker}</a></td><td class="num">{r.members.size}</td><td class="num pos">{r.buys}</td><td class="num neg">{r.sells}</td></tr>)}
-    </tbody></table></div>
-  )}
-
-  <h2 id="members">All members on record</h2>
-  {members.length === 0 ? <p class="empty-reason">No members on record yet.</p> : (
-    <p>{plural(members.length, "member")} of Congress {members.length === 1 ? "is" : "are"} on record, {num(withRows.length)} with at least one disclosed trade. <a href="/congress-members/">Open the member directory</a> to filter them by chamber, party, state, committee and recent activity. To filter the trades themselves, by member, ticker, side, amount and date, use the <a href="/congress-trades/">trade screener</a>.{hasCommittees && <> Or <a href="/congress-committees/">browse by committee</a>: each committee's members and the trades they have disclosed.</>}</p>
-  )}
-
   <MiniCharts kind="congress" />
 
-  <h2>How to read this</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read this</h2></summary><div class="ref-body">
   <p>Members report ranges, not amounts, and have {CONGRESS_DEADLINE_DAYS} days to file after a trade. "Late" means the report was filed more than {CONGRESS_DEADLINE_DAYS} days after the transaction date. Owner shows whether a holding is the member's own, a spouse's, a dependent's, or joint. See <a href="/methodology/">methodology</a>.</p>
+  </div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
   <JsonLd data={ld} />
   <SectionFaq section="congress" />

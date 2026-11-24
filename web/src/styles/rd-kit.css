@@ -1,0 +1,104 @@
+/* Summary-first kit (task K): preview tables, panels, compact charts.
+   Preview tables: html.js .tablewrap with more body rows than its preview count (data-preview, default 5) shows only the
+   first N rows (CSS only; every row stays in the page). scripts/tablecap.ts adds the "Show all N rows" button and the
+   data-open state. Without JavaScript nothing is hidden. Client-paged tables, guide reference tables and [data-nocap]
+   wrappers are opted out by the same :not() list the script reads back from the computed style. */
+html.js .tablewrap[data-preview="3"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(4)) tbody tr:nth-child(n+4) { display: none; }
+html.js .tablewrap[data-preview="3"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(4)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="4"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(5)) tbody tr:nth-child(n+5) { display: none; }
+html.js .tablewrap[data-preview="4"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(5)) [data-col="more"] { display: none; }
+html.js .tablewrap:not([data-preview]):not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(6)) tbody tr:nth-child(n+6) { display: none; }
+html.js .tablewrap:not([data-preview]):not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(6)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="6"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(7)) tbody tr:nth-child(n+7) { display: none; }
+html.js .tablewrap[data-preview="6"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(7)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="7"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(8)) tbody tr:nth-child(n+8) { display: none; }
+html.js .tablewrap[data-preview="7"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(8)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="8"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(9)) tbody tr:nth-child(n+9) { display: none; }
+html.js .tablewrap[data-preview="8"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(9)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="9"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(10)) tbody tr:nth-child(n+10) { display: none; }
+html.js .tablewrap[data-preview="9"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(10)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="10"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(11)) tbody tr:nth-child(n+11) { display: none; }
+html.js .tablewrap[data-preview="10"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(11)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="11"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(12)) tbody tr:nth-child(n+12) { display: none; }
+html.js .tablewrap[data-preview="11"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(12)) [data-col="more"] { display: none; }
+html.js .tablewrap[data-preview="12"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(13)) tbody tr:nth-child(n+13) { display: none; }
+html.js .tablewrap[data-preview="12"]:not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(13)) [data-col="more"] { display: none; }
+.tablewrap[data-open] { max-height: calc(33px + 20 * var(--row) + 1px); overflow: auto; }
+.tablewrap:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table)[data-open] { max-height: none; }
+.tablewrap tr:target { scroll-margin-top: 48px; }
+button.tbl-more { min-height: 32px; }
+
+/* ── Panels (components/Panel.astro): one block of data = head, summary, preview, foot. ───────────────── */
+.panels { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-7) var(--s-6); align-items: start; margin: var(--s-7) 0; }
+.panel { min-width: 0; border-top: 1px solid var(--line); padding-top: var(--s-3); }
+@media (min-width: 1100px) {
+  .panels { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .panel { grid-column: span 6; }
+  .panel[data-span="12"] { grid-column: span 12; }
+}
+.pn-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.pn-head > h2, .pn-head > h3 { margin: 0; font-size: var(--t-md); line-height: var(--lh-md); font-weight: 600; }
+.pn-acts { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; font-size: var(--t-sm); }
+.pn-acts a { color: var(--accent); text-decoration: none; white-space: nowrap; }
+.pn-acts a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.pn-sum { display: flex; align-items: flex-start; gap: var(--s-5) var(--s-6); flex-wrap: wrap; margin-top: var(--s-3); }
+.pn-figs { display: flex; gap: var(--s-2) var(--s-5); flex-wrap: wrap; min-width: 0; }
+.pn-fig { display: flex; flex-direction: column; min-width: 0; }
+.pn-fig .k { font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); }
+.pn-fig .v { font-size: var(--t-md); line-height: var(--lh-md); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pn-chart { flex: 1 1 160px; min-width: 0; max-width: 100%; }
+.pn-chart .viz { max-width: 360px; }
+.pn-body { margin-top: var(--s-3); min-width: 0; }
+.pn-body > .tablewrap:first-child { margin-top: 0; }
+.pn-note { margin: var(--s-2) 0 0; font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); }
+html.js .pn-note:not([data-open]) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
+.pn-note-more { display: inline; margin-left: var(--s-2); padding: 0; border: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; }
+.pn-note-wrap { display: flex; align-items: baseline; gap: var(--s-2); }
+.pn-note-wrap > .pn-note { flex: 1 1 auto; min-width: 0; margin-top: 0; }
+.pn-note-wrap { margin-top: var(--s-2); }
+.pn-note-wrap > .pn-note-more { flex: none; margin-left: 0; }
+
+/* ── Compact charts (Viz `compact`) and the grid they sit in ───────────────────────────────────────── */
+.viz-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s-6) var(--s-5); grid-auto-flow: dense; }
+@media (min-width: 640px) { .viz-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .viz-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .viz-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 640px) { .viz-grid > .viz-wide, .viz-grid > .viz-span2, .viz-grid > .mini-map { grid-column: span 2; } }
+.viz-compact { padding: 0; min-width: 0; }
+.viz-compact .viz-top { align-items: center; }
+.viz-compact .viz-head h3 { font-size: var(--t-sm); line-height: var(--lh-sm); font-weight: 600; }
+.viz-compact .share-btn { width: 32px; padding: 0; justify-content: center; }
+.viz-compact .share-btn span { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.viz-compact .viz-q { margin: 0 0 var(--s-2); font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
+.viz-compact .viz-legend { flex-wrap: nowrap; overflow: hidden; margin: 0 0 var(--s-1); gap: var(--s-3); white-space: nowrap; }
+.viz-compact .viz-body { overflow: visible; }
+.viz-compact .viz-body > div > svg.vz, .viz-compact .viz-body > svg.vz { display: block; width: 100%; height: auto; max-height: var(--viz-maxh, 180px); }
+.viz-compact.viz-tall .viz-body > div > svg.vz, .viz-compact.viz-tall .viz-body > svg.vz { max-height: var(--viz-maxh, 360px); }
+.viz-compact .viz-body svg.vz-time { min-width: 0; }
+.viz-compact .vz-b, .viz-compact .vz-c { display: none; }
+.viz-compact .vz-a { display: block; }
+.vz-read { margin-top: var(--s-2); font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); }
+.vz-read > summary { cursor: pointer; color: var(--accent); font-size: var(--t-xs); list-style: none; }
+.vz-read > summary::-webkit-details-marker { display: none; }
+.vz-read > summary::before { content: "+ "; }
+.vz-read[open] > summary::before { content: "− "; }
+.vz-read .viz-sum { margin: var(--s-1) 0 0; font-size: var(--t-xs); line-height: var(--lh-xs); }
+.viz-compact .viz-embed { margin-top: var(--s-2); }
+.viz-compact .viz-embed summary { font-size: var(--t-xs); }
+/* Data ink: no frame behind a chart; labels sit on the page background. */
+svg.vz text.v-halo { stroke: var(--bg); }
+svg.vz .v-plot { fill: none; }
+@media (max-width: 640px) { .viz-compact { padding: 0; } }
+
+/* Space for the button the script adds under a previewed table, reserved up front so nothing below it jumps. */
+html.js .tablewrap[data-preview="3"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(4)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="4"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(5)) { margin-bottom: 40px; }
+html.js .tablewrap:not([data-preview]):not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(6)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="6"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(7)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="7"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(8)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="8"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(9)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="9"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(10)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="10"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(11)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="11"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(12)) { margin-bottom: 40px; }
+html.js .tablewrap[data-preview="12"]:not([data-nocap]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table, table.guide-table)):has(tbody tr:nth-child(13)) { margin-bottom: 40px; }
+button.tbl-more { display: flex; width: fit-content; margin: calc(var(--s-2) - 40px) 0 0; }

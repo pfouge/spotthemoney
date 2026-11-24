@@ -2,7 +2,7 @@
 // selection live in lib/notable.ts (shared with the build, which writes the default view into the
 // HTML). All text goes in as text nodes (scripts/dom.ts): names and labels come from filings.
 import { h, type Kids } from "./dom";
-import { DEFAULT_STATE, FEED_PAGE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, capLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
+import { actLabel, tradedLabel, DEFAULT_STATE, FEED_PAGE, PREVIEW_ROWS, PREVIEW_ROWS_PHONE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, capLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
 
 const KEYS = ["nw", "np", "nq", "ns"] as const;
 
@@ -11,17 +11,26 @@ function link(href: string | null, cls: string | undefined, ...kids: Kids): HTML
 }
 const cell = (cls: string, ...kids: Kids) => h("div", { class: `nf-c ${cls}` }, ...kids);
 const sub = (t: string) => h("span", { class: "nf-sub" }, t);
+const CHEVRON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+function expander(label: string): HTMLElement {
+  const b = h("button", { type: "button", class: "nf-exp", "aria-expanded": "false", "aria-label": label });
+  b.innerHTML = CHEVRON; // a fixed icon, no data in it
+  return b;
+}
 
 function itemEl(e: FeedItem): HTMLElement {
   return h("li", { class: "nf-item" },
-    cell("nf-date", h("time", { datetime: e.d }, shortDate(e.d)), sub(`Traded ${shortDate(e.t)}`)),
-    cell("nf-who", e.np ? h("a", { href: e.np }, e.n) : h("b", {}, e.n), sub(e.r)),
+    cell("nf-date", h("time", { datetime: e.d }, shortDate(e.d))),
     cell("nf-stock", link(e.tp, "nf-tk", e.tk), sub(e.co)),
-    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, e.b ? "▲ Bought" : "▼ Sold")),
-    cell("nf-val", h("b", {}, e.vl), sub(e.vs)),
-    cell("nf-chg", ...(e.ch && e.ch !== "—" ? [e.ch, sub("of holding")] : [])),
+    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, actLabel(e.b))),
+    cell("nf-val", h("b", {}, e.vl)),
+    cell("nf-who", e.np ? h("a", { href: e.np }, e.n) : h("b", {}, e.n)),
     cell("nf-tags", ...e.tg.map((t) => h("span", { class: "nf-tag" }, REASON_LABEL[t]))),
-    cell("nf-src", ...(e.u ? [h("a", { href: e.u, rel: "noopener nofollow", target: "_blank" }, `${e.ul} ↗`)] : [])),
+    expander(`Details: ${e.tk}, ${e.n}`),
+    h("div", { class: "nf-detail", hidden: true },
+      sub(`Traded ${shortDate(e.t)}`), sub(e.r), sub(e.vs),
+      ...(e.ch && e.ch !== "—" ? [sub(`${e.ch} of holding`)] : []),
+      ...(e.u ? [h("a", { class: "nf-src", href: e.u, rel: "noopener nofollow", target: "_blank" }, `${e.ul} ↗`)] : [])),
   );
 }
 
@@ -29,14 +38,17 @@ function clusterEl(e: FeedCluster): HTMLElement {
   const names: Kids = [];
   e.who.forEach((w, i) => { if (i) names.push(", "); names.push(w.p ? h("a", { href: w.p }, w.n) : w.n); });
   return h("li", { class: "nf-item nf-cluster" },
-    cell("nf-date", h("time", { datetime: e.d }, shortDate(e.d)), sub(`Traded ${shortDate(e.f)}${e.f !== e.l ? ` to ${shortDate(e.l)}` : ""}`)),
-    cell("nf-who", h("b", {}, `${e.n} insiders`), h("span", { class: "nf-sub" }, ...names)),
+    cell("nf-date", h("time", { datetime: e.d }, shortDate(e.d))),
     cell("nf-stock", link(e.tp, "nf-tk", e.tk), sub(e.co)),
-    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, e.b ? "▲ Bought" : "▼ Sold")),
-    cell("nf-val", h("b", {}, e.vl), sub(`${e.ids.length} ${e.b ? "purchases" : "sales"}`)),
-    cell("nf-chg"),
+    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, actLabel(e.b, e.n))),
+    cell("nf-val", h("b", {}, e.vl)),
+    cell("nf-who", h("b", {}, tradedLabel(e))),
     cell("nf-tags", h("span", { class: "nf-tag" }, e.b ? REASON_LABEL.cluster : REASON_LABEL["cluster-sell"])),
-    cell("nf-src"),
+    expander(`Details: ${e.tk}, ${e.n} insiders`),
+    h("div", { class: "nf-detail", hidden: true },
+      sub(`Traded ${shortDate(e.f)}${e.f !== e.l ? ` to ${shortDate(e.l)}` : ""}`),
+      h("span", { class: "nf-sub nf-names" }, ...names),
+      sub(`${e.ids.length} ${e.b ? "purchases" : "sales"}`)),
   );
 }
 
@@ -77,6 +89,8 @@ function init(root: HTMLElement): void {
   let data: NotableData | null = null;
   let state = readState(location.hash);
   let visible = FEED_PAGE;
+  let preview = true; // only the first rows show until the first "Show more"
+  const previewRows = () => (matchMedia("(max-width: 640px)").matches ? PREVIEW_ROWS_PHONE : PREVIEW_ROWS);
 
   let shownWin: Win = state.win;
   const paintControls = () => {
@@ -95,23 +109,31 @@ function init(root: HTMLElement): void {
     const shown = all.slice(0, visible);
     let ul = list();
     if (!ul) { ul = h("ul", { class: "nf-list", "data-nf-list": true }); count.after(ul); }
+    ul.toggleAttribute("data-preview", preview);
     ul.replaceChildren(...shown.map((e: Entry) => (e.k === "c" ? clusterEl(e) : itemEl(e))));
     ul.hidden = all.length === 0;
     if (capEl) capEl.textContent = capLine(data, { ...state, win: view.win });
     count.textContent = all.length ? countLine(all.length, shown.length, { ...state, win: view.win }, data.newest, view.fellBack) : "";
     emptyEl.hidden = all.length > 0;
     emptyEl.replaceChildren(...(all.length ? [] : [emptyLine(state, view.offerAll), ...(view.offerAll ? [" ", allBtn()] : [])]));
-    more.hidden = all.length <= shown.length;
+    more.hidden = !(preview && all.length > previewRows()) && all.length <= shown.length;
   };
 
-  const set = (patch: Partial<FeedState>) => { state = { ...state, ...patch }; visible = FEED_PAGE; writeState(state); render(); };
+  const set = (patch: Partial<FeedState>) => { state = { ...state, ...patch }; visible = FEED_PAGE; preview = true; writeState(state); render(); };
 
   root.querySelectorAll<HTMLButtonElement>("[data-nw]").forEach((b) => b.addEventListener("click", () => set({ win: Number(b.dataset.nw) as Win })));
   root.querySelectorAll<HTMLButtonElement>("[data-np]").forEach((b) => b.addEventListener("click", () => set({ preset: b.dataset.np as Preset })));
   input.addEventListener("input", () => set({ q: input.value }));
   sortSel.addEventListener("change", () => set({ sort: sortSel.value as SortKey }));
-  more.addEventListener("click", () => { visible += FEED_PAGE; render(); });
-  window.addEventListener("hashchange", () => { const s = readState(location.hash); if (JSON.stringify(s) !== JSON.stringify(state)) { state = s; visible = FEED_PAGE; input.value = state.q; render(); } });
+  more.addEventListener("click", () => { if (preview) preview = false; else visible += FEED_PAGE; render(); });
+  root.addEventListener("click", (ev) => {
+    const b = (ev.target as Element).closest<HTMLButtonElement>(".nf-exp");
+    if (!b) return;
+    const open = b.getAttribute("aria-expanded") !== "true";
+    b.setAttribute("aria-expanded", String(open));
+    b.closest("li")?.querySelector<HTMLElement>(".nf-detail")?.toggleAttribute("hidden", !open);
+  });
+  window.addEventListener("hashchange", () => { const s = readState(location.hash); if (JSON.stringify(s) !== JSON.stringify(state)) { state = s; visible = FEED_PAGE; preview = true; input.value = state.q; render(); } });
 
   paintControls();
   root.dataset.nf = "loading";

@@ -1,0 +1,105 @@
+/* Finishing pass (task F, 2026-11-23). One skeleton for stock, company, member and insider pages, the group tab set,
+   and the site chrome that every page carries. Tokens from global.css only; design/system.md is binding. */
+
+/* ── 1. Identity line: h1, then Follow, Cite and Share. On a phone the buttons take their own line from the first paint,
+   so Follow appearing later (account.ts) cannot push the page down. ─────────────────────────────────────────────────── */
+.entity-top .lede { margin: var(--s-1) 0 0; font-size: var(--t-sm); line-height: var(--lh-sm); color: var(--ink-2); }
+@media (max-width: 639px) {
+  .entity-id { min-height: 0; }
+  .entity-id h1 { flex: 1 1 100%; }
+  .entity-id .entity-actions { margin-left: auto; }
+}
+
+/* ── 2. The answer: two lines; under them one line with the date and sources at the left and "Show more" at the right
+   (ui.ts adds the button after the text when it overflows). The button lands at the end of a line that is already
+   there, so nothing moves when it appears. ───────────────────────────────────────────────────────────────────────── */
+.entity-top .answer { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--s-4); }
+.entity-top .answer > .answer-text { flex: 1 1 100%; }
+.entity-top .answer > .answer-foot { flex: 1 1 0; min-width: 0; order: 1; }
+.entity-top .answer > .answer-more { flex: none; order: 2; margin: 0; }
+.entity-top .answer > :not(.answer-text):not(.answer-foot):not(.answer-more) { flex: 1 1 100%; order: 3; }
+
+/* ── 3. Glance tiles: 4 across from 1024px (two rows of four), 3 from 640px, 2 on a phone; the sparkline sits right of the
+   figure in its own column and never under the number. ─────────────────────────────────────────────────────────────── */
+.entity-top .glance { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3) 0; overflow: visible; }
+@media (min-width: 640px) { .entity-top .glance { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .entity-top .glance { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.entity-top .glance > .glance-t { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-2); align-items: start; flex: none; }
+.entity-top .glance-t > a { grid-column: 1; min-width: 0; padding-inline: 0; }
+.entity-top .glance-s { position: static; grid-column: 2; grid-row: 1; padding-top: var(--s-1); }
+.entity-top .glance-s svg { width: 64px; height: 24px; }
+.entity-top .glance-n { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 639px) {
+  .entity-top .glance-s svg { width: 48px; height: 20px; }
+}
+
+/* ── 4. A panel head with a CSV link: the h2 at the left, the link quiet at the right. ──────────────────────────────── */
+.panel:has(> h2:first-child + .dl-row) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-4); align-content: start; }
+.panel:has(> h2:first-child + .dl-row) > * { grid-column: 1 / -1; }
+.panel:has(> h2:first-child + .dl-row) > h2:first-child { grid-column: 1; grid-row: 1; }
+.panel:has(> h2:first-child + .dl-row) > .dl-row { grid-column: 2; grid-row: 1; margin: 0; align-self: baseline; text-align: right; }
+.panel:has(> h2:first-child + .dl-row) > .dl-row .dl-meta { display: none; }
+
+/* ── 5. Footer: at most 260px on a desktop. Brand and copyright at the left, the disclaimer and sources as one muted
+   paragraph beside them, then the six link groups in six compact columns. On a phone each group is a closed disclosure
+   (ui.ts closes them under 640px; without JavaScript they stay open). Every link stays in the page. ───────────────── */
+footer.site { margin-top: var(--s-6); padding: var(--s-4) 0; }
+footer.site .foot-grid { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: var(--s-3) var(--s-6); align-items: start; }
+footer.site .foot-top { margin: 0 0 var(--s-1); }
+footer.site .foot-copy { margin: 0; }
+footer.site .foot-text { max-width: 110ch; }
+footer.site .foot-text p { display: inline; margin: 0; }
+footer.site .foot-text p + p::before { content: " "; }
+footer.site .foot-text .disclaimer { padding: 0; border: 0; background: none; font-size: inherit; color: inherit; }
+footer.site .foot-cols { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--s-2) var(--s-4); margin: 0; padding-top: var(--s-3); border-top: 1px solid var(--line); }
+footer.site .foot-cols li a { padding: 0; line-height: var(--lh-xs); }
+footer.site .foot-cols li { margin: 0 0 2px; }
+footer.site .foot-links ul { columns: 2; column-gap: var(--s-3); }
+footer.site .foot-h { margin: 0 0 var(--s-1); }
+@media (max-width: 1023px) and (min-width: 640px) { footer.site .foot-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+footer.site .foot-tog { display: none; }
+@media (max-width: 639px) {
+  footer.site .foot-grid { grid-template-columns: minmax(0, 1fr); }
+  footer.site .foot-cols { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  footer.site .foot-cols > nav { border-bottom: 1px solid var(--line); }
+  footer.site .foot-h { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 0; }
+  footer.site .foot-tog { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: calc(-1 * var(--s-3)); background: none; border: 0; cursor: pointer; color: var(--ink-2); }
+  footer.site .foot-tog::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+  footer.site .foot-cols > nav.open .foot-tog::after { transform: rotate(-135deg); }
+  footer.site .foot-cols ul { padding-bottom: var(--s-3); columns: 2; column-gap: var(--s-4); }
+  footer.site .foot-cols li a { display: inline-block; padding: var(--s-1) 0; }
+}
+
+/* ── 6. The overview charts: "Reading" and "Embed this chart" share one line under each chart. ───────────────────── */
+.entity-top .viz-compact > details.vz-read, .entity-top .viz-compact > details.viz-embed { display: inline-block; vertical-align: top; margin: var(--s-1) var(--s-4) 0 0; }
+.entity-top .viz-compact > details[open] { display: block; }
+.entity-top .viz-grid .viz { --viz-maxh: 140px; }
+.panel .pn-monthbars svg { max-height: 96px; }
+
+/* Glance tiles on entity pages: the figure and its label share one line from 640px (the note stays under them). */
+@media (min-width: 640px) {
+  .entity-top .glance-t > a { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--s-2); }
+  .entity-top .glance-v { display: inline; }
+  .entity-top .glance-k { display: inline; margin-top: 0; }
+  .entity-top .glance-n { flex: 1 1 100%; }
+}
+
+/* In-page ad units keep their reserved height; the space around them is one step tighter (24px). */
+.ad-slot.ad-mid, .ad-slot.ad-low, .ad-slot.ad-multiplex { margin-block: var(--s-5); }
+
+/* ── 7. Headline figures at the top of a panel (components/PanelFigs.astro). ─────────────────────────────────────── */
+.pn-figs-top { margin: var(--s-2) 0 var(--s-1); }
+.pn-figs-top .pn-fig { margin: 0; }
+.pn-figs-top .pn-fig .v { order: 0; font-size: var(--t-lg); line-height: var(--lh-lg); }
+.pn-figs-top .pn-fig .k { order: 1; }
+.pgroup-label { max-width: none; }
+
+/* ── 8. Rates pages: the headline rates are --t-lg figures (the entity rule that shrinks strips does not apply here). ─ */
+.datastrip.rates-strip .v { font-size: var(--t-lg); line-height: var(--lh-lg); margin-top: var(--s-1); }
+@media (max-width: 639px) { .datastrip.rates-strip .v { font-size: var(--t-md); line-height: var(--lh-md); } }
+
+/* ── 9. One row format for entities in tables: the name or ticker in the first column in 600, its seat, role or company
+   muted after it (the templates already print the second part in .soft / .sub). ───────────────────────────────────── */
+main table.data tbody :is(td, th):first-child > a:first-child { font-weight: 600; }
+main table.data tbody td.mono > a[href^="/stocks/"] { font-weight: 600; }
+main table.data tbody :is(td, th):first-child > .soft { font-weight: 400; color: var(--ink-2); }

@@ -1,0 +1,63 @@
+/* People and group pages (task M2): member, insider, committee, industry, lobbying issue.
+   Summary first: figures, small charts and a five-row preview; the rest is one click away. Tokens from global.css only.
+   Panels, previews and the compact charts come from rd-kit.css; this file adds what those pages need beyond the kit. */
+
+/* ---- 2. Facts as headline figures (committee, industry, lobbying issue): the number first, its label above ------ */
+dl.facts[data-people].facts-figs { display: flex; flex-wrap: wrap; gap: var(--s-2) 0; margin: var(--s-4) 0 var(--s-2); }
+dl.facts[data-people].facts-figs > div { display: flex; flex-direction: column-reverse; padding: 0 var(--s-5); border-left: 1px solid var(--line); }
+dl.facts[data-people].facts-figs > div:first-child { padding-left: 0; border-left: 0; }
+dl.facts[data-people].facts-figs dd { margin: 0; font-size: var(--t-lg); line-height: var(--lh-lg); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+dl.facts[data-people].facts-figs dt { font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); }
+@media (max-width: 639px) { dl.facts[data-people].facts-figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3) 0; }
+  dl.facts[data-people].facts-figs > div:nth-child(2n+1) { padding-left: 0; border-left: 0; } dl.facts[data-people].facts-figs > div { padding: 0 var(--s-3); } }
+
+/* ---- 3. The chart row under the figures: a heading that only labels, the kit's compact charts ----------------- */
+section.pp-charts > h2 { margin: var(--s-2) 0 0; font-size: var(--t-xs); line-height: var(--lh-xs); font-weight: 400; color: var(--ink-2); }
+section.pp-charts > .viz-grid { margin: var(--s-2) 0 var(--s-3); }
+
+/* ---- 4. Panels of these pages: a section that is itself the panel (its h2 is the panel head) --------------------- */
+.panel > h2:first-child, .panel > .pn-head > h2 { margin: 0; font-size: var(--t-md); line-height: var(--lh-md); font-weight: 600; }
+.panel > h2:first-child + *, .panel > .pn-head + * { margin-top: var(--s-2); }
+.panel > .pn-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; }
+.panel .pn-acts p, .panel .pn-acts .dl-row { margin: 0; font-size: var(--t-xs); line-height: var(--lh-xs); text-align: right; }
+.panel .pn-acts .dl-meta { display: none; }
+.panel .pn-acts .dl-meta + * { display: none; }
+.panel > .tablewrap, .panel > .pn-body > .tablewrap { margin-top: var(--s-3); }
+.panel .tablewrap table.data { width: 100%; }
+.panel h3 { margin: var(--s-4) 0 0; font-size: var(--t-sm); line-height: var(--lh-sm); font-weight: 600; }
+.panel > p, .panel .pn-sentence { margin: var(--s-2) 0 0; font-size: var(--t-sm); line-height: var(--lh-sm); max-width: 72ch; }
+.panel .pn-sentence { color: var(--ink); }
+.panel .pn-note-wrap { margin-top: var(--s-2); }
+.panel .section-note, .panel .os-note, .panel .cc-note, .panel .lc-note, .panel .fn-note, .panel .rh-note { font-size: var(--t-xs); line-height: var(--lh-xs); color: var(--ink-2); margin: var(--s-2) 0 0; max-width: none; }
+.panel .pn-note-wrap > .pn-note { margin-top: 0; }
+.panel .split { gap: var(--s-4); }
+.panel .split > .tablewrap { margin-top: var(--s-3); }
+.panel[data-span="12"] > .tablewrap table.data { width: 100%; }
+
+/* Tables inside panels: names in 600 with the second line muted; sticky head; no vertical rules. */
+.panel table.data th[scope="row"] { font-weight: 600; }
+.panel table.data th[scope="row"] a { font-weight: 600; }
+.panel .sub, .panel td .sub, .panel th .sub { display: block; font-size: var(--t-xs); line-height: var(--lh-xs); font-weight: 400; color: var(--ink-2); }
+td.nm { font-weight: 600; }
+td.nm .sub { font-weight: 400; }
+
+/* ---- 5. A bar cell: the width is the row's share of the largest row; ink is data, never a verdict colour --------- */
+th.hb-h { width: 112px; }
+td.hb { width: 112px; min-width: 112px; padding-block: 0; }
+td.hb > i { display: block; height: 8px; width: var(--b, 0%); min-width: 2px; border-radius: 1px; background: var(--series-1); }
+td.hb > i.dim { background: var(--series-4); }
+@media (max-width: 639px) { th.hb-h, td.hb { width: 72px; min-width: 72px; } }
+
+/* ---- 6. Closed disclosures that hold what the page keeps for the reader who wants it ----------------------------- */
+.pgroup details.ref > .ref-body .panels { margin: var(--s-4) 0 0; }
+.pp-fold { margin: var(--s-5) 0 0; }
+
+/* ---- 7. A page with little data looks planned: no empty panels, one line saying what is on file ------------------ */
+.pp-sparse { margin: var(--s-5) 0; padding: var(--s-4) 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); max-width: 72ch; }
+.pp-sparse p { margin: 0; font-size: var(--t-sm); line-height: var(--lh-sm); }
+.pp-sparse p + p { margin-top: var(--s-2); color: var(--ink-2); font-size: var(--t-xs); line-height: var(--lh-xs); }
+
+/* ---- 8. Phone: one column; the panel row gap tightens ------------------------------------------------------------- */
+@media (max-width: 639px) { .panels { gap: var(--s-6) 0; margin: var(--s-5) 0; } }
+@media (forced-colors: active) { td.hb > i { background: CanvasText; } }
+
