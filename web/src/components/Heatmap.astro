@@ -4,7 +4,8 @@
 // build-time JSON at /data/heatmap-<kind>.json. Two kinds share one component:
 //   congress  — scope All / House / Senate / Democrats / Republicans, member picker
 //   insiders  — scope All / Officers / Directors / 10% owners, filer picker, open-market-only
-//               and 10b5-1 switches (defaults: open-market only, plans excluded)
+//               10b5-1 and exercise-sale switches (defaults: open-market only, plans and sales of
+//               shares from options exercised the same day excluded; lib/exercise.ts)
 // Both: window 7D/30D/90D/1Y, view Net/Buying/Selling, ticker filter, ticker/filer side list.
 // Redesign pass 2 (2026-11-23): one control line (an optional `lead` slot, window, view), every other filter in the
 // "More filters" disclosure with a count of the active ones; the chart opens 420px tall. The hooks (data-ctl, data-seg) are unchanged.
@@ -85,6 +86,11 @@ const hasInsiders = kind !== "congress";
         {hasInsiders && (
           <div class="ctl"><span class="lbl">10b5-1</span>
             <div class="seg" data-seg="plan"><button type="button" data-v="exclude" class="on">No 10b5-1 plans</button><button type="button" data-v="include">With plans</button></div>
+          </div>
+        )}
+        {hasInsiders && (
+          <div class="ctl"><span class="lbl">Option exercise sales</span>
+            <div class="seg" data-seg="ex" title="Sales of shares from options exercised the same day, in the same Form 4. Left out by default: they are how option pay is cashed in."><button type="button" data-v="exclude" class="on">No exercise sales</button><button type="button" data-v="include">With exercise sales</button></div>
           </div>
         )}
         <div class="ctl"><span class="lbl">Market cap</span>

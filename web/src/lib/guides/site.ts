@@ -39,7 +39,7 @@ export const siteGuides: ((c: GuideCtx) => Guide)[] = [
       { id: "heatmap", h: "How do I see the heatmap instead?", html: `
 <p>Use the switch directly under the chart: the scatter icon is on one side and the tile icon on the other. The heatmap draws the same filtered trades as one tile per stock. A tile's area is the dollars traded and its colour is the direction: green when buying outweighed selling, red when selling outweighed buying, stronger the more one-sided it was. In the Buying or Selling view the tiles are sized and shaded by that side alone.</p>
 <p>The switch changes the picture only. The filters, the totals above the chart and the ranked list stay as they are, and "Reset" clears the filters without changing which chart you are on. The window and the view sit on the control line above the chart; every other filter is under "More filters", with "Reset" beside it. A small heatmap also sits under "More views" near the foot of the Congress and Insiders pages.</p>
-<p>On the Congress and Insiders pages the second group on the scatter is not affected by that page's filters: insider figures there are open-market trades without 10b5-1 plan trades, and Congress figures are all members. On the home page each group follows its own filters.</p>` },
+<p>On the Congress and Insiders pages the second group on the scatter is not affected by that page's filters: insider figures there are open-market trades without 10b5-1 plan trades or sales after an option exercise, and Congress figures are all members. On the home page each group follows its own filters.</p>` },
       { id: "three-maps", h: "Which map am I looking at?", html: `
 <p>The home page has three views: "All insiders" combines Congress and company insiders, "Congress" shows members only and "Corporate insiders" shows Form 4 filers only. The <a href="/congress/">Congress</a> and <a href="/insiders/">Insiders</a> pages open on their own map.</p>
 <p>Dollar amounts for the two groups are built differently. Company insiders report exact shares and prices. Members of Congress report ranges, and the map uses the top of each range (see ${`<a href="/guides/congress-trade-amount-ranges/">amount ranges</a>`}). The line under the chart says what is plotted.</p>` },
@@ -52,6 +52,7 @@ ${table(["Filter", "What it does"], [
   ["All roles, Officers, Directors, 10% owners", "Limits insider trades by the filer's relationship to the company."],
   ["Open-market, All codes", "Open-market keeps only purchases and sales (Form 4 codes P and S). All codes adds grants, exercises, tax withholdings and the rest."],
   ["No 10b5-1 plans, With plans", "Whether to include trades made under a schedule set up in advance."],
+  ["No exercise sales, With exercise sales", "Whether to include sales of shares from options exercised the same day, in the same filing. They are how option pay is cashed in, so the map leaves them out unless you ask."],
   ["Market cap", "Limits the map to companies of one size band."],
   ["Tickers", "Type one or more tickers, separated by commas, to see only those."],
   ["Reset", "Returns every filter to its starting position."],
@@ -90,7 +91,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
       { text: ">7D<", on: "/" }, { text: ">30D<", on: "/" }, { text: ">90D<", on: "/" }, { text: ">1Y<", on: "/" },
       { text: ">Net<", on: "/" }, { text: ">Buying<", on: "/" }, { text: ">Selling<", on: "/" },
       { text: "Both chambers", on: "/" }, { text: "Any party", on: "/" }, { text: "All roles", on: "/" }, { text: "10% owners", on: "/" },
-      { text: "Open-market", on: "/" }, { text: "All codes", on: "/" }, { text: "No 10b5-1 plans", on: "/" }, { text: "With plans", on: "/" },
+      { text: "Open-market", on: "/" }, { text: "All codes", on: "/" }, { text: "No 10b5-1 plans", on: "/" }, { text: "With plans", on: "/" }, { text: "No exercise sales", on: "/" }, { text: "With exercise sales", on: "/" },
       { text: "Market cap", on: "/" }, { text: ">Reset<", on: "/" }, { text: ">Tickers<", on: "/" }, { text: "Share this view", on: "/" },
       { text: "Save image", on: "/" }, { text: "More filters", on: "/" }, { text: "Show more", on: "/" }, { text: "More views", on: "/congress/" }, { text: "Trade heatmap", on: "/congress/" }, { text: 'role="switch"', on: "/" },
     ],
@@ -120,7 +121,7 @@ ${table(["Band", "Estimated size"], c.capBands.map((b) => [b.label, b.range]))}
 <p>Anyone hoping to copy a trade is acting on stale information by construction. Whether that has worked in the past is argued over at length; this site does not test it and makes no claim either way.</p>` },
       { id: "size", h: "How exact are the dollar figures?", html: `
 <p>For company insiders, exact: shares times price, as filed. For Congress, not exact at all: each trade is a range whose top can be fifteen times its bottom, and the map and charts here use the top (see ${`<a href="/guides/congress-trade-amount-ranges/">amount ranges</a>`}). A member's "total traded" is an upper estimate.</p>
-<p>The site also applies a small number of written rules when adding trades up: options are kept out of buy and sell totals, a trade reported on several filings is counted once, and a few filings with an obvious error in the price box are corrected for display. Each is described in the <a href="/methodology/#values">methodology</a>, and the underlying filings are never altered.</p>` },
+<p>The site also applies a small number of written rules when adding trades up: options are kept out of buy and sell totals, a trade reported on several filings is counted once, a few filings with an obvious error in the price box are corrected for display, and a price that cannot be a dollar price per share (for a stock with too few other trades to check it against) is not used at all. Each is described in the <a href="/methodology/#values">methodology</a>, and the underlying filings are never altered.</p>` },
       { id: "coverage", h: "Is every trade here?", html: `
 <p>No, and the gaps are specific:</p>
 <ul>

@@ -3,8 +3,9 @@
 //   · "dollars" for a congressional trade is the TOP of its disclosed range (same rule as the
 //     heatmap); for Form 4 it is shares × price.
 //   · insider buy/sell flows count OPEN-MARKET trades only (codes P and S) and leave out
-//     pre-scheduled 10b5-1 plans — grants, option exercises and tax withholding are not a
-//     view on the stock. Timelines and "who is trading" show every transaction.
+//     pre-scheduled 10b5-1 plans and sales of shares from options exercised the same day
+//     (lib/exercise.ts) — grants, option exercises, the sales that cash them in and tax
+//     withholding are not a view on the stock. Timelines and "who is trading" show every transaction.
 //   · dates are the TRADE date where known, else the disclosure date.
 
 import { type Flagship, type Txn, type Person, type Security, type Company, isLate, personPath, securityPath, CONGRESS_DEADLINE_DAYS, FORM4_DEADLINE_DAYS } from "./flagship";
@@ -15,8 +16,8 @@ export const todayIso = () => iso(Date.now());
 const when = (t: Txn) => t.txnDate ?? t.disclosedAt ?? null;
 const val = (t: Txn) => t.value ?? 0;
 export const isInsiderTxn = (t: Txn) => t.source === "sec_form4";
-/** The trades that say something about direction: all congressional buys/sells; insider open-market, non-plan. */
-export const isSignal = (t: Txn) => (t.side === "buy" || t.side === "sell") && (!isInsiderTxn(t) || ((t.code === "P" || t.code === "S") && !t.is10b51));
+/** The trades that say something about direction: all congressional buys/sells; insider open-market, non-plan, not an exercise sale. */
+export const isSignal = (t: Txn) => (t.side === "buy" || t.side === "sell") && (!isInsiderTxn(t) || ((t.code === "P" || t.code === "S") && !t.is10b51 && !t.exerciseSale));
 const since = (txns: Txn[], days: number) => { const c = iso(Date.now() - days * DAY); return txns.filter((t) => (when(t) ?? "") >= c); };
 const split = (txns: Txn[]) => { let buy = 0, sell = 0; for (const t of txns) { if (t.side === "buy") buy += val(t); else if (t.side === "sell") sell += val(t); } return { buy, sell }; };
 const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

@@ -42,6 +42,7 @@ export interface InsiderRow {
   v: number;          // shares × price
   sh: number | null; pr: number | null;
   pl: boolean;        // Rule 10b5-1 plan
+  x: boolean;         // sale of shares from options exercised the same day (lib/exercise.ts)
   o: string | null;   // direct / indirect
   d: string;
   f: string | null;
@@ -114,7 +115,7 @@ export function insiderRows(m: Flagship): InsiderRow[] {
     out.push({
       t: s.ticker, n: s.name ?? (s.companyId != null ? m.companies.get(s.companyId)?.name ?? null : null),
       p: name, ps: slug, r, ti: role?.officerTitle ?? null,
-      c: t.code, s: sideOf(t), v, sh: t.shares, pr: t.price, pl: t.is10b51 === true, o: t.ownerType,
+      c: t.code, s: sideOf(t), v, sh: t.shares, pr: t.price, pl: t.is10b51 === true, x: t.exerciseSale === true, o: t.ownerType,
       d, f: t.filedAt?.slice(0, 10) ?? null, u: t.sourceUrl,
     });
   }

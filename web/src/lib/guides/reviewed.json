@@ -17,9 +17,9 @@
     }
   },
   "congress-trade-amount-ranges": {
-    "reviewed": "2026-11-18",
+    "reviewed": "2026-11-24",
     "covers": {
-      "web/src/lib/heatmap.ts": "9726eae1fadb943d",
+      "web/src/lib/heatmap.ts": "f5f460ad45fd2ca5",
       "web/src/lib/flagship-core.ts#amountLabel": "221ac26ddd5ed1ae"
     }
   },
@@ -52,11 +52,12 @@
     }
   },
   "form-4-transaction-codes": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-24",
     "covers": {
       "ingest/src/sources/sec_form4.ts#codeToSide": "fafd70cd6d81dfe4",
-      "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/lib/flagship-core.ts#sideLabel": "a6bf1853f54b5be4"
+      "web/src/lib/vizdata.ts#isSignal": "50ba69c372f2ab45",
+      "web/src/lib/flagship-core.ts#sideLabel": "a6bf1853f54b5be4",
+      "web/src/lib/exercise.ts": "5868473b774080cb"
     }
   },
   "form-8-k-company-events": {
@@ -149,14 +150,14 @@
     "covers": {
       "web/src/lib/notable.ts": "32d9381b2eb6a3e3",
       "web/src/components/NotableFeed.astro": "7333b2744804716a",
-      "web/src/components/Heatmap.astro": "25d750f42ae8cb4f",
-      "web/src/scripts/heatmap.ts": "6951fe4f66db5b37",
+      "web/src/components/Heatmap.astro": "a8079d3fe379b694",
+      "web/src/scripts/heatmap.ts": "2dcadd0d6ae8ba3e",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
-      "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
+      "web/src/lib/trade-cross.ts": "2e3a98e9c7089ffb",
       "web/src/components/MiniCharts.astro": "041c14fd101dcd84",
       "web/src/components/MiniHeatmap.astro": "c6c11a50c9af0e2f",
       "web/src/components/VizHome.astro": "fb49113b52bf4185",
-      "web/src/lib/heatmap.ts": "9726eae1fadb943d",
+      "web/src/lib/heatmap.ts": "f5f460ad45fd2ca5",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
       "web/src/scripts/share.ts": "d701447fb386a23e"
     }
@@ -164,18 +165,20 @@
   "insider-buying-vs-insider-selling": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
+      "web/src/lib/vizdata.ts#isSignal": "50ba69c372f2ab45",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
-      "web/src/components/VizFlow.astro": "a3d5b368e2132686",
-      "web/src/pages/insiders/index.astro": "e42166defbff26b4"
+      "web/src/components/VizFlow.astro": "17b0fe32290f1d7a",
+      "web/src/pages/insiders/index.astro": "e42166defbff26b4",
+      "web/src/lib/exercise.ts": "5868473b774080cb"
     }
   },
   "insider-options-and-derivatives": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-24",
     "covers": {
-      "shared/src/tradevalue.ts": "fa250c11636cb867",
-      "web/src/lib/heatmap.ts#insiderRows": "5ea1f074f10967b6",
-      "web/src/lib/flagship-core.ts#sideLabel": "a6bf1853f54b5be4"
+      "shared/src/tradevalue.ts": "9f09516ef4195e0b",
+      "web/src/lib/heatmap.ts#insiderRows": "2613f6c3c3c337dd",
+      "web/src/lib/flagship-core.ts#sideLabel": "a6bf1853f54b5be4",
+      "web/src/lib/exercise.ts": "5868473b774080cb"
     }
   },
   "late-congressional-trade-disclosures": {
@@ -201,7 +204,7 @@
   "rule-10b5-1-trading-plans": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
+      "web/src/lib/vizdata.ts#isSignal": "50ba69c372f2ab45",
       "web/src/components/TxnTable.astro": "e308d7ee77201988"
     }
   },
@@ -232,7 +235,7 @@
     "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "shared/src/tradevalue.ts": "fa250c11636cb867",
+      "shared/src/tradevalue.ts": "9f09516ef4195e0b",
       "web/src/lib/coverage.ts": "45cb5bf5a564ff9d",
       "web/src/pages/terms.astro": "717bde0d44213bfc"
     }
@@ -248,7 +251,7 @@
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "e308d7ee77201988",
-      "web/src/lib/server/od.ts": "82801f792ad597bb",
+      "web/src/lib/server/od.ts": "7be743abcf578390",
       "web/src/components/OdPageView.astro": "356a3ac938b2120e",
       "web/src/lib/market.ts": "1c1fe024c48cfb64",
       "web/src/pages/stocks/[ticker].astro": "a1a5d3215f856b2b",

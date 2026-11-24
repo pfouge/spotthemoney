@@ -5,7 +5,8 @@
 // nowhere else: only the home feed reads it, which is what keeps every other page byte-identical.
 import type postgres from "postgres";
 import { FORM4_FLOOR } from "@stm/shared";
-import { refPriceMap, buildTxn, jointMap } from "./txnbuild";
+import { refStatsMap, buildTxn, jointMap, unusablePriceLog } from "./txnbuild";
+import { markExerciseSales, exerciseLog } from "./exercise";
 import type { RawTxn } from "./txnbuild";
 import { decodeEntities, emptyMarket, type Flagship, type MarketSlice, type Person, type Role, type Txn } from "./flagship-core";
 
@@ -80,13 +81,27 @@ export async function loadMarketSlice(sql: Sql, model: Pick<Flagship, "people" |
       coOf(r.company_id)?.insiders.push(p);
     }
 
-    const refPrice = refPriceMap(txnRows);
+    const refStats = refStatsMap(txnRows);
+    const soByCik = new Map<string, number>();
+    try {
+      for (const r of await sql<{ cik: string; so: number }[]>`select cik, shares_outstanding::float8 as so from company_size where shares_outstanding > 0`) soByCik.set(r.cik.padStart(10, "0"), r.so);
+    } catch (err) { console.warn("[web] market: shares outstanding not read:", (err as Error).message); }
+    const secOf = (sid: number) => out.securities.get(sid) ?? model.securities.get(sid);
+    const soOf = (sid: number): number | null => {
+      const cid = secOf(sid)?.companyId; if (cid == null) return null;
+      const cik = (out.companies.get(cid) ?? model.companies.get(cid))?.cik;
+      return cik ? soByCik.get(cik.padStart(10, "0")) ?? null : null;
+    };
+    console.log(unusablePriceLog(txnRows, refStats, soOf, (sid) => secOf(sid)?.ticker ?? null, "market"));
     const built: Txn[] = []; const owned = new Map<number, number | null>();
     for (const t of txnRows) {
       const f = out.filings.get(t.filing_id); if (!f) continue;
-      const txn = buildTxn(t, f, t.security_id != null ? refPrice.get(t.security_id) : null);
+      const rs = t.security_id != null ? refStats.get(t.security_id) : undefined;
+      const txn = buildTxn(t, f, rs?.price ?? null, { rows: rs?.rows ?? 0, sharesOutstanding: t.security_id != null ? soOf(t.security_id) : null });
       f.txnCount++; built.push(txn); owned.set(txn.id, t.owned_after);
     }
+    markExerciseSales(built);
+    console.log(exerciseLog(built, "market"));
     const joint = jointMap(built, owned);
     for (const own of built) {
       const jointOf = joint.get(own.id) ?? null;

@@ -5,7 +5,7 @@
 // static page cannot disagree about a figure. Tests: scripts/od.test.ts.
 import type { Flagship, Person, Company, Security, Filing, Txn, Role } from "../flagship-core";
 import { personPath, emptyMarket, companyPath, securityPath, decodeEntities, roleLabel, isLate, num, money, plural } from "../flagship-core";
-import { buildTxn, jointMap, type RawTxn, type FilingFacts } from "../txnbuild";
+import { buildTxn, jointMap, refStatsMap, type RawTxn, type FilingFacts } from "../txnbuild";
 import { cleanFootnotes } from "../footnotes";
 import { emptyForm144 } from "../form144";
 import { emptySchedule13 } from "../schedule13";
@@ -140,10 +140,17 @@ export function buildOd(doc: OdDoc, now: Date = new Date()): OdPage {
 
   // rows → Txn (the site's rules), then the joint-filing rule across the rows and the peers' rows
   const all = [...doc.rows, ...doc.peers];
+  // How many open-market rows each stock's reference price rests on, counted from the rows on
+  // this page (the price check of shared/tradevalue). A cut-off document holds more rows than it
+  // shows, so its stocks count as well referenced. Shares outstanding are not in the document,
+  // so only the per-share ceiling applies here.
+  const pageRefs = refStatsMap(all.map(raw));
   const built: Txn[] = []; const owned = new Map<number, number | null>();
   for (const a of all) {
     const t = raw(a); const f = facts.get(t.filing_id); if (!f) continue;
-    const txn = buildTxn(t, f, t.security_id != null ? doc.refPrices[String(t.security_id)] : null);
+    const ref = t.security_id != null ? doc.refPrices[String(t.security_id)] ?? null : null;
+    const rows = doc.truncated ? null : t.security_id != null ? pageRefs.get(t.security_id)?.rows ?? 0 : 0;
+    const txn = buildTxn(t, f, ref, { rows });
     built.push(txn); owned.set(txn.id, t.owned_after);
   }
   for (const a of doc.rows) { const mf = model.filings.get(a[1] as number); if (mf) mf.txnCount++; }

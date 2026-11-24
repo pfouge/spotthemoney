@@ -41,7 +41,8 @@ import { naicsLog } from "./naics";
 import { foreignIssuerRows, sharedMainTickers, issuerLog } from "./issuer";
 import postgres from "postgres";
 import { normalizeOrgName, FORM4_FLOOR, cleanSicCode, sicDivision } from "@stm/shared";
-import { refPriceMap, buildTxn, jointMap } from "./txnbuild";
+import { refStatsMap, buildTxn, jointMap, unusablePriceLog } from "./txnbuild";
+import { markExerciseSales, exerciseLog } from "./exercise";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 
@@ -241,18 +242,32 @@ async function load(): Promise<Flagship> {
     const foreign = issuers.foreign;
     for (const t of txnRows) if (foreign.has(t.id)) t.security_id = null;
     console.log(issuerLog(issuers, model.securities, (id) => model.companies.get(id)?.name ?? `company ${id}`, sharedMainTickers(model.companies.values())));
-    const refPrice = refPriceMap(txnRows.filter((t) => model.filings.get(t.filing_id)?.source === "sec_form4"));
+    const form4Rows = txnRows.filter((t) => model.filings.get(t.filing_id)?.source === "sec_form4");
+    const refStats = refStatsMap(form4Rows);
+    // Shares outstanding per issuer, for the price check of weakly referenced stocks (shared/tradevalue).
+    const soByCik = new Map<string, number>();
+    try {
+      for (const r of await sql<{ cik: string; so: number }[]>`select cik, shares_outstanding::float8 as so from company_size where shares_outstanding > 0`) soByCik.set(r.cik.padStart(10, "0"), r.so);
+    } catch (err) { console.warn("[web] shares outstanding not read:", (err as Error).message); }
+    const soOf = (sid: number): number | null => {
+      const cik = model.companies.get(model.securities.get(sid)?.companyId ?? -1)?.cik;
+      return cik ? soByCik.get(cik.padStart(10, "0")) ?? null : null;
+    };
+    console.log(unusablePriceLog(form4Rows, refStats, soOf, (sid) => model.securities.get(sid)?.ticker ?? null, "tracked"));
     const built: Txn[] = []; const ownedAfter = new Map<number, number | null>();
     for (const t of txnRows) {
       const f = model.filings.get(t.filing_id);
       if (!f) continue;
-      const txn = buildTxn(t, f, t.security_id != null ? refPrice.get(t.security_id) : null);
+      const rs = t.security_id != null ? refStats.get(t.security_id) : undefined;
+      const txn = buildTxn(t, f, rs?.price ?? null, f.source === "sec_form4" ? { rows: rs?.rows ?? 0, sharesOutstanding: t.security_id != null ? soOf(t.security_id) : null } : {});
       f.txnCount++;
       built.push(txn); ownedAfter.set(txn.id, t.owned_after);
     }
     // The same trade reported in more than one filing counts once (lib/joint.ts). The filer's own
     // page keeps the row as filed; every list that spans filers gets it with side "other", which
     // takes it out of the buy/sell totals the same way a derivative row is.
+    markExerciseSales(built); // lib/exercise.ts: sales of shares from options exercised the same day
+    console.log(exerciseLog(built, "tracked"));
     const joint = jointMap(built, ownedAfter);
     const byId = new Map(built.map((t) => [t.id, t]));
     for (const own of built) {

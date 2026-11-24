@@ -5,7 +5,7 @@
 // rows, and the full insiders file is megabytes, so the other axis comes from this small file:
 // for each window the map offers, each ticker's dollars bought and sold by Congress and by
 // corporate insiders. Insider figures use the map's defaults (open-market codes P and S,
-// Rule 10b5-1 plan trades left out); windows count from the disclosure date, as on the map,
+// Rule 10b5-1 plan trades and sales of shares from options exercised the same day left out); windows count from the disclosure date, as on the map,
 // measured back from the build date. The home page does not use this file: it has both sets of
 // rows loaded and applies the reader's own filters to each.
 import type { CongressRow, InsiderRow } from "./heatmap";
@@ -38,6 +38,6 @@ export function crossFile(congress: CongressRow[], insiders: InsiderRow[], built
   return {
     builtAt, windows: [...CROSS_WINDOWS],
     congress: totals(congress, builtAt, () => true),
-    insiders: totals(insiders, builtAt, (r) => (r.c === "P" || r.c === "S") && !r.pl),
+    insiders: totals(insiders, builtAt, (r) => (r.c === "P" || r.c === "S") && !r.pl && !r.x),
   };
 }

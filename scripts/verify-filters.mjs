@@ -42,7 +42,7 @@ export async function browserSuite(opts) {
     const DAY = 86400000, b = Math.round(Date.parse(f.base + "T00:00:00Z") / DAY), iso = (n) => new Date(n * DAY).toISOString().slice(0, 10);
     return f.rows.map((x) => {
       const tk = f.tk[x[0]], pp = f.pp[x[1]], fl = f.fl[x[2]];
-      return { t: tk[0], n: tk[1], p: pp[0], ps: pp[1], r: pp[2], ti: pp[3], c: x[3], s: ["buy", "sell", "other"][x[4]], v: x[5] ?? x[6] * x[7], sh: x[6], pr: x[7], pl: x[8] === 1,
+      return { t: tk[0], n: tk[1], p: pp[0], ps: pp[1], r: pp[2], ti: pp[3], c: x[3], s: ["buy", "sell", "other"][x[4]], v: x[5] ?? x[6] * x[7], sh: x[6], pr: x[7], pl: (x[8] & 1) === 1, x: (x[8] & 2) === 2,
         o: f.ow[x[9]] ?? null, d: iso(b + x[10]), f: fl[1] != null ? iso(b + fl[1]) : null, u: fl[0] == null ? null : /^https?:/.test(fl[0]) ? fl[0] : "https://www.sec.gov/Archives/edgar/data/" + fl[0] };
     });
   };
@@ -75,6 +75,7 @@ export async function browserSuite(opts) {
       if (!legacyCross && s.cls === "all" && cF && !iF) return false;
       if (s.codes === "open" && r.c !== "P" && r.c !== "S") return false;
       if (s.plan === "exclude" && r.pl) return false;
+      if (s.ex === "exclude" && r.x) return false;
       if (s.role !== "all" && r.r !== s.role) return false;
       return true;
     });
@@ -86,10 +87,10 @@ export async function browserSuite(opts) {
   };
 
   // ── drive the real controls ──
-  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: Number(root.dataset.window) || 90, view: root.dataset.view || "net", tickers: "", cap: "all" };
+  const DEFAULTS = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", ex: "exclude", window: Number(root.dataset.window) || 90, view: root.dataset.view || "net", tickers: "", cap: "all" };
   const sel = (k) => root.querySelector(`[data-ctl="${k}"]`);
   const seg = (k) => [...root.querySelectorAll(`[data-seg="${k}"] button`)];
-  const has = { cls: !!sel("cls"), chamber: !!sel("chamber"), party: !!sel("party"), role: !!sel("role"), who: !!sel("who"), cap: !!sel("cap"), codes: seg("codes").length > 0, plan: seg("plan").length > 0 };
+  const has = { cls: !!sel("cls"), chamber: !!sel("chamber"), party: !!sel("party"), role: !!sel("role"), who: !!sel("who"), cap: !!sel("cap"), codes: seg("codes").length > 0, plan: seg("plan").length > 0, ex: seg("ex").length > 0 };
   const apply = async (s) => {
     root.querySelector('[data-ctl="reset"]').click();
     for (const k of ["cls", "chamber", "party", "role", "who", "cap"]) {
@@ -98,9 +99,9 @@ export async function browserSuite(opts) {
       if (el.value !== s[k]) throw new Error(`control ${k} has no option "${s[k]}"`);
       el.dispatchEvent(new Event("change", { bubbles: true }));
     }
-    for (const k of ["codes", "plan", "window", "view"]) {
+    for (const k of ["codes", "plan", "ex", "window", "view"]) {
       if (String(s[k]) === String(DEFAULTS[k])) continue;
-      const b = seg(k).find((x) => x.dataset.v === String(s[k])); if (!b) { if (k === "codes" || k === "plan") continue; throw new Error(`no ${k} button ${s[k]}`); }
+      const b = seg(k).find((x) => x.dataset.v === String(s[k])); if (!b) { if (k === "codes" || k === "plan" || k === "ex") continue; throw new Error(`no ${k} button ${s[k]}`); }
       b.click();
     }
     if (s.tickers) { const t = sel("tickers"); t.value = s.tickers; t.dispatchEvent(new Event("input", { bubbles: true })); await sleep(260); }
@@ -118,7 +119,7 @@ export async function browserSuite(opts) {
   const effective = (s) => {
     const e = { ...s };
     if (!has.cls) e.cls = "all"; if (!has.chamber) e.chamber = "all"; if (!has.party) e.party = "all"; if (!has.role) e.role = "all"; if (!has.cap) e.cap = "all";
-    if (kind === "congress") { e.codes = "open"; e.plan = "exclude"; }
+    if (kind === "congress") { e.codes = "open"; e.plan = "exclude"; e.ex = "exclude"; }
     return e;
   };
 
@@ -145,7 +146,7 @@ export async function browserSuite(opts) {
   const topTickers = [...new Set(rows.map((r) => r.t))].slice(0, 6);
   const space = {
     cls: optionsOf("cls"), chamber: optionsOf("chamber"), party: optionsOf("party"), role: optionsOf("role"), who: ["", ...whoSample], cap: has.cap ? optionsOf("cap") : ["all"],
-    codes: has.codes ? ["open", "all"] : ["open"], plan: has.plan ? ["exclude", "include"] : ["exclude"],
+    codes: has.codes ? ["open", "all"] : ["open"], plan: has.plan ? ["exclude", "include"] : ["exclude"], ex: has.ex ? ["exclude", "include"] : ["exclude"],
     window: [7, 30, 90, 365], view: ["net", "buy", "sell"], tickers: ["", topTickers[0] ?? "", topTickers.slice(0, 3).join(", ").toLowerCase(), "ZZZZ"],
   };
   await check("defaults", {});
@@ -162,7 +163,7 @@ export async function browserSuite(opts) {
   }
 
   // 3. totals formatting on one busy state, reset, and hash content
-  const busy = await check("totals @365d all codes", { window: 365, codes: "all", plan: "include" });
+  const busy = await check("totals @365d all codes", { window: 365, codes: "all", plan: "include", ex: "include" });
   if (busy && busy.want.tickers > 0 && busy.got.totalText !== usd(busy.want.total)) fails.push({ label: "total traded text", bad: [`page ${busy.got.totalText} ≠ expected ${usd(busy.want.total)}`] });
   root.querySelector('[data-ctl="reset"]').click(); await sleep(0);
   const afterReset = shown(), def = expected(effective(DEFAULTS)); ran++;
