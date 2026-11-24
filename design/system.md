@@ -134,3 +134,45 @@ density switch, theme switch, watchlist. Footer: link groups in `--t-xs`, no fil
 | Hub / screener / directory | title and one-line answer · headline figures · filters · the table · method (closed) |
 | Landing (congress, insiders, washington, rates) | title and answer · tiles that route · chart or map · newest rows · questions (closed) |
 | Prose (guide, article, methodology, legal) | title · answer · body at `--t-md`, 68ch · sources (closed where long) |
+
+## 8. Summary first: panels, previews and small charts (added 2026-11-23, second pass)
+
+The first pass kept every block open at full length. A page now opens as a summary; depth is one click away.
+
+### Panel (`components/Panel.astro`)
+One block of data = one panel:
+1. head line: the section's h2 (text unchanged), then quiet actions at the right (CSV, share, "Open in <hub>")
+2. summary: one to three headline figures (label/value) and, where the data has a shape, ONE small chart beside them
+3. preview: the first 5 rows of the table (the 5 that matter most by the table's own default order)
+4. foot: "Show all N rows" (opens the rest in place, in a scroll box of at most 20 rows with a sticky head), and the
+   caveat as one line with "more" when long
+Every row stays in the page; closed rows are hidden with CSS only. A link to a hidden row opens its table.
+A panel with nothing to preview (a note, a chart alone) is just head and summary.
+
+### Panel grid (`.panels`)
+12 columns from 1100px: a panel spans 6 (default) or 12 (`data-span="12"`: wide tables, the trade map). One column
+below 1100px. Row gap `--s-7`, column gap `--s-6`. Panels in a row align to the top; no boxes around panels, a
+hairline above each panel head.
+
+### Preview tables
+`.tablewrap[data-preview]` (default 5; `data-preview="8"` for a page's main table). Columns in a 6-span panel are
+limited to what fits without sideways scroll at 1100px: the template marks secondary columns `data-col="more"`,
+hidden in the preview state and shown once the table is expanded (expanded tables may scroll sideways on phones,
+first column pinned).
+
+### Small charts
+Every chart has a compact form: at most 180px tall, direct labels instead of a legend, at most three light
+gridlines, no frame, no axis line except a baseline, no tick marks, units stated once in the caption. Charts sit in
+`.viz-grid`: 4 across from 1280px, 3 from 1024px, 2 from 640px, 1 below; a time series may span 2. The sentence that
+reads the chart aloud stays in the page under a closed "Reading" disclosure. Colour: direction charts use
+`--viz-buy`/`--viz-sell`; everything else `--series-*` or `--ink-2`.
+
+### Which chart for which question
+| Question | Chart |
+|---|---|
+| Is this bought or sold, and when? | monthly bars up (bought) and down (sold), 12 months |
+| Who accounts for it? | ranked horizontal bars, top 5, the rest summed as "others" |
+| How has a holding or a figure moved? | line with the last value labelled |
+| How is a total split? | one stacked bar with direct labels (never a pie) |
+| How does one thing compare across a few periods? | small multiples of the same bar, shared scale |
+| How late, how spread? | histogram with the deadline marked |
