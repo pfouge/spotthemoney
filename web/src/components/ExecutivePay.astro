@@ -52,9 +52,9 @@ for (const y of years) for (const k of PAY_KEYS) if (payMarked(k, y.values[k])) 
   </section>
 )}
 <style>
-  .pay-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .pay-note { color: var(--ink-soft); font-size: var(--t-sm); max-width: 80ch; }
   .pay-neg { color: var(--red-ink); }
-  .pay-mark { color: var(--ink-soft); margin-left: 2px; }
-  .pay-table th[scope="row"] { min-width: 15rem; font-weight: 500; }
+  .pay-mark { color: var(--ink-soft); margin-left: var(--s-1); }
+  .pay-table th[scope="row"] { min-width: 15rem; font-weight: 400; }
   @media (max-width: 640px) { .pay-table th[scope="row"] { min-width: 11rem; } }
 </style>

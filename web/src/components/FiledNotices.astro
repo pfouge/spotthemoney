@@ -64,10 +64,10 @@ const same = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().s
   </section>
 )}
 <style>
-  .fn-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .fn-sub { display: block; font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.2; margin-top: var(--s-1); }
   .fn-co { min-width: 13rem; }
   .fn-class { min-width: 8rem; }
   @media (max-width: 640px) { .fn-co { min-width: 10rem; } .fn-class { min-width: 7rem; } }
-  .fn-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
-  .fn-held { color: var(--ink-soft); font-size: 13px; text-decoration: underline; white-space: nowrap; }
+  .fn-note { color: var(--ink-soft); font-size: var(--t-sm); max-width: 80ch; }
+  .fn-held { color: var(--ink-soft); font-size: var(--t-xs); text-decoration: underline; white-space: nowrap; }
 </style>

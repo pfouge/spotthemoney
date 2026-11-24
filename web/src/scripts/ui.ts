@@ -6,7 +6,7 @@ function initTheme(): void {
   document.getElementById("themeBtn")?.addEventListener("click", () => {
     const root = document.documentElement, next = root.classList.contains("dark") ? "light" : "dark";
     root.classList.remove("dark", "light"); root.classList.add(next);
-    document.getElementById("themeColor")?.setAttribute("content", next === "dark" ? "#0A0B0C" : "#F2F1EC");
+    document.getElementById("themeColor")?.setAttribute("content", next === "dark" ? "#0F1215" : "#FFFFFF");
     // Keep the browser's own surfaces (form controls, scrollbars, the canvas before CSS loads) on the chosen scheme.
     document.getElementById("colorScheme")?.setAttribute("content", next);
     try { localStorage.setItem("theme", next); } catch { /* private mode */ }
@@ -140,7 +140,7 @@ initAnswerMore();
 const SCROLLERS = ".datastrip, .summary, .viz-body, .feeds, .tablewrap, .hm-bar, .strip-compact";
 function markScrollers(): void {
   for (const el of document.querySelectorAll<HTMLElement>(SCROLLERS)) {
-    const overflows = el.scrollWidth > el.clientWidth + 1;
+    const overflows = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
     const hasStop = !!el.querySelector("a[href], button, select, input, [tabindex]:not([tabindex='-1'])");
     if (overflows && !hasStop) { el.tabIndex = 0; el.dataset.scrollStop = "1"; }
     else if (el.dataset.scrollStop) { el.removeAttribute("tabindex"); delete el.dataset.scrollStop; }

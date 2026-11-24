@@ -114,27 +114,27 @@ const sortable = new Set(["date", "chamber", "bill", "result", "yeas", "nays", "
 <style>
   .vt-controls .hm-input { width: 200px; }
   .vt-controls select { max-width: 290px; }
-  .vt-count { margin: 0 0 0.25rem; }
+  .vt-count { margin: 0 0 var(--s-1); }
   .vt-dl { margin-top: 0; }
-  .vt-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
+  .vt-dl button.dl { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s-3); border: 1px solid var(--line-2); border-radius: var(--r-1); color: var(--accent); font: inherit; font-size: var(--t-sm); font-weight: 400; background: var(--surface); cursor: pointer; }
   .vt-dl button.dl:hover { background: var(--chip); }
   .vt-dl button.dl:disabled { opacity: 0.45; cursor: default; }
   :global(html:not(.js)) .vt-dl { display: none; }
   .vt-q { min-width: 16rem; }
-  :global(.vt-open) { font: inherit; font-size: 13.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 30px; padding: 0 12px; cursor: pointer; }
+  :global(.vt-open) { font: inherit; font-size: var(--t-xs); color: var(--ink); background: transparent; border: 1px solid var(--line-2); border-radius: var(--r-pill); height: 28px; padding: 0 var(--s-3); cursor: pointer; }
   :global(html:not(.js) .vt-open) { display: none; }
-  .vt-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
-  .vt-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
+  .vt-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: var(--s-2) 0 var(--s-4); font-size: var(--t-sm); }
+  .vt-pager button.chip { font: inherit; font-size: var(--t-xs); color: var(--ink); background: transparent; border: 1px solid var(--line-2); border-radius: var(--r-pill); height: 28px; padding: 0 var(--s-3); cursor: pointer; }
   .vt-pager button.chip:disabled { opacity: 0.45; cursor: default; }
   .vt-pager[hidden] { display: none; }
-  .vt-per { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .vt-per { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s-1); }
   :global(.linklike) { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
   .votes-hub[data-loading] .vt-table { opacity: 0.6; }
-  :global(table.data .vt-detail td:first-child) { position: static; max-width: none; overflow: visible; box-shadow: none; background: var(--chip); white-space: normal; padding: 0.6rem 8px; }
+  :global(table.data .vt-detail td:first-child) { position: static; max-width: none; overflow: visible; box-shadow: none; background: var(--chip); white-space: normal; padding: var(--s-2) var(--s-2); }
   :global(.vt-detail-in) { position: sticky; left: 0; width: min(100%, calc(100vw - 3rem)); white-space: normal; }
-  :global(.vt-detail .vt-group) { margin: 0 0 0.8rem; }
-  :global(.vt-detail h3) { margin: 0.2rem 0; font-size: 15px; }
-  :global(.vt-detail .vt-party) { margin: 0.2rem 0; font-size: 14px; line-height: 1.5; }
+  :global(.vt-detail .vt-group) { margin: 0 0 var(--s-3); }
+  :global(.vt-detail h3) { margin: var(--s-1) 0; font-size: var(--t-sm); }
+  :global(.vt-detail .vt-party) { margin: var(--s-1) 0; font-size: var(--t-sm); line-height: 1.5; }
   :global(html:not(.js)) .vt-controls, :global(html:not(.js)) .vt-pager { display: none; }
 </style>
 <script>

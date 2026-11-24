@@ -90,17 +90,17 @@ const tables: { kind: "year" | "quarter"; id: string; title: string; cols: Perio
   </section>
 )}
 <style>
-  .fin-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
-  .fin-sub { display: block; font-size: 12.5px; font-weight: 400; color: var(--ink-soft); line-height: 1.2; }
-  table.fin th[scope="row"] { text-align: left; font-weight: 500; min-width: 11rem; white-space: normal; }
+  .fin-note { color: var(--ink-soft); font-size: var(--t-sm); max-width: 80ch; }
+  .fin-sub { display: block; font-size: var(--t-xs); font-weight: 400; color: var(--ink-soft); line-height: 1.2; }
+  table.fin th[scope="row"] { text-align: left; font-weight: 400; min-width: 11rem; white-space: normal; }
   table.fin thead th.num { white-space: normal; min-width: 7.5rem; }
   .fin-neg { color: var(--red-ink); }
   .fin-na { color: var(--ink-soft); }
-  tr.fin-calc td { font-size: 12.5px; color: var(--ink-soft); text-align: left; padding-top: 0.9rem; white-space: normal; }
-  .fin-held { color: var(--ink-soft); font-size: 13px; text-decoration: underline; white-space: nowrap; }
-  .fin-mark { color: var(--ink-soft); margin-left: 2px; }
-  .fin-src { font-size: 12.5px; white-space: normal; }
+  tr.fin-calc td { font-size: var(--t-xs); color: var(--ink-soft); text-align: left; padding-top: var(--s-4); white-space: normal; }
+  .fin-held { color: var(--ink-soft); font-size: var(--t-xs); text-decoration: underline; white-space: nowrap; }
+  .fin-mark { color: var(--ink-soft); margin-left: var(--s-1); }
+  .fin-src { font-size: var(--t-xs); white-space: normal; }
   .fin-srcline { display: block; }
-  h3 { margin-top: 1.25rem; }
+  h3 { margin-top: var(--s-4); }
   @media (max-width: 640px) { table.fin th[scope="row"] { min-width: 8.5rem; } table.fin thead th.num { min-width: 6.5rem; } }
 </style>

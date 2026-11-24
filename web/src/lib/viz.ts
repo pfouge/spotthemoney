@@ -36,13 +36,52 @@ const fit = (s: string, w: number): string => { if (tw(s) <= w) return s; let t 
 /** Chart widths: 1120 for a full-row card on desktop, 560 for a half-row card, 360 for phones (see Viz.astro). */
 export const PHONE_W = 360, WIDE_W = 1120;
 
-// ── 02 sparkline ────────────────────────────────────────────────────────────────────────
+// ── 02 sparklines (design/system.md "Sparkline and small multiples") ─────────────────────
+// No axis, no fill, no grid. A 1.5px line in muted ink with the last point marked in ink; `sparkBars`
+// draws counts per period (muted ink, or buys up in --pos and sells down in --neg when the series is a
+// direction). Both return "" for fewer than 2 points, and carry role="img" with a text label.
+export interface SparkOpts { w?: number; h?: number; label?: string }
+const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+const sparkOpen = (w: number, h: number, label: string) => `<svg class="vz spark" viewBox="0 0 ${w} ${h}" width="${w}" role="img" aria-label="${esc(label)}">`;
+export function sparkSvg(values: number[], opts: SparkOpts = {}): string {
+  const v = values.filter(finite);
+  if (v.length < 2) return "";
+  const W = opts.w ?? 96, H = opts.h ?? 24, pad = 3;
+  const mn = Math.min(...v), mx = Math.max(...v), span = mx - mn || 1;
+  const x = (i: number) => pad + (i * (W - 2 * pad)) / (v.length - 1);
+  const y = (n: number) => (mx === mn ? H / 2 : H - pad - ((n - mn) / span) * (H - 2 * pad));
+  const d = v.map((n, i) => `${i ? "L" : "M"}${f1(x(i))},${f1(y(n))}`).join("");
+  const last = v[v.length - 1]!;
+  return `${sparkOpen(W, H, opts.label ?? `Trend over ${v.length} points, from ${v[0]} to ${last}`)}<path d="${d}" class="sp-line" fill="none" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${f1(x(v.length - 1))}" cy="${f1(y(last))}" r="2.5" class="sp-end"/></svg>`;
+}
+/** Counts per period as bars. Plain numbers are muted ink (negative ones hang below the baseline); {up, down} pairs are buys above the baseline in --pos and sells below it in --neg. */
+export function sparkBars(values: (number | { up: number; down: number })[], opts: SparkOpts = {}): string {
+  const dir = values.some((v) => typeof v === "object" && v !== null);
+  const v = values.map((n) => (typeof n === "object" && n !== null ? { up: finite(n.up) ? Math.max(0, n.up) : 0, down: finite(n.down) ? Math.max(0, n.down) : 0 } : finite(n) ? n : NaN));
+  const ok = v.filter((n) => typeof n === "object" || Number.isFinite(n));
+  if (ok.length < 2) return "";
+  const W = opts.w ?? 96, H = opts.h ?? 24, gap = 1;
+  const up = (n: number | { up: number; down: number }) => (typeof n === "object" ? n.up : Math.max(0, n));
+  const dn = (n: number | { up: number; down: number }) => (typeof n === "object" ? n.down : Math.max(0, -n));
+  const nums = ok as (number | { up: number; down: number })[];
+  const top = Math.max(...nums.map(up)), bot = Math.max(...nums.map(dn));
+  const both = dir || bot > 0;
+  const scale = (H - 2) / ((top + bot) || 1);
+  const base = 1 + top * scale; // baseline y
+  const bw = Math.max(1, (W - gap * (nums.length - 1)) / nums.length);
+  let o = sparkOpen(W, H, opts.label ?? `Counts over ${nums.length} periods`);
+  nums.forEach((n, i) => {
+    const x = i * (bw + gap), u = up(n) * scale, d = dn(n) * scale;
+    if (u > 0) o += `<rect x="${f1(x)}" y="${f1(base - u)}" width="${f1(bw)}" height="${f1(u)}" class="${dir ? "sp-up" : "sp-bar"}"/>`;
+    if (d > 0) o += `<rect x="${f1(x)}" y="${f1(base)}" width="${f1(bw)}" height="${f1(d)}" class="${dir ? "sp-down" : "sp-bar"}"/>`;
+    if (u === 0 && d === 0) o += `<rect x="${f1(x)}" y="${f1(base - 0.5)}" width="${f1(bw)}" height="1" class="sp-bar"/>`;
+  });
+  if (both) o += `<line x1="0" x2="${W}" y1="${f1(base)}" y2="${f1(base)}" class="sp-base"/>`;
+  return o + "</svg>";
+}
+/** The home tiles' sparkline: the same line at a wider size. Kept under its old name for the callers. */
 export function sparklineSvg(values: number[], label: string): string {
-  if (values.length < 2) return "";
-  const W = 200, H = 36, mn = Math.min(...values), mx = Math.max(...values), span = mx - mn || 1;
-  const x = (i: number) => (i * (W - 6)) / (values.length - 1) + 1, y = (v: number) => H - 5 - ((v - mn) / span) * (H - 10);
-  const d = values.map((v, i) => `${i ? "L" : "M"}${f1(x(i))},${f1(y(v))}`).join("");
-  return `${open(W, H, label, "spark")}<path d="${d}" class="v-line" fill="none" stroke-width="2" stroke-linejoin="round"/><circle cx="${f1(x(values.length - 1))}" cy="${f1(y(values[values.length - 1]!))}" r="4" class="v-one ring" stroke-width="2"/></svg>`;
+  return sparkSvg(values, { w: 200, h: 36, label });
 }
 
 // ── 03 buy / sell gauge ─────────────────────────────────────────────────────────────────

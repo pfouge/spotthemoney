@@ -163,22 +163,22 @@ const cap = (i: number) => RATIOS[i]!.cap.toLocaleString("en-US");
 <style>
   .fs-controls .hm-input { width: 200px; }
   .fs-controls select { max-width: 290px; }
-  .fs-count { margin: 0 0 0.25rem; }
-  .fs-rationote { margin: 0 0 0.6rem; max-width: 78ch; }
+  .fs-count { margin: 0 0 var(--s-1); }
+  .fs-rationote { margin: 0 0 var(--s-2); max-width: 78ch; }
   .fs-rationote[hidden] { display: none; }
   .fs-table th[hidden] { display: none; }
-  .fs-inputs { display: block; margin-left: auto; width: 15ch; font-size: 12px; line-height: 1.25; font-weight: 400; color: var(--ink-soft); white-space: normal; }
-  .fs-rationote { margin-top: 0.5rem; }
+  .fs-inputs { display: block; margin-left: auto; width: 15ch; font-size: var(--t-xs); line-height: 1.25; font-weight: 400; color: var(--ink-soft); white-space: normal; }
+  .fs-rationote { margin-top: var(--s-2); }
   .fs-dl { margin-top: 0; }
-  .fs-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
+  .fs-dl button.dl { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s-3); border: 1px solid var(--line-2); border-radius: var(--r-1); color: var(--accent); font: inherit; font-size: var(--t-sm); font-weight: 400; background: var(--surface); cursor: pointer; }
   .fs-dl button.dl:hover { background: var(--chip); }
   .fs-dl button.dl:disabled { opacity: 0.45; cursor: default; }
   :global(html:not(.js)) .fs-dl { display: none; }
-  .fs-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
-  .fs-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
+  .fs-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: var(--s-2) 0 var(--s-4); font-size: var(--t-sm); }
+  .fs-pager button.chip { font: inherit; font-size: var(--t-xs); color: var(--ink); background: transparent; border: 1px solid var(--line-2); border-radius: var(--r-pill); height: 28px; padding: 0 var(--s-3); cursor: pointer; }
   .fs-pager button.chip:disabled { opacity: 0.45; cursor: default; }
   .fs-pager[hidden] { display: none; }
-  .fs-per { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .fs-per { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s-1); }
   .linklike { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
   .finscreen[data-loading] .fs-table { opacity: 0.6; }
   :global(html:not(.js)) .fs-controls, :global(html:not(.js)) .fs-pager { display: none; }
