@@ -55,18 +55,18 @@ footer.site .foot-cols { grid-column: 1 / -1; display: grid; grid-template-colum
 footer.site .foot-cols li a { padding: 0; line-height: var(--lh-xs); }
 footer.site .foot-cols li { margin: 0 0 2px; }
 footer.site .foot-links ul { columns: 2; column-gap: var(--s-3); }
-footer.site details.foot-g > summary { list-style: none; cursor: default; }
-footer.site details.foot-g > summary::-webkit-details-marker { display: none; }
 footer.site .foot-h { margin: 0 0 var(--s-1); }
 @media (max-width: 1023px) and (min-width: 640px) { footer.site .foot-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+footer.site .foot-tog { display: none; }
 @media (max-width: 639px) {
   footer.site .foot-grid { grid-template-columns: minmax(0, 1fr); }
   footer.site .foot-cols { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  footer.site details.foot-g { border-bottom: 1px solid var(--line); }
-  footer.site details.foot-g > summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 0; cursor: pointer; }
-  footer.site details.foot-g > summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(45deg); margin-right: var(--s-2); }
-  footer.site details.foot-g[open] > summary::after { transform: rotate(-135deg); }
-  footer.site details.foot-g > ul { padding-bottom: var(--s-3); columns: 2; column-gap: var(--s-4); }
+  footer.site .foot-cols > nav { border-bottom: 1px solid var(--line); }
+  footer.site .foot-h { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: 0; }
+  footer.site .foot-tog { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: calc(-1 * var(--s-3)); background: none; border: 0; cursor: pointer; color: var(--ink-2); }
+  footer.site .foot-tog::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }
+  footer.site .foot-cols > nav.open .foot-tog::after { transform: rotate(-135deg); }
+  footer.site .foot-cols ul { padding-bottom: var(--s-3); columns: 2; column-gap: var(--s-4); }
   footer.site .foot-cols li a { display: inline-block; padding: var(--s-1) 0; }
 }
 

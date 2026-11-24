@@ -165,14 +165,22 @@ function initPanelNotes(): void {
 }
 initPanelNotes();
 
-// Footer link groups (BaseLayout): closed disclosures on a phone, open from 640px. Without JavaScript they stay open.
+// Footer link groups (BaseLayout): on a phone each group's list is folded under a chevron button beside its heading;
+// from 640px the lists are open and the buttons are hidden. Without JavaScript every list is open.
 const footMq = window.matchMedia("(max-width: 639px)");
-const syncFoot = (): void => {
-  document.querySelectorAll<HTMLDetailsElement>("footer.site details.foot-g").forEach((d) => { d.open = !footMq.matches; });
-};
+const footGroups = [...document.querySelectorAll<HTMLElement>("footer.site .foot-cols > nav")].map((nav, i) => {
+  const head = nav.querySelector<HTMLElement>(".foot-h"), list = nav.querySelector<HTMLUListElement>("ul");
+  if (!head || !list) return null;
+  if (!list.id) list.id = `foot-list-${i}`;
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "foot-tog";
+  btn.setAttribute("aria-controls", list.id);
+  btn.setAttribute("aria-label", `${(head.textContent ?? "").trim()}: show or hide the links`);
+  head.appendChild(btn);
+  const set = (open: boolean): void => { list.hidden = !open; btn.setAttribute("aria-expanded", String(open)); nav.classList.toggle("open", open); };
+  btn.addEventListener("click", () => set(list.hidden));
+  return set;
+}).filter((f): f is (open: boolean) => void => !!f);
+const syncFoot = (): void => { for (const set of footGroups) set(!footMq.matches); };
 syncFoot();
 footMq.addEventListener("change", syncFoot);
-// On a wide screen the group heading is a label, not a toggle.
-document.querySelectorAll<HTMLElement>("footer.site details.foot-g > summary").forEach((s) => s.addEventListener("click", (e) => {
-  if (!footMq.matches && !(e.target as Element).closest("a")) e.preventDefault();
-}));

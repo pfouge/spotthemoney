@@ -244,17 +244,13 @@ const flowEntity = topHasClass(pageHtml, "title-row");
         <div class="foot-cols">
           {NAV.map((g) => (
             <nav aria-label={g.label}>
-              <details class="foot-g" open>
-                <summary class="foot-h"><a href={g.href}>{g.label}</a></summary>
-                <ul>{liveItems(g).map((i) => <li><a href={i.href}>{i.label}</a></li>)}</ul>
-              </details>
+              <p class="foot-h"><a href={g.href}>{g.label}</a></p>
+              <ul>{liveItems(g).map((i) => <li><a href={i.href}>{i.label}</a></li>)}</ul>
             </nav>
           ))}
           <nav class="foot-links" aria-label="About this site">
-            <details class="foot-g" open>
-              <summary class="foot-h">About and data</summary>
-              <ul>{FOOT_ABOUT.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
-            </details>
+            <p class="foot-h">About and data</p>
+            <ul>{FOOT_ABOUT.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
           </nav>
         </div>
       </div>

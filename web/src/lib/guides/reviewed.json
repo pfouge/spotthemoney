@@ -27,7 +27,7 @@
     "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/execpay.ts": "1e3641fc39e22733",
-      "web/src/components/ExecutivePay.astro": "d2edadc66fe2535d",
+      "web/src/components/ExecutivePay.astro": "b6276efc784302ff",
       "shared/src/execpay.ts": "c63a2489e2570fac"
     }
   },
@@ -48,7 +48,7 @@
     "covers": {
       "web/src/lib/inst13f.ts": "156ecec5730acd97",
       "web/src/lib/inst13f-build.ts": "3c7f374b016abc92",
-      "web/src/components/InstHolders.astro": "2be32bb5b51ad13d"
+      "web/src/components/InstHolders.astro": "d8ece72b42f29634"
     }
   },
   "form-4-transaction-codes": {
@@ -63,7 +63,7 @@
     "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/events8k.ts": "853bec3ff94580a3",
-      "web/src/components/CompanyEvents.astro": "75162b60310e2239",
+      "web/src/components/CompanyEvents.astro": "74aaf1a490a76e0f",
       "shared/src/events8k.ts": "37689d9e27bb40b6"
     }
   },
@@ -79,7 +79,7 @@
     "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/ibond.ts": "25119c31f8a07e82",
-      "web/src/pages/rates/i-bonds.astro": "2e7fe2f18d7cdef9"
+      "web/src/pages/rates/i-bonds.astro": "c982c9774f7a6f86"
     }
   },
   "how-to-cite-and-reuse": {
@@ -91,10 +91,10 @@
       "web/src/pages/terms.astro": "717bde0d44213bfc",
       "web/src/lib/downloads.ts": "a10dfa6d02a655d2",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
-      "web/src/pages/downloads/index.astro": "c173e267d4ad4553",
+      "web/src/pages/downloads/index.astro": "e6d85649835449f9",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
       "web/src/lib/datafiles.ts": "caae6ebab02cc61e",
-      "web/src/pages/developers.astro": "93373951752def3c"
+      "web/src/pages/developers.astro": "a208e135a937443e"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
@@ -120,15 +120,15 @@
   "how-to-read-a-congressional-trade-report": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/components/TxnTable.astro": "1483d043734df0b3",
+      "web/src/components/TxnTable.astro": "e308d7ee77201988",
       "ingest/py/senate_import.py": "07fb64601f9adcc9",
       "web/src/lib/profile.ts": "bd5d636516362e3f",
-      "web/src/pages/congress/[slug].astro": "826af37ccc1bc31d",
+      "web/src/pages/congress/[slug].astro": "73e22421d986ce3f",
       "web/src/lib/directory.ts": "0466a663969706ab",
       "web/src/pages/congress-members.astro": "7f963f509f3e04b3",
       "web/src/lib/committees.ts": "b0ef39eec547918e",
       "web/src/pages/congress-committees/index.astro": "2af462e60abb13a0",
-      "web/src/pages/congress-committees/[slug].astro": "e93e2964d567429f",
+      "web/src/pages/congress-committees/[slug].astro": "0073e7f70c4388eb",
       "web/src/lib/screener.ts": "528bda637853c2d1",
       "web/src/pages/congress-trades.astro": "44649ba3b43c9704",
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5",
@@ -147,15 +147,15 @@
   "how-to-use-the-trade-map": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/lib/notable.ts": "1311804488343b01",
-      "web/src/components/NotableFeed.astro": "ce6ab08c10ce4f73",
-      "web/src/components/Heatmap.astro": "02dc9bcb5c349d6c",
+      "web/src/lib/notable.ts": "3034bd3fb6b6e431",
+      "web/src/components/NotableFeed.astro": "4de78f6e45fcbf67",
+      "web/src/components/Heatmap.astro": "25d750f42ae8cb4f",
       "web/src/scripts/heatmap.ts": "6951fe4f66db5b37",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
       "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
       "web/src/components/MiniCharts.astro": "041c14fd101dcd84",
       "web/src/components/MiniHeatmap.astro": "c6c11a50c9af0e2f",
-      "web/src/components/VizHome.astro": "56b1a5d1f2bdbd8e",
+      "web/src/components/VizHome.astro": "270b05b10ac733be",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
       "web/src/scripts/share.ts": "d701447fb386a23e"
@@ -193,39 +193,39 @@
       "web/src/pages/lobbying/index.astro": "07316fca4522d4eb",
       "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
       "web/src/pages/lobbying-issues/index.astro": "1964da964f00a214",
-      "web/src/pages/lobbying-issues/[slug].astro": "b53250272b4f446f",
+      "web/src/pages/lobbying-issues/[slug].astro": "af8ca15117d91a51",
       "web/src/lib/lobbygifts.ts": "c02e8630901b7b5e",
       "web/src/pages/lobbyist-contributions/index.astro": "cb483e5440050222"
     }
   },
   "rule-10b5-1-trading-plans": {
-    "reviewed": "2026-11-18",
+    "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
-      "web/src/components/TxnTable.astro": "1483d043734df0b3"
+      "web/src/components/TxnTable.astro": "e308d7ee77201988"
     }
   },
   "ten-percent-owners-and-joint-filings": {
     "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "web/src/components/TxnTable.astro": "1483d043734df0b3",
+      "web/src/components/TxnTable.astro": "e308d7ee77201988",
       "web/src/lib/schedule13.ts": "6a56ade8c9999b1d",
       "web/src/lib/largeholders.ts": "0f9bce0e302a9874",
-      "web/src/components/LargeHolders.astro": "9f60fdac84de2cd0",
+      "web/src/components/LargeHolders.astro": "9a5988ca60759423",
       "web/src/components/ReportedHoldings.astro": "2a51ce9bbc17d6bf"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/rates/tips.astro": "d062a269159a5cb5"
+      "web/src/pages/rates/tips.astro": "2eb77eb983337179"
     }
   },
   "treasury-yield-curve-explained": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/rates/treasury-yields.astro": "87419dff4d44589a"
+      "web/src/pages/rates/treasury-yields.astro": "f9a1ad5753e30f0a"
     }
   },
   "what-disclosure-data-cannot-tell-you": {
@@ -247,19 +247,19 @@
       "web/src/lib/industries.ts": "1780d87d2ac3a61a",
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
-      "web/src/components/TxnTable.astro": "1483d043734df0b3",
+      "web/src/components/TxnTable.astro": "e308d7ee77201988",
       "web/src/lib/server/od.ts": "82801f792ad597bb",
-      "web/src/components/OdPageView.astro": "34873ce538367c92",
+      "web/src/components/OdPageView.astro": "356a3ac938b2120e",
       "web/src/lib/market.ts": "1c1fe024c48cfb64",
-      "web/src/pages/stocks/[ticker].astro": "4eaaa418e3c08573",
-      "web/src/pages/insiders/[slug].astro": "fd1a66a50349384d",
-      "web/src/pages/companies/[slug].astro": "60b6a1b7d956f669",
+      "web/src/pages/stocks/[ticker].astro": "a1a5d3215f856b2b",
+      "web/src/pages/insiders/[slug].astro": "f809619e406da8f2",
+      "web/src/pages/companies/[slug].astro": "7614041552092f28",
       "web/src/lib/form144.ts": "5792da219a57b938",
       "web/src/lib/plannedsales.ts": "60e8951a617b18bc",
       "web/src/lib/inst13f.ts": "156ecec5730acd97",
-      "web/src/components/PlannedSales.astro": "c7d734a4b0e385bb",
+      "web/src/components/PlannedSales.astro": "b51da03b9dd77787",
       "web/src/lib/financials.ts": "36e4ca7b62568223",
-      "web/src/components/Financials.astro": "c66dacfc59b1679a",
+      "web/src/components/Financials.astro": "bc04dff4a8aec3bf",
       "web/src/components/FiledNotices.astro": "bfe32dd99b7e51c6",
       "web/src/lib/finscreen.ts": "98d4182436ccb034",
       "web/src/pages/company-financials.astro": "b080b1bf953a30ca"
