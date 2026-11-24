@@ -94,7 +94,7 @@
       "web/src/pages/downloads/index.astro": "c173e267d4ad4553",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
       "web/src/lib/datafiles.ts": "caae6ebab02cc61e",
-      "web/src/pages/developers.astro": "894d62cf74c9c95f"
+      "web/src/pages/developers.astro": "93373951752def3c"
     }
   },
   "how-to-follow-members-insiders-and-stocks": {
@@ -259,10 +259,10 @@
       "web/src/lib/inst13f.ts": "156ecec5730acd97",
       "web/src/components/PlannedSales.astro": "c7d734a4b0e385bb",
       "web/src/lib/financials.ts": "36e4ca7b62568223",
-      "web/src/components/Financials.astro": "5cb4d29618bacb6f",
-      "web/src/components/FiledNotices.astro": "cc73065ceec3cc06",
+      "web/src/components/Financials.astro": "c66dacfc59b1679a",
+      "web/src/components/FiledNotices.astro": "f813f28aea86489d",
       "web/src/lib/finscreen.ts": "98d4182436ccb034",
-      "web/src/pages/company-financials.astro": "e7837e504c09655c"
+      "web/src/pages/company-financials.astro": "a20ca5cebc2c7386"
     }
   }
 }
