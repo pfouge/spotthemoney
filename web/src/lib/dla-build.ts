@@ -17,7 +17,9 @@ interface RawOrder { cage: string; d: string; nsn: string | null; item: string |
 export async function loadDla(m: Pick<Flagship, "companies" | "builtAt">, url: string | undefined = process.env.NSN_DATABASE_URL): Promise<DlaData> {
   const out = emptyDla();
   if (!url) return out;
-  const sql = postgres(url, { max: 1, connect_timeout: 20, idle_timeout: 5, prepare: false });
+  // nsnexplorer's project requires SSL for this login; the local stand-in has none.
+  const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
+  const sql = postgres(url, { max: 1, connect_timeout: 20, idle_timeout: 5, prepare: false, ssl: local ? false : "require" });
   try {
     const cos = [...m.companies.values()].filter((c) => c.slug).map((c) => ({ id: c.id, name: c.name, ticker: c.primaryTicker }));
     const match = makeMatcher(cos);
