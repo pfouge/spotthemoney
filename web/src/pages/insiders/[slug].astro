@@ -4,6 +4,7 @@
 import Preview from "../../components/Preview.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
+import EntityActions from "../../components/EntityActions.astro";
 import PageGroup from "../../components/PageGroup.astro";
 import LearnMore from "../../components/LearnMore.astro";
 import { codeRows, yearRows, colleagues } from "../../lib/entity";
@@ -75,7 +76,7 @@ const glance = noData ? [] : [
 ];
 const groupList = noData ? [] : [
   { id: "trading", label: "Trading" },
-  ...(holdingsN ? [{ id: "ownership", label: "Ownership" }] : []),
+  ...(holdingsN || filedN ? [{ id: "ownership", label: "Ownership" }] : []),
   { id: "record", label: "About this record" },
 ];
 
@@ -98,8 +99,9 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 ---
 <BaseLayout title={[...(company ? [`${p.name} Insider Trades at ${company.name}`] : []), ...(primary ? [`${p.name} Insider Trades (${primary.ticker})`] : []), `${p.name} Insider Trades`]} description={description} noindex={txns.length === 0} section="Insiders">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Insiders", path: "/insiders/" }, { name: p.name, path }]} />
+  <div class="entity-top" data-entity-top data-people-top>
   <p class="eyebrow">Insider <span class="x">/</span> {company ? (cpath ? <a href={cpath}>{company.name}</a> : company.name) : "SEC Form 4 filer"}</p>
-  <div class="title-row"><h1>{p.name}</h1><Follow kind="insider" entity={p.slug!} label={p.name} /></div>
+  <div class="entity-id"><h1>{p.name}</h1><Follow kind="insider" entity={p.slug!} label={p.name} /><EntityActions /></div>
   <p class="lede">{title}</p>
 
   <dl class="facts" data-entity-facts data-people>
@@ -110,7 +112,7 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     {p.cik && <div><dt>SEC filings</dt><dd><a href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${p.cik}&type=4`} rel="noopener" target="_blank">EDGAR ↗</a></dd></div>}
   </dl>
 
-  <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote="Source: SEC EDGAR Form 4 filings" />
+  <Answer actions={false} text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote="Source: SEC EDGAR Form 4 filings" />
   <ReviewNote show={p.underReview} what="These Form 4 rows" />
   {eventCount > 0 && company && cpath && (
     <p class="section-note" data-insider-events data-n={eventCount}><a href={`${cpath}#company-events-section`}>{eventCount.toLocaleString("en-US")} company {eventCount === 1 ? "event" : "events"} (Form 8-K)</a> reported by {company.name} in the last 12 months.</p>
@@ -118,19 +120,30 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 
   <Glance items={glance} />
 
+  <details class="more-figs" data-remember id="more-figures"><summary>More figures</summary>
   <section class="datastrip">
     <div class="cell"><div class="k">Transactions</div><div class="v">{num(txns.length)}</div></div>
     <div class="cell"><div class="k">Open-market buys</div><div class="v pos">{num(openMarketBuys.length)}</div></div>
     <div class="cell"><div class="k">Sales</div><div class="v neg">{num(sells.length)}</div></div>
     <div class="cell"><div class="k">Avg. disclosure lag</div><div class="v">{avg(txns.map((t) => t.lagDays)) == null ? "—" : `${avg(txns.map((t) => t.lagDays))!.toFixed(1)}d`}</div></div>
   </section>
+  </details>
 
   <VizPerson person={p} />
+  </div>
 
   <GroupBar groups={groupList} />
 
   <PageGroup id="trading" label="Trading">
   <div class="panels">
+
+
+  <section class="panel" data-panel data-span="12" aria-labelledby="transactions">
+  <h2 id="transactions">Transactions</h2>
+  <p class="pn-sentence">{num(txns.length)} transactions on record: {num(openMarketBuys.length)} open-market buys, {num(sells.length)} sales.</p>
+  <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
+  <Preview rows={8}><TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet. The filings below may be amendments, holdings-only reports, or rows still under review." /></Preview>
+  </section>
 
   {txns.length > 0 && (
     <section class="panel" data-panel data-span="12" aria-labelledby="by-type">
@@ -155,14 +168,25 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     </section>
   )}
 
-  <section class="panel" data-panel data-span="12" aria-labelledby="transactions">
-  <h2 id="transactions">Transactions</h2>
-  <p class="pn-sentence">{num(txns.length)} transactions on record: {num(openMarketBuys.length)} open-market buys, {num(sells.length)} sales.</p>
-  <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
-  <Preview rows={8}><TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet. The filings below may be amendments, holdings-only reports, or rows still under review." /></Preview>
-  </section>
 
-  <section class="panel" data-panel aria-labelledby="filings">
+  </div>
+
+  </PageGroup>
+
+
+  {(holdingsN > 0 || filedN > 0) && (
+    <PageGroup id="ownership" label="Ownership">
+    <div class="panels">
+    <FiledNotices model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
+    <ReportedHoldings model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+    </div>
+    </PageGroup>
+  )}
+
+
+  <PageGroup id="record" label="About this record">
+  <div class="panels" data-record-panels>
+  <section class="panel" data-panel data-span="12" aria-labelledby="filings">
   <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
     <div class="tablewrap" data-preview="6">
@@ -184,25 +208,7 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     </div>
   )}
   </section>
-
-  <FiledNotices model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
   </div>
-
-  </PageGroup>
-
-  <AdSlot label="Advertisement" show={txns.length > 0} />
-
-  {holdingsN > 0 && (
-    <PageGroup id="ownership" label="Ownership">
-    <div class="panels">
-    <ReportedHoldings model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
-    </div>
-    </PageGroup>
-  )}
-
-  <AdSlot pos="low" />
-
-  <PageGroup id="record" label="About this record">
   {peers.length > 0 && (
     <section aria-labelledby="colleagues" data-related>
       <details class="ref" data-remember id="ref-colleagues"><summary><h2 id="colleagues">Other insiders at {company?.name ?? "the same company"}</h2></summary><div class="ref-body">
@@ -213,7 +219,6 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     </div></details></section>
   )}
 
-  <LearnMore slugs={["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", ...(txns.some((t) => t.is10b51) ? ["rule-10b5-1-trading-plans"] : []), ...(txns.some((t) => t.isDerivative) ? ["insider-options-and-derivatives"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
 
   <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={txns} filings={p.filings} edgarId={p.cik} />
@@ -225,6 +230,14 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
   </p>
   </div></details>
   </PageGroup>
+
+  <AdSlot label="Advertisement" show={txns.length > 0} />
+
+  <LearnMore slugs={["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling", ...(txns.some((t) => t.is10b51) ? ["rule-10b5-1-trading-plans"] : []), ...(txns.some((t) => t.isDerivative) ? ["insider-options-and-derivatives"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5)} />
+
+
+  <AdSlot pos="low" />
+
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade and may be amended later. No recommendation is made or implied.</p>
   <JsonLd data={ld} />

@@ -203,7 +203,6 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 
   </PageGroup>
 
-  <AdSlot label="Advertisement" />
 
   {(plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
@@ -234,7 +233,6 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
 
   </PageGroup>
 
-  <AdSlot pos="low" />
 
   <PageGroup id="record" label="About this record">
   {relatedCos.length > 0 && (
@@ -247,7 +245,6 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
     </div></details></section>
   )}
 
-  <LearnMore slugs={["what-is-form-4", "insider-buying-vs-insider-selling", ...(c.contracts.length ? ["federal-contracts-usaspending"] : []), ...(c.lobbying.length ? ["lobbying-disclosure-reports"] : []), "what-disclosure-data-cannot-tell-you"]} />
 
   <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={c.txns} edgarId={c.cik ?? c.primaryTicker}
@@ -255,6 +252,14 @@ const ld = organizationLd({ name: c.name, path, tickerSymbol: c.primaryTicker, d
   <p>Insiders and their transactions come from SEC EDGAR Form 4 filings for this issuer. Contracts and lobbying are matched by exact normalized name (suffixes like Inc./Corp. ignored) to USAspending recipients and LDA clients. This is a conservative match that misses subsidiaries on purpose. See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
   </div></details>
   </PageGroup>
+
+  <AdSlot label="Advertisement" />
+
+  <LearnMore slugs={["what-is-form-4", "insider-buying-vs-insider-selling", ...(c.contracts.length ? ["federal-contracts-usaspending"] : []), ...(c.lobbying.length ? ["lobbying-disclosure-reports"] : []), "what-disclosure-data-cannot-tell-you"]} />
+
+
+  <AdSlot pos="low" />
+
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; no recommendation is made or implied.</p>
   <JsonLd data={ld} />

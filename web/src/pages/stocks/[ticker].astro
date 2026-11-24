@@ -221,7 +221,6 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
 
   <PageGroup id="trading" label="Trading">
   <div class="panels" data-trading-panels>
-  {["equity", "etf", "adr"].includes(s.type) && <TradingView symbol={s.ticker} name={name} />}
 
   {periods.length > 0 && (
     <section class="panel" data-panel aria-labelledby="insider-summary" data-entity-periods>
@@ -248,6 +247,8 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
       </div>
     </section>
   )}
+
+  {["equity", "etf", "adr"].includes(s.type) && <TradingView symbol={s.ticker} name={name} span={periods.length > 0 ? "6" : "12"} />}
 
   {insiderList.length > 0 && (
     <section class="panel" data-panel aria-labelledby="insiders" data-entity-insiders>
@@ -296,9 +297,8 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   )}
 
   <section class="panel" data-panel data-span="12" aria-labelledby="insider-transactions">
-  <DownloadCsv file={downloads.stock.get(s.ticker.toLowerCase())} note={classTickers.length ? `insider and congressional rows for ${pageTickers.join(", ")}` : "insider and congressional rows for this ticker"} />
-
   <h2 id="insider-transactions">Insider transactions</h2>
+  <DownloadCsv file={downloads.stock.get(s.ticker.toLowerCase())} note={classTickers.length ? `insider and congressional rows for ${pageTickers.join(", ")}` : "insider and congressional rows for this ticker"} />
   <TxnTable preview={8} model={model} txns={insider} showPerson emptyReason="No Form 4 transactions for this ticker in the tracked window yet." />
   </section>
 
@@ -313,14 +313,13 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   <section class="panel" data-panel data-span="12" aria-labelledby="congress-trades">
   <h2 id="congress-trades">Congressional trades</h2>
   {pageTickers.map((tk) => <ScreenerLink ticker={tk} n={screenerCountsFor(model, personPath).ticker.get(tk) ?? 0} of={`in ${tk} by members of Congress`} />)}
-  <TxnTable preview={8} model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
+  <TxnTable model={model} txns={congress} showPerson emptyReason={hasSenate ? "No member of Congress has disclosed a trade in this ticker in the filings we have parsed." : "No member of Congress has disclosed a trade in this ticker in the filings we have parsed (House filings since the job went live; Senate pending)."} />
 
   </section>
   </div>
 
   </PageGroup>
 
-  <AdSlot label="Advertisement" show={hasData} />
 
   {(plannedN > 0 || holdersN > 0 || holdingsN > 0 || instN > 0) && (
     <PageGroup id="ownership" label="Ownership">
@@ -350,7 +349,6 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
     </PageGroup>
   )}
 
-  <AdSlot pos="low" />
 
   <PageGroup id="record" label="About this record">
   {related.length > 0 && (
@@ -363,7 +361,6 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
     </div></details></section>
   )}
 
-  <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5).concat([...(contracts.length ? ["federal-contracts-usaspending"] : []), ...(lobbying.length ? ["lobbying-disclosure-reports"] : [])])} />
 
   <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={txns} edgarId={s.ticker}
@@ -371,6 +368,14 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   <p>Insider rows are Form 4 filings for this issuer from SEC EDGAR; congressional rows are periodic transaction reports parsed from the House Clerk and the Senate eFD. Values use the reported price for Form 4 and the disclosed range for Congress.{home && " Contracts and lobbying are matched by exact normalized name (suffixes like Inc. and Corp. ignored) to USAspending recipients and LDA clients, a conservative match that misses subsidiaries on purpose."} See <a href="/methodology/">methodology</a> and <a href="/corrections/">corrections</a>.</p>
   </div></details>
   </PageGroup>
+
+  <AdSlot label="Advertisement" show={hasData} />
+
+  <LearnMore slugs={[...(insider.length ? ["what-is-form-4", "form-4-transaction-codes", "insider-buying-vs-insider-selling"] : []), ...(congress.length ? ["how-to-read-a-congressional-trade-report", "congress-trade-amount-ranges"] : []), "what-disclosure-data-cannot-tell-you"].slice(0, 5).concat([...(contracts.length ? ["federal-contracts-usaspending"] : []), ...(lobbying.length ? ["lobbying-disclosure-reports"] : [])])} />
+
+
+  <AdSlot pos="low" />
+
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures are shown as filed and may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />

@@ -2,22 +2,6 @@
    Summary first: figures, small charts and a five-row preview; the rest is one click away. Tokens from global.css only.
    Panels, previews and the compact charts come from rd-kit.css; this file adds what those pages need beyond the kit. */
 
-/* ---- 1. Source order wins: the pages mark their facts list with data-people, which switches off the `order` rules
-   of rd-entity.css section 1 for that page. The identity line is then h1 and Follow, the facts, the answer. ------ */
-main > .container.flow-entity:has(> dl.facts[data-people]) > * { order: 0; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .title-row { flex: 0 0 100%; align-self: auto; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer { display: block; margin: var(--s-3) 0 var(--s-2); }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer > .answer-foot { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); align-items: baseline; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-meta { min-width: 0; flex: 1 1 100%; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-actions,
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-more,
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-meta { order: 0; flex: none; margin: 0; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-more { margin-bottom: var(--s-1); }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-text { order: 0; flex: none; margin: 0 0 var(--s-1); max-width: 72ch; }
-html.js main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-text:not(.open) { -webkit-line-clamp: 2; line-clamp: 2; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-meta { margin-right: auto; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-actions { margin-left: auto; }
-
 /* ---- 2. Facts as headline figures (committee, industry, lobbying issue): the number first, its label above ------ */
 dl.facts[data-people].facts-figs { display: flex; flex-wrap: wrap; gap: var(--s-2) 0; margin: var(--s-4) 0 var(--s-2); }
 dl.facts[data-people].facts-figs > div { display: flex; flex-direction: column-reverse; padding: 0 var(--s-5); border-left: 1px solid var(--line); }
@@ -77,7 +61,3 @@ td.hb > i.dim { background: var(--series-4); }
 @media (max-width: 639px) { .panels { gap: var(--s-6) 0; margin: var(--s-5) 0; } }
 @media (forced-colors: active) { td.hb > i { background: CanvasText; } }
 
-/* The answer's meta line may wrap (the entity rules keep it on one line next to the buttons). */
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-meta { white-space: normal; overflow-wrap: anywhere; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-meta span { white-space: normal; }
-main > .container.flow-entity:has(> dl.facts[data-people]) > .answer .answer-meta { flex: 1 1 14rem; min-width: 0; }

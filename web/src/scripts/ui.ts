@@ -43,29 +43,6 @@ function initNavMenus(): void {
   nav.addEventListener("focusout", (e) => { const to = (e as FocusEvent).relatedTarget as Node | null; if (to && !nav.contains(to)) closeAll(); });
 }
 
-// The group bar of an entity page: mark the group in view (aria-current="true" on its link).
-function initGroupBar(): void {
-  const bar = document.querySelector<HTMLElement>("nav.groupbar");
-  if (!bar || !("IntersectionObserver" in window)) return;
-  const groups = [...document.querySelectorAll<HTMLElement>(".pgroup[id]")];
-  if (groups.length === 0) return;
-  const links = new Map<string, HTMLAnchorElement>();
-  for (const a of bar.querySelectorAll<HTMLAnchorElement>("a[href^='#']")) links.set(a.getAttribute("href")!.slice(1), a);
-  const visible = new Set<string>();
-  const mark = (): void => {
-    const first = groups.find((g) => visible.has(g.id));
-    for (const [id, a] of links) { if (first && id === first.id) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); }
-    const cur = first ? links.get(first.id) : null;
-    if (cur && bar.scrollWidth > bar.clientWidth) { const x = cur.offsetLeft - 16; if (Math.abs(bar.scrollLeft - x) > 40) bar.scrollTo({ left: x }); }
-  };
-  const hdr = document.getElementById("siteHeader")?.offsetHeight ?? 64;
-  const io = new IntersectionObserver((entries) => {
-    for (const en of entries) { if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id); }
-    mark();
-  }, { rootMargin: `-${hdr + bar.offsetHeight + 8}px 0px -55% 0px` });
-  for (const g of groups) io.observe(g);
-}
-
 type Row = [kind: string, title: string, sub: string, url: string, weight: number];
 
 function initSearch(): void {
@@ -130,7 +107,6 @@ function initAnswerMore(): void {
 initTheme();
 initMenu();
 initNavMenus();
-initGroupBar();
 initSearch();
 initAnswerMore();
 
@@ -155,23 +131,9 @@ if ("MutationObserver" in window) {
   for (const el of document.querySelectorAll(".summary, .hm-bar")) mo.observe(el, { childList: true });
 }
 
-// Redesign (2026-11-23): a link or address that points inside a closed disclosure opens it.
-// Remembered disclosures (uistate.ts) restore their last state on load, so this also runs on
-// `load` and `hashchange`, and the address wins over what was remembered.
-function openToHash(scroll: boolean): void {
-  const id = decodeURIComponent(location.hash.slice(1));
-  if (!id) return;
-  const el = document.getElementById(id);
-  if (!el) return;
-  let changed = false;
-  for (let p = el.closest("details"); p; p = p.parentElement?.closest("details") ?? null) {
-    if (!p.open) { p.open = true; changed = true; }
-  }
-  if (changed || scroll) el.scrollIntoView();
-}
-openToHash(false);
-window.addEventListener("load", () => openToHash(true));
-window.addEventListener("hashchange", () => openToHash(true));
+// Redesign: a link or address that points inside a closed disclosure, a previewed table or a hidden group tab opens it
+// and lands on it (one implementation for all three: reveal.ts, which also runs the entity pages' group tabs).
+import "./reveal";
 
 // The contents list sits open beside the text on a wide screen and folds on a phone.
 const tocMq = window.matchMedia("(min-width: 1024px)");
@@ -202,3 +164,15 @@ function initPanelNotes(): void {
   }
 }
 initPanelNotes();
+
+// Footer link groups (BaseLayout): closed disclosures on a phone, open from 640px. Without JavaScript they stay open.
+const footMq = window.matchMedia("(max-width: 639px)");
+const syncFoot = (): void => {
+  document.querySelectorAll<HTMLDetailsElement>("footer.site details.foot-g").forEach((d) => { d.open = !footMq.matches; });
+};
+syncFoot();
+footMq.addEventListener("change", syncFoot);
+// On a wide screen the group heading is a label, not a toggle.
+document.querySelectorAll<HTMLElement>("footer.site details.foot-g > summary").forEach((s) => s.addEventListener("click", (e) => {
+  if (!footMq.matches && !(e.target as Element).closest("a")) e.preventDefault();
+}));

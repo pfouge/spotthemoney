@@ -7,6 +7,7 @@
 import Preview from "../../components/Preview.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
+import EntityActions from "../../components/EntityActions.astro";
 import PageGroup from "../../components/PageGroup.astro";
 import DownloadCsv from "../../components/DownloadCsv.astro";
 import { getDownloads } from "../../lib/downloads";
@@ -141,8 +142,9 @@ const groupList = noindex ? [] : [
 ---
 <BaseLayout title={[`${p.name} Stock Trades: STOCK Act Disclosures`, `${p.name} Stock Trades`]} description={description} noindex={noindex} section="Congress">
   <Crumbs crumbs={[{ name: "Home", path: "/" }, { name: "Congress", path: "/congress/" }, { name: p.name, path }]} />
+  <div class="entity-top" data-entity-top data-people-top>
   <p class="eyebrow">Congress <span class="x">/</span> {role.chamber === "senate" ? "Senate" : "House"}</p>
-  <div class="title-row"><h1>{p.name}</h1><Follow kind="member" entity={p.slug!} label={p.name} /></div>
+  <div class="entity-id"><h1>{p.name}</h1><Follow kind="member" entity={p.slug!} label={p.name} /><EntityActions /></div>
   <p class="lede">{title}{former && <span class="tag">Former member</span>}</p>
 
   <dl class="facts" data-profile-facts data-people>
@@ -156,11 +158,12 @@ const groupList = noindex ? [] : [
     {prof.lastTrade && <div><dt>Latest trade on record</dt><dd>{formatDate(prof.lastTrade)}</dd></div>}
   </dl>
 
-  <Answer text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote={role.chamber === "senate" ? "Source: Senate eFD periodic transaction reports" : "Source: House Clerk periodic transaction reports"} />
+  <Answer actions={false} text={answer} updated={p.lastFiledAt ?? model.builtAt} sourceNote={role.chamber === "senate" ? "Source: Senate eFD periodic transaction reports" : "Source: House Clerk periodic transaction reports"} />
   <ReviewNote show={p.underReview} what="These congressional rows" />
 
   <Glance items={glance} />
 
+  <details class="more-figs" data-remember id="more-figures"><summary>More figures</summary>
   <section class="datastrip">
     <div class="cell"><div class="k">Trades on record</div><div class="v">{num(txns.length)}</div></div>
     <div class="cell"><div class="k">Trades in {year}</div><div class="v">{num(thisYear.length)}</div></div>
@@ -170,8 +173,10 @@ const groupList = noindex ? [] : [
     <div class="cell"><div class="k">Avg. days to report</div><div class="v">{avgLag == null ? "—" : Math.round(avgLag)}</div></div>
     <div class="cell"><div class="k">Late filings</div><div class={`v ${late.length ? "neg" : ""}`}>{num(late.length)}</div></div>
   </section>
+  </details>
 
   <VizPerson person={p} />
+  </div>
 
   <GroupBar groups={groupList} />
 
@@ -209,6 +214,15 @@ const groupList = noindex ? [] : [
     </section>
   )}
 
+
+  <section class="panel" data-panel data-span="12" aria-labelledby="trades">
+  <h2 id="trades">Disclosed trades</h2>
+  <p class="pn-sentence">{num(txns.length)} trades on record: {num(prof.buys)} purchases, {num(prof.sells)} sales; {num(late.length)} reported after {CONGRESS_DEADLINE_DAYS} days.</p>
+  <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
+  <ScreenerLink member={p.slug!} n={screenerCountsFor(model, personPath).member.get(p.slug!) ?? 0} of={`by ${p.name}`} />
+  <Preview rows={8}><TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} /></Preview>
+  </section>
+
   {prof.years.length > 0 && (
     <section class="panel" data-panel data-span="12" aria-labelledby="by-year">
       <h2 id="by-year">Year by year, and whose trades</h2>
@@ -242,59 +256,11 @@ const groupList = noindex ? [] : [
     </section>
   )}
 
-  <section class="panel" data-panel data-span="12" aria-labelledby="trades">
-  <h2 id="trades">Disclosed trades</h2>
-  <p class="pn-sentence">{num(txns.length)} trades on record: {num(prof.buys)} purchases, {num(prof.sells)} sales; {num(late.length)} reported after {CONGRESS_DEADLINE_DAYS} days.</p>
-  <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
-  <ScreenerLink member={p.slug!} n={screenerCountsFor(model, personPath).member.get(p.slug!) ?? 0} of={`by ${p.name}`} />
-  <Preview rows={8}><TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} /></Preview>
-  </section>
 
-  {showCompare && (
-    <section class="panel" data-panel aria-labelledby="compare" data-profile-compare>
-      <h2 id="compare">How this record compares</h2>
-      <p class="section-note">Against the {num(peers.members)} members of Congress with at least one trade on record here. Members with no reported trades are not in the comparison, and coverage starts on different dates for the House and the Senate.</p>
-      <div class="tablewrap">
-        <table class="data wrap">
-          <thead><tr><th>Measure</th><th class="num">{p.name}</th><th class="num">All members with trades</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Trades on record</th><td class="num">{num(prof.trades)}{rank ? ` (${ordinal(rank)} of ${num(peers.members)})` : ""}</td><td class="num">{peers.medianTrades == null ? "—" : `${num(Math.round(peers.medianTrades))} for the middle member`}</td></tr>
-            <tr><th scope="row">Median days from trade to report</th><td class="num">{prof.medianLag == null ? "—" : Math.round(prof.medianLag)}</td><td class="num">{peers.medianLag == null ? "—" : Math.round(peers.medianLag)}</td></tr>
-            <tr><th scope="row">Trades reported after {CONGRESS_DEADLINE_DAYS} days</th><td class="num">{prof.lateShare == null ? "—" : `${prof.lateShare}%`}</td><td class="num">{peers.lateShare == null ? "—" : `${peers.lateShare}%`}</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="section-note">How lateness is counted: <a href="/guides/late-congressional-trade-disclosures/">late congressional trade disclosures</a>. All members: <a href="/congress/">Congress trades</a>.</p>
-    </section>
-  )}
-
-  <section class="panel" data-panel aria-labelledby="filings">
-  <h2 id="filings">Filings</h2>
-  {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
-    <div class="tablewrap" data-preview="6">
-      <table class="data">
-        <thead><tr><th>Filed</th><th>Report</th><th>Doc ID</th><th class="num">Rows</th><th>Status</th><th>Source</th></tr></thead>
-        <tbody>
-          {p.filings.slice(0, 100).map((f) => (
-            <tr>
-              <td class="mono">{formatDate(f.filedAt)}</td>
-              <td>{f.source === "senate_ptr" ? "Senate PTR" : "House PTR"}</td>
-              <td class="mono">{f.externalId}</td>
-              <td class="num">{f.txnCount}</td>
-              <td>{f.txnCount === 0 && f.confidence < 0.9 ? "needs review (scanned)" : f.isPublished ? "published" : "under review"}</td>
-              <td>{f.sourceUrl ? <a href={f.sourceUrl} rel="noopener nofollow" target="_blank">{f.source === "senate_ptr" ? "eFD ↗" : "PDF ↗"}</a> : "—"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
-  </section>
   </div>
 
   </PageGroup>
 
-  <AdSlot label="Advertisement" show={!noindex} />
 
   {(groups.length > 0 || hasVotes || hasOutside || hasCampaign || lcItems > 0) && (
     <PageGroup id="washington" label="Washington">
@@ -327,9 +293,49 @@ const groupList = noindex ? [] : [
     </PageGroup>
   )}
 
-  <AdSlot pos="low" />
 
   <PageGroup id="record" label="About this record">
+  <div class="panels" data-record-panels>
+  {showCompare && (
+    <section class="panel" data-panel aria-labelledby="compare" data-profile-compare>
+      <h2 id="compare">How this record compares</h2>
+      <p class="section-note">Against the {num(peers.members)} members of Congress with at least one trade on record here. Members with no reported trades are not in the comparison, and coverage starts on different dates for the House and the Senate.</p>
+      <div class="tablewrap">
+        <table class="data wrap">
+          <thead><tr><th>Measure</th><th class="num">{p.name}</th><th class="num">All members with trades</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Trades on record</th><td class="num">{num(prof.trades)}{rank ? ` (${ordinal(rank)} of ${num(peers.members)})` : ""}</td><td class="num">{peers.medianTrades == null ? "—" : `${num(Math.round(peers.medianTrades))} for the middle member`}</td></tr>
+            <tr><th scope="row">Median days from trade to report</th><td class="num">{prof.medianLag == null ? "—" : Math.round(prof.medianLag)}</td><td class="num">{peers.medianLag == null ? "—" : Math.round(peers.medianLag)}</td></tr>
+            <tr><th scope="row">Trades reported after {CONGRESS_DEADLINE_DAYS} days</th><td class="num">{prof.lateShare == null ? "—" : `${prof.lateShare}%`}</td><td class="num">{peers.lateShare == null ? "—" : `${peers.lateShare}%`}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-note">How lateness is counted: <a href="/guides/late-congressional-trade-disclosures/">late congressional trade disclosures</a>. All members: <a href="/congress/">Congress trades</a>.</p>
+    </section>
+  )}
+  <section class="panel" data-panel aria-labelledby="filings">
+  <h2 id="filings">Filings</h2>
+  {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
+    <div class="tablewrap" data-preview="6">
+      <table class="data">
+        <thead><tr><th>Filed</th><th>Report</th><th>Doc ID</th><th class="num">Rows</th><th>Status</th><th>Source</th></tr></thead>
+        <tbody>
+          {p.filings.slice(0, 100).map((f) => (
+            <tr>
+              <td class="mono">{formatDate(f.filedAt)}</td>
+              <td>{f.source === "senate_ptr" ? "Senate PTR" : "House PTR"}</td>
+              <td class="mono">{f.externalId}</td>
+              <td class="num">{f.txnCount}</td>
+              <td>{f.txnCount === 0 && f.confidence < 0.9 ? "needs review (scanned)" : f.isPublished ? "published" : "under review"}</td>
+              <td>{f.sourceUrl ? <a href={f.sourceUrl} rel="noopener nofollow" target="_blank">{f.source === "senate_ptr" ? "eFD ↗" : "PDF ↗"}</a> : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+  </section>
+  </div>
   {(stateMates.length > 0 || stockMates.length > 0) && (
     <section aria-labelledby="related" data-profile-related>
       <details class="ref" data-remember id="ref-related"><summary><h2 id="related">Related members</h2></summary><div class="ref-body">
@@ -354,15 +360,6 @@ const groupList = noindex ? [] : [
     </div></details></section>
   )}
 
-  {qa.length > 0 && (
-    <section aria-labelledby="questions" data-profile-qa>
-      <details class="ref" data-remember id="ref-questions"><summary><h2 id="questions">Questions about {p.name}'s trades</h2></summary><div class="ref-body">
-      <div class="faq-list">
-        {qa.map((f) => <div class="faq-item"><h3>{f.q}</h3><p>{f.a}</p></div>)}
-      </div>
-      <p class="faq-all"><a href="/guides/congress-stock-trading-rules/">The rules on congressional stock trading</a> · <a href="/guides/what-disclosure-data-cannot-tell-you/">What disclosure data cannot tell you</a></p>
-    </div></details></section>
-  )}
 
   <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={txns} filings={p.filings} />
@@ -376,6 +373,22 @@ const groupList = noindex ? [] : [
   <p class="section-note">Official records: {sourceLinks.map((l, i) => <>{i > 0 && " · "}<a href={l.href} rel="noopener" target="_blank">{l.label}</a></>)}. Party, seat and term dates come from the congress-legislators dataset.</p>
   </div></details>
   </PageGroup>
+
+  <AdSlot label="Advertisement" show={!noindex} />
+
+  {qa.length > 0 && (
+    <section aria-labelledby="questions" data-profile-qa>
+      <details class="ref" data-remember id="ref-questions"><summary><h2 id="questions">Questions about {p.name}'s trades</h2></summary><div class="ref-body">
+      <div class="faq-list">
+        {qa.map((f) => <div class="faq-item"><h3>{f.q}</h3><p>{f.a}</p></div>)}
+      </div>
+      <p class="faq-all"><a href="/guides/congress-stock-trading-rules/">The rules on congressional stock trading</a> · <a href="/guides/what-disclosure-data-cannot-tell-you/">What disclosure data cannot tell you</a></p>
+    </div></details></section>
+  )}
+
+
+  <AdSlot pos="low" />
+
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade by weeks and are sometimes amended. No inference about intent is made or implied.</p>
   <JsonLd data={ld} />

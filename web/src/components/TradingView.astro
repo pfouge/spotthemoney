@@ -5,11 +5,11 @@
 // in these widgets are delayed by the exchanges' rules; the note under the chart says so.
 // The widgets load only when the block scrolls near the viewport (scripts/tradingview.ts),
 // follow the site's light/dark switch, and keep TradingView's own branding as its terms ask.
-interface Props { symbol: string; name?: string | null }
-const { symbol, name = null } = Astro.props as Props;
+interface Props { symbol: string; name?: string | null; span?: "6" | "12" }
+const { symbol, name = null, span = "12" } = Astro.props as Props;
 const tvUrl = `https://www.tradingview.com/symbols/${encodeURIComponent(symbol)}/`;
 ---
-<section class="tv panel" data-panel data-span="12" data-tv data-symbol={symbol} aria-label={`${symbol} share price and chart from TradingView`}>
+<section class="tv panel" data-panel data-span={span} data-tv data-symbol={symbol} aria-label={`${symbol} share price and chart from TradingView`}>
   <h2>Share price</h2>
   <div class="tv-info" data-tv-slot="info"></div>
   <div class="tv-chart" data-tv-slot="chart"></div>

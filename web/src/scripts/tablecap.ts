@@ -3,10 +3,11 @@
 // page, row links and the checks that count rows all work). Here:
 //  1. "Show all N rows" / "Show fewer rows" under each previewed table; opened, the table is a scroll box of at
 //     most 20 rows with a sticky head (rd-kit.css). The state is remembered per page through the stm.ui helpers;
-//  2. a row named by the URL hash that is hidden opens its table and is scrolled into view, on load and hashchange;
+//  2. a row named by the URL hash that is hidden opens its table (reveal.ts calls the opener registered here);
 //  3. a column of numbers is right-aligned even where the template printed no `num` class.
 // Sorting (tablesort.ts) moves rows inside tbody, so the first N rows of the new order are the ones shown.
 import { readUi, updateUi } from "./uistate";
+import { registerOpener } from "./reveal";
 
 const NUMERIC = /^[−+\-–]?\$?[\d,]*\.?\d+\s?(%|[KMBT]|bp|x|days?|d)?$/;
 
@@ -82,24 +83,15 @@ function initPreviews(): void {
   });
 }
 
-/** Open the table that holds the hash target when its row is hidden, then bring the row into view. */
-function revealTarget(): void {
-  let id = location.hash.slice(1);
-  if (!id) return;
-  try { id = decodeURIComponent(id); } catch { /* keep as is */ }
-  const el = document.getElementById(id);
-  if (!el) return;
+/** Open the previewed table around an element when its row is hidden (called by reveal.ts for links and the hash). */
+registerOpener((el) => {
   const wrap = el.closest<HTMLElement>(".tablewrap");
-  if (!wrap) return;
+  if (!wrap) return false;
   const row = el.closest<HTMLElement>("tr");
-  const hidden = !!row && getComputedStyle(row).display === "none";
-  if (hidden) painters.get(wrap)?.(true, false);
-  if (!hidden && wrap.scrollHeight <= wrap.clientHeight + 1) return;
-  el.scrollIntoView({ block: "center" });
-}
+  if (!row || getComputedStyle(row).display !== "none") return false;
+  painters.get(wrap)?.(true, false);
+  return true;
+});
 
 for (const t of document.querySelectorAll<HTMLTableElement>("table.data")) alignNumbers(t);
 initPreviews();
-revealTarget();
-addEventListener("load", revealTarget);
-addEventListener("hashchange", () => { revealTarget(); requestAnimationFrame(revealTarget); });

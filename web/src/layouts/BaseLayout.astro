@@ -9,6 +9,7 @@ import "../styles/rd-home.css";
 import "../styles/rd-stock.css";
 import "../styles/rd-people.css";
 import "../styles/rd-landing.css";
+import "../styles/rd-final.css";
 import Analytics from "../components/Analytics.astro";
 import Mark from "../components/Mark.astro";
 import Wordmark from "../components/Wordmark.astro";
@@ -224,30 +225,38 @@ const flowEntity = topHasClass(pageHtml, "title-row");
     </main>
 
     <footer class="site">
-      <div class="container">
-        <div class="foot-top">
-          <Mark size={24} />
-          <Wordmark height={10} />
+      <div class="container foot-grid">
+        <div class="foot-brand">
+          <div class="foot-top">
+            <Mark size={24} />
+            <Wordmark height={10} />
+          </div>
+          <p class="foot-copy">© {year} spotthemoney.com</p>
         </div>
-        <p class="disclaimer">
-          <strong>Not investment advice.</strong> Figures are based on public, official data and
-          disclosures that may lag actual events. Spot the Money provides transparency and historical
-          information only, with no buy/sell recommendations and no trade execution.
-        </p>
-        <p>Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, Senate eFD, FEC, USAspending, Senate LDA. An independent site, not affiliated with any government body, campaign or broker.</p>
+        <div class="foot-text">
+          <p class="disclaimer">
+            <strong>Not investment advice.</strong> Figures are based on public, official data and
+            disclosures that may lag actual events. Spot the Money provides transparency and historical
+            information only, with no buy/sell recommendations and no trade execution.
+          </p>
+          <p>Sources: U.S. Treasury, BLS, SEC EDGAR, House Clerk, Senate eFD, FEC, USAspending, Senate LDA. An independent site, not affiliated with any government body, campaign or broker.</p>
+        </div>
         <div class="foot-cols">
           {NAV.map((g) => (
             <nav aria-label={g.label}>
-              <p class="foot-h"><a href={g.href}>{g.label}</a></p>
-              <ul>{liveItems(g).map((i) => <li><a href={i.href}>{i.label}</a></li>)}</ul>
+              <details class="foot-g" open>
+                <summary class="foot-h"><a href={g.href}>{g.label}</a></summary>
+                <ul>{liveItems(g).map((i) => <li><a href={i.href}>{i.label}</a></li>)}</ul>
+              </details>
             </nav>
           ))}
           <nav class="foot-links" aria-label="About this site">
-            <p class="foot-h">About and data</p>
-            <ul>{FOOT_ABOUT.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+            <details class="foot-g" open>
+              <summary class="foot-h">About and data</summary>
+              <ul>{FOOT_ABOUT.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+            </details>
           </nav>
         </div>
-        <p>© {year} spotthemoney.com</p>
       </div>
     </footer>
 
