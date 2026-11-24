@@ -106,6 +106,8 @@ jobs:
             sources: fec_committees fec_schedule_a fec_independent_expenditures
           - name: company-events
             sources: sec_company_events sec_exec_pay
+          - name: proxy-pay
+            sources: sec_proxy_pay
           - name: votes
             sources: congress_votes
           - name: lobbyist-contributions
@@ -174,6 +176,8 @@ jobs:
             sources: fec_committees fec_schedule_a fec_independent_expenditures
           - name: company-events
             sources: sec_company_events sec_exec_pay
+          - name: proxy-pay
+            sources: sec_proxy_pay
           - name: votes
             sources: congress_votes
           - name: lobbyist-contributions

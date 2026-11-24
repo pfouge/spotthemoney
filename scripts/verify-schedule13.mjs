@@ -132,7 +132,54 @@ csv.rows.forEach((r, i) => {
 ok(badRows === 0, `${badRows} rows of the file are malformed (repeat accession, form type, date, company number, page or SEC address, a figure out of range, a purpose on a 13G or over 1,000 characters)`);
 ok(order, "the file is not newest filing first");
 
-// Each holder's newest statement per company, worked out here from the whole file.
+// Each holder's newest statement per company, worked out here from the whole file. A holder that
+// reports on two classes of a company's shares has a row per class; this is the script's own copy
+// of that rule: two CUSIP numbers are two classes only when the holder's statements under them
+// overlap in time; a number last used before another was first used has been replaced by it; a
+// holder with a statement that gives no number is never split.
+const classKey = (c) => { const k = String(unguard(c ?? "")).replace(/\s+/g, "").toUpperCase(); return !k || /^0+$/.test(k) ? "" : k.length === 12 && k.startsWith("US") ? k.slice(2, 11) : k; };
+// A number that cannot be a CUSIP number (wrong length, or its ninth character is not the check
+// digit of the first eight) joins the one valid number of the same holder and company that is
+// nearest to it, when that is at most two characters away and no other valid number is as near.
+const cusipOk = (k) => {
+  if (k.length !== 9) return false;
+  let sum = 0;
+  for (let i = 0; i < 8; i++) {
+    const ch = k[i]; let v = /[0-9]/.test(ch) ? Number(ch) : /[A-Z]/.test(ch) ? ch.charCodeAt(0) - 55 : ["*", "@", "#"].indexOf(ch) + 36;
+    if (v < 36 && !/[0-9A-Z]/.test(ch)) return false;
+    if (i % 2) v *= 2;
+    sum += Math.trunc(v / 10) + (v % 10);
+  }
+  return k[8] === String((10 - (sum % 10)) % 10);
+};
+const apart = (a, b) => {
+  if (a.length === b.length) return [...a].filter((ch, i) => ch !== b[i]).length;
+  const [l, s] = a.length > b.length ? [a, b] : [b, a];
+  if (l.length - s.length !== 1) return Infinity;
+  return [...l].some((_, i) => l.slice(0, i) + l.slice(i + 1) === s) ? 1 : Infinity;
+};
+let splitHolders = 0, changedNumbers = 0, mistypedNumbers = 0;
+const splitPages = new Set();
+function classRows(rs) { // one holder's statements about one company, newest first
+  const typed = [...new Set(rs.map((r) => classKey(r.cusip)))];
+  if (typed.length < 2 || typed.includes("")) return [{ r: rs[0], n: rs.length }];
+  const meant = new Map(typed.map((k) => [k, k]));
+  const good = typed.filter(cusipOk);
+  for (const k of typed.filter((x) => !cusipOk(x))) {
+    const near = good.map((g) => ({ g, d: apart(k, g) })).sort((a, b) => a.d - b.d);
+    if (near.length && near[0].d <= 2 && (near.length === 1 || near[1].d > near[0].d)) meant.set(k, near[0].g);
+  }
+  const keyOf = (r) => meant.get(classKey(r.cusip));
+  const keys = [...new Set(rs.map(keyOf))];
+  if (keys.length < typed.length) mistypedNumbers++;
+  if (keys.length < 2) return [{ r: rs[0], n: rs.length }];
+  const spans = keys.map((k) => { const mine = rs.filter((r) => keyOf(r) === k); const days = mine.map((r) => r.filed_date).sort(); return { k, newest: mine[0], n: mine.length, first: days[0], last: days[days.length - 1] }; });
+  const live = spans.filter((a) => !spans.some((b) => b.k !== a.k && b.first > a.last));
+  const gone = spans.filter((a) => !live.includes(a));
+  if (gone.length) changedNumbers++;
+  live.sort((a, b) => b.newest.filed_date.localeCompare(a.newest.filed_date) || b.newest.accession.localeCompare(a.newest.accession));
+  return live.map((a, i) => ({ r: a.newest, n: a.n + (i === 0 ? gone.reduce((t, g) => t + g.n, 0) : 0) }));
+}
 const holderKey = (r) => (r.holder_sec_number ? `c:${r.holder_sec_number}` : `n:${unguard(r.holder).replace(/\s+/g, " ").trim().toLowerCase()}`);
 const pctOf = (r) => (r.percent_of_class === "" ? -1 : Number(r.percent_of_class));
 const shOf = (r) => (r.shares_stated === "" ? -1 : Number(r.shares_stated));
@@ -142,11 +189,14 @@ let flagWrong = 0;
 const ranked = [...byPage.entries()].map(([p, rows]) => {
   const sorted = rows.filter((r) => r.filed_date <= builtDay).sort((a, b) => b.filed_date.localeCompare(a.filed_date) || b.accession.localeCompare(a.accession));
   const by = new Map();
-  for (const r of sorted) { const k = holderKey(r); const h = by.get(k); if (h) h.n++; else by.set(k, { r, n: 1 }); }
-  const newest = new Set([...by.values()].map((h) => h.r.accession));
+  for (const r of sorted) { const k = holderKey(r); const h = by.get(k); if (h) h.push(r); else by.set(k, [r]); }
+  const list = [];
+  for (const [k, rs] of by) { const cr = classRows(rs); if (cr.length > 1) { splitHolders++; splitPages.add(p); } for (const x of cr) list.push({ ...x, k }); }
+  const newest = new Set(list.map((h) => h.r.accession));
   for (const r of rows) if ((r.newest_for_holder === "true") !== newest.has(r.accession)) flagWrong++;
-  const holders = [...by.values()].sort((a, b) => pctOf(b.r) - pctOf(a.r) || shOf(b.r) - shOf(a.r) || clean(a.r.holder, 200).localeCompare(clean(b.r.holder, 200)) || b.r.accession.localeCompare(a.r.accession));
-  return { p, rows, holders };
+  const distinct = by.size;
+  const holders = list.sort((a, b) => pctOf(b.r) - pctOf(a.r) || shOf(b.r) - shOf(a.r) || clean(a.r.holder, 200).localeCompare(clean(b.r.holder, 200)) || b.r.accession.localeCompare(a.r.accession));
+  return { p, rows, holders, distinct };
 });
 ok(flagWrong === 0, `${flagWrong} rows of the file have a newest_for_holder value that a recount from the file does not give`);
 ranked.sort((a, b) => b.holders.length - a.holders.length || a.p.localeCompare(b.p));
@@ -156,6 +206,8 @@ for (const x of withRows.slice(0, Math.ceil(SAMPLE / 3))) pick.set(x.p, x);
 for (const x of withRows.slice(-Math.ceil(SAMPLE / 3))) pick.set(x.p, x);
 for (let i = 0; pick.size < Math.min(SAMPLE, withRows.length) && i < withRows.length; i += Math.max(1, Math.floor(withRows.length / SAMPLE))) pick.set(withRows[i].p, withRows[i]);
 // Always include a company with a holder under 5% and one with several statements by one holder, when the file has them.
+// ... and every company with a holder in two rows (two classes of shares), up to 20 of them.
+for (const x of withRows.filter((x) => x.holders.length > x.distinct).slice(0, 20)) pick.set(x.p, x);
 for (const want of [(x) => x.holders.some((h) => pctOf(h.r) >= 0 && pctOf(h.r) < THRESHOLD), (x) => x.holders.some((h) => h.n > 1), (x) => x.holders.length > ROWS]) { const x = withRows.find(want); if (x) pick.set(x.p, x); }
 
 const pctLabel = (v) => `${Number(Number(v).toFixed(2))}%`;
@@ -165,12 +217,17 @@ function checkSection(where, html, x) {
   if (!sec) return;
   const below = x.holders.filter((h) => pctOf(h.r) >= 0 && pctOf(h.r) < THRESHOLD).length, noPct = x.holders.filter((h) => pctOf(h.r) < 0).length;
   const above = x.holders.length - below - noPct, statements = x.holders.reduce((a, h) => a + h.n, 0);
-  for (const [name, want] of [["data-holders", x.holders.length], ["data-at-or-above", above], ["data-below", below], ["data-no-percent", noPct], ["data-statements", statements]]) {
+  for (const [name, want] of [["data-holders", x.distinct], ["data-at-or-above", above], ["data-below", below], ["data-no-percent", noPct], ["data-statements", statements]]) {
     ok(Number(attr(sec.tag, name)) === want, `${where}: section states ${name} ${attr(sec.tag, name)}, the file gives ${want}`);
   }
   const summary = text((sec.body.match(/<p[^>]*data-lh-summary[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
   const caveat = text((sec.body.match(/<p[^>]*data-lh-caveat[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
-  ok(summary.startsWith(`${nf(x.holders.length)} holder${x.holders.length === 1 ? " has" : "s have"} filed an ownership statement`), `${where}: the summary sentence does not state ${x.holders.length} holders`);
+  ok(summary.startsWith(`${nf(x.distinct)} holder${x.distinct === 1 ? " has" : "s have"} filed an ownership statement`), `${where}: the summary sentence does not state ${x.distinct} holders`);
+  const twoClass = new Map(); for (const h of x.holders) twoClass.set(h.k, (twoClass.get(h.k) ?? 0) + 1);
+  const multi = [...twoClass.values()].filter((n) => n > 1).length;
+  ok((x.holders.length > x.distinct) === /about more than one class of shares/.test(summary), `${where}: ${x.holders.length} rows for ${x.distinct} holders, and the summary ${x.holders.length > x.distinct ? "does not say a holder reports on more than one class" : "speaks of more than one class"}`);
+  if (x.holders.length > x.distinct) ok(summary.includes(`${nf(multi)} of them about more than one class of shares, so the table has ${nf(x.holders.length)} rows`), `${where}: the summary does not state ${multi} holders with several classes and ${x.holders.length} rows`);
+  ok(/about a class of shares/.test(caveat), `${where}: the caveat does not say a row is about a class of shares`);
   if (above) ok(new RegExp(`\\b${nf(above)} reports? ${THRESHOLD}% or more`).test(summary), `${where}: the summary does not state ${above} at ${THRESHOLD}% or more`);
   if (below) ok(new RegExp(`\\b${nf(below)} reports? less than ${THRESHOLD}%`).test(summary), `${where}: the summary does not state ${below} under ${THRESHOLD}%`);
   ok(above > 0 || !/or more of a class/.test(summary), `${where}: the summary speaks of holders at ${THRESHOLD}% or more and the file has none`);
@@ -291,7 +348,12 @@ ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
   ok(trs.every((a, i) => a === order[i]?.accession), "HUB: the printed rows are the newest statements, newest filed first");
   const companies = new Set(newest.map((r) => r.issuer_cik)).size;
   const ht = text(hub.text);
-  ok(ht.includes(`${nf(newest.length)} ${newest.length === 1 ? "holder" : "holders"} of ${nf(companies)} ${companies === 1 ? "company" : "companies"}`), `HUB: count line should state ${newest.length} holders of ${companies} companies`);
+  const pairs = new Set(newest.map((r) => `${r.issuer_cik}|${holderKey(r)}`)).size;
+  ok(ht.includes(`${nf(pairs)} ${pairs === 1 ? "holder" : "holders"} of ${nf(companies)} ${companies === 1 ? "company" : "companies"}${newest.length > pairs ? `, in ${nf(newest.length)} rows` : "."}`), `HUB: count line should state ${pairs} holders of ${companies} companies${newest.length > pairs ? ` in ${newest.length} rows` : ""}`);
+  ok(/has a row for each class/.test(ht), "HUB: says a holder that reports on two classes has a row for each");
+  ok(/overlap in time/.test(text(meth)) && /is taken to have changed/.test(text(meth)), "the methodology states how two classes are told from a number that changed");
+  ok(/fails the check digit/.test(text(meth)) && /is read as that number mistyped/.test(text(meth)) && /happens to pass the check is not caught/.test(text(meth)), "the methodology states when a mistyped number is recognised and when it is not");
+  ok((meth.match(/id="schedule-13"/g) ?? []).length === 1, "the methodology has the large holders paragraph more than once");
   const below = newest.filter((r) => r.percent_of_class !== "" && Number(r.percent_of_class) < 5).length;
   ok(below === 0 || /below 5%/.test(hub.text), "HUB: a statement under 5% is marked");
   ok(/not a report of a trade/i.test(ht) && /not to be added together/i.test(ht), "HUB: says a statement is not a trade and rows are not added");
@@ -305,6 +367,6 @@ ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
   ok(/large-holders\/"/.test(meth), "HUB: the methodology mentions the hub");
 }
 
-const holdersAll = withRows.reduce((a, x) => a + x.holders.length, 0);
-console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersAll} holders by newest statement; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
+const holdersAll = withRows.reduce((a, x) => a + x.holders.length, 0), holdersDistinct = withRows.reduce((a, x) => a + x.distinct, 0);
+console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersDistinct} holders in ${holdersAll} rows by newest statement and class, ${splitHolders} holders with more than one class on ${splitPages.size} companies, ${changedNumbers} with a number that changed, ${mistypedNumbers} with a mistyped number read as the right one; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
 process.exit(failures ? 1 : 0);

@@ -120,7 +120,9 @@ try {
   // 7b. new = loaded since the last visit AND disclosed in the last 30 days (0026); recounted here
   //     from the feed's own rows and from the tables, so a backfill of old filings raises nothing
   feed = await rpc(A, "watch_feed", { p_limit: 500 });
-  const cut = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  // The cut-off day comes from the database, as the function's own does (current_date - 30): a
+  // clock in another time zone than the database's gave a different day for some hours of each day.
+  const [{ cut }] = await sql`select (current_date - 30)::text as cut`;
   const fresh = feed.filter((r) => r.is_new), stale = feed.filter((r) => !r.is_new);
   ok(fresh.length === s.new_count, `the count is the number of rows marked new (${fresh.length})`);
   ok(fresh.every((r) => r.disclosed_at >= cut), "every new row was disclosed in the last 30 days");

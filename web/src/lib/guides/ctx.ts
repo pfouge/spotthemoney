@@ -3,7 +3,7 @@
 // disagree with the site, because both read the same thing.
 import { NOTICE_ROWS, VALUE_MAX_PER_SHARE } from "../form144";
 import { YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, RATIOS } from "../financials";
-import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL } from "../schedule13";
+import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL, TYPO_MAX_DISTANCE } from "../schedule13";
 import { DESCRIPTION_SHOWN } from "../contracts";
 import { EVENT_ROWS, EVENT_WINDOW_DAYS } from "../events8k";
 import { PAY_YEARS, PAY_LARGE, PAY_SMALL } from "../execpay";
@@ -67,7 +67,7 @@ export interface GuideCtx {
   /** Dollars a share above which a notice's stated market value is not shown, as text ("1,000,000"). */
   form144ValueMaxPerShare: string;
   /** True once Schedule 13D and 13G statements are shown on pages (lib/schedule13.ts); the rows a page prints, the filing threshold in percent, and the month the record starts. */
-  schedule13Shown: boolean; holderRows: number; holderThreshold: number; holderRecordStart: string;
+  schedule13Shown: boolean; holderRows: number; holderThreshold: number; holderRecordStart: string; cusipTypoMax: number;
   /** True when company financials are on file (lib/financials.ts); the fiscal years and quarters a page shows; the share count under which earnings per share are held back, as text. */
   financialsShown: boolean; finYears: number; finQuarters: number; finMinImpliedShares: string;
   /** The limits beyond which a ratio is printed in words (lib/financials.ts RATIOS): net margin in percent, liabilities to equity. */
@@ -123,7 +123,7 @@ async function build(): Promise<GuideCtx> {
     instShown: instHubShown(m), instTop: INST_TOP, instMinManagers: INST_MIN_MANAGERS.toLocaleString("en-US"), instShownDays: INST_SHOWN_DAYS, instPeriod: m.inst.period ? instQuarterDate(m.inst.period) : "",
     assistanceWindowDays: ASSISTANCE_WINDOW_DAYS,
     form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS, form144ValueMaxPerShare: VALUE_MAX_PER_SHARE.toLocaleString("en-US"),
-    schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL,
+    schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL, cusipTypoMax: TYPO_MAX_DISTANCE,
     financialsShown: m.financials.byCik.size > 0, finYears: YEARS_SHOWN, finQuarters: QUARTERS_SHOWN, finMinImpliedShares: MIN_IMPLIED_SHARES.toLocaleString("en-US"),
     finMarginCap: RATIOS[0]!.cap.toLocaleString("en-US"), finLeCap: RATIOS[1]!.cap.toLocaleString("en-US"),
     eventsShown: m.events.byCik.size > 0, eventRows: EVENT_ROWS, eventWindowDays: EVENT_WINDOW_DAYS,

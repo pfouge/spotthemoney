@@ -4354,3 +4354,175 @@ it in the pull request that changes a cell.**
   `#financials-screener` gained a sentence.
 - Not done: saved screens (privacy page first, key `stm.screens.financials`); cash flow or debt as
   screener columns (cash flow is a fiscal-year figure only; debt needs a heading filter).
+
+### Large holders: a row per class of shares when a holder reports on two (2026-11-24, scheduled parity run) — queue item (n1)
+
+- **What.** A holder that files Schedule 13D or 13G statements about two classes of one company's
+  shares (Alphabet Class A and Class C, Fox, News Corp, Under Armour, Liberty series) now has a row
+  per class in "Large holders" on stock and company pages, on the `/large-holders/` hub, in the
+  filer's own "Large holdings this filer reports" section, and in the CSV's `newest_for_holder`
+  column. Before, the class was not part of the match and such a holder showed its newest statement
+  only (the known limit in the methodology). No migration, no data job change, no new file.
+- **Rule** (`classKey`, `rowsByClass` in `web/src/lib/schedule13.ts`; tests
+  `scripts/schedule13-class.test.ts`): a class is told by the statement's CUSIP number (white space
+  out, capitals, the nine characters inside a U.S. ISIN, all zeros = none). **Two numbers are two
+  classes only when the holder's statements under them overlap in time**: filed under both on one
+  day, or back under the first after the second. When every statement under one number was filed
+  before every statement under another, the number is read as CHANGED (reverse split, a company
+  that moved, a corrected typing mistake) and only the newest statement is a row; the replaced
+  number's statements are counted with that row. A holder with any statement that gives no number
+  is never split. `holdersOf` and `holdingsOf` both go through `rowsByClass`.
+- **Why not simply "CUSIP joins the key"** (production, SQL, 2026-11-24; every tracked statement
+  now has a CUSIP): of 4,238 filer and company pairs 54 carry two or three numbers. 26 overlap and
+  are classes (27 more rows on 15 companies). 28 follow one another: Strive (862945102 then
+  862945300, seven holders), Bakkt, Bluejay, Banzai, Xilio, Wave Life Sciences, Indivior, Finance
+  of America, a typo at Aurora, Berkshire's "0000000000". Splitting those would have put each
+  holder's old figure beside its new one.
+- **Known limits, stated in methodology `#schedule-13`:** a second class a holder reported on once
+  and never again, before all its other statements, is read as a replaced number and not shown
+  (First Citizens Class B, one holder); a mistyped number used between two right ones makes a
+  second row (Solstice, one holder); a holder that files an exit under an old number and a new
+  statement under the new number on one day has two rows, one of them 0% (BlackRock at ONEOK and
+  Wave: before this change one of the two was shown, picked by accession number).
+- **Counting.** `Holder.holder` is the holder key; `HolderSummary` has `holders` (different
+  holders), `rows` and `multiClass`; `atOrAbove + below + noPercent = rows`. The summary sentence
+  is unchanged when rows equal holders and otherwise says "N of them about more than one class of
+  shares, so the table has R rows". `data-holders` on the section is different holders; the table
+  has `rows` rows. Hub: a packed row has a 13th entry, the holder key (absent in an older file:
+  the name is used); `LhResult.holders` counts holder and company pairs and the count line reads
+  "H holders of C companies, in R rows (...)" when they differ.
+- **Left as they are, on purpose (the redesign thread, branch `redesign/v2`, is rewriting these
+  files): the "Large holders" tile on stock and company pages and `data-companies` on the filer's
+  section count ROWS** (`holdersOf(...).length`, `holdings.length`). On 15 companies the tile is one
+  or two above the number of different holders. When those page files are next touched: use
+  `holderSummary(...).holders` for the tile.
+- **Build log.** `[web] large holders (Schedules 13D and 13G): shown; N statements ...; H holders,
+  R rows by newest statement and class (M holders with more than one class, on C companies), B rows
+  under 5%, ...`; `[web] large holdings by filer: P filer and company pairs (R rows by class) ...`;
+  `[web] large holders hub: H holders in R rows on C companies; ...`. SQL for H, R, M, C is in the
+  change note (per issuer and filer: min and max `filed_at` per CUSIP key; a key is dropped when
+  another key's min is after its max).
+- **Verifiers.** `verify-schedule13` has its own copy of the rule: `newest_for_holder` on every
+  row of the file, the section's holders, rows, sentence and caveat, every company with a
+  two-class holder (up to 20) whatever the sample, the hub's count line; its last line now reads
+  `... H holders in R rows by newest statement and class, M holders with more than one class on C
+  companies, K with a number that changed`: **compare it with the build log after a deploy.**
+  `verify-filers` has its own copy for the filer's side. `verify-accounts-db` takes its 30-day
+  cut-off from the database (its clock-based one was a day off for some hours each day when the
+  database is not on UTC: the "1 of 42" failure noted since 2026-11-22).
+- **Seed.** Lockheed Martin has the cases: back and forth between two numbers, both on one day
+  (one 0%), a number that changed, one number typed as an ISIN, and Microsoft about both classes.
+- Guide `ten-percent-owners-and-joint-filings` (`#large-holders`: a fourth point, "One holder can
+  have two rows"), methodology `#schedule-13`, the hub's "What this table shows", the CSV column
+  dictionary and the data catalogue's description say it.
+- Not done: the class in the tile counts (above); a check of a CUSIP's check digit (would catch
+  typos, not built); the same rule for market-only companies (no page shows their statements).
+
+### Executive pay from each company's own proxy statement, stage 1: stored, not shown (2026-11-24, scheduled parity run) — queue item (m2), A2 item 7
+
+- **Why.** `exec_pay` (frames, `sec_exec_pay`) held a figure for 394 of the 998 companies with a
+  page and a principal executive's pay for 256 (SQL, 2026-11-24; 872 of the 998 file annual
+  reports). The frames API serves only facts with no dimension, and many companies tag the
+  principal executive's pay with the person it belongs to (`ecd:IndividualAxis`). The companyfacts
+  answers `sec_company_financials` fetches come from the same store and are not kept, so they
+  cannot help. The company's own filing has every figure.
+- **Migration 0042**: `exec_pay_proxy` (cik, measure, fiscal_year_end, `seq`, tag, period_start,
+  value, `persons`, `dimensioned`, accession, filed) and `exec_pay_proxy_checked` (cik, checked_at,
+  status ok / no_proxy / no_instance / no_facts / not_found, accession, filed, rows). Row-level
+  security on, no policy, no API grants; `site_build` may read. `exec_pay` is unchanged and nothing
+  on the site reads the new tables. Next free migration number: 0043.
+- **Source `sec_proxy_pay`** (`ingest/src/sources/sec_proxy_pay.ts`; readers in
+  `ingest/src/lib/proxypay.ts`, tests beside it): per TRACKED company, the submissions file
+  (`filings.recent`, the layout `sec_company_events` already reads) gives the newest DEF 14A
+  filings since 2023-01-01; the filing folder's `index.json` gives the file named `*_htm.xml`
+  (EDGAR's "extracted XBRL instance document"; the naming was read from two real filing index
+  pages on 2026-11-24); that file gives the four `ecd` tags of `shared/src/execpay.ts`. Up to
+  three proxy statements are tried, newest first (a special-meeting proxy has no pay table). A
+  company whose newest proxy is the one already read costs one request.
+- **Reading rules.** A fact is kept when its context is this company's, covers 300 to 380 days and
+  has no dimension, or only `IndividualAxis` and/or `ExecutiveCategoryAxis` with the member that
+  fits the tag. Facts under any other axis (the adjustment tables) are skipped; the axis names met
+  are in `stats.other_axes`. Per measure and fiscal year: a figure with no person is one row
+  (`seq` 0, `persons` = how many people the tag was also filed for); a principal executive's
+  figure filed only per person is one row per person, largest first (`dimensioned` true); an
+  average filed only per person is skipped (`skipped_neo_per_person`). **The person is never
+  stored or logged** (no member name, no `PeoName`; a unit test checks).
+- **Writing.** Per company in one transaction: the stored rows of every fiscal year the filing
+  states are replaced; years only an older filing stated are kept.
+- **Guards.** 40-minute budget (`partial`, `remaining`); five failed requests in a row = `failed`;
+  a 404 for a folder or instance is not an outage. **Shape guard:** nothing is written and no
+  company is marked until one instance has yielded a figure (this run, or rows already in the
+  table); 25 companies with a proxy statement and no figure, none with, end the run `failed`.
+  `SEC_PROXY_LIMIT` reads only the first N of the queue.
+- **Where it runs:** daily, its own matrix group `proxy-pay` in `ingest.yml` (both lists); never
+  asked first, then at most 150 a run of those asked more than 30 days ago. In
+  `scripts/freshness-check.mjs` by run. Test fake: `scripts/fake-sec-proxy.mjs` through
+  `SEC_DATA_BASE` and `SEC_EDGAR_BASE` (tests only; modes ok, newer, noshape, down; `FAKE_SLOW_MS`).
+- **The instance's inner layout (contexts, facts as elements) was written from knowledge of XBRL,
+  not from a file seen whole** (sec.gov is not reachable from the cloud sandbox, and the fetch
+  route strips markup). The first run on a GitHub runner is the proof: see the note below.
+- **First live run (ingest run 45356470210, 08:29 UTC on 2026-11-24): the layout is proven.**
+  `partial` in 36.3 minutes only because 2 requests failed (those 2 companies wait for the next
+  run): 998 asked, 816 with figures, 101 with no DEF 14A, 53 with no instance, 26 with no pay
+  table; 17,193 rows; `peo_total` on file for 816 companies against 256 in `exec_pay` (563 of them
+  new), 332 companies file it per person, 305 have a year with several people. **Where both
+  sources have a figure, 4,880 of 4,888 are equal.** To look at before stage 2: the 8 that
+  differ; 389 `peo_total` rows of 0 or 1 dollar; one company-year with 8 people; `conflicts` 85
+  (two values for one figure in one file, first kept); `folders_not_found` 120 (a proxy's folder
+  or instance answered 404 and the next older proxy was tried).
+- **For stage 2 (showing them), not started:** the web loader (`web/src/lib/execpay-build.ts`) reads
+  `exec_pay` only. Decide there: a proxy figure with `seq` 0 and `persons` at most 1 can fill a
+  year frames lack; a year with several people needs wording of its own (two figures, never a
+  name, never added together); compare the two sources where both have a figure before trusting
+  either (`select ... from exec_pay e join exec_pay_proxy p using (cik, measure, fiscal_year_end)
+  where p.seq = 0 and e.value <> p.value`). The methodology and `ExecutivePay.astro` say
+  "frames": change the wording with the loader, after the redesign branch has merged.
+- **13F trim (the other half of the queue item): no code needed.** `inst_holdings` holds four
+  quarters (3.7 million rows, 917 MB) because the first load ran with `keep_periods` 4. The source
+  already deletes everything older than the newest two periods at the end of every run, also when
+  every data set is already loaded, and the monthly `form13f-bulk` run of the 20th uses the default
+  of 2. So the table trims itself on 2026-12-20. A delete does not shrink the file on disk; the
+  space is reused. Not done by hand: an unattended delete of 1.8 million rows is not this run's call.
+
+### Large holders: a mistyped CUSIP number is read as the right one (2026-11-24, scheduled parity run) — queue item (m3)
+
+- **What.** Before the overlap test of `rowsByClass`, a number that cannot be a CUSIP number
+  (not nine characters, or its ninth character is not the check digit of the first eight) joins
+  the ONE valid number of the same holder and company that is nearest to it, when that is at
+  most `TYPO_MAX_DISTANCE` (2) characters away and no other valid number is as near. Its
+  statements count with that number, and it can be that number's newest statement. So a slip of
+  the keyboard between two statements under the right number no longer makes a second row. No
+  migration, no data job change, no new file, no page layout change.
+- **Production check first (SQL, 2026-11-24):** 1,021 different numbers on 6,482 statements about
+  tracked companies; 8 fail the check (4 of them are 10 characters; one is the word
+  "MULTIPLES", used by two funds' holders), on 14 statements. **Only one of the 8 sits beside
+  another number of the same holder: Aurora Innovation, Baillie Gifford, 051774907 then
+  051774107**, and the overlap test already read that pair as a number that changed, so **no
+  row on production changes today**. The Solstice case named in the methodology (BlackRock's
+  "SBW2K5V75" between two statements under 83443Q103) is NOT caught: that string passes the
+  check digit by chance, as one wrong number in ten does. The rule is a guard for the next slip.
+- **Code** (`web/src/lib/schedule13.ts`; tests `scripts/schedule13-typo.test.ts`): `cusipValid`,
+  `keyDistance` (differing characters at equal length; 1 when one is the other with one character
+  added), `classRows` (rows, plus `changed` and `mistyped` counts), `rowsByClass` (its rows),
+  `classNotes` (for the build log). Two numbers that both fail the check are never joined; two
+  valid numbers are never joined, however near (Alphabet's two classes are 2 characters apart);
+  a tie between two valid numbers is left alone; a holder with a statement that gives no number
+  is still never split.
+- **Build log** line `[web] large holders (Schedules 13D and 13G): ...` now ends `; N holders with
+  a number that changed, M with a mistyped number read as the right one`, and the deploy step's
+  `verify-schedule13` line has the same two counts from the CSV with its own copy of the rule
+  (`verify-filers` has its own copy for the filer's side). **The two lines must agree after a
+  deploy.** Expected on production: 27 and 1 (28 and no second count before).
+- **Methodology:** the sentence "it cannot tell a mistyped number from a new one" now says what
+  is and is not caught. **Fault found and fixed on the way: the methodology printed the
+  "Planned sales" and "Large holders" paragraphs twice** (two `<p>` with one id each; the
+  second copies were older versions left by a merge). The older copies are removed, and
+  `verify-schedule13` fails if `id="schedule-13"` appears more than once. Branch `redesign/v2`
+  already has one copy of each; it will meet this change in its next rebase.
+- Guide `ten-percent-owners-and-joint-filings` (`#large-holders`, the point "One holder can
+  have two rows"): three sentences, the limit through `ctx.cusipTypoMax`; re-read and accepted.
+- The seed's Lockheed Martin has a holder with 539830019 (fails the check) between two
+  statements under 539830109: one row.
+- Not done: a second look at numbers that pass the check but belong to another company (would
+  need a CUSIP reference list, which is licensed data); the same rule for Form 144 (it stores no
+  CUSIP).

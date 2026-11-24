@@ -65,7 +65,7 @@ export const WORKING_FILES: WorkingFile[] = [
     about: "One short list per Form 144 notice filed in the last 12 months about a company with a page here, with companies and sellers written once. A stated value held back by the over-a-million-dollars-a-share check is left out of this file; the CSV file keeps it.",
     top: ["built", "divisions", "companies", "sellers", "rows"] },
   { path: "/data/large-holders.json", title: "Large holders hub rows", usedBy: "/large-holders/", instead: "/downloads/large-holders-13d-13g.csv",
-    about: "One short list per holder and company: the holder's newest Schedule 13D or 13G statement about a company with a page here, with companies written once.",
+    about: "One short list per holder and company (and class of shares, when a holder reports on more than one): the holder's newest Schedule 13D or 13G statement about a company with a page here, with companies written once.",
     top: ["built", "divisions", "companies", "rows"] },
   { path: "/data/congress-votes.json", title: "Roll-call votes", usedBy: "/congress-votes/", instead: "/downloads/congress-votes.csv",
     about: "One short list per recorded roll call of the House and the Senate: chamber, congress, session, roll number, date, bill, question, result, the official totals and the address of the official record. Members' positions are in the monthly files.",
