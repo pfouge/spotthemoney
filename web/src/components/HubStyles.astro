@@ -5,19 +5,19 @@
 <style is:global>
   .hubscr .hub-controls .hm-input { width: 200px; }
   .hubscr .hub-controls select { max-width: 290px; }
-  .hubscr .hub-count { margin: 0 0 0.25rem; }
+  .hubscr .hub-count { margin: 0 0 var(--s-1); }
   .hubscr .hub-dl { margin-top: 0; }
-  .hubscr .hub-dl button.dl { display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; background: var(--surface); cursor: pointer; }
+  .hubscr .hub-dl button.dl { display: inline-flex; align-items: center; height: 32px; padding: 0 var(--s-3); border: 1px solid var(--line-2); border-radius: var(--r-1); color: var(--accent); font: inherit; font-size: var(--t-sm); font-weight: 400; background: var(--surface); cursor: pointer; }
   .hubscr .hub-dl button.dl:hover { background: var(--chip); }
   .hubscr .hub-dl button.dl:disabled { opacity: 0.45; cursor: default; }
   html:not(.js) .hubscr .hub-dl, html:not(.js) .hubscr .hub-controls, html:not(.js) .hubscr .hub-pager { display: none; }
-  .hubscr .hub-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0.6rem 0 1.2rem; font-size: 14.5px; }
-  .hubscr .hub-pager button.chip { font: inherit; font-size: 14.5px; color: var(--ink); background: var(--chip); border: 0; border-radius: var(--r-pill); height: 34px; padding: 0 14px; cursor: pointer; }
+  .hubscr .hub-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: var(--s-2) 0 var(--s-4); font-size: var(--t-sm); }
+  .hubscr .hub-pager button.chip { font: inherit; font-size: var(--t-xs); color: var(--ink); background: transparent; border: 1px solid var(--line-2); border-radius: var(--r-pill); height: 28px; padding: 0 var(--s-3); cursor: pointer; }
   .hubscr .hub-pager button.chip:disabled { opacity: 0.45; cursor: default; }
   .hubscr .hub-pager[hidden] { display: none; }
-  .hubscr .hub-per { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+  .hubscr .hub-per { margin-left: auto; display: inline-flex; align-items: center; gap: var(--s-1); }
   .hubscr .linklike { font: inherit; color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
   .hubscr[data-loading] .hub-table { opacity: 0.6; }
-  .hubscr .ps-sub, .hubscr .lh-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
-  .hubscr .hub-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
+  .hubscr .ps-sub, .hubscr .lh-sub { display: block; font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.2; margin-top: var(--s-1); }
+  .hubscr .hub-note { color: var(--ink-soft); font-size: var(--t-sm); max-width: 80ch; }
 </style>

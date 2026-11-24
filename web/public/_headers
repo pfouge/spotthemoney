@@ -30,7 +30,7 @@
   ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
-# Self-hosted display font (Outfit, OFL). Not fingerprinted, so a month rather than forever.
+# Self-hosted font (Inter, OFL). Not fingerprinted, so a month rather than forever.
 /fonts/*
   ! Cache-Control
   Cache-Control: public, max-age=2592000

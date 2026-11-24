@@ -97,7 +97,7 @@ const NAV_ICON: Record<string, string> = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <meta name="theme-color" content="#F2F1EC" id="themeColor" />
+    <meta name="theme-color" content="#FFFFFF" id="themeColor" />
     <meta name="color-scheme" content="light" id="colorScheme" />
     <script is:inline>
       // Theme before first paint: light for everyone unless this browser chose dark.
@@ -105,10 +105,12 @@ const NAV_ICON: Record<string, string> = {
         var t = "light";
         try { if (localStorage.getItem("theme") === "dark") t = "dark"; } catch (e) {}
         document.documentElement.classList.add(t, "js");
-        if (t === "dark") { var m = document.getElementById("themeColor"); if (m) m.setAttribute("content", "#0A0B0C"); var c = document.getElementById("colorScheme"); if (c) c.setAttribute("content", "dark"); }
+        // Row density for this visit (session storage key stm.ui), applied before first paint so the rows do not jump.
+        try { var u = JSON.parse(sessionStorage.getItem("stm.ui") || "{}"); if (u && u.density === "compact") document.documentElement.setAttribute("data-density", "compact"); } catch (e) {}
+        if (t === "dark") { var m = document.getElementById("themeColor"); if (m) m.setAttribute("content", "#0F1215"); var c = document.getElementById("colorScheme"); if (c) c.setAttribute("content", "dark"); }
       })();
     </script>
-    <link rel="preload" href="/fonts/outfit-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
     {FEEDS.map((f) => <link rel="alternate" type="application/rss+xml" title={f.title} href={f.path} />)}
     <slot name="head" />
     <Analytics />
@@ -119,7 +121,6 @@ const NAV_ICON: Record<string, string> = {
     <a class="skip-link" href="#main">Skip to main content</a>
     <header class="site" id="siteHeader">
       <div class="container">
-        <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="siteMenu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <a class="brand" href="/" aria-label="Spot the Money home">
           <Mark size={28} />
           <Wordmark height={11} />
@@ -139,9 +140,11 @@ const NAV_ICON: Record<string, string> = {
           <a class="navm-plain" href="/guides/" aria-current={current("/guides/")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21a2 2 0 0 0 2 2h13v-4M8 7h7M8 11h5"/></svg><span>Guides</span><i class="chev" aria-hidden="true">›</i></a>
         </nav>
         <a class="icon-btn acct-btn" id="acctBtn" href="/watchlist/" aria-label="Watchlist" hidden><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg><span class="acct-badge" hidden></span></a>
+        <button class="icon-btn density-btn" id="densityBtn" type="button" aria-pressed="false" aria-label="Compact rows" title="Compact rows"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="4" rx="1"/><rect x="4" y="10" width="16" height="4" rx="1"/><rect x="4" y="16" width="16" height="4" rx="1"/></svg></button>
         <button class="icon-btn theme-btn" id="themeBtn" type="button" aria-label="Switch color theme">
           <span class="if-light"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span><span class="if-dark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg></span>
         </button>
+        <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="siteMenu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       </div>
     </header>
     <dialog class="search-dlg" id="searchDlg" aria-label="Search">
@@ -244,6 +247,12 @@ const NAV_ICON: Record<string, string> = {
     </script>
     <script>
       import "../scripts/tablesort";
+    </script>
+    <script>
+      import "../scripts/uistate";
+    </script>
+    <script>
+      import "../scripts/tablecap";
     </script>
     <script>
       import "../scripts/account";

@@ -62,10 +62,10 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
   </section>
 )}
 <style>
-  .ps-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
+  .ps-sub { display: block; font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.2; margin-top: var(--s-1); }
   .ps-seller { min-width: 13rem; }
   .ps-class { min-width: 8rem; }
   @media (max-width: 640px) { .ps-seller { min-width: 10rem; } .ps-class { min-width: 7rem; } }
-  .ps-note { color: var(--ink-soft); font-size: 14px; max-width: 80ch; }
-  .ps-held { color: var(--ink-soft); font-size: 13px; text-decoration: underline; white-space: nowrap; }
+  .ps-note { color: var(--ink-soft); font-size: var(--t-sm); max-width: 80ch; }
+  .ps-held { color: var(--ink-soft); font-size: var(--t-xs); text-decoration: underline; white-space: nowrap; }
 </style>

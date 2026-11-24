@@ -159,9 +159,9 @@ const th = (label: string, type: string, cls = "") => ({ label, type, cls });
 </script>
 <style>
   .lc-who { min-width: 10rem; max-width: 18rem; }
-  .lc-sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
-  .lc-files { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 4px; }
-  .lc-count { color: var(--ink-soft); font-size: 14px; align-self: center; }
+  .lc-sub { display: block; font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.2; margin-top: var(--s-1); }
+  .lc-files { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin: var(--s-2) 0 var(--s-1); }
+  .lc-count { color: var(--ink-soft); font-size: var(--t-sm); align-self: center; }
   .lc-controls .hm-input { width: 220px; }
   :global(html:not(.js)) .lc-controls { display: none; }
   @media (max-width: 640px) { .lc-who { min-width: 8rem; } }

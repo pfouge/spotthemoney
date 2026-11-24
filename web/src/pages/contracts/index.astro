@@ -103,9 +103,9 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <JsonLd data={ld} />
 </BaseLayout>
 <style>
-  td.agency .sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.2; margin-top: 1px; }
-  td.naics { min-width: 150px; max-width: 230px; padding-top: 6px; padding-bottom: 6px; }
-  td.naics .sub { display: block; font-size: 12.5px; color: var(--ink-soft); line-height: 1.25; margin-top: 1px; }
+  td.agency .sub { display: block; font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.2; margin-top: var(--s-1); }
+  td.naics { min-width: 150px; max-width: 230px; padding-top: var(--s-1); padding-bottom: var(--s-1); }
+  td.naics .sub { display: block; font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.25; margin-top: var(--s-1); }
   td.ind { min-width: 200px; }
-  td.desc { min-width: 260px; max-width: 380px; font-size: 13px; line-height: 1.35; padding-top: 6px; padding-bottom: 6px; }
+  td.desc { min-width: 260px; max-width: 380px; font-size: var(--t-xs); line-height: 1.35; padding-top: var(--s-1); padding-bottom: var(--s-1); }
 </style>

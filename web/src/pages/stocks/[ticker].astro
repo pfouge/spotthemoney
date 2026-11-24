@@ -353,7 +353,7 @@ const orgLd = home ? organizationLd({ name: company!.name, path, tickerSymbol: s
   /* 3 and 12 month summary: three columns that fit a phone without scrolling sideways. */
   table.data.periods th:first-child { white-space: normal; max-width: none; }
   @media (max-width: 640px) {
-    table.data.periods th, table.data.periods td { padding: 0 8px; }
-    table.data.periods th:first-child { padding-left: 4px; }
+    table.data.periods th, table.data.periods td { padding: 0 var(--s-2); }
+    table.data.periods th:first-child { padding-left: var(--s-1); }
   }
 </style>
