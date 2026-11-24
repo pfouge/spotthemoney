@@ -18,7 +18,7 @@ main > .container.flow-entity > .eyebrow { order: 1; }
 main > .container.flow-entity > :is(h1, .title-row) { order: 2; }
 main > .container.flow-entity > :is(h1, .title-row) + :is(p, dl, .answer, .lede, .hero, div.hero, section.hero) { order: 4; }
 main > .container.flow-entity > :is(h1, .title-row) + .lede + dl { order: 4; }
-main > .container.flow-entity > .ad-top { order: 5; }
+main > .container.flow-entity > .ad-top { order: 11; }
 main > .container.flow-entity > .ad-multiplex { order: 99; }
 
 /* Identity line: h1, Follow, then Cite and Share on the same line. The answer's two buttons stay inside

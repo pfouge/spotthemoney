@@ -53,7 +53,7 @@ export function topLevel(html: string): TopEl[] {
 }
 
 const hasClass = (cls: string, name: string) => cls.split(/\s+/).includes(name);
-const FOLLOWS = ["lede", "facts", "site-what", "title-sub"];
+const FOLLOWS = ["lede", "facts", "site-what", "title-sub", "answer", "hubfigs"];
 
 /** Split the content so the ad can sit between the two halves. `before` is "" when there is no h1. */
 export function splitForAd(html: string): { before: string; after: string } {
