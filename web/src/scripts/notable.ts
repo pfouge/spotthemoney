@@ -2,7 +2,7 @@
 // selection live in lib/notable.ts (shared with the build, which writes the default view into the
 // HTML). All text goes in as text nodes (scripts/dom.ts): names and labels come from filings.
 import { h, type Kids } from "./dom";
-import { actLabel, DEFAULT_STATE, FEED_PAGE, PREVIEW_ROWS, PREVIEW_ROWS_PHONE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, capLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
+import { actLabel, tradedLabel, DEFAULT_STATE, FEED_PAGE, PREVIEW_ROWS, PREVIEW_ROWS_PHONE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, capLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
 
 const KEYS = ["nw", "np", "nq", "ns"] as const;
 
@@ -42,7 +42,7 @@ function clusterEl(e: FeedCluster): HTMLElement {
     cell("nf-stock", link(e.tp, "nf-tk", e.tk), sub(e.co)),
     cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, actLabel(e.b, e.n))),
     cell("nf-val", h("b", {}, e.vl)),
-    cell("nf-who", h("b", {}, `${e.n} insiders`)),
+    cell("nf-who", h("b", {}, tradedLabel(e))),
     cell("nf-tags", h("span", { class: "nf-tag" }, e.b ? REASON_LABEL.cluster : REASON_LABEL["cluster-sell"])),
     expander(`Details: ${e.tk}, ${e.n} insiders`),
     h("div", { class: "nf-detail", hidden: true },
