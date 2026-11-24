@@ -4461,6 +4461,15 @@ it in the pull request that changes a cell.**
 - **The instance's inner layout (contexts, facts as elements) was written from knowledge of XBRL,
   not from a file seen whole** (sec.gov is not reachable from the cloud sandbox, and the fetch
   route strips markup). The first run on a GitHub runner is the proof: see the note below.
+- **First live run (ingest run 45356470210, 08:29 UTC on 2026-11-24): the layout is proven.**
+  `partial` in 36.3 minutes only because 2 requests failed (those 2 companies wait for the next
+  run): 998 asked, 816 with figures, 101 with no DEF 14A, 53 with no instance, 26 with no pay
+  table; 17,193 rows; `peo_total` on file for 816 companies against 256 in `exec_pay` (563 of them
+  new), 332 companies file it per person, 305 have a year with several people. **Where both
+  sources have a figure, 4,880 of 4,888 are equal.** To look at before stage 2: the 8 that
+  differ; 389 `peo_total` rows of 0 or 1 dollar; one company-year with 8 people; `conflicts` 85
+  (two values for one figure in one file, first kept); `folders_not_found` 120 (a proxy's folder
+  or instance answered 404 and the next older proxy was tried).
 - **For stage 2 (showing them), not started:** the web loader (`web/src/lib/execpay-build.ts`) reads
   `exec_pay` only. Decide there: a proxy figure with `seq` 0 and `persons` at most 1 can fill a
   year frames lack; a year with several people needs wording of its own (two figures, never a
