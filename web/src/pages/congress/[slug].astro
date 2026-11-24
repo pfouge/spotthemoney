@@ -13,6 +13,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import SourcePanel from "../../components/SourcePanel.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import { monthlyCounts, monthlyDirection } from "../../lib/glancespark";
 import Follow from "../../components/Follow.astro";
 import Answer from "../../components/Answer.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
@@ -120,7 +121,7 @@ const lcNewest = lc ? (lc.years.find((y) => y.year === lcYear) ?? lc.years[0]) :
 const lcFile = (await getDownloads()).files.filter((f) => f.kind === "lobbycontrib")[0];
 const showCompare = txns.length > 0 && peers.members > 1;
 const glance = noindex ? [] : [
-  { label: "Trades on record", value: num(txns.length), note: prof.lastTrade ? `Latest ${formatDate(prof.lastTrade)}` : undefined, href: "#trades" },
+  { label: "Trades on record", value: num(txns.length), bars: monthlyDirection(txns.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: prof.lastTrade ? `Latest ${formatDate(prof.lastTrade)}` : undefined, href: "#trades" },
   ...(topStocks.length ? [{ label: "Stocks traded", value: num(prof.stocks.length), note: "Most traded listed first", href: "#stocks" }] : []),
   { label: "Reported late", value: num(late.length), note: `After ${CONGRESS_DEADLINE_DAYS} days`, href: "#trades" },
   ...(hasVotes ? [{ label: "Recorded votes", value: num(windowTotal(votes!)), note: votes!.newest ? `Newest ${formatDate(votes!.newest)}` : "Last 12 months", href: "#votes" }] : []),
@@ -318,7 +319,7 @@ const groupList = noindex ? [] : [
   <PageGroup id="record" label="About this record">
   {(stateMates.length > 0 || stockMates.length > 0) && (
     <section aria-labelledby="related" data-profile-related>
-      <h2 id="related">Related members</h2>
+      <details class="ref" data-remember id="ref-related"><summary><h2 id="related">Related members</h2></summary><div class="ref-body">
       <div class="split even">
         {stateMates.length > 0 && (
           <div>
@@ -337,20 +338,20 @@ const groupList = noindex ? [] : [
           </div>
         )}
       </div>
-    </section>
+    </div></details></section>
   )}
 
   {qa.length > 0 && (
     <section aria-labelledby="questions" data-profile-qa>
-      <h2 id="questions">Questions about {p.name}'s trades</h2>
+      <details class="ref" data-remember id="ref-questions"><summary><h2 id="questions">Questions about {p.name}'s trades</h2></summary><div class="ref-body">
       <div class="faq-list">
         {qa.map((f) => <div class="faq-item"><h3>{f.q}</h3><p>{f.a}</p></div>)}
       </div>
       <p class="faq-all"><a href="/guides/congress-stock-trading-rules/">The rules on congressional stock trading</a> · <a href="/guides/what-disclosure-data-cannot-tell-you/">What disclosure data cannot tell you</a></p>
-    </section>
+    </div></details></section>
   )}
 
-  <h2 id="sources">Sources and method</h2>
+  <details class="ref" data-remember id="ref-sources"><summary><h2 id="sources">Sources and method</h2></summary><div class="ref-body">
   <SourcePanel model={model} txns={txns} filings={p.filings} />
   <p>
     Rows are parsed from the member's periodic transaction reports (House Clerk PDFs for representatives, Senate eFD reports for senators).
@@ -360,6 +361,7 @@ const groupList = noindex ? [] : [
     Details on <a href="/methodology/">the methodology page</a>; report an error on <a href="/corrections/">corrections</a>.
   </p>
   <p class="section-note">Official records: {sourceLinks.map((l, i) => <>{i > 0 && " · "}<a href={l.href} rel="noopener" target="_blank">{l.label}</a></>)}. Party, seat and term dates come from the congress-legislators dataset.</p>
+  </div></details>
   </PageGroup>
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures are public disclosures shown as filed; they may lag the trade by weeks and are sometimes amended. No inference about intent is made or implied.</p>

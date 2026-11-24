@@ -106,18 +106,18 @@ const heads: { label: string; type: "text" | "num" | "date"; cls?: string }[] = 
   <div class="prose">
   <AdSlot />
 
-  <h2 id="about">About this page</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">About this page</h2></summary><div class="ref-body">
   <p>{d.name} is division {d.code} of the Standard Industrial Classification manual, which covers codes that begin with {range}. A company is listed here because the SEC's record of the company carries a code in that range. The code and its wording are the SEC's; this site adds only the division, by looking up the code's first two digits.</p>
   <p>The classification dates from 1987 and is broad, a company has a single code even when it works in several industries, and the SEC chooses the code. The division is a way to find companies. It does not measure anything, and nothing here compares a trade with the industry of the company.</p>
   <p>"Insider purchases" and "Insider sales" count Form 4 rows with transaction code P and code S, which are open-market trades. Awards, option exercises, gifts and shares withheld for tax are not counted, and one sale filled in several lots is several rows. "Congress trades" counts rows of House and Senate periodic transaction reports in the company's stock. All three go by the day the filing was disclosed. The list covers the companies this site tracks, not the whole market. Each company's page has the filings themselves.</p>
   <p>See <a href={INDUSTRIES_PATH}>all divisions</a>, the <a href="/stocks/">list of stocks and companies</a>, the <a href="/methodology/#industries">methodology</a> and the <a href="/guides/what-is-form-4/">guide to Form 4</a>.</p>
-  </div>
+</div></details>  </div>
 
   {others.length > 0 && (
     <section aria-labelledby="others">
-      <h2 id="others">Other divisions</h2>
+      <details class="ref" data-remember id="ref-others"><summary><h2 id="others">Other divisions</h2></summary><div class="ref-body">
       <ul class="cols">{others.map((o) => <li><a href={o.path}>{o.name}</a> <span class="soft">{num(o.companies.length)}</span></li>)}</ul>
-    </section>
+    </div></details></section>
   )}
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />

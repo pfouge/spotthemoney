@@ -1,0 +1,109 @@
+/* Entity pages (stock, company, member, insider, committee, industry, lobbying issue, on-demand views)
+   and the one mechanism that places the top ad on every page. design/system.md is binding; only
+   tokens from global.css are used here. */
+
+/* ---- sticky chrome: header 48 + 1 hairline, group bar 40 -------------------------------------- */
+:root { --hdr: 49px; --gbar: 40px; }
+@media (max-width: 1023px) { :root { --hdr: 49px; } }
+
+/* ---- 1. page flow and the top ad ---------------------------------------------------------------
+   A page that has an h1 (or a .title-row) and the top ad lays its direct children out in one wrapping
+   flex row so `order` can put the ad right after the title block: crumbs, h1, and the lede, facts list
+   or answer that follows it. Everything else keeps its source order (order 20). A page that matches
+   neither selector is untouched and keeps the ad where it was. The ad's reserved height is the same. */
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) { display: flex; flex-flow: row wrap; align-content: flex-start; column-gap: var(--s-3); }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > * { flex: 0 0 100%; min-width: 0; order: 20; }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > nav.crumbs { order: 0; }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > .eyebrow { order: 1; }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > :is(h1, .title-row) { order: 2; }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > :is(h1, .title-row) + :is(p, dl, .answer, .lede, .hero, div.hero, section.hero) { order: 4; }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > :is(h1, .title-row) + .lede + dl { order: 4; }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > .ad-top { order: 5; }
+main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > .ad-multiplex { order: 99; }
+
+/* Identity line: h1, Follow, then Cite and Share on the same line. The answer's two buttons stay inside
+   .answer in the markup (the share script and verifiers look for them there); its box is dissolved so
+   its parts take their own place in the flow. */
+main > .container:has(> .title-row) > .title-row { flex: 1 1 0; min-width: 0; align-self: center; }
+main > .container:has(> .title-row) > .answer,
+main > .container:has(> .title-row) > .answer > .answer-foot { display: contents; }
+main > .container:has(> .title-row) > .answer .answer-actions { order: 3; flex: none; align-self: center; }
+main > .container:has(> .title-row) > .answer .answer-text { order: 8; flex: 0 0 100%; margin: var(--s-4) 0 var(--s-1); max-width: 72ch; }
+main > .container:has(> .title-row) > .answer .answer-more { order: 8; margin: 0 0 var(--s-1); }
+main > .container:has(> .title-row) > .answer .answer-meta { order: 9; flex: 0 0 100%; margin: 0 0 var(--s-2); }
+main > .container:has(> .title-row) > .review-note { order: 10; }
+main > .container:has(> .title-row) > dl.facts { order: 4; }
+main > .container:has(> .title-row) > .glance { order: 6; }
+main > .container:has(> .title-row) > .datastrip { order: 7; }
+main > .container:has(> .title-row) > .title-row h1 { font-size: var(--t-lg); line-height: var(--lh-lg); }
+
+/* ---- 2. identity facts, glance tiles and the figure row read as one group ---------------------- */
+.facts { gap: var(--s-3) var(--s-5); margin: var(--s-2) 0 var(--s-1); }
+.facts dt { color: var(--ink-2); }
+.glance { margin: var(--s-3) 0 var(--s-1); gap: var(--s-4) 0; }
+.glance-t { display: block; position: relative; min-width: 0; padding: 0 var(--s-4); border-left: 1px solid var(--line); }
+.glance-t > a { display: block; padding: 0; border: 0; }
+.glance-t > a:hover { background: transparent; }
+.glance-t > a:hover .glance-k { text-decoration: underline; text-underline-offset: 2px; }
+.glance-s { position: absolute; top: var(--s-1); right: var(--s-3); display: block; line-height: 0; pointer-events: none; }
+.glance-s svg { display: block; width: 96px; height: 24px; }
+.glance-k { font-size: var(--t-sm); margin-top: 0; }
+.glance-n { color: var(--ink-2); }
+.datastrip { margin: var(--s-1) 0 var(--s-2); padding: 0; gap: var(--s-1) 0; }
+.datastrip .cell { padding: 0 var(--s-4); }
+.datastrip .cell:first-child { padding-left: 0; }
+.datastrip .v { font-size: var(--t-sm); line-height: var(--lh-sm); margin-top: 0; }
+@media (max-width: 639px) { .glance-t:nth-child(2n+1) { padding-left: 0; border-left: 0; } }
+@media (min-width: 640px) and (max-width: 1023px) { .glance-t:nth-child(3n+1) { padding-left: 0; border-left: 0; } }
+@media (min-width: 1024px) { .glance-t:nth-child(4n+1) { padding-left: 0; border-left: 0; } }
+.review-note { margin: var(--s-2) 0; }
+
+/* ---- 3. group bar: text tabs, 40px, hairline, current group in the accent --------------------- */
+.groupbar { gap: var(--s-5); height: var(--gbar); margin: var(--s-4) 0 0; align-items: stretch; }
+.groupbar a { height: auto; padding: 0; border: 0; border-bottom: 2px solid transparent; border-radius: 0; font-size: var(--t-sm); color: var(--ink-2); }
+.groupbar a:hover { background: transparent; color: var(--ink); border-bottom-color: var(--line-2); }
+.groupbar a[aria-current="true"] { background: transparent; color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ---- 4. groups and their sections --------------------------------------------------------------- */
+.pgroup { margin-top: var(--s-7); }
+.groupbar + .pgroup, .groupbar ~ .pgroup:first-of-type { margin-top: var(--s-5); }
+.pgroup-label { margin: 0 0 var(--s-1); padding-top: var(--s-3); border-top: 1px solid var(--line); }
+.pgroup > section + section, .pgroup > section + .viz-grid, .pgroup > .viz-grid + section { margin-top: var(--s-7); }
+.pgroup > section > h2:first-child, .pgroup > section > details.ref:first-child { margin-top: 0; }
+/* Heading line: h2 on the left, the CSV link quiet on the right. */
+.pgroup > section:has(> h2):has(> .dl-row) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-4); align-items: baseline; }
+.pgroup > section:has(> h2):has(> .dl-row) > * { grid-column: 1 / -1; }
+.pgroup > section:has(> h2):has(> .dl-row) > h2 { grid-column: 1; grid-row: 1; }
+.pgroup > section:has(> h2):has(> .dl-row) > .dl-row { grid-column: 2; grid-row: 1; margin: 0; font-size: var(--t-xs); text-align: right; }
+.pgroup > section:has(> h2):has(> .dl-row) > .dl-row .dl-meta { display: block; color: var(--ink-2); }
+@media (max-width: 640px) {
+  .pgroup > section:has(> h2):has(> .dl-row) > .dl-row { grid-column: 1 / -1; grid-row: auto; text-align: left; }
+}
+/* Fixed caveats: two lines, then "Show more" (set by components/PageGroup.astro). */
+.caveat-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.caveat-more { font: inherit; font-size: var(--t-xs); color: var(--accent); background: none; border: 0; padding: 0; margin: 0 0 var(--s-2); cursor: pointer; }
+/* Charts: small multiples in a grid, no frames. */
+.viz-grid { gap: var(--s-5) var(--s-5); margin: var(--s-4) 0; }
+.viz-grid .viz, .pgroup .viz { border: 0; padding: 0; background: transparent; box-shadow: none; border-radius: 0; }
+/* TradingView: aligned to the grid, height reserved so the page does not move when it loads. */
+.tv { margin: var(--s-4) 0; }
+.tv-info { min-height: 150px; }
+.tv-chart { height: 600px; }
+@media (max-width: 640px) { .tv-chart { height: 480px; } .tv-info { min-height: 190px; } }
+
+/* ---- 5. About this record: reference blocks, closed by default ----------------------------------- */
+details.ref { margin: var(--s-5) 0 0; border-top: 1px solid var(--line); }
+details.ref > summary { display: flex; align-items: center; gap: var(--s-2); min-height: 40px; cursor: pointer; list-style: none; }
+details.ref > summary::-webkit-details-marker { display: none; }
+details.ref > summary::before { content: ""; flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(-45deg); transition: transform 120ms; margin-inline: var(--s-1); }
+details.ref[open] > summary::before { transform: rotate(45deg); }
+details.ref > summary h2 { margin: 0; flex: 1; }
+details.ref > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+details.ref > .ref-body { padding: var(--s-1) 0 var(--s-3) var(--s-5); }
+details.ref > .ref-body > :first-child { margin-top: 0; }
+.pgroup > section > details.ref, section.learn-more > details.ref { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { details.ref > summary::before { transition: none; } }
+@media (forced-colors: active) { details.ref { border-top-color: CanvasText; } .groupbar a[aria-current="true"] { border-bottom-color: Highlight; } }
+
+/* ---- 6. tables on these pages ---------------------------------------------------------------------- */
+.tablewrap { margin-top: var(--s-2); }
