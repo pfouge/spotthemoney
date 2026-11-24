@@ -33,8 +33,9 @@ const PATH = "/company-financials/", DATA = "/data/financials-screener.json";
 const FIGS = ["revenue", "net_income", "eps_diluted", "assets", "equity"];
 const REV_MIN = [1e8, 1e9, 1e10, 1e11], REV_MAX = [1e8, 1e9, 1e10], ASSET_MIN = [1e9, 1e10, 1e11];
 const KEYS = ["q", "period", "division", "unit", "rmin", "rmax", "ni", "amin", "pay", "recent", "cols", "sort", "dir", "page", "per"];
-// Stored figures: the five of the opening view, then total liabilities (ratios view only).
-const STORED = [...FIGS, "liabilities"];
+// Stored figures: the five of the opening view, then total liabilities (ratio and balance-sheet
+// views) and cash (balance-sheet view only).
+const STORED = [...FIGS, "liabilities", "cash"];
 const slot = (i) => (i < 5 ? 5 + i : 6 + i);
 // This script's own copy of the two ratios.
 const RATIO = {
@@ -60,8 +61,11 @@ function ratioPrinted(p, k) {
 const SETS = {
   figures: ["Revenue", "Net income", "Diluted EPS", "Total assets", "Shareholders' equity", "CEO pay, as reported", "Pay year"],
   ratios: ["Revenue", "Net income", "Net margin", "Total liabilities", "Shareholders' equity", "Liabilities to equity"],
+  balance: ["Cash and equivalents", "Total assets", "Total liabilities", "Shareholders' equity"],
 };
-const SORTS = { figures: ["company", "end", "revenue", "net_income", "eps_diluted", "assets", "equity", "pay"], ratios: ["company", "end", "revenue", "net_income", "net_margin", "liabilities", "equity", "liabilities_to_equity"] };
+const SET_NAMES = ["figures", "ratios", "balance"];
+const BALANCE_FIGS = ["cash", "assets", "liabilities", "equity"];
+const SORTS = { figures: ["company", "end", "revenue", "net_income", "eps_diluted", "assets", "equity", "pay"], ratios: ["company", "end", "revenue", "net_income", "net_margin", "liabilities", "equity", "liabilities_to_equity"], balance: ["company", "end", "cash", "assets", "liabilities", "equity"] };
 let failures = 0, checks = 0;
 const ok = (cond, msg) => { checks++; if (!cond) { failures++; if (failures <= 60) console.log(`✗ ${msg}`); } return !!cond; };
 
@@ -188,7 +192,7 @@ ok(!dataRes.text.includes('"recent"'), "the data file stores no recent flag (it 
 ok(Object.keys(data).join() === "built,divisions,companies", `the data file's top-level layout is built, divisions, companies (${Object.keys(data).join()})`);
 ok(data.companies.length === oracle.length, `the data file has ${data.companies.length} companies, company-financials.csv gives ${oracle.length}`);
 ok(new Set(data.companies.map((c) => c[3])).size === data.companies.length, "no company is in the data file twice");
-let figures = 0, heldSeen = 0, ratioCells = 0;
+let figures = 0, heldSeen = 0, ratioCells = 0, balanceCells = 0;
 const ratioSeen = { ok: 0, base: 0, capped: 0 };
 for (const c of data.companies) {
   const [name, path, ticker, cik, di, sic, unit, y, q, payPeo, payFye] = c;
@@ -203,7 +207,7 @@ for (const c of data.companies) {
     if (!ok(!!packed === !!p, `${name}: ${kind} ${packed ? "is" : "is not"} in the data file, company-financials.csv ${p ? "has" : "has not"} one`) || !p) continue;
     ok(packed[0] === p.end && (packed[1] || null) === p.start, `${name} ${kind}: period ${packed[1]} to ${packed[0]}, the CSV gives ${p.start} to ${p.end}`);
     ok(packed[2] === p.filed && packed[3] === p.form && (p.url || "").includes(packed[4]), `${name} ${kind}: report ${packed[3]} ${packed[2]} ${packed[4]}, the CSV's newest is ${p.form} ${p.filed}`);
-    ok(packed.length === 12, `${name} ${kind}: the packed period has ${packed.length} entries, not 12`);
+    ok(packed.length === 13, `${name} ${kind}: the packed period has ${packed.length} entries, not 13`);
     STORED.forEach((f, i) => {
       figures++;
       const bit = ((packed[10] >> i) & 1) === 1;
@@ -243,11 +247,11 @@ trs.forEach((tr, i) => {
 // The page as served opens on filed figures only: the ratio columns are there, hidden.
 const ths = [...main.matchAll(/<th\b([^>]*)>([\s\S]*?)<\/th>/g)].map((m) => ({ tag: m[1], text: strip(m[2]) }));
 const thOf = (label) => ths.find((t) => t.text.startsWith(label));
-for (const label of new Set([...SETS.figures, ...SETS.ratios])) {
-  const t = thOf(label), inFig = SETS.figures.includes(label), inRat = SETS.ratios.includes(label);
+for (const label of new Set(SET_NAMES.flatMap((s) => SETS[s]))) {
+  const t = thOf(label), inFig = SETS.figures.includes(label);
   if (!ok(!!t, `the table has no "${label}" column`)) continue;
   ok(/\bhidden\b/.test(t.tag) === !inFig, `"${label}" is ${/\bhidden\b/.test(t.tag) ? "hidden" : "shown"} in the page as served`);
-  ok((t.tag.match(/data-cols="([^"]*)"/) ?? [])[1] === [inFig ? "figures" : "", inRat ? "ratios" : ""].filter(Boolean).join(" "), `"${label}" belongs to the sets "${(t.tag.match(/data-cols="([^"]*)"/) ?? [])[1]}"`);
+  ok((t.tag.match(/data-cols="([^"]*)"/) ?? [])[1] === SET_NAMES.filter((s) => SETS[s].includes(label)).join(" "), `"${label}" belongs to the sets "${(t.tag.match(/data-cols="([^"]*)"/) ?? [])[1]}"`);
 }
 for (const d of Object.values(RATIO)) ok(thOf(d.label)?.text === `${d.label}${d.inputs}` || thOf(d.label)?.text === `${d.label} ${d.inputs}`, `the "${d.label}" column names its two amounts (${thOf(d.label)?.text})`);
 const noteTag = main.match(/<p[^>]*data-fs="rationote"[^>]*>([\s\S]*?)<\/p>/);
@@ -256,6 +260,11 @@ ok(trs.every((r) => !/data-ratio=/.test(r.cells.join(""))) && !/data-ratio=/.tes
 const ratiosPara = strip((main.match(/<p[^>]*id="ratios"[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
 ok(/not figures the company filed/.test(ratiosPara) && /no verdict/.test(ratiosPara) && /no filter on a ratio/i.test(ratiosPara) && Object.values(RATIO).every((d) => ratiosPara.includes(d.inputs)) && ratiosPara.includes("over 1,000%"), "the page explains the two ratios: their amounts, that they are not filed, the limits, no verdict, no filter");
 const years = rowsOf("year"), quarters = rowsOf("quarter");
+// The balance-sheet columns: cash on file per view, counted from the CSV, and the page's paragraph.
+const cashN = { year: years.filter((r) => r.p.v.cash != null).length, quarter: quarters.filter((r) => r.p.v.cash != null).length };
+const balancePara = strip((main.match(/<p[^>]*id="balance"[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
+ok(/as the company filed it/.test(balancePara) && /Nothing in this view is worked out/.test(balancePara) && /restricted cash/.test(balancePara) && /not a measure of anything/.test(balancePara), "the page explains the balance-sheet columns: filed amounts, nothing worked out, what the cash heading takes in");
+ok(balancePara.includes(`${cashN.year.toLocaleString("en-US")} of the ${years.length.toLocaleString("en-US")} fiscal years`) && balancePara.includes(`${cashN.quarter.toLocaleString("en-US")} of the ${quarters.length.toLocaleString("en-US")} quarters`), `the page states how many periods have a cash figure (${cashN.year} of ${years.length} fiscal years, ${cashN.quarter} of ${quarters.length} quarters by the CSV)`);
 ok(strip((main.match(/data-fs="count"[^>]*>([\s\S]*?)<\/span>/) ?? [])[1] ?? "").startsWith(`All ${years.length.toLocaleString("en-US")} `), `the count line starts "All ${years.length} ..."`);
 const answer = strip((main.match(/class="[^"]*answer[^"]*"[\s\S]*?<\/(?:section|div|aside)>/) ?? [""])[0]);
 ok(answer.includes(`${oracle.length.toLocaleString("en-US")} compan`) && answer.includes(`${years.length.toLocaleString("en-US")} with a fiscal year`) && answer.includes(`${quarters.length.toLocaleString("en-US")} with a quarter`), `the answer states ${oracle.length} companies, ${years.length} fiscal years and ${quarters.length} quarters`);
@@ -363,7 +372,11 @@ if (chromium) {
   // The set of columns: the opening view shows filed figures only.
   const headTexts = () => page.$$eval(".fs-table thead th", (xs) => xs.filter((x) => !x.hidden && x.offsetParent !== null).map((x) => (x.querySelector("button") ?? x).textContent.replace(/[▲▼]/g, "").replace(/\s+/g, " ").trim()));
   const rowTexts = () => page.$$eval('[data-fs="rows"] tr', (xs) => xs.map((x) => [...x.querySelectorAll("td")].map((td) => td.textContent.replace(/\s+/g, " ").trim()).join("|")));
-  const cellsOfSet = (r, set) => set === "figures" ? cellsExpected(r) : [
+  const cellsOfSet = (r, set) => set === "figures" ? cellsExpected(r) : set === "balance" ? [
+    `${r.o.name}${r.o.ticker ? ` ${r.o.ticker}` : ""}`, r.o.division, shortDate(r.p.end),
+    ...BALANCE_FIGS.map((f) => (r.p.held[f] ? "not shown" : r.p.v[f] == null ? "" : printed(f, r.p.v[f], r.o.unit))),
+    `${r.p.form} ↗`,
+  ] : [
     `${r.o.name}${r.o.ticker ? ` ${r.o.ticker}` : ""}`, r.o.division, shortDate(r.p.end),
     ...["revenue", "net_income"].map((f) => (r.p.held[f] ? "not shown" : r.p.v[f] == null ? "" : printed(f, r.p.v[f], r.o.unit))),
     ratioPrinted(r.p, "net_margin"),
@@ -371,7 +384,7 @@ if (chromium) {
     ratioPrinted(r.p, "liabilities_to_equity"),
     `${r.p.form} ↗`,
   ];
-  ok((await optionsOf("cols")).join() === "figures,ratios" && (await page.inputValue('[data-fs="cols"]')) === "figures", "the Columns control offers the two sets and opens on filed figures");
+  ok((await optionsOf("cols")).join() === SET_NAMES.join() && (await page.inputValue('[data-fs="cols"]')) === "figures", "the Columns control offers the three sets and opens on filed figures");
   ok((await headTexts()).join("|") === ["Company", "Industry", "Fiscal year ended", ...SETS.figures, "Report"].join("|"), `the opening view shows the filed-figure columns (${(await headTexts()).join(", ")})`);
   ok(!(await page.locator('[data-fs="rationote"]').isVisible()) && (await page.locator('[data-fs="rows"] td[data-ratio]').count()) === 0, "the opening view shows no ratio and no sentence about ratios");
   for (const period of ["year", "quarter"]) {
@@ -408,6 +421,34 @@ if (chromium) {
   ok((await pageCiks()).join() === first.map((r) => r.o.cik).join() && (await page.inputValue('[data-fs="cols"]')) === "figures", "an address that sorts by a ratio without the ratio columns opens the opening view");
   await open("#cols=ratios&sort=pay&dir=desc");
   ok((await pageCiks()).join() === first.map((r) => r.o.cik).join() && (await page.inputValue('[data-fs="cols"]')) === "ratios", "an address that sorts the ratio columns by pay falls back to the opening order");
+  // The balance-sheet columns: four filed amounts, no ratio, no sentence about ratios.
+  for (const period of ["year", "quarter"]) {
+    await open(`#${period === "quarter" ? "period=quarter&" : ""}cols=balance`);
+    ok((await headTexts()).join("|") === ["Company", "Industry", period === "quarter" ? "Quarter ended" : "Fiscal year ended", ...SETS.balance, "Report"].join("|"), `${period}, balance-sheet columns: the columns shown are ${(await headTexts()).join(", ")}`);
+    ok(!(await page.locator('[data-fs="rationote"]').isVisible()) && (await page.locator('[data-fs="rows"] td[data-ratio]').count()) === 0 && (await root.getAttribute("data-cols")) === "balance" && (await page.inputValue('[data-fs="cols"]')) === "balance", `${period}, balance-sheet columns: no ratio, no sentence about ratios, and the control says so`);
+    ok(await shown() === rowsOf(period).length, `${period}, balance-sheet columns: ${await shown()} companies, the same ${rowsOf(period).length} as with filed figures`);
+    const want = expect({ period }).slice(0, 50).map((r) => cellsOfSet(r, "balance").join("|")), got = await rowTexts();
+    balanceCells += got.length * BALANCE_FIGS.length;
+    ok(got.join("\n") === want.join("\n"), `${period}, balance-sheet columns: the rows on screen differ from the oracle (first difference: "${got.find((g, i) => g !== want[i])}" against "${want[got.findIndex((g, i) => g !== want[i])]}")`);
+  }
+  await open();
+  await page.selectOption('[data-fs="cols"]', "balance");
+  ok(new URL(page.url()).hash === "#cols=balance" && (await pageCiks()).join() === first.map((r) => r.o.cik).join(), `choosing the balance-sheet columns writes the address (${new URL(page.url()).hash}); the opening sort by revenue, which they do not show, is kept as the opening order`);
+  for (const key of ["cash", "liabilities"]) {
+    await page.click(`th[data-sort="${key}"] button`);
+    ok((await pageCiks()).join() === expect({}, key, "desc").slice(0, 50).map((r) => r.o.cik).join() && new URL(page.url()).hash === `#cols=balance&sort=${key}&dir=desc`, `balance-sheet columns, sort by ${key}: first click is largest first, empty cells and other currencies last (${new URL(page.url()).hash})`);
+    await page.click(`th[data-sort="${key}"] button`);
+    ok((await pageCiks()).join() === expect({}, key, "asc").slice(0, 50).map((r) => r.o.cik).join(), `balance-sheet columns, sort by ${key}: second click is smallest first, empty cells still last`);
+    await page.click(`th[data-sort="${key}"] button`);
+    ok((await pageCiks()).join() === first.map((r) => r.o.cik).join(), `balance-sheet columns, sort by ${key}: a third click returns to the opening order`);
+  }
+  await page.click('th[data-sort="cash"] button');
+  await page.selectOption('[data-fs="cols"]', "ratios");
+  ok(new URL(page.url()).hash === "#cols=ratios" && (await pageCiks()).join() === first.map((r) => r.o.cik).join(), "a sort by cash is dropped when the set of columns changes to one without it");
+  await open("#sort=cash&dir=desc");
+  ok((await pageCiks()).join() === first.map((r) => r.o.cik).join() && (await page.inputValue('[data-fs="cols"]')) === "figures", "an address that sorts by cash without the balance-sheet columns opens the opening view");
+  await open("#cols=balance&sort=net_margin&dir=desc");
+  ok((await pageCiks()).join() === first.map((r) => r.o.cik).join() && (await page.inputValue('[data-fs="cols"]')) === "balance", "an address that sorts the balance-sheet columns by a ratio falls back to the opening order");
   await open("#cols=ratios&ni=neg");
   await page.click('[data-fs="reset"]');
   ok(await shown() === years.length && (await page.inputValue('[data-fs="cols"]')) === "ratios" && new URL(page.url()).hash === "#cols=ratios", "Reset clears the filters and leaves the set of columns");
@@ -456,6 +497,10 @@ if (chromium) {
     { f: { period: "quarter", recent: 1 }, sort: "end", dir: "asc" },
     { f: { recent: 1, ni: "pos" }, sort: "net_income", dir: "desc" },
     { f: { recent: 1 }, cols: "ratios", sort: "net_margin", dir: "desc" },
+    { f: {}, cols: "balance", sort: "cash", dir: "desc" },
+    { f: { period: "quarter", ni: "pos" }, cols: "balance", sort: "cash", dir: "asc" },
+    { f: { amin: 1e9 }, cols: "balance", sort: "liabilities", dir: "desc" },
+    { f: { recent: 1, unit: "USD" }, cols: "balance", sort: "assets", dir: "asc" },
   ];
   const hashOf = (c) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(c.f)) p.set(k, String(v)); if (c.cols) p.set("cols", c.cols); if (c.sort !== "revenue" || c.dir !== "desc") { p.set("sort", c.sort); p.set("dir", c.dir); } const s = p.toString(); return s ? `#${s}` : ""; };
   for (const c of combos) {
@@ -563,6 +608,9 @@ if (chromium) {
   await phone.selectOption('[data-fs="cols"]', "ratios");
   const over2 = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   ok(over2 <= 1, `at 390 px with the ratio columns the page is ${over2}px wider than the screen`);
+  await phone.selectOption('[data-fs="cols"]', "balance");
+  const over3 = await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  ok(over3 <= 1, `at 390 px with the balance-sheet columns the page is ${over3}px wider than the screen`);
   await phoneCtx.close();
   ok(errors.length === 0, `page errors: ${errors.slice(0, 2).join(" | ")}`);
   await browser.close();
@@ -572,5 +620,5 @@ if (chromium) {
 
 console.log(failures
   ? `verify-finscreen: ${failures} problem(s) in ${checks} checks`
-  : `✓ verify-finscreen: ${checks} checks pass: ${oracle.length} companies (${years.length} with a fiscal year, ${quarters.length} with a quarter) and ${figures} figures against company-financials.csv, ${heldSeen} held back; ended in the last ${RECENT_DAYS} days: ${recentN.year} of ${years.length} fiscal years, ${recentN.quarter} of ${quarters.length} quarters; ratios of the newest periods: ${ratioSeen.ok} worked out (${ratioSeen.capped} beyond a limit), ${ratioSeen.base} n/a, ${ratioCells} ratio cells read on screen; ${linksIn} links in from the industry pages; division links: ${linkTotals.linked} of ${oracle.length} companies link to their division's view, ${linkTotals.none} have no division (${[...linkByDiv].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, v]) => `${k} ${v}`).join(", ") || "-"}), ${divLinks} links read on ${divPages} company pages; ${browserNote}`);
+  : `✓ verify-finscreen: ${checks} checks pass: ${oracle.length} companies (${years.length} with a fiscal year, ${quarters.length} with a quarter) and ${figures} figures against company-financials.csv, ${heldSeen} held back; ended in the last ${RECENT_DAYS} days: ${recentN.year} of ${years.length} fiscal years, ${recentN.quarter} of ${quarters.length} quarters; ratios of the newest periods: ${ratioSeen.ok} worked out (${ratioSeen.capped} beyond a limit), ${ratioSeen.base} n/a, ${ratioCells} ratio cells read on screen; balance-sheet columns: cash on file ${cashN.year} of ${years.length} fiscal years, ${cashN.quarter} of ${quarters.length} quarters, ${balanceCells} cells read on screen; ${linksIn} links in from the industry pages; division links: ${linkTotals.linked} of ${oracle.length} companies link to their division's view, ${linkTotals.none} have no division (${[...linkByDiv].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, v]) => `${k} ${v}`).join(", ") || "-"}), ${divLinks} links read on ${divPages} company pages; ${browserNote}`);
 process.exit(failures ? 1 : 0);

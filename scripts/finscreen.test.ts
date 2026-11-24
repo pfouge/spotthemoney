@@ -11,7 +11,7 @@ import {
 
 const period = (end: string, v: Partial<Record<FsConcept, number | null>>, held: FsConcept[] = []): FsPeriod => ({
   end, start: null, filed: "2026-02-01", form: "10-K", accession: "0000000001-26-000001",
-  v: { revenue: null, net_income: null, eps_diluted: null, assets: null, equity: null, liabilities: null, ...v },
+  v: { revenue: null, net_income: null, eps_diluted: null, assets: null, equity: null, liabilities: null, cash: null, ...v },
   held: Object.fromEntries(FS_STORED.map((c) => [c.key, held.includes(c.key)])) as Record<FsConcept, boolean>,
 });
 const MFG = { name: "Manufacturing", slug: "manufacturing" }, SVC = { name: "Services", slug: "services" };
@@ -150,7 +150,7 @@ test("cells, labels and the file of the rows on screen", () => {
   const csv = fsViewCsv(all, { ...DEFAULT_FS_VIEW, f: { ...NO_FS_FILTER, ni: "pos" } });
   const lines = (csv.charCodeAt(0) === 0xfeff ? csv.slice(1) : csv).trim().split("\r\n");
   assert.equal(lines.length, 4);
-  assert.ok(lines[0]!.startsWith("company,ticker,cik,sic_code,sic_division,period,period_start,period_end,currency,revenue,net_income,eps_diluted,assets,liabilities,equity,net_margin_pct,liabilities_to_equity,not_shown,"));
+  assert.ok(lines[0]!.startsWith("company,ticker,cik,sic_code,sic_division,period,period_start,period_end,currency,revenue,net_income,eps_diluted,cash,assets,liabilities,equity,net_margin_pct,liabilities_to_equity,not_shown,"));
   assert.ok(lines[1]!.startsWith("Delta,"), "largest dollar revenue first");
   assert.ok(lines[1]!.includes("eps_diluted; assets"));
   assert.ok(!lines[1]!.includes("790000"));
@@ -213,7 +213,7 @@ const rrow = (name: string) => rowsFor(ra, "year").find((r) => r.c.name === name
 test("total liabilities travels in the data file, after the mask, and a held one does not", () => {
   const d = packFinScreen("2026-11-23", rc);
   const able = d.companies[0]![7] as unknown[];
-  assert.equal(able.length, 12);
+  assert.equal(able.length, 13);
   assert.equal(able[11], 400);
   assert.equal(rrow("Able").p.v.liabilities, 400);
   const fox = d.companies[5]![7] as unknown[];
@@ -289,6 +289,57 @@ test("the address keeps the set of columns; a sort the set cannot show is ignore
   assert.ok(isDefaultFsFilter({ ...NO_FS_FILTER }));
 });
 
+test("balance-sheet columns: cash travels after total liabilities, has its own set of columns and sorts in dollars only", () => {
+  const bc: FsCompany[] = [
+    co("Able", { cik: "0000000021", year: period("2025-12-31", { revenue: 1000, cash: 70, assets: 900, liabilities: 400, equity: 500 }) }),
+    co("Baker", { cik: "0000000022", unit: "JPY", year: period("2026-03-31", { revenue: 2e12, cash: 5e11, assets: 9e12 }) }),
+    co("Cargo", { cik: "0000000023", year: period("2025-12-31", { revenue: 10, assets: 50 }) }),
+    co("Dune", { cik: "0000000024", year: period("2025-12-31", { revenue: 5, cash: 999, assets: 100 }, ["cash"]) }),
+    co("Echo", { cik: "0000000025", year: period("2025-12-31", { revenue: 7, cash: 0, assets: 100 }) }),
+  ];
+  const d = packFinScreen("2026-11-24", bc);
+  const able = d.companies[0]![7] as unknown[];
+  assert.equal(able.length, 13);
+  assert.equal(able[11], 400); assert.equal(able[12], 70);
+  const dune = d.companies[3]![7] as unknown[];
+  assert.equal(dune[12], null, "a held cash figure is not in the data file");
+  assert.equal(((dune[10] as number) >> 6) & 1, 1, "mask bit 6 says cash is held back");
+  const ba = unpackFinScreen(d);
+  const row = (name: string) => rowsFor(ba, "year").find((r) => r.c.name === name)!;
+  assert.equal(row("Able").p.v.cash, 70); assert.equal(row("Dune").p.v.cash, null); assert.equal(row("Dune").p.held.cash, true);
+  assert.equal(fsCellText(row("Dune"), "cash"), "not shown"); assert.equal(fsCellText(row("Cargo"), "cash"), ""); assert.equal(fsCellText(row("Echo"), "cash"), "$0");
+  // A file written before cash was added (12 entries) still unpacks: no cash, nothing held.
+  const old = unpackFinScreen({ ...d, companies: d.companies.map((c) => { const x = [...c] as typeof c; x[7] = (c[7] as unknown[]).slice(0, 12) as never; return x; }) });
+  assert.equal(old[0]!.year!.v.cash, null); assert.equal(old[0]!.year!.held.cash, false); assert.equal(old[0]!.year!.v.liabilities, 400);
+  // The set of columns: four filed amounts, no ratio, no pay.
+  assert.deepEqual(columnsOf("balance").map((c) => c.key), ["cash", "assets", "liabilities", "equity"]);
+  assert.ok(columnsOf("balance").every((c) => c.kind === "figure"));
+  assert.deepEqual(sortKeysOf("balance"), ["company", "end", "cash", "assets", "liabilities", "equity"]);
+  assert.ok(!sortKeysOf("figures").includes("cash") && !sortKeysOf("ratios").includes("cash"));
+  assert.deepEqual(columnsOf("figures").map((c) => c.key), ["revenue", "net_income", "eps_diluted", "assets", "equity", "pay", "payyear"], "the opening set is unchanged");
+  // Sorting by cash: dollars only; held, missing and other currencies last both ways; zero is a figure.
+  assert.deepEqual(sortFsRows(rowsFor(ba, "year"), "cash", "desc").map((r) => r.c.name), ["Able", "Echo", "Baker", "Cargo", "Dune"]);
+  assert.deepEqual(sortFsRows(rowsFor(ba, "year"), "cash", "asc").map((r) => r.c.name), ["Echo", "Able", "Baker", "Cargo", "Dune"]);
+  // The address.
+  assert.equal(parseFinHash("#cols=balance").cols, "balance");
+  assert.equal(toFinHash({ ...DEFAULT_FS_VIEW, cols: "balance", sort: "cash", dir: "desc" }), "#cols=balance&sort=cash&dir=desc");
+  assert.deepEqual(parseFinHash("#cols=balance&sort=cash&dir=asc"), { ...DEFAULT_FS_VIEW, cols: "balance", sort: "cash", dir: "asc" });
+  assert.equal(parseFinHash("#sort=cash&dir=desc").sort, "revenue", "cash cannot sort the opening set");
+  assert.equal(parseFinHash("#cols=balance&sort=net_margin").sort, "revenue", "a ratio cannot sort the balance-sheet set");
+  assert.equal(parseFinHash("#cols=balance&sort=revenue&dir=asc").sort, "revenue");
+  assert.equal(withCols({ ...DEFAULT_FS_VIEW, cols: "balance", sort: "cash", dir: "asc" }, "ratios").sort, "revenue");
+  assert.equal(withCols({ ...DEFAULT_FS_VIEW, sort: "assets", dir: "asc" }, "balance").sort, "assets");
+  assert.equal(colsOf({ ...DEFAULT_FS_VIEW, cols: "balance" }), "balance");
+  // The download and the build log.
+  const lines = fsViewCsv(ba, { ...DEFAULT_FS_VIEW, sort: "company", dir: "asc" }).replace(/^\uFEFF/, "").trim().split("\r\n");
+  const head = lines[0]!.split(","), col = (k: string) => head.indexOf(k);
+  assert.ok(col("cash") > col("eps_diluted") && col("cash") < col("assets"));
+  assert.equal(lines[1]!.split(",")[col("cash")], "70");
+  assert.equal(lines[4]!.split(",")[col("cash")], "", "a held cash figure is blank in the download");
+  assert.ok(lines[4]!.includes("cash"), "and named under not_shown");
+  assert.ok(/balance-sheet columns: cash on file 3 of 5 fiscal years, 0 of 0 quarters/.test(finScreenLog(ba)), finScreenLog(ba));
+});
+
 test("the download carries total liabilities and both ratios, blank where a cell is n/a or empty", () => {
   const lines = fsViewCsv(ra, { ...DEFAULT_FS_VIEW, sort: "company", dir: "asc" }).replace(/^\uFEFF/, "").trim().split("\r\n");
   const head = lines[0]!.split(",");
@@ -318,7 +369,7 @@ test("ended in the last 18 months: by the period's last day, counted back from t
   ];
   const packed = packFinScreen("2026-11-22", old);
   assert.ok(!JSON.stringify(packed).includes("recent"), "the flag is worked out when the file is read, not stored in it");
-  assert.equal(packed.companies[0]![7] && (packed.companies[0]![7] as unknown[]).length, 12, "a packed period keeps its twelve entries");
+  assert.equal(packed.companies[0]![7] && (packed.companies[0]![7] as unknown[]).length, 13, "a packed period keeps its thirteen entries: no recent flag is stored");
   const got = unpackFinScreen(packed);
   const pick = (f: Partial<typeof NO_FS_FILTER>) => rowsFor(got, f.period ?? "year").filter((r) => finMatches(r, { ...NO_FS_FILTER, ...f })).map((r) => r.c.name).sort();
   assert.deepEqual(pick({}), ["Alpha", "Beta", "Delta", "Eta", "Gamma", "Zeta", "alpha two"]);

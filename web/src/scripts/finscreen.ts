@@ -5,7 +5,7 @@
 // anywhere and nothing is stored in the browser.
 import { h } from "./dom";
 import {
-  unpackFinScreen, finScreen, fsSummaryLine, fsViewCsv, fsViewCsvName, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, firstFsDir, fsCellText, fsPayText, fsShortDate, reportUrl, divisionPagePath, columnsOf, colsOf, withCols, fsRatio, fsRatioText,
+  unpackFinScreen, finScreen, fsSummaryLine, fsViewCsv, fsViewCsvName, parseFinHash, toFinHash, isFsViewHash, isDefaultFsFilter, firstFsDir, fsCellText, fsPayText, fsShortDate, reportUrl, divisionPagePath, columnsOf, colsOf, asCols, withCols, fsRatio, fsRatioText,
   NO_FS_FILTER, DEFAULT_FS_VIEW, DEFAULT_PER, FIN_SCREENER_DATA, type FinScreenData, type FsRow, type FsView, type FsFilter, type FsSortKey, type FsCols,
 } from "../lib/finscreen";
 
@@ -54,7 +54,7 @@ async function start(root: HTMLElement): Promise<void> {
     pick(per, String(v.per), String(DEFAULT_PER));
     pick(colsSel, colsOf(v), "figures");
   };
-  const readCols = (): FsCols => (colsSel?.value === "ratios" ? "ratios" : "figures");
+  const readCols = (): FsCols => asCols(colsSel?.value);
 
   const rowEl = (r: FsRow, cols: FsCols): HTMLTableRowElement => {
     const url = reportUrl(r);

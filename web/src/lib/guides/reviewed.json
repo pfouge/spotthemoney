@@ -83,7 +83,7 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-23",
+    "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
@@ -93,7 +93,7 @@
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "c173e267d4ad4553",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "90e4e0b900aee547",
+      "web/src/lib/datafiles.ts": "caae6ebab02cc61e",
       "web/src/pages/developers.astro": "894d62cf74c9c95f"
     }
   },
@@ -238,7 +238,7 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-23",
+    "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
@@ -261,8 +261,8 @@
       "web/src/lib/financials.ts": "36e4ca7b62568223",
       "web/src/components/Financials.astro": "5cb4d29618bacb6f",
       "web/src/components/FiledNotices.astro": "cc73065ceec3cc06",
-      "web/src/lib/finscreen.ts": "f279a40cad54b481",
-      "web/src/pages/company-financials.astro": "b0a9c7f4c343c6c5"
+      "web/src/lib/finscreen.ts": "98d4182436ccb034",
+      "web/src/pages/company-financials.astro": "e7837e504c09655c"
     }
   }
 }
