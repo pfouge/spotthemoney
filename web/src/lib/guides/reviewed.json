@@ -175,7 +175,7 @@
   "insider-options-and-derivatives": {
     "reviewed": "2026-11-24",
     "covers": {
-      "shared/src/tradevalue.ts": "9f09516ef4195e0b",
+      "shared/src/tradevalue.ts": "a9fc088c52372a45",
       "web/src/lib/heatmap.ts#insiderRows": "2613f6c3c3c337dd",
       "web/src/lib/flagship-core.ts#sideLabel": "a6bf1853f54b5be4",
       "web/src/lib/exercise.ts": "5868473b774080cb"
@@ -235,7 +235,7 @@
     "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
-      "shared/src/tradevalue.ts": "9f09516ef4195e0b",
+      "shared/src/tradevalue.ts": "a9fc088c52372a45",
       "web/src/lib/coverage.ts": "45cb5bf5a564ff9d",
       "web/src/pages/terms.astro": "717bde0d44213bfc"
     }

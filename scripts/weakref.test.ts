@@ -26,6 +26,14 @@ test("well referenced stocks are never touched: a real large company, or a high 
   // a weakly referenced small company at an ordinary price
   assert.equal(tradeValue({ shares: 1000, price: 5.37, isDerivative: false, refPrice: 5.37, refRows: 1, sharesOutstanding: 13e6 }), 5370);
 });
+test("the company-value test spares grants and low prices (ADS against ordinary shares)", () => {
+  // Akari: a grant at $10.02, shares outstanding counted in ordinary shares
+  assert.equal(priceUnusable({ shares: 1248, price: 10.02, isDerivative: false, refRows: 0, sharesOutstanding: 186e9, code: "A" }), false);
+  assert.equal(priceUnusable({ shares: 1248, price: 10.02, isDerivative: false, refRows: 0, sharesOutstanding: 186e9, code: "S" }), false);
+  // a Wells Fargo row at $1,000 with code J is left alone; Mizuho in yen on code D is not
+  assert.equal(priceUnusable({ shares: 39, price: 1000, isDerivative: false, refRows: 3, sharesOutstanding: 3.0e9, code: "J" }), false);
+  assert.equal(priceUnusable({ shares: 264, price: 11910.34, isDerivative: false, refRows: 0, sharesOutstanding: 2.49e9, code: "D" }), true);
+});
 test("derivative rows and callers that pass no count are left to the older rules", () => {
   assert.equal(priceUnusable({ shares: 10, price: 500000, isDerivative: true, refRows: 1 }), false);
   assert.equal(priceUnusable({ shares: 10, price: 500000, isDerivative: false }), false);
