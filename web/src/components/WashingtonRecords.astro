@@ -11,6 +11,7 @@ import { naicsLabel } from "../lib/naics";
 import IssueList from "./IssueList.astro";
 import { issueIndex } from "../lib/lobbyissues";
 import Assistance from "./Assistance.astro";
+import MilitaryOrders from "./MilitaryOrders.astro";
 import LobbyContribFiler from "./LobbyContribFiler.astro";
 import { getDownloads } from "../lib/downloads";
 
@@ -40,6 +41,8 @@ const dlFiles = (await getDownloads()).files;
 </section>
 
 <Assistance model={model} companyId={c.id} name={c.name} file={dlFiles.find((f) => f.kind === "assistance")} />
+
+<MilitaryOrders model={model} companyId={c.id} name={c.name} />
 
 <section class="panel" data-panel aria-labelledby="lobbying">
 <h2 id="lobbying">Lobbying (Senate LDA, as client)</h2>

@@ -40,7 +40,9 @@
       "web/src/lib/contracts.ts": "c37352d0a3425c41",
       "web/src/lib/naics.ts": "e383c21b014850a8",
       "web/src/lib/assistance.ts": "8d1ebeffb90c1862",
-      "web/src/pages/grants/index.astro": "0128b561f87d1309"
+      "web/src/pages/grants/index.astro": "0128b561f87d1309",
+      "web/src/lib/dla.ts": "f65e108d3d3d388a",
+      "web/src/components/MilitaryOrders.astro": "015415265e9e25b2"
     }
   },
   "form-13f-institutional-holdings": {
@@ -251,7 +253,7 @@
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "e308d7ee77201988",
-      "web/src/lib/server/od.ts": "7be743abcf578390",
+      "web/src/lib/server/od.ts": "b36780044da9cc4a",
       "web/src/components/OdPageView.astro": "5dd0ae8dd987fd43",
       "web/src/lib/market.ts": "1c1fe024c48cfb64",
       "web/src/pages/stocks/[ticker].astro": "fe3e491c1ec52b9a",

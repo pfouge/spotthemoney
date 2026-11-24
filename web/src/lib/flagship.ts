@@ -31,6 +31,8 @@ import { emptyOutside, outsideLog } from "./outsidespending";
 import { loadOutside } from "./outsidespending-build";
 import { emptyAssistance, assistanceLog } from "./assistance";
 import { loadAssistance } from "./assistance-build";
+import { emptyDla, dlaLog } from "./dla";
+import { loadDla } from "./dla-build";
 import { emptyLobbyContrib, lobbyContribLog } from "./lobbygifts";
 import { emptyCampaign, campaignLog } from "./campaign";
 import { loadCampaign } from "./campaign-build";
@@ -90,7 +92,7 @@ async function load(): Promise<Flagship> {
     builtAt, connected: false, people: new Map(), companies: new Map(), securities: new Map(), filings: new Map(),
     market: emptyMarket(), txns: [], lobbying: [], contracts: [], committees: [], donationsByEmployer: [], donationsByState: [],
     donationWindowDays: 90, counts: {}, latestByPath: new Map(), issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
-    votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(), campaign: emptyCampaign(),
+    votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), dla: emptyDla(), lobbyContrib: emptyLobbyContrib(), campaign: emptyCampaign(),
   };
   const sql = db();
   if (!sql) { console.warn("[web] DATABASE_URL not set — flagship pages render empty states."); return empty; }
@@ -179,7 +181,7 @@ async function load(): Promise<Flagship> {
     ]);
 
     const model: Flagship = { ...empty, connected: true, issueNames: new Map(), companySize: new Map(), companySic: new Map(), seats: new Map(), footnotes: new Map(), form144: emptyForm144(), schedule13: emptySchedule13(), inst: emptyInst(), financials: emptyFinancials(), events: emptyEvents(), execPay: emptyPay(),
-      votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), lobbyContrib: emptyLobbyContrib(), campaign: emptyCampaign() };
+      votes: emptyVotes(), outside: emptyOutside(), assistance: emptyAssistance(), dla: emptyDla(), lobbyContrib: emptyLobbyContrib(), campaign: emptyCampaign() };
 
     for (const c of companyRows) {
       model.companies.set(c.id, { id: c.id, name: c.name, cik: c.cik, slug: c.slug, primaryTicker: c.primary_ticker, sector: c.sector,
@@ -493,6 +495,16 @@ async function load(): Promise<Flagship> {
       console.log(assistanceLog(model.assistance));
     } catch (err) {
       console.warn("[web] federal assistance skipped:", (err as Error).message);
+    }
+
+    // Military parts orders (DLA DIBBS awards), read from nsnexplorer.com's database through the
+    // read-only NSN_DATABASE_URL login (lib/dla.ts, lib/dla-build.ts). Own try/catch: nsnexplorer
+    // being unreachable leaves the section out and never fails the build.
+    try {
+      model.dla = await loadDla(model);
+      console.log(`[web] ${dlaLog(model.dla, (id) => model.companies.get(id)?.primaryTicker ?? String(id))}`);
+    } catch (err) {
+      console.warn("[web] military parts orders skipped:", (err as Error).message);
     }
 
     // Campaign committees linked to members (migration 0040) and their itemized receipts. Own try/catch;

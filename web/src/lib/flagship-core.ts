@@ -13,6 +13,7 @@ import type { VotesModel } from "./votes";
 import type { OutsideData } from "./outsidespending";
 import type { CampaignData } from "./campaign";
 import type { AssistanceData } from "./assistance";
+import type { DlaData } from "./dla";
 import type { LobbyContribData } from "./lobbygifts";
 import type { HoldingsChange } from "./holdings";
 
@@ -165,6 +166,8 @@ export interface Flagship {
   outside: OutsideData;
   /** Federal grants, loans and direct payments that started in the last 180 days (lib/assistance.ts). Empty when the table cannot be read. */
   assistance: AssistanceData;
+  /** Military parts orders: DLA DIBBS awards from nsnexplorer.com's database, last 12 months, per company (lib/dla.ts). Empty without NSN_DATABASE_URL. */
+  dla: DlaData;
   /** Contributions lobbyists report on Form LD-203 (lib/lobbygifts.ts). Aggregates and short lists only; never every item. */
   lobbyContrib: LobbyContribData;
   /** Campaign committees linked to members and their itemized receipts (lib/campaign.ts). Empty likewise. */
