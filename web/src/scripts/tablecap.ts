@@ -16,7 +16,7 @@ function alignNumbers(table: HTMLTableElement): void {
   const body = table.tBodies[0];
   if (!head || !body || body.rows.length === 0) return;
   [...head.cells].forEach((th, i) => {
-    if (th.classList.contains("num")) return;
+    if (th.classList.contains("num") || th.getAttribute("data-type") === "text") return; // a code column sorted as text stays left
     let seen = 0, nums = 0;
     for (const r of body.rows) {
       const c = r.cells[i];

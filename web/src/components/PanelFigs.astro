@@ -1,0 +1,9 @@
+---
+// One to three headline figures at the top of a panel (design/system.md section 8, "summary"). The figures are the
+// ones the panel's own summary sentence or the page's facts already state; this only puts them first, large.
+interface Props { items: { v: string; k: string }[] }
+const items = Astro.props.items.filter((i) => i.v !== "").slice(0, 3);
+---
+{items.length > 0 && (
+  <div class="pn-figs pn-figs-top">{items.map((i) => <p class="pn-fig"><span class="v">{i.v}</span><span class="k">{i.k}</span></p>)}</div>
+)}

@@ -86,3 +86,10 @@ footer.site .foot-h { margin: 0 0 var(--s-1); }
 
 /* In-page ad units keep their reserved height; the space around them is one step tighter (24px). */
 .ad-slot.ad-mid, .ad-slot.ad-low, .ad-slot.ad-multiplex { margin-block: var(--s-5); }
+
+/* ── 7. Headline figures at the top of a panel (components/PanelFigs.astro). ─────────────────────────────────────── */
+.pn-figs-top { margin: var(--s-2) 0 var(--s-1); }
+.pn-figs-top .pn-fig { margin: 0; }
+.pn-figs-top .pn-fig .v { order: 0; font-size: var(--t-lg); line-height: var(--lh-lg); }
+.pn-figs-top .pn-fig .k { order: 1; }
+.pgroup-label { max-width: none; }

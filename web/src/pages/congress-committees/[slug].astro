@@ -7,6 +7,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import Preview from "../../components/Preview.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
+import PanelFigs from "../../components/PanelFigs.astro";
 import Answer from "../../components/Answer.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import ScreenerLink from "../../components/ScreenerLink.astro";
@@ -76,12 +77,13 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   {c.jurisdiction && <p class="section-note">{c.jurisdiction} <span class="soft">(The description is the congress-legislators dataset's own wording.)</span></p>}
 
   <div class="panels">
-  <section class="panel" data-panel data-span="12" aria-labelledby="members" data-committee-members>
+  <section class="panel" data-panel aria-labelledby="members" data-committee-members>
     <h2 id="members">Members</h2>
+    <PanelFigs items={[{ v: num(n), k: "members on record" }, { v: num(c.withTrades), k: "with trades" }]} />
     <p class="section-note">Today's assignments, committee leaders first. "Trades" counts every transaction row in the member's reports on this site, whenever the trade was made. Click a column title to sort.</p>
-    <div class="tablewrap" data-preview="8"><table class="data" data-sortable>
+    <div class="tablewrap"><table class="data" data-sortable>
       <thead><tr>
-        {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
+        {heads.map((h, hi) => <th class={h.cls} data-col={hi === 3 || hi >= 5 ? "more" : undefined} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
       </tr></thead>
       <tbody>
         {c.members.map((x) => (
@@ -89,10 +91,10 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
             <td data-v={x.sortName}>{x.path ? <a href={x.path}>{x.name}</a> : x.name}</td>
             <td data-v={PARTY_LABEL[x.party]}>{PARTY_LABEL[x.party]}</td>
             <td data-v={x.seat} title={stateName(x.state) ?? undefined}>{x.seat}</td>
-            <td data-v={x.title ?? "~"}>{x.title ?? "Member"}</td>
+            <td data-col="more" data-v={x.title ?? "~"}>{x.title ?? "Member"}</td>
             <td class="num" data-v={x.trades}>{num(x.trades)}</td>
-            <td class="num" data-v={x.trades12m}>{num(x.trades12m)}</td>
-            <td class="mono" data-v={dayKey(x.latest)}>{x.latest ? formatDate(x.latest) : ""}</td>
+            <td class="num" data-col="more" data-v={x.trades12m}>{num(x.trades12m)}</td>
+            <td class="mono" data-col="more" data-v={dayKey(x.latest)}>{x.latest ? formatDate(x.latest) : ""}</td>
           </tr>
         ))}
       </tbody>
@@ -109,16 +111,17 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   {stocks.length > 0 && (
     <section class="panel" data-panel aria-labelledby="most-traded" data-committee-stocks>
       <h2 id="most-traded">Most-traded stocks, last 12 months</h2>
+      <PanelFigs items={[{ v: num(c.stocks.length), k: "tickers, last 12 months" }, ...(stocks[0] ? [{ v: stocks[0].ticker, k: `most traded, ${plural(stocks[0].trades, "trade")}` }] : [])]} />
       <p class="section-note">Tickers that appear most often in the reports these members disclosed in the last 365 days. A count of report rows, not a holding and not a view on the stock.</p>
-      <div class="tablewrap" data-preview="6"><table class="data" data-sortable>
+      <div class="tablewrap"><table class="data" data-sortable>
         <thead><tr>
           <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by ticker">Ticker<span class="arr" aria-hidden="true"></span></button></th>
           <th>Company</th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by members">Members<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by trades">Trades<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by purchases">Purchases<span class="arr" aria-hidden="true"></span></button></th>
-          <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by sales">Sales<span class="arr" aria-hidden="true"></span></button></th>
-          <th aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by latest disclosure">Latest disclosure<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="num" data-col="more" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by sales">Sales<span class="arr" aria-hidden="true"></span></button></th>
+          <th data-col="more" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by latest disclosure">Latest disclosure<span class="arr" aria-hidden="true"></span></button></th>
           <th class="hb-h"><span class="sr-only">Share of trades</span></th>
         </tr></thead>
         <tbody>
@@ -133,8 +136,8 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
                 <td class="num" data-v={s.members}>{num(s.members)}</td>
                 <td class="num" data-v={s.trades}>{num(s.trades)}</td>
                 <td class="num" data-v={s.buys}>{num(s.buys)}</td>
-                <td class="num" data-v={s.sells}>{num(s.sells)}</td>
-                <td class="mono" data-v={dayKey(s.latest)}>{s.latest ? formatDate(s.latest) : ""}</td>
+                <td class="num" data-col="more" data-v={s.sells}>{num(s.sells)}</td>
+                <td class="mono" data-col="more" data-v={dayKey(s.latest)}>{s.latest ? formatDate(s.latest) : ""}</td>
                 <td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * s.trades / Math.max(1, ...stocks.map((z) => z.trades))))}%`}></i></td>
               </tr>
             );
@@ -148,6 +151,7 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   {c.trades > 0 && (
     <section class="panel" data-panel data-span="12" aria-labelledby="trades" data-committee-trades>
       <h2 id="trades">Trades disclosed by members</h2>
+      <PanelFigs items={[{ v: num(c.trades), k: "trades on record" }, ...(c.trades > 0 ? [{ v: num(c.trades12m), k: "in the last 12 months" }] : [])]} />
       <p class="section-note">Newest disclosures first, each with a link to the original report. {c.trades > COMMITTEE_TRADE_ROWS ? `The table holds the ${COMMITTEE_TRADE_ROWS} most recent of ${num(c.trades)} rows; every row is on the member's own page.` : "Every row is also on the member's own page."} A trade may predate the member's seat on this committee.</p>
       <ScreenerLink committee={c.code} n={screenerCountsFor(model, personPath).committee.get(c.code) ?? 0} of="by this committee's members" />
       <Preview rows={8}><TxnTable model={model} txns={c.txns} showPerson showSecurity limit={COMMITTEE_TRADE_ROWS} /></Preview>
@@ -157,6 +161,7 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   {lcMembers.length > 0 && (
     <section class="panel" data-panel aria-labelledby="lobbyist-contributions" data-committee-lobbycontrib data-n={lcMembers.length}>
       <h2 id="lobbyist-contributions">Lobbyist contributions naming members</h2>
+      <PanelFigs items={[{ v: num(lcMembers.length), k: lcMembers.length === 1 ? "member named" : "members named" }]} />
       <p class="section-note" data-lcc-summary>{plural(lcMembers.length, "current member")} of the {n} on record {lcMembers.length === 1 ? "is" : "are"} named as honoree, or have a campaign committee named as payee, in at least one contribution item on a lobbyist's Form LD-203 report.</p>
       <p class="section-note" data-lcc-caveat>{COMMITTEE_LOBBY_CAVEAT} <a href="/lobbyist-contributions/">All lobbyist contributions</a></p>
       <div class="tablewrap" data-preview="6"><table class="data" data-sortable>
