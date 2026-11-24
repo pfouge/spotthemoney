@@ -89,6 +89,8 @@ export interface Txn {
   value: number | null;
   /** Set when another filer's earlier Form 4 already reports this same transaction (lib/joint.ts): the id of that row. */
   jointOf?: number | null;
+  /** Form 4 code S row whose filing also reports an option exercise (code M or X) on the same date (lib/exercise.ts). */
+  exerciseSale?: boolean;
   /** Form 4 only: shares the insider owns after this transaction, as filed (non-derivative rows; lib/holdings.ts). */
   ownedAfter?: number | null;
   /** Form 4 only: change in the reported holding caused by this row, in percent; "new" for a first position (lib/holdings.ts). */

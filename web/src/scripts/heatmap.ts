@@ -7,7 +7,7 @@
 
 type Side = "buy" | "sell" | "other";
 interface CongressRow { t: string; n: string | null; p: string; ps: string | null; ch: "house" | "senate" | null; pa: string | null; st: string | null; s: Side; v: number; lo: number | null; hi: number | null; o: string | null; d: string; f: string | null; u: string | null }
-interface InsiderRow { t: string; n: string | null; p: string; ps: string | null; r: "officer" | "director" | "owner"; ti: string | null; c: string | null; s: Side; v: number; sh: number | null; pr: number | null; pl: boolean; o: string | null; d: string; f: string | null; u: string | null }
+interface InsiderRow { t: string; n: string | null; p: string; ps: string | null; r: "officer" | "director" | "owner"; ti: string | null; c: string | null; s: Side; v: number; sh: number | null; pr: number | null; pl: boolean; x?: boolean; o: string | null; d: string; f: string | null; u: string | null }
 type Row = (CongressRow | InsiderRow) & { k: "congress" | "insiders" };
 const isC = (r: Row): r is CongressRow & { k: "congress" } => r.k === "congress";
 import { unpack, type Packed } from "../lib/heatmap-pack";
@@ -23,6 +23,7 @@ interface State {
   who: string;        // person slug or "" (congress: member; insiders: filer)
   codes: "open" | "all";   // insiders only
   plan: "exclude" | "include"; // insiders only
+  ex: "exclude" | "include";   // insiders only: sales of shares from options exercised the same day (lib/exercise.ts)
   window: number;     // days
   view: "net" | "buy" | "sell";
   tickers: string;    // comma list, "" = all
@@ -114,7 +115,7 @@ export function initHeatmap(root: HTMLElement): void {
   // The chart, window and view a map opens on come from its markup (Heatmap.astro): the main maps
   // open on the scatter, the small map on the treemap; all of them on 90 days in the Net view
   // (Peter, 2026-10-09).
-  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", window: ([7, 30, 90, 365].includes(Number(root.dataset.window)) ? Number(root.dataset.window) : 90),
+  const DEFAULTS: State = { cls: "all", chamber: "all", party: "all", role: "all", who: "", codes: "open", plan: "exclude", ex: "exclude", window: ([7, 30, 90, 365].includes(Number(root.dataset.window)) ? Number(root.dataset.window) : 90),
     view: (["net", "buy", "sell"].includes(root.dataset.view ?? "") ? root.dataset.view : "net") as State["view"], tickers: "", cap: "all", side: "tickers",
     chart: root.dataset.chart === "scatter" ? "scatter" : "map" };
   const crossSrc = root.dataset.cross || "";
@@ -131,9 +132,9 @@ export function initHeatmap(root: HTMLElement): void {
   const primary = root.dataset.primary === "true";
   if (primary && location.hash.length > 1) {
     const h = new URLSearchParams(location.hash.slice(1));
-    for (const k of ["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap"] as const) { const v = h.get(k); if (v != null) (state as unknown as Record<string, string>)[k] = v; }
+    for (const k of ["cls", "chamber", "party", "role", "who", "codes", "plan", "ex", "view", "tickers", "side", "cap"] as const) { const v = h.get(k); if (v != null) (state as unknown as Record<string, string>)[k] = v; }
     // Only a hash that carries one of our keys is a saved view ("#heatmap" is a jump link).
-    const ours = ["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap", "w", "chart"].some((k) => h.has(k));
+    const ours = ["cls", "chamber", "party", "role", "who", "codes", "plan", "ex", "view", "tickers", "side", "cap", "w", "chart"].some((k) => h.has(k));
     const w = Number(h.get("w")); if ([7, 30, 90, 365].includes(w)) state.window = w;
     if (!["all", "mega", "large", "mid", "small", "micro"].includes(state.cap)) state.cap = "all";
     if (!["net", "buy", "sell"].includes(state.view)) state.view = DEFAULTS.view;
@@ -153,6 +154,7 @@ export function initHeatmap(root: HTMLElement): void {
     if (state.who) h.set("who", state.who);
     if (hasInsiders && state.codes !== "open") h.set("codes", state.codes);
     if (hasInsiders && state.plan !== "exclude") h.set("plan", state.plan);
+    if (hasInsiders && state.ex !== "exclude") h.set("ex", state.ex);
     if (state.window !== DEFAULTS.window) h.set("w", String(state.window));
     if (state.view !== DEFAULTS.view) h.set("view", state.view);
     if (state.tickers) h.set("tickers", state.tickers);
@@ -160,7 +162,7 @@ export function initHeatmap(root: HTMLElement): void {
     if (state.side !== "tickers") h.set("side", state.side);
     if (state.chart !== DEFAULTS.chart || [...h.keys()].length) { h.set("chart", state.chart); h.set("w", String(state.window)); h.set("view", state.view); } // a saved view always says all three
     // Keys that are not the map's own (the home feed's nw / np / nq / ns) stay as they are.
-    const mine = new Set(["cls", "chamber", "party", "role", "who", "codes", "plan", "view", "tickers", "side", "cap", "w", "chart"]);
+    const mine = new Set(["cls", "chamber", "party", "role", "who", "codes", "plan", "ex", "view", "tickers", "side", "cap", "w", "chart"]);
     for (const [k, v] of new URLSearchParams(location.hash.slice(1))) if (!mine.has(k)) h.set(k, v);
     const s = h.toString(); history.replaceState(null, "", s ? "#" + s : location.pathname + location.search);
   };
@@ -194,6 +196,7 @@ export function initHeatmap(root: HTMLElement): void {
     const i = r as InsiderRow;
     if (state.codes === "open" && i.c !== "P" && i.c !== "S") return false;
     if (state.plan === "exclude" && i.pl) return false;
+    if (state.ex === "exclude" && i.x) return false;
     if (state.role !== "all" && i.r !== state.role) return false;
     return true;
   };
@@ -280,7 +283,7 @@ export function initHeatmap(root: HTMLElement): void {
   const classMatch = (r: Row): boolean => {
     if (isC(r)) return (state.chamber === "all" || r.ch === state.chamber) && (state.party === "all" || partyOf(r.pa) === state.party);
     const i = r as InsiderRow;
-    return !(state.codes === "open" && i.c !== "P" && i.c !== "S") && !(state.plan === "exclude" && i.pl) && (state.role === "all" || i.r === state.role);
+    return !(state.codes === "open" && i.c !== "P" && i.c !== "S") && !(state.plan === "exclude" && i.pl) && !(state.ex === "exclude" && i.x) && (state.role === "all" || i.r === state.role);
   };
   /** ticker → [bought, sold] for the group plotted up and down. Null while its file is loading. */
   function otherTotals(yc: Cls): Map<string, [number, number]> | null {
@@ -411,7 +414,7 @@ export function initHeatmap(root: HTMLElement): void {
     const R = isDark() ? RAMPS.dark : RAMPS.light; const el = q(".hm-legend");
     if (state.chart === "scatter") {
       const xc = xClass(), yc: Cls = xc === "insiders" ? "congress" : "insiders"; const across = state.view === "buy" ? "dollars bought" : state.view === "sell" ? "dollars sold" : "bought minus sold";
-      const other = kind === "all" ? "" : crossState === "failed" ? ` · ${NAME[yc]} figures could not be loaded` : ` · ${NAME[yc]} figures: ${yc === "insiders" ? "open-market trades, no 10b5-1 plans" : "all members"}`;
+      const other = kind === "all" ? "" : crossState === "failed" ? ` · ${NAME[yc]} figures could not be loaded` : ` · ${NAME[yc]} figures: ${yc === "insiders" ? "open-market trades, no 10b5-1 plans or exercise sales" : "all members"}`;
       el.innerHTML = `<span class="hm-grad"><span>Mostly selling</span><span class="bar" style="background:${shareGradientCss(isDark())}"></span><span>Mostly buying</span></span>` +
         `<span>Across = ${NAME[xc]}, ${across} · up and down = ${NAME[yc]}, buying minus selling · dot size = dollars · window = date disclosed${other}</span>`;
     } else {
@@ -434,6 +437,7 @@ export function initHeatmap(root: HTMLElement): void {
   bindSeg("view", (v) => { state.view = v as State["view"]; });
   bindSeg("codes", (v) => { state.codes = v as State["codes"]; });
   bindSeg("plan", (v) => { state.plan = v as State["plan"]; });
+  bindSeg("ex", (v) => { state.ex = v as State["ex"]; });
   bindSeg("side", (v) => { state.side = v as State["side"]; });
   // The chart switch under the map: a real switch (off = scatter, on = heatmap) with a clickable
   // icon on each side.
@@ -464,7 +468,7 @@ export function initHeatmap(root: HTMLElement): void {
   const resetBtn = root.querySelector<HTMLButtonElement>('[data-ctl="reset"]');
   resetBtn?.addEventListener("click", () => { Object.assign(state, DEFAULTS, { chart: state.chart }); syncAll(); render(); }); // Reset clears the filters, not the choice of chart
   function syncAll(): void {
-    ["window", "view", "codes", "plan", "side"].forEach(syncSeg);
+    ["window", "view", "codes", "plan", "ex", "side"].forEach(syncSeg);
     for (const k of ["cls", "chamber", "party", "role"] as const) { const el = sels[k]; if (el) el.value = state[k]; }
     if (whoSel) whoSel.value = state.who; if (tickIn) tickIn.value = state.tickers;
     if (capSel) capSel.value = state.cap;

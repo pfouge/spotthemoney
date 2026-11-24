@@ -11,6 +11,8 @@ export interface PackableRow {
   t: string; n: string | null; p: string; ps: string | null; r: string; ti: string | null;
   c: string | null; s: "buy" | "sell" | "other"; v: number; sh: number | null; pr: number | null;
   pl: boolean; o: string | null; d: string; f: string | null; u: string | null;
+  /** Sale of shares from options exercised the same day (lib/exercise.ts). */
+  x?: boolean;
 }
 
 export const URL_PREFIX = "https://www.sec.gov/Archives/edgar/data/";
@@ -27,7 +29,7 @@ export interface Packed {
   pp: [string, string | null, string, string | null][];   // filer, slug, role, title
   fl: [string | null, number | null][];                   // url (without URL_PREFIX), filed-day offset
   ow: (string | null)[];                                  // ownership labels
-  rows: (string | number | null)[][];                     // tk, pp, fl, code, side, v (null = sh × pr), sh, pr, plan, ow, day
+  rows: (string | number | null)[][];                     // tk, pp, fl, code, side, v (null = sh × pr), sh, pr, flags (1 = 10b5-1 plan, 2 = exercise sale), ow, day
 }
 
 export function pack(rows: PackableRow[]): Packed {
@@ -43,7 +45,7 @@ export function pack(rows: PackableRow[]): Packed {
       index(out.tk, tk, JSON.stringify([r.t, r.n]), () => [r.t, r.n]),
       index(out.pp, pp, JSON.stringify([r.p, r.ps, r.r, r.ti]), () => [r.p, r.ps, r.r, r.ti]),
       index(out.fl, fl, JSON.stringify([r.u, r.f]), () => [r.u != null && r.u.startsWith(URL_PREFIX) ? r.u.slice(URL_PREFIX.length) : r.u, r.f != null ? dayNum(r.f) - b : null]),
-      r.c, SIDES.indexOf(r.s), r.sh != null && r.pr != null && r.sh * r.pr === r.v ? null : r.v, r.sh, r.pr, r.pl ? 1 : 0,
+      r.c, SIDES.indexOf(r.s), r.sh != null && r.pr != null && r.sh * r.pr === r.v ? null : r.v, r.sh, r.pr, (r.pl ? 1 : 0) | (r.x ? 2 : 0),
       index(out.ow, ow, String(r.o), () => r.o),
       dayNum(r.d) - b,
     ]);
@@ -57,7 +59,7 @@ export function unpack(f: Packed): PackableRow[] {
     const [t, n] = f.tk[x[0] as number]!, [p, ps, r, ti] = f.pp[x[1] as number]!, [u, fd] = f.fl[x[2] as number]!;
     return {
       t, n, p, ps, r, ti, c: x[3] as string | null, s: SIDES[x[4] as number]!, v: x[5] != null ? (x[5] as number) : (x[6] as number) * (x[7] as number),
-      sh: x[6] as number | null, pr: x[7] as number | null, pl: x[8] === 1, o: f.ow[x[9] as number] ?? null,
+      sh: x[6] as number | null, pr: x[7] as number | null, pl: ((x[8] as number) & 1) === 1, x: ((x[8] as number) & 2) === 2, o: f.ow[x[9] as number] ?? null,
       d: isoOf(b + (x[10] as number)), f: fd != null ? isoOf(b + fd) : null,
       u: u == null ? null : /^https?:/.test(u) ? u : URL_PREFIX + u,
     };

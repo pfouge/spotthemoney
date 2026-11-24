@@ -137,7 +137,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <p>P and S. A code P purchase means the insider paid for shares, which is the event most readers are looking for. A code S sale means they sold shares for cash.</p>
 <p>Everything else is mostly the mechanics of being paid in stock. A senior executive's filings are typically a cycle: an award is granted (A), it later vests or an option is exercised (M), some shares are withheld to pay the tax bill (F), and some of the rest may be sold (S). Only the last step is a choice to sell, and often not even that if it was scheduled under a ${`<a href="/guides/rule-10b5-1-trading-plans/">10b5-1 plan</a>`}.</p>` },
       { id: "site", h: "How do the codes shape what I see here?", html: `
-<p>The trade map opens on "Open-market", which shows only P and S rows. Switching to "All codes" brings in the rest. The site-wide charts (buy / sell pressure, weekly flow, the activity calendar) count only P and S rows that were not made under a pre-arranged plan. Charts on a single insider's or stock's page count every row marked Buy or Sell, including codes F and D.</p>
+<p>The trade map opens on "Open-market", which shows only P and S rows. Switching to "All codes" brings in the rest. The site-wide charts (buy / sell pressure, weekly flow, the activity calendar) count only P and S rows that were not made under a pre-arranged plan, and leave out a code S sale when the same filing reports an option exercise (M or X) on the same day; the map does the same until you choose "With exercise sales". Charts on a single insider's or stock's page count every row marked Buy or Sell, including codes F and D.</p>
 <p>In tables, each Form 4 row shows its side with the code beside it, for example "Sell F", so you can tell a market sale from a tax withholding at a glance. Rows from Table II (options and other derivatives) are labelled "Option / conversion" and are kept out of buy and sell totals; see ${`<a href="/guides/insider-options-and-derivatives/">options and derivatives</a>`}.</p>` },
       { id: "price-zero", h: "Why do some rows have no price?", html: `
 <p>Because nothing was paid. A grant (A) or a gift (G) has no purchase price, and some filings put a weighted average or a total in a footnote instead of the price box. Those rows show a dash for price and value here. Where a filing has footnotes, each of its rows carries a link such as "2 notes" that opens the text under the table, as filed.</p>` },
@@ -154,7 +154,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["what-is-form-4", "insider-options-and-derivatives", "insider-buying-vs-insider-selling", "how-to-use-the-trade-map"],
     seeLive: [{ label: "Newest insider filings", href: "/insiders/" }, { label: "Flag and code definitions", href: "/methodology/#flags" }],
-    covers: ["ingest/src/sources/sec_form4.ts#codeToSide", "web/src/lib/vizdata.ts#isSignal", "web/src/lib/flagship-core.ts#sideLabel"],
+    covers: ["ingest/src/sources/sec_form4.ts#codeToSide", "web/src/lib/vizdata.ts#isSignal", "web/src/lib/flagship-core.ts#sideLabel", "web/src/lib/exercise.ts"],
     ui: [{ text: "Open-market", on: "/insiders/" }, { text: "All codes", on: "/insiders/" }],
     facts: [],
   }),
@@ -249,6 +249,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <p>Check that the buyers are separate people. Funds that hold a stake together often each file a Form 4 for the same purchase; this site counts such a trade once (see ${`<a href="/guides/ten-percent-owners-and-joint-filings/">joint filings</a>`}).</p>` },
       { id: "reading", h: "How should I read the buy and sell numbers on this site?", html: `
 <p>With the mix in mind. The "Buy / sell pressure" chart counts only open-market trades (codes P and S) that were not made under a pre-arranged plan, and compares the last 30 days with the last twelve complete months. A low buying share is the normal state, so the useful question is whether it has moved, not whether it is below half.</p>
+<p>The chart also leaves out sales of shares from options exercised the same day: a code S sale whose filing reports an option exercise (code M or X) on the same date. Those sales are how option pay is collected, and nobody buys shares that way, so counting them would tilt the comparison further. Taking them out narrows the gap but does not close it: most of the remaining selling is real. The trade map's "With exercise sales" setting puts them back.</p>
 <p>Size matters as well. One fund selling a block can outweigh every officer and director in the market for that month. Use the Role filter on the map to separate officers, directors and 10% owners.</p>` },
     ],
     faqs: [
@@ -263,7 +264,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["what-is-form-4", "form-4-transaction-codes", "rule-10b5-1-trading-plans", "ten-percent-owners-and-joint-filings", "what-disclosure-data-cannot-tell-you"],
     seeLive: [{ label: "Insider charts and feeds", href: "/insiders/" }, { label: "Trade map", href: "/" }],
-    covers: ["web/src/lib/vizdata.ts#isSignal", "web/src/lib/vizdata.ts#gaugeData", "web/src/components/VizFlow.astro", "web/src/pages/insiders/index.astro"],
+    covers: ["web/src/lib/vizdata.ts#isSignal", "web/src/lib/vizdata.ts#gaugeData", "web/src/components/VizFlow.astro", "web/src/pages/insiders/index.astro", "web/src/lib/exercise.ts"],
     ui: [{ text: "Buy / sell pressure", on: "/insiders/" }, { text: "10% owners", on: "/insiders/" }],
     facts: [],
   }),
@@ -286,7 +287,8 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
 <p>A derivative is a contract whose value depends on the share price: an employee stock option, a warrant, a convertible security, a call or put bought on an exchange. Form 4 reports these in its second table, apart from ordinary shares.</p>
 <p>For most executives the entries are employee options and similar awards: granted as pay (code A), later exercised (code M). For large holders such as hedge funds they can be exchange-traded puts and calls.</p>` },
       { id: "exercise", h: "What does an option exercise look like?", html: `
-<p>Two or three rows filed together. In Table II the option disappears with code M. In Table I the same number of shares arrives, also code M, at the option's exercise price, which may be far below the market price. Often a code F or code S row follows, where shares are withheld or sold to cover tax and the exercise cost.</p>
+<p>Two or three rows filed together. In Table II the option disappears with code M. In Table I the same number of shares arrives, also code M, at the option's exercise price, which may be far below the market price. Often a code F or code S row follows, where shares are withheld or sold to cover tax and the exercise cost, or all of them are sold at once (an "exercise and sell").</p>
+<p>On this site a code S sale whose filing also reports an exercise (M or X) on the same date counts as such a sale. It is listed in every table as filed, but the site-wide charts and the trade map leave it out by default, because it is how option pay is turned into cash. The map's "With exercise sales" setting brings it back.</p>
 <p>None of this is the insider deciding the stock is cheap. The option was granted years earlier and was about to expire or had vested.</p>` },
       { id: "why-separate", h: "Why are these rows kept out of buy and sell totals?", html: `
 <p>Because adding them would mislead in both direction and size. A fund that buys put options is positioned for the price to fall, yet the row is an "acquisition". A fund that sells call options has "disposed" of something without selling a share. Counting either as buying or selling the stock would turn the meaning upside down.</p>
@@ -305,7 +307,7 @@ ${table(["Code", "Plain meaning", "How this site treats it"], [
     ],
     related: ["form-4-transaction-codes", "what-is-form-4", "ten-percent-owners-and-joint-filings"],
     seeLive: [{ label: "How values are computed", href: "/methodology/#values" }, { label: "Newest insider filings", href: "/insiders/" }],
-    covers: ["shared/src/tradevalue.ts", "web/src/lib/heatmap.ts#insiderRows", "web/src/lib/flagship-core.ts#sideLabel"],
+    covers: ["shared/src/tradevalue.ts", "web/src/lib/heatmap.ts#insiderRows", "web/src/lib/flagship-core.ts#sideLabel", "web/src/lib/exercise.ts"],
     ui: [],
     facts: [],
   }),

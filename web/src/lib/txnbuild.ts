@@ -3,7 +3,7 @@
 // counts once. Pure (no database, no Node APIs): lib/flagship.ts feeds it every row at build time,
 // and lib/server/od.ts feeds it one entity's rows when the Worker renders a page on demand, so the
 // two can never disagree about a number.
-import { tradeValue, unitPrice, median } from "@stm/shared";
+import { tradeValue, unitPrice, median, priceUnusable, WEAK_REF_ROWS, MAX_UNCONFIRMED_PRICE, MAX_IMPLIED_COMPANY_VALUE } from "@stm/shared";
 import { jointDuplicates, type JointRow } from "./joint";
 import { heldAfter, holdingsChange } from "./holdings";
 import type { Txn } from "./flagship-core";
@@ -23,20 +23,50 @@ export interface FilingFacts { source: string; filedAt: string | null; sourceUrl
  * tells a per-share price from a row total typed into the price box (shared/tradevalue). Pass only
  * rows of Form 4 filings.
  */
-export function refPriceMap(rows: Iterable<{ security_id: number | null; is_derivative: boolean | null; txn_code: string | null; price: number | null }>): Map<number, number> {
-  const refPrices = new Map<number, number[]>();
+type RefRow = { security_id: number | null; is_derivative: boolean | null; txn_code: string | null; price: number | null };
+const isRefRow = (t: RefRow): t is RefRow & { security_id: number; price: number } =>
+  t.security_id != null && t.is_derivative !== true && (t.txn_code === "P" || t.txn_code === "S") && t.price != null && t.price > 0;
+
+/** Median price and the number of rows it was taken from, per security (see shared/tradevalue: WEAK_REF_ROWS). */
+export function refStatsMap(rows: Iterable<RefRow>): Map<number, { price: number; rows: number }> {
+  const prices = new Map<number, number[]>();
   for (const t of rows) {
-    if (t.security_id == null || t.is_derivative === true || !(t.txn_code === "P" || t.txn_code === "S") || !(t.price != null && t.price > 0)) continue;
-    const xs = refPrices.get(t.security_id); if (xs) xs.push(t.price); else refPrices.set(t.security_id, [t.price]);
+    if (!isRefRow(t)) continue;
+    const xs = prices.get(t.security_id); if (xs) xs.push(t.price); else prices.set(t.security_id, [t.price]);
   }
-  const refPrice = new Map<number, number>();
-  for (const [id, xs] of refPrices) { const m = median(xs); if (m != null) refPrice.set(id, m); }
-  return refPrice;
+  const out = new Map<number, { price: number; rows: number }>();
+  for (const [id, xs] of prices) { const m = median(xs); if (m != null) out.set(id, { price: m, rows: xs.length }); }
+  return out;
+}
+
+export function refPriceMap(rows: Iterable<RefRow>): Map<number, number> {
+  return new Map([...refStatsMap(rows)].map(([id, s]) => [id, s.price]));
+}
+
+/** What else the price check may know about a row's stock (shared/tradevalue: priceUnusable). */
+export interface RefExtra { rows?: number | null; sharesOutstanding?: number | null }
+
+/**
+ * Stock rows whose price was not used (priceUnusable), per ticker, for the build log, so the
+ * count can be compared with SQL. `tickerOf` names a security; rows without one are "(no ticker)".
+ */
+export function unusablePriceLog(rows: Iterable<RawTxn>, refStats: Map<number, { price: number; rows: number }>, soOf: (securityId: number) => number | null, tickerOf: (securityId: number) => string | null, label: string): string {
+  const per = new Map<string, number>(); let n = 0;
+  for (const t of rows) {
+    if (t.security_id == null || t.is_derivative === true || !(t.shares != null && t.shares > 0)) continue;
+    const s = refStats.get(t.security_id);
+    if (!priceUnusable({ shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice: s?.price ?? null, refRows: s?.rows ?? 0, sharesOutstanding: soOf(t.security_id) })) continue;
+    n++; const k = tickerOf(t.security_id) ?? "(no ticker)"; per.set(k, (per.get(k) ?? 0) + 1);
+  }
+  const list = [...per].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, c]) => `${k} ${c}`).join(", ");
+  return `[web] prices not used (${label}): ${n} Form 4 stock ${n === 1 ? "row" : "rows"} of stocks with fewer than ${WEAK_REF_ROWS} open-market trades state a price above ${MAX_UNCONFIRMED_PRICE} a share or one that values the company above ${MAX_IMPLIED_COMPANY_VALUE}${n ? `: ${list}` : ""}`;
 }
 
 /** The Txn a stored row stands for (before the joint-filing rule). */
-export function buildTxn(t: RawTxn, f: FilingFacts, refPrice: number | null | undefined): Txn {
-  const basis = { shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice };
+export function buildTxn(t: RawTxn, f: FilingFacts, refPrice: number | null | undefined, ref: RefExtra = {}): Txn {
+  // A security with no open-market row at all has no yardstick either: zero rows, the weak case.
+  const refRows = ref.rows ?? (refPrice == null ? 0 : null);
+  const basis = { shares: t.shares, price: t.price, isDerivative: t.is_derivative, refPrice, refRows, sharesOutstanding: ref.sharesOutstanding ?? null };
   const value = tradeValue(basis) ?? (t.shares != null && t.price != null && t.price > 0 ? null : t.amount_high ?? null);
   const price = unitPrice(basis) ?? t.price;
   // Options, warrants and other derivative rows are not purchases or sales of the stock: a put

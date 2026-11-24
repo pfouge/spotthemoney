@@ -17,7 +17,7 @@ const ratioNow = g && g.sell > 0 ? g.buy / g.sell : null;
 {g && (
   <Viz compact title="Buy / sell pressure" question="Are corporate insiders buying or selling right now, and how does that compare with the past year?"
     svg={gaugeSvg(g)} svgPhone={gaugeSvg(g, PHONE_W)}
-    summary={ratioNow != null ? `In the last 30 days insiders bought ${usd(g.buy)} and sold ${usd(g.sell)} on the open market: $${ratioNow.toFixed(2)} bought for every dollar sold. Pre-scheduled 10b5-1 plan trades are left out.` : undefined} />
+    summary={ratioNow != null ? `In the last 30 days insiders bought ${usd(g.buy)} and sold ${usd(g.sell)} on the open market: $${ratioNow.toFixed(2)} bought for every dollar sold. Pre-scheduled 10b5-1 plan trades and sales of shares from options exercised the same day are left out.` : undefined} />
 )}
 <Viz compact title="Activity calendar" question={`Which days saw the most trading by ${who}, and in which direction? One square per day for the last year.`}
   legend={[["v-buy", "Net buying"], ["v-sell", "Net selling"], ["v-none", "No trades"]]}

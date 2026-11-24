@@ -7,7 +7,7 @@ const row0 = (i: number): PackableRow => ({
   t: `T${i % 760}`, n: `Company Number ${i % 760}, Inc.`, p: `Filer ${i % 9000} Lastname`, ps: i % 50 ? `filer-${i % 9000}-lastname` : null,
   r: ["officer", "director", "owner"][i % 3]!, ti: i % 3 ? null : "Chief Financial Officer",
   c: ["S", "P", "A", "M", "F", null][i % 6]!, s: (["sell", "buy", "other"] as const)[i % 3]!, v: 0,
-  sh: i % 11 ? i * 3 : null, pr: i % 7 ? 100 + (i % 500) / 4 : null, pl: i % 5 === 0, o: i % 4 ? "self" : i % 8 ? "indirect" : null,
+  sh: i % 11 ? i * 3 : null, pr: i % 7 ? 100 + (i % 500) / 4 : null, pl: i % 5 === 0, x: i % 17 === 0, o: i % 4 ? "self" : i % 8 ? "indirect" : null,
   d: new Date(Date.UTC(2025, 9, 6) + (i % 365) * 86400000).toISOString().slice(0, 10),
   f: i % 97 ? new Date(Date.UTC(2025, 9, 8) + (i % 365) * 86400000).toISOString().slice(0, 10) : null,
   u: i % 101 ? `https://www.sec.gov/Archives/edgar/data/${1000000 + (i % 760)}/00011046592${String(600000 + Math.floor(i / 3)).padStart(7, "0")}/xslF345X05_form4-${Math.floor(i / 3)}.xml` : i % 2 ? null : "https://example.org/other.xml",

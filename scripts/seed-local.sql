@@ -152,6 +152,9 @@ insert into seed_f4 values
   ('0001321655-26-000307', '0001100006', 'PLTR', current_date - 1,  current_date - 2,  'S', 8000,   40.00,  false, false, 2000),
   ('0000936468-26-000401', '0001100004', 'LMT',  current_date - 1,  current_date - 3,  'P', 3000,   462.15, false, false, 120000),
   ('0000936468-26-000402', '0001100004', 'LMT',  current_date - 90, current_date - 92, 'M', 10000,  0,      true,  null, 117000),
+  -- Exercise and sell (web/src/lib/exercise.ts): an option exercise (code M) is added to this
+  -- filing below on the same trade date, so the sale is left out of the charts and the trade map by default.
+  ('0001045810-26-000104', '0001100000', 'NVDA', current_date - 4,  current_date - 6,  'S', 15000,  182.00, false, false, 60000000),
   -- Filed before the site's Form 4 record starts (shared/src/floor.ts): stored, never shown.
   -- verify-downloads fails if this row reaches a download.
   ('0001045810-19-000900', '0001100000', 'NVDA', date '2019-03-14', date '2019-03-12', 'P', 777, 33.33, true, false, 1234567);
@@ -182,6 +185,9 @@ select fi.id, fi.filer_person_id, s.id,
        case f.code when 'P' then 'buy' when 'S' then 'sell' when 'M' then 'option' else 'other' end::txn_side,
        f.code, f.code = 'M', f.txn, f.filed, f.shares, f.price, f.filed - f.txn, 1.0, 'auto_approved', f.aff, 'self', case when f.code='M' then 'derivative' else 'stock' end
   from seed_f4 f join filings fi on fi.external_id = f.accession join securities s on s.ticker = f.ticker and s.type = 'equity';
+insert into transactions (filing_id, person_id, security_id, side, txn_code, is_derivative, txn_date, disclosed_at, shares, price, disclosure_lag_days, confidence, review, is_10b5_1, owner_type, asset_type)
+select fi.id, fi.filer_person_id, s.id, 'option'::txn_side, 'M', true, current_date - 6, current_date - 4, 15000, 42.10, 2, 1.0, 'auto_approved', false, 'self', 'derivative'
+  from filings fi join securities s on s.ticker = 'NVDA' and s.type = 'equity' where fi.external_id = '0001045810-26-000104';
 
 -- ── House PTR filings ────────────────────────────────────────────────────────────────────
 create temp table seed_ptr (doc text, slug text, filed date, txn date, ttype text, ticker text, lo numeric, hi numeric, owner text, atype text, conf numeric, published boolean);

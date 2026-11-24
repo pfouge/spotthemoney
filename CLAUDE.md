@@ -4587,3 +4587,42 @@ measured before, principles applied), `design/home/` (the two homepage direction
   page scroll sideways by a few pixels between 640 and 799px.
 - **AdSense (same day, Peter's yes):** in-page Auto ads (Banner ads) switched off for spotthemoney.com;
   they were filling the new columns and cards. The four labelled slots and the overlay formats stay.
+
+### Exercise sales left out by default; a price check for thinly traded stocks (2026-11-24, interactive session)
+
+Peter asked why insider selling dwarfs buying on the home charts (buying 7.4% of open-market dollars over
+30 days) and whether a kind of sale could be hidden by default with a switch to show it. 10b5-1 plan
+trades were already out. Production check (tracked companies, last 30 days, open-market, outside plans):
+416 of 1,151 sale rows, $1.2B of $4.7B, were sales of shares from options exercised the same day. Taking
+them out moves the buying share from about 7.7% to about 10%; most of the remaining tilt is real (pay in
+stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
+
+- **Exercise sale** (`web/src/lib/exercise.ts`, tests `scripts/exercise.test.ts`): a Form 4 code S row
+  whose own filing has a code M or X row on the same trade date. Marked on `Txn.exerciseSale` by
+  `markExerciseSales` in `flagship.ts` and `market-model.ts` (not on the on-demand pages, which have no
+  charts of this kind). The whole row is marked even when more shares were sold than exercised. Code C
+  (conversion) does not count.
+- **Where it applies:** `isSignal` (`vizdata.ts`) leaves exercise sales out, so the buy/sell pressure,
+  activity calendar, weekly flow, tape and headline tiles drop them; the trade map has a switch "Option
+  exercise sales: No exercise sales / With exercise sales" (`data-seg="ex"`, hash key `ex=include`,
+  default exclude), and `trade-cross.json` follows the default. Every table, CSV, feed, the notable feed
+  and the home leaderboards are unchanged (they list or rank what was filed).
+- **Packed heatmap rows:** field 8 is now flags (1 = 10b5-1 plan, 2 = exercise sale); `unpack` and the
+  verifier's own unpacker read the bits. A row with both is 3.
+- **Price check for thinly traded stocks** (`priceUnusable` in `shared/src/tradevalue.ts`, tests
+  `scripts/weakref.test.ts`): the fifty-times-the-median rule failed when a stock has only a few trades,
+  because the bad rows were the median (SPPL: three sales with the row total in the price box, one of
+  them "$51B"; it reached the home feed's large sales and leaderboards through the market slice). Now,
+  for a stock with fewer than 5 open-market rows (`WEAK_REF_ROWS`), a stock row stating more than
+  $100,000 a share, or a price that times shares outstanding exceeds $500B, gets no dollar value (listed
+  as filed). Production: exactly 12 rows caught, all mistakes (SPPL, REEMF, MYNZ, SCTH, REBN, and INFY and
+  WIT rows in rupees). `refStatsMap` (txnbuild) gives the row count; the static build reads
+  `company_size.shares_outstanding`; the on-demand pages count rows on the page and apply only the
+  per-share ceiling (no migration). LONA, also reported, was already caught by the old rule.
+- **Build log:** `[web] prices not used (tracked|market): N Form 4 stock rows ...: SPPL 3, ...` and
+  `[web] exercise sales (tracked|market): N of M open-market sale rows ... $X of $Y`. SQL for the
+  exercise line: code S, side sell, not 10b5-1, filing has an M or X row on the same `txn_date`.
+- Methodology: `#price-check` (in the values paragraph) and `#exercise-sales` (flags list). Guides
+  re-read and accepted: the eight that cover the changed files; three gained wording, `how-to-use-the-trade-map`
+  a filter row and two labels.
+- Seed: NVDA filing `0001045810-26-000104` is an exercise and sale (an M row is added on the same date).
