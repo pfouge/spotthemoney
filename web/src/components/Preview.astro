@@ -1,0 +1,10 @@
+---
+// Gives the first .tablewrap inside its slot a preview length (rd-kit.css: data-preview 3 to 12) without editing the
+// component that prints the table (TxnTable belongs to another task). The slot is otherwise unchanged.
+interface Props { rows?: number }
+const { rows = 8 } = Astro.props;
+const n = Math.min(12, Math.max(3, Math.round(rows)));
+const html = await Astro.slots.render("default");
+const out = html.replace('class="tablewrap"', `class="tablewrap" data-preview="${n}"`);
+---
+<Fragment set:html={out} />

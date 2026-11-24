@@ -28,12 +28,12 @@ const attrText = (t: string) => t.toLowerCase().replace(/[<>"]/g, "");
 const same = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").sort().join(" ");
 ---
 {rows.length > 0 && (
-  <section aria-labelledby="filed-notices" data-filed-notices data-cik={cik!.trim().padStart(10, "0")} data-notices={rows.length} data-companies={s.companies} data-amendments={s.amendments}>
+  <section class="panel" data-panel data-span="12" aria-labelledby="filed-notices" data-filed-notices data-cik={cik!.trim().padStart(10, "0")} data-notices={rows.length} data-companies={s.companies} data-amendments={s.amendments}>
     <h2 id="filed-notices">Planned sales: Form 144 notices this filer submitted</h2>
     <p data-fn-summary>{filerSentence(name, s)}</p>
     <p class="fn-note" data-fn-caveat>{NOTICE_CAVEAT} {FILER_NOTE} <a href="/guides/what-is-form-4/#form-144">What a Form 144 is</a>.</p>
     <DownloadCsv file={file} label="Download all notices (CSV)" note="every tracked company" />
-    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+    <div class="tablewrap" data-preview="6"><table class="data" data-sortable><thead><tr>
       {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
       <th>Source</th>
     </tr></thead><tbody>

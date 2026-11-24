@@ -18,12 +18,12 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 const heads = [{ l: "Date", t: "num" }, { l: "Filer", t: "text" }, { l: "Type", t: "text" }, { l: "Contributor", t: "text" }, { l: "Payee", t: "text" }, { l: "Honoree, as typed", t: "text" }, { l: "Amount", t: "num" }];
 ---
 {s && total > 0 && (
-  <section aria-labelledby="lobbyist-contributions" data-lobby-contrib data-items={total}>
+  <section class="panel" data-panel data-span="12" aria-labelledby="lobbyist-contributions" data-lobby-contrib data-items={total}>
     <h2 id="lobbyist-contributions">Lobbyist contributions</h2>
     <p data-lc-summary>{summarySentence(s.years, model.lobbyContrib.newestYear ?? s.years[0]!.year, (n) => money(n, { compact: false }))}</p>
     <p class="lc-note" data-lc-caveat>{LOBBY_CONTRIB_CAVEAT} <a href="/lobbyist-contributions/">All lobbyist contributions</a> · <a href="/guides/lobbying-disclosure-reports/#contributions">How to read an LD-203 report</a>.</p>
     <DownloadCsv file={file} label="Download all items (CSV)" note="every item, all recipients" />
-    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+    <div class="tablewrap" data-preview="6"><table class="data" data-sortable><thead><tr>
       {heads.map((h) => <th class={h.t === "num" && h.l === "Amount" ? "num" : ""} aria-sort="none" data-type={h.t}><button type="button" class="sort" aria-label={`Sort by ${h.l.toLowerCase()}`}>{h.l}<span class="arr" aria-hidden="true"></span></button></th>)}
       <th>Source</th>
     </tr></thead><tbody>

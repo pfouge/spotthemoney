@@ -4,6 +4,7 @@
 // answer → headline figures → most-traded stocks → charts → year by year and whose trades →
 // comparison with other members → committees → every trade → filings → related members →
 // questions → sources. The figures come from lib/profile.ts, which is unit-tested.
+import Preview from "../../components/Preview.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
 import PageGroup from "../../components/PageGroup.astro";
@@ -144,7 +145,7 @@ const groupList = noindex ? [] : [
   <div class="title-row"><h1>{p.name}</h1><Follow kind="member" entity={p.slug!} label={p.name} /></div>
   <p class="lede">{title}{former && <span class="tag">Former member</span>}</p>
 
-  <dl class="facts" data-profile-facts>
+  <dl class="facts" data-profile-facts data-people>
     <div><dt>Chamber</dt><dd>{chamberName}</dd></div>
     {state && <div><dt>{role.chamber === "senate" ? "State" : "Seat"}</dt><dd>{state}{seat ? `, ${seat}` : ""}</dd></div>}
     {party && <div><dt>Party</dt><dd>{party}</dd></div>}
@@ -170,19 +171,19 @@ const groupList = noindex ? [] : [
     <div class="cell"><div class="k">Late filings</div><div class={`v ${late.length ? "neg" : ""}`}>{num(late.length)}</div></div>
   </section>
 
+  <VizPerson person={p} />
+
   <GroupBar groups={groupList} />
 
   <PageGroup id="trading" label="Trading">
+  <div class="panels">
   {topStocks.length > 0 && (
-    <section aria-labelledby="stocks">
+    <section class="panel" data-panel data-span="12" aria-labelledby="stocks">
       <h2 id="stocks">Most-traded stocks</h2>
-      <p class="section-note">
-        Ranked by number of disclosed trades. Amounts are the sums of the ranges as filed, so the real figure lies somewhere between the two ends.
-        {prof.stocks.length > STOCK_ROWS && ` Showing ${STOCK_ROWS} of ${num(prof.stocks.length)}; the full list is in the trade table below.`}
-      </p>
-      <div class="tablewrap">
+      <p class="pn-sentence">{num(prof.stocks.length)} stocks, {num(prof.trades)} trades. Top: <a href={securityPath(topStocks[0].sec)}>{topStocks[0].sec.ticker}</a> with {num(topStocks[0].trades)}.</p>
+      <div class="tablewrap" data-preview="6">
         <table class="data" data-profile-stocks>
-          <thead><tr><th>Stock</th><th>Company</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th>Latest trade</th>{hasTies && <th>Also on record</th>}</tr></thead>
+          <thead><tr><th>Stock</th><th>Company</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th>Latest trade</th>{hasTies && <th>Also on record</th>}<th class="hb-h"><span class="sr-only">Share of trades</span></th></tr></thead>
           <tbody>
             {topStocks.map((s) => (
               <tr>
@@ -194,28 +195,31 @@ const groupList = noindex ? [] : [
                 <td class="num">{money(s.low)}–{money(s.high)}</td>
                 <td class="mono">{s.last ? formatDate(s.last) : "—"}</td>
                 {hasTies && <td>{[s.lobbying > 0 ? "lobbying reports" : null, s.contracts > 0 ? "federal contracts" : null].filter(Boolean).join(", ") || "—"}</td>}
+                <td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * s.trades / Math.max(1, topStocks[0].trades)))}%`}></i></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <div class="pn-note-wrap"><p class="pn-note">
+        Ranked by number of disclosed trades. Amounts are the sums of the ranges as filed, so the real figure lies somewhere between the two ends.
+        {prof.stocks.length > STOCK_ROWS && ` Showing ${STOCK_ROWS} of ${num(prof.stocks.length)}; the full list is in the trade table below.`}
+      </p></div>
       {hasTies && <p class="section-note">"Also on record" means the company's own page here lists lobbying reports or federal contract awards. It describes the company, not this member, and is no statement about why a trade was made.</p>}
     </section>
   )}
 
-  <VizPerson person={p} />
-
   {prof.years.length > 0 && (
-    <section aria-labelledby="by-year">
+    <section class="panel" data-panel data-span="12" aria-labelledby="by-year">
       <h2 id="by-year">Year by year, and whose trades</h2>
       <div class="split">
         <div class="tablewrap">
           <table class="data" data-profile-years>
             <caption class="sr-only">Disclosed trades by year of the trade</caption>
-            <thead><tr><th>Year</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th class="num">Reported late</th></tr></thead>
+            <thead><tr><th>Year</th><th class="num">Trades</th><th class="num">Bought</th><th class="num">Sold</th><th class="num">Range as filed</th><th class="num">Reported late</th><th class="hb-h"><span class="sr-only">Share of trades</span></th></tr></thead>
             <tbody>
               {prof.years.map((y) => (
-                <tr><th scope="row" class="mono">{y.year}</th><td class="num">{num(y.trades)}</td><td class="num">{num(y.buys)}</td><td class="num">{num(y.sells)}</td><td class="num">{money(y.low)}–{money(y.high)}</td><td class="num">{num(y.late)}</td></tr>
+                <tr><th scope="row" class="mono">{y.year}</th><td class="num">{num(y.trades)}</td><td class="num">{num(y.buys)}</td><td class="num">{num(y.sells)}</td><td class="num">{money(y.low)}–{money(y.high)}</td><td class="num">{num(y.late)}</td><td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * y.trades / Math.max(1, ...prof.years.map((z) => z.trades))))}%`}></i></td></tr>
               ))}
             </tbody>
           </table>
@@ -223,9 +227,9 @@ const groupList = noindex ? [] : [
         <div class="tablewrap">
           <table class="data" data-profile-owners>
             <caption class="sr-only">Disclosed trades by owner of the asset</caption>
-            <thead><tr><th>Owner on the report</th><th class="num">Trades</th><th class="num">Share</th></tr></thead>
+            <thead><tr><th>Owner on the report</th><th class="num">Trades</th><th class="num">Share</th><th class="hb-h"><span class="sr-only">Bar</span></th></tr></thead>
             <tbody>
-              {prof.owners.map((o) => <tr><th scope="row">{o.label}</th><td class="num">{num(o.n)}</td><td class="num">{o.share}%</td></tr>)}
+              {prof.owners.map((o) => <tr><th scope="row">{o.label}</th><td class="num">{num(o.n)}</td><td class="num">{o.share}%</td><td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, o.share)}%`}></i></td></tr>)}
             </tbody>
           </table>
         </div>
@@ -238,8 +242,16 @@ const groupList = noindex ? [] : [
     </section>
   )}
 
+  <section class="panel" data-panel data-span="12" aria-labelledby="trades">
+  <h2 id="trades">Disclosed trades</h2>
+  <p class="pn-sentence">{num(txns.length)} trades on record: {num(prof.buys)} purchases, {num(prof.sells)} sales; {num(late.length)} reported after {CONGRESS_DEADLINE_DAYS} days.</p>
+  <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
+  <ScreenerLink member={p.slug!} n={screenerCountsFor(model, personPath).member.get(p.slug!) ?? 0} of={`by ${p.name}`} />
+  <Preview rows={8}><TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} /></Preview>
+  </section>
+
   {showCompare && (
-    <section aria-labelledby="compare" data-profile-compare>
+    <section class="panel" data-panel aria-labelledby="compare" data-profile-compare>
       <h2 id="compare">How this record compares</h2>
       <p class="section-note">Against the {num(peers.members)} members of Congress with at least one trade on record here. Members with no reported trades are not in the comparison, and coverage starts on different dates for the House and the Senate.</p>
       <div class="tablewrap">
@@ -256,14 +268,10 @@ const groupList = noindex ? [] : [
     </section>
   )}
 
-  <h2 id="trades">Disclosed trades</h2>
-  <DownloadCsv file={downloads.member.get(p.slug!)} note={txns.length > 200 ? "every trade on record, not only the newest 200 shown" : "every trade on record"} />
-  <ScreenerLink member={p.slug!} n={screenerCountsFor(model, personPath).member.get(p.slug!) ?? 0} of={`by ${p.name}`} />
-  <TxnTable model={model} txns={txns} showSecurity emptyReason={pendingOcr ? "The filings on record are scanned PDFs that need human review before their rows can be shown." : "No approved trades yet."} />
-
+  <section class="panel" data-panel aria-labelledby="filings">
   <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
-    <div class="tablewrap">
+    <div class="tablewrap" data-preview="6">
       <table class="data">
         <thead><tr><th>Filed</th><th>Report</th><th>Doc ID</th><th class="num">Rows</th><th>Status</th><th>Source</th></tr></thead>
         <tbody>
@@ -281,6 +289,8 @@ const groupList = noindex ? [] : [
       </table>
     </div>
   )}
+  </section>
+  </div>
 
   </PageGroup>
 
@@ -288,11 +298,13 @@ const groupList = noindex ? [] : [
 
   {(groups.length > 0 || hasVotes || hasOutside || hasCampaign || lcItems > 0) && (
     <PageGroup id="washington" label="Washington">
+  <div class="panels">
   <MemberVotes model={model} personId={p.id} slug={p.slug!} name={p.name} chamber={role.chamber === "senate" ? "senate" : "house"} />
   {groups.length > 0 && (
-    <section aria-labelledby="committees" data-profile-committees>
+    <section class="panel" data-panel aria-labelledby="committees" data-profile-committees>
       <h2 id="committees">Committee assignments</h2>
       <p class="section-note">Current assignments in the {chamberName}{groups.some((g) => g.seat.chamber === "joint") ? " and joint committees" : ""}. Listed for context only: nothing on this page connects a trade to committee business. A committee's name opens its page here, with its members and the trades they have disclosed.</p>
+      <details class="ref pp-fold" open={groups.length <= 6} id="ref-seats"><summary>{groups.length > 6 ? `Show all ${groups.length} assignments` : `${groups.length} assignments`}</summary><div class="ref-body">
       <ul class="seats">
         {groups.map((g) => (
           <li>
@@ -304,13 +316,14 @@ const groupList = noindex ? [] : [
             {g.subs.length > 0 && <p class="seat-subs"><span>Subcommittees:</span> {g.subs.map((s) => `${s.name}${s.title ? ` (${s.title})` : ""}`).join(" · ")}</p>}
           </li>
         ))}
-      </ul>
+      </ul></div></details>
       <p class="section-note">Source: the public-domain <a href="https://github.com/unitedstates/congress-legislators" rel="noopener" target="_blank">congress-legislators</a> dataset, refreshed daily. Descriptions of a committee's remit are the dataset's own wording.</p>
     </section>
   )}
   <OutsideSpending model={model} personId={p.id} name={p.name} file={outsideFile} />
   <CampaignCommittee model={model} slug={p.slug} file={campaignFile} />
   <LobbyContrib model={model} slug={p.slug} file={lcFile} />
+  </div>
     </PageGroup>
   )}
 

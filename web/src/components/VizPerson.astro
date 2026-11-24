@@ -29,7 +29,7 @@ const tlSummary = !yearDots.length ? undefined
 {embedOnly ? (
   <Viz title={`${p.name}: disclosed trades, last 12 months`} wide={true} legend={[["v-buy", "Bought (above the line)"], ["v-sell", "Sold (below the line)"]]} svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} />
 ) : p.txns.length > 0 && (
-  <section aria-label="Charts">
+  <section class="pp-charts" aria-label="Charts">
     <h2 id="charts">Trading in charts</h2>
     <div class="viz-grid">
       <Viz compact title="Trade timeline" question="When does this person trade, how big, and in which direction? Every trade in the last 12 months." wide={true}
