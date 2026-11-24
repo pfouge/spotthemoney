@@ -9,6 +9,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
+import Panel from "../../components/Panel.astro";
 import Answer from "../../components/Answer.astro";
 import Viz from "../../components/Viz.astro";
 import DownloadCsv from "../../components/DownloadCsv.astro";
@@ -74,7 +75,7 @@ const description = [
   <p class="lede">The dollar value of the companies listed on each major stock exchange in {asOf}, and how the United States compares with the Commonwealth, China and the European Union.</p>
   <Answer text={answer} updated={WFE.retrieved} sourceNote={`Sources: ${WFE.name}; ${LSE.name} for the United Kingdom. Figures for ${asOf}`} />
 
-  <div class="viz-grid">
+  <div class="viz-grid mk-pair">
     <Viz compact maxh={640} id="largest-stock-markets" title={`The world's largest stock markets, ${asOf}`}
       question="How big is each major stock market, in U.S. dollars?"
       svg={rankBarsSvg(rankRows, rankLabel, WIDE_W)} svgNarrow={rankBarsSvg(rankRows, rankLabel, 640)} svgPhone={rankBarsSvg(rankRows, rankLabel, PHONE_W)}
@@ -82,13 +83,6 @@ const description = [
       summary={`Domestic market capitalization by exchange in US$ trillions, ${asOf}: the United States (Nasdaq plus NYSE) is first at ${trillions(barMillions(top))}, the ${second.label} second at ${trillions(barMillions(second))}, London is ${ordinal(londonRank)} at ${trillions(LONDON.usdMillions)} on the London Stock Exchange's own figures, and ${last.label} is the smallest of the ${LARGEST_MARKETS.length} shown at ${trillions(barMillions(last))}.`}>
       <p class="mk-credit">{CREDIT}</p>
     </Viz>
-  </div>
-
-  <h2 id="us-vs-eu">United States, Commonwealth, China and European Union</h2>
-  <div class="viz-tiles mk-tiles">
-    {tiles.map((t) => <div class="viz-tile"><div class="k">{t.k}</div><div class="v">{t.v}</div><div class="d">{t.d}</div></div>)}
-  </div>
-  <div class="viz-grid">
     <Viz compact tall id="united-states-and-blocs" title={`United States, Commonwealth, China and European Union, ${asOf}`}
       question="How much larger is the U.S. stock market than the Commonwealth's, China's and the European Union's?"
       svg={rankBarsSvg(pairRows, pairLabel, WIDE_W)} svgNarrow={rankBarsSvg(pairRows, pairLabel, 640)} svgPhone={rankBarsSvg(pairRows, pairLabel, PHONE_W)}
@@ -97,12 +91,18 @@ const description = [
     </Viz>
   </div>
 
+  <h2 id="us-vs-eu">United States, Commonwealth, China and European Union</h2>
+  <div class="viz-tiles mk-tiles">
+    {tiles.map((t) => <div class="viz-tile"><div class="k">{t.k}</div><div class="v">{t.v}</div><div class="d">{t.d}</div></div>)}
+  </div>
   <AdSlot label="Advertisement" />
 
   <h2 id="data">The numbers</h2>
   <p>All figures are domestic market capitalization for {asOf}. Every row is as the World Federation of Exchanges published it in millions of U.S. dollars, except London, which is the London Stock Exchange's own figure converted from pounds.</p>
   <DownloadCsv file={csv} note={`both charts and the exchanges behind each group, ${asOf}`} />
-  <div class="tablewrap">
+  <div class="panels">
+    <Panel><h3 slot="title">Largest markets</h3>
+  <div class="tablewrap" data-preview="8">
     <table class="data" id="table-largest">
       <caption>The world's largest stock markets by exchange, {asOf}</caption>
       <thead><tr><th scope="col" class="num">Rank</th><th scope="col">Market</th><th scope="col" class="num">US$ trillions</th><th scope="col" class="num">US$ millions</th></tr></thead>
@@ -118,7 +118,9 @@ const description = [
       </tbody>
     </table>
   </div>
-  <div class="tablewrap">
+    </Panel>
+    <Panel><h3 slot="title">Markets compared</h3>
+  <div class="tablewrap" data-preview="8">
     <table class="data" id="table-us-eu">
       <caption>{blocList}, {asOf}</caption>
       <thead><tr><th scope="col">Market</th><th scope="col">What is summed</th><th scope="col" class="num">US$ trillions</th><th scope="col" class="num">US$ millions</th></tr></thead>
@@ -127,7 +129,9 @@ const description = [
       </tbody>
     </table>
   </div>
-  <div class="tablewrap">
+    </Panel>
+    <Panel><h3 slot="title">Commonwealth exchanges</h3>
+  <div class="tablewrap" data-preview="8">
     <table class="data" id="table-commonwealth">
       <caption>The {COMMONWEALTH_EXCHANGES.length} exchanges summed into the Commonwealth figure, {asOf}</caption>
       <thead><tr><th scope="col" class="num">Rank</th><th scope="col">Exchange</th><th scope="col" class="num">US$ millions</th></tr></thead>
@@ -137,7 +141,9 @@ const description = [
       </tbody>
     </table>
   </div>
-  <div class="tablewrap">
+    </Panel>
+    <Panel><h3 slot="title">EU exchanges</h3>
+  <div class="tablewrap" data-preview="8">
     <table class="data" id="table-eu">
       <caption>The {EU_EXCHANGES.length} EU-based exchanges summed into the European Union figure, {asOf}</caption>
       <thead><tr><th scope="col" class="num">Rank</th><th scope="col">Exchange</th><th scope="col" class="num">US$ millions</th></tr></thead>
@@ -146,6 +152,8 @@ const description = [
         <tr><td></td><th scope="row">Total</th><td class="num strong">{millions(EU_MILLIONS)}</td></tr>
       </tbody>
     </table>
+  </div>
+    </Panel>
   </div>
 
   <div class="prose">

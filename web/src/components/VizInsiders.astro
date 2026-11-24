@@ -16,7 +16,7 @@ const clusters = clusterBuys(model);
       <VizFlow txns={all} who="corporate insiders" gauge={true} />
       <Viz compact tall title="Cluster buys" question="Where are several insiders buying the same stock at once? A cluster is three or more buyers within 30 days." show={clusters.length > 0}
         summary={clusters.length ? `${clusters.length} ${clusters.length === 1 ? "stock has" : "stocks have"} three or more insiders buying on the open market in the last 30 days, led by ${clusters[0]!.ticker} with ${clusters[0]!.buyers} buyers. Each dot is one buyer.` : undefined}>
-        <div class="viz-cards">
+        <div class="viz-cards" tabindex="0" role="region" aria-label="Cluster buys, scrollable list">
           {clusters.map((c) => (
             <a class="viz-card" href={c.href}>
               <div class="t">{c.ticker}</div>

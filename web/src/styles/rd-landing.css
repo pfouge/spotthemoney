@@ -1,0 +1,65 @@
+/* Landing pages as dashboards (task L2): headline tiles that route, a two-line answer, panels in a grid, tabs over one
+   panel, and the rates pages' headline figure. Uses only the tokens in global.css. Nothing here is read by a script
+   except .ltabs / [data-ltabs] (scripts/landing-tabs.ts). */
+
+/* Headline tiles: a wrapping grid, never a sideways strip, so every figure is on screen at once. */
+.ltiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s-3) var(--s-4); margin: var(--s-3) 0 var(--s-5); overflow: visible; }
+.ltiles a { padding: var(--s-2) 0 var(--s-2) var(--s-3); border-left: 1px solid var(--line); }
+.ltiles a:first-child { padding-left: var(--s-3); border-left: 1px solid var(--line); }
+.ltiles .v { font-variant-numeric: tabular-nums; }
+@media (max-width: 1023px) { .ltiles { display: grid; overflow: visible; gap: var(--s-3) var(--s-4); } .ltiles a { min-width: 0; } }
+@media (max-width: 639px) { .ltiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* The answer is two lines with "more" (the button is added by ui.ts) on a page that has tiles. */
+html.js .answer:has(~ .ltiles) .answer-text:not(.open) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+/* A landing's panels sit close together. */
+.panels + .viz-grid, .panels + section > .viz-grid { margin-top: 0; }
+.panels .pn-body > .dl-row, .panels .pn-body > .section-note { margin: 0 0 var(--s-2); }
+.panels .pn-body > .dl-row:first-child { margin-top: 0; }
+
+/* Tabs over one panel ([data-ltabs]): every pane stays in the page; only one is shown. */
+.ltabs { display: flex; gap: var(--s-1); margin: var(--s-3) 0 var(--s-3); overflow-x: auto; scrollbar-width: none; }
+.ltabs::-webkit-scrollbar { display: none; }
+.ltabs button { flex: none; font: inherit; font-size: var(--t-xs); border: 1px solid var(--line-2); border-radius: var(--r-pill); background: transparent; color: var(--ink); height: 32px; padding: 0 var(--s-3); cursor: pointer; }
+.ltabs button.on { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+html.js [data-ltabs] [data-lpane]:not(.on) { display: none; }
+[data-lpane] > h2, [data-lpane] > h3 { font-size: var(--t-md); line-height: var(--lh-md); font-weight: 600; margin: 0 0 var(--s-2); }
+
+/* A row of five compact charts is one row from 1280px (the grid is four across in the kit). */
+@media (min-width: 1280px) { .viz-grid:has(> :nth-child(5):last-child) { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.mini-charts { margin: var(--s-5) 0; }
+.mini-charts > details.ref { margin: 0; max-width: none; }
+.viz-compact .viz-cards { max-height: 300px; overflow-y: auto; }
+/* The CSV link and the feed note share one line at the top of a panel. */
+.panels .pn-body > .dl-row, .panels [data-lpane] > .dl-row, .panels .pn-body > .section-note, .panels [data-lpane] > .section-note { display: inline-flex; margin: 0 var(--s-4) var(--s-2) 0; vertical-align: middle; align-items: center; flex-wrap: wrap; gap: var(--s-1) var(--s-3); }
+
+/* Find box above a previewed table. */
+.tb-find { display: flex; align-items: center; gap: var(--s-3); margin: 0 0 var(--s-3); }
+.tb-find input { flex: 1 1 240px; max-width: 360px; min-height: 36px; padding: 0 var(--s-3); font: inherit; font-size: var(--t-sm); border: 1px solid var(--line-2); border-radius: var(--r-pill); background: var(--bg); color: var(--ink); }
+.tb-find-n { font-size: var(--t-xs); color: var(--ink-2); }
+.tb-find[hidden] { display: none; }
+
+/* /washington/: dataset tiles in the dashboard style (compact card, newest filings folded) */
+.wash-tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: var(--s-4); }
+.wash-tile { padding: var(--s-4); }
+.wash-tile > p { font-size: var(--t-sm); margin: 0 0 var(--s-2); }
+.wash-figs .v { font-size: var(--t-lg); }
+.wash-more { margin-top: var(--s-2); }
+.wash-more > summary { cursor: pointer; font-size: var(--t-sm); color: var(--accent); }
+
+/* Rates pages: the old inline "panel" sections and the formula line sit between kit panels. */
+p.panel { border-top: 0; padding-top: 0; }
+.panel.reset, #calc { padding-top: var(--s-3); }
+
+/* Rates charts: the SVG inside a chart panel is held to 320px tall. */
+.chartpanel .chartwrap svg { max-height: 320px; width: 100%; }
+
+/* World markets: the two bar charts sit side by side from 1100px. */
+@media (min-width: 1100px) { .viz-grid.mk-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Phones: the compact charts of a landing are one swipeable row (each card stays whole), not a tall stack. */
+@media (max-width: 639px) {
+  section[aria-label="Charts"] > .viz-grid { position: relative; display: flex; gap: var(--s-4); overflow-x: auto; scroll-snap-type: x proximity; overscroll-behavior-x: contain; padding-bottom: var(--s-2); }
+  section[aria-label="Charts"] > .viz-grid > .viz { flex: 0 0 86%; min-width: 0; scroll-snap-align: start; }
+}

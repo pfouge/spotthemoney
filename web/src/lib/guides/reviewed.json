@@ -79,7 +79,7 @@
     "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/ibond.ts": "25119c31f8a07e82",
-      "web/src/pages/rates/i-bonds.astro": "37cfc4579fb14e69"
+      "web/src/pages/rates/i-bonds.astro": "2e7fe2f18d7cdef9"
     }
   },
   "how-to-cite-and-reuse": {
@@ -153,7 +153,7 @@
       "web/src/scripts/heatmap.ts": "6951fe4f66db5b37",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
       "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
-      "web/src/components/MiniCharts.astro": "c26496438d1fe52a",
+      "web/src/components/MiniCharts.astro": "041c14fd101dcd84",
       "web/src/components/MiniHeatmap.astro": "c6c11a50c9af0e2f",
       "web/src/components/VizHome.astro": "56b1a5d1f2bdbd8e",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
@@ -167,7 +167,7 @@
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
       "web/src/components/VizFlow.astro": "a3d5b368e2132686",
-      "web/src/pages/insiders/index.astro": "dc18b07ce0c5c550"
+      "web/src/pages/insiders/index.astro": "e42166defbff26b4"
     }
   },
   "insider-options-and-derivatives": {
@@ -219,13 +219,13 @@
   "tips-real-yields-and-breakeven-inflation": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/rates/tips.astro": "bb524f369987a5c8"
+      "web/src/pages/rates/tips.astro": "d062a269159a5cb5"
     }
   },
   "treasury-yield-curve-explained": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/rates/treasury-yields.astro": "73c6891a297ee350"
+      "web/src/pages/rates/treasury-yields.astro": "87419dff4d44589a"
     }
   },
   "what-disclosure-data-cannot-tell-you": {

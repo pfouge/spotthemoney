@@ -8,6 +8,7 @@ import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import Answer from "../../components/Answer.astro";
+import RouteTiles from "../../components/RouteTiles.astro";
 import { dataCatalogLd } from "../../lib/seo";
 import { getLatestIBondRate, getYieldCurve } from "../../lib/db";
 import { formatDate } from "../../lib/format";
@@ -38,6 +39,13 @@ const description = hasData
   <p class="lede">What the U.S. government pays savers and lenders today, from the Treasury's own published rates.</p>
   <Answer text={answer} updated={asOf} sourceNote="Source: U.S. Treasury" />
 
+  <RouteTiles items={[
+    { href: "/rates/i-bonds/", k: "I-Bonds", v: ibond?.compositeRate != null ? pct(ibond.compositeRate) : null, n: "composite rate" },
+    { href: "/rates/treasury-yields/", k: "Treasury 10-year", v: n10 != null ? pct(n10) : null, n: "yield curve" },
+    { href: "/rates/tips/", k: "TIPS 10-year real", v: r10 != null ? pct(r10) : null, n: "real yield" },
+    { href: MARKETS_PATH, k: "World stock markets", v: `U.S. ${trillions(US_MILLIONS)}`, n: WFE.asOfLabel },
+  ]} />
+  <details class="ref" data-remember id="ref-what-each-page-covers"><summary><h2 id="what-each-page-covers">What each page covers</h2></summary><div class="ref-body">
   <div class="grid">
     <a class="card" href="/rates/i-bonds/">
       <h3>I-Bonds → {pct(ibond?.compositeRate)}</h3>
@@ -56,16 +64,19 @@ const description = hasData
       <p>Not a rate: the dollar size of the world's 18 largest stock markets in {WFE.asOfLabel}, and the United States against the Commonwealth, China and the European Union.</p>
     </a>
   </div>
+  </div></details>
 
   <AdSlot label="Advertisement" />
 
-  <h2>How the three rates differ</h2>
+  <details class="ref" data-remember id="ref-how-the-three-rates-differ"><summary><h2 id="how-the-three-rates-differ">How the three rates differ</h2></summary><div class="ref-body">
   <p><strong>I-Bonds</strong> are savings bonds sold directly by the Treasury. Their composite rate combines a fixed rate that lasts for the life of the bond with an inflation rate that changes every six months, and the Treasury announces new rates each May 1 and November 1. The composite rate shown here applies to bonds bought before the next reset.</p>
   <p><strong>Treasury yields</strong> are what the government pays to borrow for a set period, from 1 month to 30 years. The Treasury publishes a par yield for each maturity every business day. Plotted together they form the yield curve; when short maturities yield more than long ones the curve is called inverted. {n10 != null && n3m != null ? `Today the 10-year yields ${pct(n10)} against ${pct(n3m)} for the 3-month.` : ""}</p>
   <p><strong>TIPS</strong> are Treasury bonds whose principal rises with the Consumer Price Index, so their quoted yield is a real yield: the return above inflation. Subtracting a TIPS real yield from the ordinary Treasury yield of the same maturity gives the breakeven inflation rate{breakeven10 != null ? `, currently ${pct(breakeven10)} for ten years` : ""}.</p>
 
-  <h2>Where the numbers come from</h2>
+  </div></details>
+  <details class="ref" data-remember id="ref-where-the-numbers-come-from"><summary><h2 id="where-the-numbers-come-from">Where the numbers come from</h2></summary><div class="ref-body">
   <p>I-Bond rates come from Treasury Fiscal Data; Treasury and TIPS yields come from the Treasury's daily par and real yield curves; the inflation figures behind the I-Bond outlook come from the Bureau of Labor Statistics. All are read once a day and shown as published. See the <a href="/methodology/">methodology</a> for sources and update times.</p>
+  </div></details>
   <p class="disclaimer">Not investment advice. Rates are shown as published by the U.S. Treasury and can change at the next reset or business day.</p>
 
   <JsonLd data={dataCatalogLd({ path: "/rates/", name: "Rates Hub", description: "Official U.S. safe-yield data: I-Bond rates, TIPS real yields, and the Treasury yield curve, updated daily.", datasets: [{ name: "Series I savings bond rates", path: "/rates/i-bonds/" }, { name: "TIPS real yield curve", path: "/rates/tips/" }, { name: "U.S. Treasury par yield curve", path: "/rates/treasury-yields/" }] })} />
