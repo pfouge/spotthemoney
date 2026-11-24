@@ -147,7 +147,7 @@ if (!has("planned-sales-form144.csv")) {
 }
 
 // ── large holdings, the filer's side ────────────────────────────────────────────────────────
-let holdingPages = 0, holdingRows = 0, onCompanyPages = 0;
+let holdingPages = 0, holdingRows = 0, onCompanyPages = 0, twoClassFilers = 0;
 if (!has("large-holders-13d-13g.csv")) {
   for (const c of companies.slice(0, 3)) ok(!(await get(pathOf(c.page_url))).text.includes("data-reported-holdings"), `${c.company}: a reported-holdings section with no statements file`);
 } else {
@@ -159,10 +159,22 @@ if (!has("large-holders-13d-13g.csv")) {
   }
   const pct = (r) => (r.percent_of_class === "" ? -1 : Number(r.percent_of_class));
   const sh = (r) => (r.shares_stated === "" ? -1 : Number(r.shares_stated));
+  // The filer's newest statement about each company, and about each class of its shares when the
+  // filer's statements name CUSIP numbers that overlap in time (this script's own copy of the rule
+  // the company pages use: a number last used before another was first used was replaced by it,
+  // and a filer with a statement that gives no number is never split).
+  const classKey = (c) => { const k = String(c ?? "").replace(/^'/, "").replace(/\s+/g, "").toUpperCase(); return !k || /^0+$/.test(k) ? "" : k.length === 12 && k.startsWith("US") ? k.slice(2, 11) : k; };
+  const perClass = (rs) => { // one filer's statements about one company, newest first
+    const groups = new Map();
+    for (const r of rs) { const k = classKey(r.cusip); const g = groups.get(k); if (g) { if (r.filed_date < g.first) g.first = r.filed_date; } else groups.set(k, { r, first: r.filed_date, last: r.filed_date }); }
+    if (groups.size < 2 || groups.has("")) return [rs[0]];
+    const gs = [...groups.values()];
+    return gs.filter((a) => !gs.some((b) => b !== a && b.first > a.last)).map((g) => g.r);
+  };
   const holdings = (xs) => {
     const by = new Map();
-    for (const r of [...xs].sort((a, b) => b.filed_date.localeCompare(a.filed_date) || b.accession.localeCompare(a.accession))) if (!by.has(r.issuer_cik)) by.set(r.issuer_cik, r);
-    return [...by.values()].sort((a, b) => pct(b) - pct(a) || sh(b) - sh(a) || a.issuer_cik.localeCompare(b.issuer_cik) || b.accession.localeCompare(a.accession));
+    for (const r of [...xs].sort((a, b) => b.filed_date.localeCompare(a.filed_date) || b.accession.localeCompare(a.accession))) { const ys = by.get(r.issuer_cik); if (ys) ys.push(r); else by.set(r.issuer_cik, [r]); }
+    return [...by.values()].flatMap(perClass).sort((a, b) => pct(b) - pct(a) || sh(b) - sh(a) || a.issuer_cik.localeCompare(b.issuer_cik) || b.accession.localeCompare(a.accession));
   };
   const filers = [...byFiler.entries()].map(([cik, xs]) => [cik, holdings(xs), xs]).sort((a, b) => b[1].length - a[1].length);
   const pick = new Map();
@@ -170,6 +182,7 @@ if (!has("large-holders-13d-13g.csv")) {
   for (const e of filers.filter((e) => companyPage.has(e[0])).slice(0, 4)) add(e);       // companies that file about others
   add(filers[0]); add(filers.find((e) => e[2].length > e[1].length));                       // most companies; several statements about one
   add(filers.find((e) => e[1].some((r) => pct(r) >= 0 && pct(r) < THRESHOLD)));
+  for (const e of filers.filter((e) => e[1].length > new Set(e[1].map((r) => r.issuer_cik)).size)) { add(e); if (companyPage.has(e[0])) twoClassFilers++; } // a filer with two classes of one company
   for (let i = 0; pick.size < Math.max(SAMPLE, 8) && i < filers.length; i += Math.max(1, Math.floor(filers.length / (SAMPLE * 3)))) add(filers[i]);
   for (const [cik, want0] of pick.values()) {
     let page = companyPage.get(cik) ?? null;
@@ -181,7 +194,11 @@ if (!has("large-holders-13d-13g.csv")) {
     if (!sec) continue;
     holdingPages++; if (!page.startsWith("/insiders/")) onCompanyPages++;
     ok(attr(sec.tag, "data-cik") === cik, `${page}: the section is for ${attr(sec.tag, "data-cik")}, expected ${cik}`);
-    ok(Number(attr(sec.tag, "data-companies")) === want0.length, `${page}: ${attr(sec.tag, "data-companies")} companies stated, ${want0.length} in the file`);
+    ok(Number(attr(sec.tag, "data-companies")) === want0.length, `${page}: ${attr(sec.tag, "data-companies")} rows stated, ${want0.length} in the file`);
+    const cos = new Set(want0.map((r) => r.issuer_cik)).size;
+    const sum = text((sec.body.match(/<p[^>]*data-rh-summary[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
+    ok(new RegExp(`about ${cos.toLocaleString("en-US")} compan(y|ies) this site tracks`).test(sum), `${page}: the summary does not state ${cos} companies`);
+    ok((want0.length > cos) === /about more than one class of shares/.test(sum), `${page}: ${want0.length} rows about ${cos} companies and the summary ${want0.length > cos ? "does not say so" : "speaks of several classes"}`);
     const want = want0.slice(0, ROWS);
     ok(sec.rows.map((r) => attr(r.tag, "data-statement")).join() === want.map((r) => r.accession).join(), `${page}: the rows are not the filer's newest statement about each company, largest percent first`);
     ok(html.includes('href="#reported-holdings"'), `${page}: no jump link`);
@@ -211,5 +228,5 @@ if (!has("large-holders-13d-13g.csv")) {
 
 console.log(failures
   ? `verify-filers: ${failures} of ${checks} checks failed`
-  : `verify-filers: ${checks} checks pass; planned sales on ${noticePages} insider pages (${noticeRows} rows, ${heldSeen} values held back); reported holdings on ${holdingPages} pages (${onCompanyPages} company pages, ${holdingRows} rows)`);
+  : `verify-filers: ${checks} checks pass; planned sales on ${noticePages} insider pages (${noticeRows} rows, ${heldSeen} values held back); reported holdings on ${holdingPages} pages (${onCompanyPages} company pages, ${holdingRows} rows, ${twoClassFilers} company filers with two classes of one company)`);
 process.exit(failures ? 1 : 0);

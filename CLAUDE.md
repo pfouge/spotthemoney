@@ -4354,3 +4354,66 @@ it in the pull request that changes a cell.**
   `#financials-screener` gained a sentence.
 - Not done: saved screens (privacy page first, key `stm.screens.financials`); cash flow or debt as
   screener columns (cash flow is a fiscal-year figure only; debt needs a heading filter).
+
+### Large holders: a row per class of shares when a holder reports on two (2026-11-24, scheduled parity run) — queue item (n1)
+
+- **What.** A holder that files Schedule 13D or 13G statements about two classes of one company's
+  shares (Alphabet Class A and Class C, Fox, News Corp, Under Armour, Liberty series) now has a row
+  per class in "Large holders" on stock and company pages, on the `/large-holders/` hub, in the
+  filer's own "Large holdings this filer reports" section, and in the CSV's `newest_for_holder`
+  column. Before, the class was not part of the match and such a holder showed its newest statement
+  only (the known limit in the methodology). No migration, no data job change, no new file.
+- **Rule** (`classKey`, `rowsByClass` in `web/src/lib/schedule13.ts`; tests
+  `scripts/schedule13-class.test.ts`): a class is told by the statement's CUSIP number (white space
+  out, capitals, the nine characters inside a U.S. ISIN, all zeros = none). **Two numbers are two
+  classes only when the holder's statements under them overlap in time**: filed under both on one
+  day, or back under the first after the second. When every statement under one number was filed
+  before every statement under another, the number is read as CHANGED (reverse split, a company
+  that moved, a corrected typing mistake) and only the newest statement is a row; the replaced
+  number's statements are counted with that row. A holder with any statement that gives no number
+  is never split. `holdersOf` and `holdingsOf` both go through `rowsByClass`.
+- **Why not simply "CUSIP joins the key"** (production, SQL, 2026-11-24; every tracked statement
+  now has a CUSIP): of 4,238 filer and company pairs 54 carry two or three numbers. 26 overlap and
+  are classes (27 more rows on 15 companies). 28 follow one another: Strive (862945102 then
+  862945300, seven holders), Bakkt, Bluejay, Banzai, Xilio, Wave Life Sciences, Indivior, Finance
+  of America, a typo at Aurora, Berkshire's "0000000000". Splitting those would have put each
+  holder's old figure beside its new one.
+- **Known limits, stated in methodology `#schedule-13`:** a second class a holder reported on once
+  and never again, before all its other statements, is read as a replaced number and not shown
+  (First Citizens Class B, one holder); a mistyped number used between two right ones makes a
+  second row (Solstice, one holder); a holder that files an exit under an old number and a new
+  statement under the new number on one day has two rows, one of them 0% (BlackRock at ONEOK and
+  Wave: before this change one of the two was shown, picked by accession number).
+- **Counting.** `Holder.holder` is the holder key; `HolderSummary` has `holders` (different
+  holders), `rows` and `multiClass`; `atOrAbove + below + noPercent = rows`. The summary sentence
+  is unchanged when rows equal holders and otherwise says "N of them about more than one class of
+  shares, so the table has R rows". `data-holders` on the section is different holders; the table
+  has `rows` rows. Hub: a packed row has a 13th entry, the holder key (absent in an older file:
+  the name is used); `LhResult.holders` counts holder and company pairs and the count line reads
+  "H holders of C companies, in R rows (...)" when they differ.
+- **Left as they are, on purpose (the redesign thread, branch `redesign/v2`, is rewriting these
+  files): the "Large holders" tile on stock and company pages and `data-companies` on the filer's
+  section count ROWS** (`holdersOf(...).length`, `holdings.length`). On 15 companies the tile is one
+  or two above the number of different holders. When those page files are next touched: use
+  `holderSummary(...).holders` for the tile.
+- **Build log.** `[web] large holders (Schedules 13D and 13G): shown; N statements ...; H holders,
+  R rows by newest statement and class (M holders with more than one class, on C companies), B rows
+  under 5%, ...`; `[web] large holdings by filer: P filer and company pairs (R rows by class) ...`;
+  `[web] large holders hub: H holders in R rows on C companies; ...`. SQL for H, R, M, C is in the
+  change note (per issuer and filer: min and max `filed_at` per CUSIP key; a key is dropped when
+  another key's min is after its max).
+- **Verifiers.** `verify-schedule13` has its own copy of the rule: `newest_for_holder` on every
+  row of the file, the section's holders, rows, sentence and caveat, every company with a
+  two-class holder (up to 20) whatever the sample, the hub's count line; its last line now reads
+  `... H holders in R rows by newest statement and class, M holders with more than one class on C
+  companies, K with a number that changed`: **compare it with the build log after a deploy.**
+  `verify-filers` has its own copy for the filer's side. `verify-accounts-db` takes its 30-day
+  cut-off from the database (its clock-based one was a day off for some hours each day when the
+  database is not on UTC: the "1 of 42" failure noted since 2026-11-22).
+- **Seed.** Lockheed Martin has the cases: back and forth between two numbers, both on one day
+  (one 0%), a number that changed, one number typed as an ISIN, and Microsoft about both classes.
+- Guide `ten-percent-owners-and-joint-filings` (`#large-holders`: a fourth point, "One holder can
+  have two rows"), methodology `#schedule-13`, the hub's "What this table shows", the CSV column
+  dictionary and the data catalogue's description say it.
+- Not done: the class in the tile counts (above); a check of a CUSIP's check digit (would catch
+  typos, not built); the same rule for market-only companies (no page shows their statements).

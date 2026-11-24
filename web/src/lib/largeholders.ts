@@ -5,7 +5,8 @@
 //     added up: members of a group each report the combined holding, so the count line counts
 //     holders and companies only, with no sum of shares or percentages.
 //   - One row per holder and company: the holder's NEWEST statement (holdersOf), a statement under
-//     5% stays listed and is marked "below 5%".
+//     5% stays listed and is marked "below 5%". A holder that reports on two classes of a company's
+//     shares has a row for each (lib/schedule13.ts rowsByClass); the count line counts it once.
 //   - A row with no percent passes no percent filter.
 //   - A holder links to a page only when the filer number belongs to exactly one person or company
 //     with a page (holderPath). The name shown is the statement's own.
@@ -17,8 +18,8 @@ export const LARGE_DATA = "/data/large-holders.json";
 export const FILING_THRESHOLD = 5;
 
 /** [company index, holder as filed, holder page path or "", "D" | "G", amendment 0|1, percent or null, shares or null,
- *  event date or "", filed, accession, reporting persons, statement URL or ""] */
-export type PackedHolder = [number, string, string, "D" | "G", 0 | 1, number | null, number | null, string, string, string, number, string];
+ *  event date or "", filed, accession, reporting persons, statement URL or "", holder key (may be absent in an older file)] */
+export type PackedHolder = [number, string, string, "D" | "G", 0 | 1, number | null, number | null, string, string, string, number, string, string?];
 export interface LargeData {
   built: string;
   divisions: { name: string; slug: string }[];
@@ -30,8 +31,10 @@ export interface LhCompany { name: string; path: string; ticker: string; cik: st
 export interface LhRow {
   c: LhCompany; holder: string; path: string | null; schedule: "13D" | "13G"; amend: boolean; percent: number | null; shares: number | null;
   event: string | null; filed: string; accession: string; persons: number; url: string | null;
+  /** Which holder the row belongs to (the filer's SEC number, or its name when there is none): two rows of one company with the same key are one holder reporting on two classes of shares. */
+  hk: string;
 }
-export interface LhIn { company: LhCompany; holder: string; path: string | null; schedule: "13D" | "13G"; amend: boolean; percent: number | null; shares: number | null; event: string | null; filed: string; accession: string; persons: number; url: string | null }
+export interface LhIn { company: LhCompany; holder: string; path: string | null; schedule: "13D" | "13G"; amend: boolean; percent: number | null; shares: number | null; event: string | null; filed: string; accession: string; persons: number; url: string | null; hk?: string }
 
 export function packLarge(built: string, rows: readonly LhIn[]): LargeData {
   const divs: { name: string; slug: string }[] = [], seen = new Map<string, { name: string; slug: string }>();
@@ -43,7 +46,7 @@ export function packLarge(built: string, rows: readonly LhIn[]): LargeData {
   for (const r of rows) {
     let ci = cIdx.get(r.company.cik);
     if (ci == null) { ci = cos.length; cos.push([r.company.name, r.company.path, r.company.ticker, r.company.cik, r.company.division ? dIdx.get(r.company.division.slug) ?? -1 : -1]); cIdx.set(r.company.cik, ci); }
-    out.push([ci, r.holder, r.path ?? "", r.schedule === "13D" ? "D" : "G", r.amend ? 1 : 0, r.percent, r.shares, r.event ?? "", r.filed, r.accession, r.persons, r.url ?? ""]);
+    out.push([ci, r.holder, r.path ?? "", r.schedule === "13D" ? "D" : "G", r.amend ? 1 : 0, r.percent, r.shares, r.event ?? "", r.filed, r.accession, r.persons, r.url ?? "", r.hk ?? `n:${r.holder.toLowerCase()}`]);
   }
   return { built, divisions: divs, companies: cos, rows: out };
 }
@@ -51,7 +54,7 @@ export function unpackLarge(d: LargeData): LhRow[] {
   const cos: LhCompany[] = d.companies.map((c) => ({ name: c[0], path: c[1], ticker: c[2], cik: c[3], division: c[4] >= 0 ? d.divisions[c[4]] ?? null : null }));
   return d.rows.map((r) => ({
     c: cos[r[0]], holder: r[1], path: r[2] || null, schedule: r[3] === "D" ? "13D" : "13G", amend: r[4] === 1, percent: r[5], shares: r[6],
-    event: r[7] || null, filed: r[8], accession: r[9], persons: r[10], url: r[11] || null,
+    event: r[7] || null, filed: r[8], accession: r[9], persons: r[10], url: r[11] || null, hk: r[12] ?? `n:${r[1].toLowerCase()}`,
   }));
 }
 
@@ -94,16 +97,21 @@ const sortValue = (r: LhRow, k: LhSortKey): number | string | null =>
 const tie = (a: LhRow, b: LhRow): number => b.filed.localeCompare(a.filed) || a.c.name.localeCompare(b.c.name) || (a.accession < b.accession ? 1 : a.accession > b.accession ? -1 : 0);
 export function sortLh(rows: readonly LhRow[], k: LhSortKey, dir: "asc" | "desc"): LhRow[] { return sortRows(rows, (r) => sortValue(r, k), dir, tie); }
 
-export interface LhResult extends Page<LhRow> { companies: number; all: number }
+export interface LhResult extends Page<LhRow> {
+  companies: number; all: number;
+  /** Holder and company pairs among the matching rows; lower than `total` when a holder reports on two classes of one company's shares. */
+  holders: number;
+}
 export function largeScreen(all: readonly LhRow[], v: LhView, built: string): LhResult {
   const hits = sortLh(all.filter((r) => lhMatches(r, v.f, built)), v.sort, v.dir);
   const pg = paginate(hits, v.page, v.per);
-  return { ...pg, companies: new Set(hits.map((r) => r.c.cik)).size, all: all.length };
+  return { ...pg, companies: new Set(hits.map((r) => r.c.cik)).size, all: all.length, holders: new Set(hits.map((r) => `${r.c.cik}|${r.hk}`)).size };
 }
 /** The count line. Counts only. */
 export function lhSummaryLine(r: LhResult): string {
   if (r.total === 0) return r.all === 0 ? "No Schedule 13D or 13G statements are on file yet." : "No holder matches these filters.";
-  return `${plural(r.total, "holder", "holders")} of ${plural(r.companies, "company", "companies")}. Showing ${nf(r.from)} to ${nf(r.to)}.`;
+  const rows = r.total > r.holders ? `, in ${plural(r.total, "row", "rows")} (a holder that reports on two classes of a company's shares has a row for each)` : "";
+  return `${plural(r.holders, "holder", "holders")} of ${plural(r.companies, "company", "companies")}${rows}. Showing ${nf(r.from)} to ${nf(r.to)}.`;
 }
 export const percentText = (p: number | null): string => (p == null ? "" : `${Number(p.toFixed(2)).toString()}%`);
 
@@ -170,5 +178,5 @@ export { shortDate };
 export function largeLog(d: LargeData): string {
   const rows = unpackLarge(d);
   const win = (days: number) => rows.filter((r) => inWindow(r.filed, d.built, days)).length;
-  return `large holders hub: ${rows.length} holders on ${new Set(rows.map((r) => r.c.cik)).size} companies; 13D ${rows.filter((r) => r.schedule === "13D").length}, 13G ${rows.filter((r) => r.schedule === "13G").length}; 5% or more ${rows.filter((r) => (r.percent ?? -1) >= 5).length}, 10% or more ${rows.filter((r) => (r.percent ?? -1) >= 10).length}, below 5% ${rows.filter((r) => r.percent != null && r.percent < 5).length}, no percent ${rows.filter((r) => r.percent == null).length}; filed in the last 30 days ${win(30)}, 90 days ${win(90)}, 365 days ${win(365)}; newest ${rows.map((r) => r.filed).sort().at(-1) ?? "none"}`;
+  return `large holders hub: ${new Set(rows.map((r) => `${r.c.cik}|${r.hk}`)).size} holders in ${rows.length} rows on ${new Set(rows.map((r) => r.c.cik)).size} companies; 13D ${rows.filter((r) => r.schedule === "13D").length}, 13G ${rows.filter((r) => r.schedule === "13G").length}; 5% or more ${rows.filter((r) => (r.percent ?? -1) >= 5).length}, 10% or more ${rows.filter((r) => (r.percent ?? -1) >= 10).length}, below 5% ${rows.filter((r) => r.percent != null && r.percent < 5).length}, no percent ${rows.filter((r) => r.percent == null).length}; filed in the last 30 days ${win(30)}, 90 days ${win(90)}, 365 days ${win(365)}; newest ${rows.map((r) => r.filed).sort().at(-1) ?? "none"}`;
 }
