@@ -46,7 +46,7 @@ const description = hasData
 
   {hasData ? (
     <>
-      <section class="datastrip">
+      <section class="datastrip rates-strip">
         <div class="cell"><div class="k">10-year real yield</div><div class="v">{pct(t10?.latest)}</div><div class="delta">{bp(chg(t10?.latest ?? null, t10?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">5-year real yield</div><div class="v">{pct(t5?.latest)}</div><div class="delta">{bp(chg(t5?.latest ?? null, t5?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">10-year breakeven</div><div class="v">{pct(be10)}</div><div class="delta">nominal − real</div></div>

@@ -78,7 +78,7 @@ const ld = {
     <h2 id="columns">What the columns mean</h2>
     <p class="section-note">The first line of every file is the column names below. Trade files all share one set of columns, so files can be stacked.</p>
     {dict.map((x) => (
-      <details class="dict" open={x.kind === "trades"} data-dict={x.kind}>
+      <details class="dict" data-dict={x.kind}>
         <summary>{x.label} <span>{x.file!.columns.length} columns</span></summary>
         <div class="tablewrap">
           <table class="data wrap">

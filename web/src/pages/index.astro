@@ -120,6 +120,8 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
 
   <VizHome />
 
+  <AdSlot label="Advertisement" />
+
   <div class="datastrip strip-compact home-rates">
     <div class="cell"><div class="k">I-Bond composite</div><div class="v pos">{ibondRate}</div><div class="delta"><a href="/rates/i-bonds/">Next reset and calculator &rarr;</a></div></div>
     <div class="cell"><div class="k">10-year Treasury</div><div class="v pos">{tenYRate}</div><div class="delta"><a href="/rates/treasury-yields/">Yield curve and TIPS &rarr;</a></div></div>
@@ -127,7 +129,6 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
     <div class="cell"><div class="k">Newest</div><div class="v">{num(pub.filter((t) => withinDays(t.disclosedAt, 7)).length)}</div><div class="delta"><a href="/disclosures/">Disclosures in the last 7 days &rarr;</a></div></div>
   </div>
 
-  <AdSlot label="Advertisement" />
   <JsonLd data={[website, catalog]} />
 
   <script>

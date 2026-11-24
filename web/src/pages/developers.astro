@@ -59,6 +59,7 @@ print(trades[["filer", "ticker", "side", "amount_low", "amount_high", "disclosed
   <section aria-labelledby="catalog">
     <h2 id="catalog">Start with the catalogue</h2>
     <p>One file lists everything on this page in a form a program can read: <a href={CATALOG_PATH} data-catalog-link><code>{SITE_URL}{CATALOG_PATH}</code></a>. It is rebuilt with the site, usually once a day.</p>
+    <details class="dict" data-remember id="dict-catalog-keys"><summary>What each key holds</summary>
     <div class="tablewrap">
       <table class="data wrap keys">
         <thead><tr><th>Key</th><th>What it holds</th></tr></thead>
@@ -73,6 +74,7 @@ print(trades[["filer", "ticker", "side", "amount_low", "amount_high", "disclosed
         </tbody>
       </table>
     </div>
+    </details>
     <p>A short example in Python:</p>
     <pre class="code" tabindex="0" role="region" aria-label="Python example"><code>{py}</code></pre>
   </section>
@@ -129,6 +131,7 @@ print(trades[["filer", "ticker", "side", "amount_low", "amount_high", "disclosed
   <section aria-labelledby="working">
     <h2 id="working">The site's own JSON files</h2>
     <p>These are the files this site's pages load to draw the trade map, the screener and the search box. They are public and you may read them, but they are built for those pages: values are packed, keys are short, and <strong>their layout can change without notice</strong>. For anything you mean to keep running, use the CSV file named beside each one.</p>
+    <details class="dict" data-remember id="dict-working-files"><summary>The {WORKING_FILES.length} files and their layout</summary>
     <ul class="wfiles" data-working-files>
       {WORKING_FILES.map((w) => (
         <li data-working={w.path} data-top={w.top === "array" ? "array" : w.top.join(",")}>
@@ -137,6 +140,7 @@ print(trades[["filer", "ticker", "side", "amount_low", "amount_high", "disclosed
         </li>
       ))}
     </ul>
+    </details>
   </section>
 
   <section aria-labelledby="fetching">

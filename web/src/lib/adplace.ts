@@ -53,13 +53,22 @@ export function topLevel(html: string): TopEl[] {
 }
 
 const hasClass = (cls: string, name: string) => cls.split(/\s+/).includes(name);
-const FOLLOWS = ["lede", "facts", "site-what", "title-sub", "answer", "hubfigs"];
+const FOLLOWS = ["lede", "facts", "site-what", "title-sub", "answer", "hubfigs", "article-byline"];
 
 /** Split the content so the ad can sit between the two halves. `before` is "" when there is no h1. */
 export function splitForAd(html: string): { before: string; after: string } {
   const els = topLevel(html);
   let k = els.findIndex((e) => e.tag === "h1" || /<h1[\s>]/i.test(html.slice(e.start, e.end)));
   if (k < 0) return { before: "", after: html };
+  // A guide or an article wraps its whole text, h1 included, in one <article>: the title block is inside it, so the
+  // ad goes after the title block within the article, not after the whole article (where it sat next to the multiplex).
+  const el = els[k]!;
+  if (el.tag === "article" && !/^<h1[\s>]/i.test(html.slice(el.start, el.end))) {
+    const openEnd = html.indexOf(">", el.start) + 1;
+    const closeStart = html.lastIndexOf("</", el.end - 1);
+    const inner = splitForAd(html.slice(openEnd, closeStart));
+    if (inner.before) { const at = openEnd + inner.before.length; return { before: html.slice(0, at), after: html.slice(at) }; }
+  }
   while (k + 1 < els.length && FOLLOWS.some((c) => hasClass(els[k + 1]!.cls, c))) k++;
   const cut = els[k]!.end;
   return { before: html.slice(0, cut), after: html.slice(cut) };

@@ -68,7 +68,7 @@ const description = hasData
 
   {hasData ? (
     <>
-      <section class="datastrip">
+      <section class="datastrip rates-strip">
         <div class="cell"><div class="k">10-year</div><div class="v">{pct(t10?.latest)}</div><div class="delta">{bp(chg(t10?.latest ?? null, t10?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">2-year</div><div class="v">{pct(t2?.latest)}</div><div class="delta">{bp(chg(t2?.latest ?? null, t2?.prev ?? null))} vs prior day</div></div>
         <div class="cell"><div class="k">10Y − 2Y spread</div><div class={`v ${s10v2 != null && s10v2 < 0 ? "neg" : ""}`}>{bp(s10v2)}</div><div class="delta">{s10v2 != null && s10v2 < 0 ? "inverted" : "normal slope"}</div></div>
@@ -152,6 +152,8 @@ const description = hasData
     </div>
   )}
 
+  <AdSlot pos="low" />
+
   <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read the yield curve</h2></summary><div class="ref-body">
   <p>
     The yield curve plots what the U.S. government pays to borrow for different lengths of time, from one
@@ -167,7 +169,6 @@ const description = hasData
   </p>
 
   </div></details>
-  <AdSlot pos="low" />
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")?.path], name: "U.S. Treasury par yield curve (daily)", path: "/rates/treasury-yields/", description, dateModified: curve?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["Treasury yields", "yield curve", "10-year Treasury", "2s10s spread"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
 
