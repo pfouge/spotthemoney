@@ -4631,3 +4631,10 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   re-read and accepted: the eight that cover the changed files; three gained wording, `how-to-use-the-trade-map`
   a filter row and two labels.
 - Seed: NVDA filing `0001045810-26-000104` is an exercise and sale (an M row is added on the same date).
+
+### Show more by default (2026-11-24, Peter)
+- The 3 and 12 month table on stock pages (static and on-demand) is `data-nocap`: all 11 rows show, no
+  "Show all" button.
+- The home notable feed previews 12 rows at every width (`PREVIEW_ROWS` and `PREVIEW_ROWS_PHONE` in
+  `lib/notable.ts`, one `nth-child(n+13)` rule in `rd-home.css`; the phone rule is gone). Guide
+  `how-to-use-the-trade-map` says twelve.

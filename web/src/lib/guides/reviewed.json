@@ -148,7 +148,7 @@
   "how-to-use-the-trade-map": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/lib/notable.ts": "32d9381b2eb6a3e3",
+      "web/src/lib/notable.ts": "c13c740c901589dc",
       "web/src/components/NotableFeed.astro": "7333b2744804716a",
       "web/src/components/Heatmap.astro": "a8079d3fe379b694",
       "web/src/scripts/heatmap.ts": "2dcadd0d6ae8ba3e",
@@ -252,9 +252,9 @@
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "e308d7ee77201988",
       "web/src/lib/server/od.ts": "7be743abcf578390",
-      "web/src/components/OdPageView.astro": "356a3ac938b2120e",
+      "web/src/components/OdPageView.astro": "5dd0ae8dd987fd43",
       "web/src/lib/market.ts": "1c1fe024c48cfb64",
-      "web/src/pages/stocks/[ticker].astro": "a1a5d3215f856b2b",
+      "web/src/pages/stocks/[ticker].astro": "fe3e491c1ec52b9a",
       "web/src/pages/insiders/[slug].astro": "f809619e406da8f2",
       "web/src/pages/companies/[slug].astro": "7614041552092f28",
       "web/src/lib/form144.ts": "5792da219a57b938",
