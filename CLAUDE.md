@@ -4526,3 +4526,57 @@ it in the pull request that changes a cell.**
 - Not done: a second look at numbers that pass the check but belong to another company (would
   need a CUSIP reference list, which is licensed data); the same rule for Form 144 (it stores no
   CUSIP).
+
+## SESSION STATE 2026-11-24: presentation redesign (interactive session) — PRs #97 and #102
+
+Peter's brief: make the dense pages easy to use. Presentation only: no URL, title, heading text,
+query or structured-data change, and nothing a visitor could see may become unavailable. The full
+record is in the repo: `design/system.md` (tokens and patterns), `design/decisions.md` (every choice
+made on Peter's behalf, with how to reverse it), `design/page-type-audit.md` (23 page types, faults
+measured before, principles applied), `design/home/` (the two homepage directions and the scoring).
+
+- **Stage 1 (#97)** changed type, colour and spacing only. Peter's reaction: "basically the same";
+  the point was to reorganise, shorten the long lists and rework the charts. **Lesson: the local
+  seed is too small to show a long page. Judge layout on production-sized data** (QA build, or the
+  high-volume seed) before calling a layout change done.
+- **Stage 2 (#102), "summary first"** (`design/system.md` section 8):
+  - Tokens in `global.css`: white ground, no cards, one accent (blue), `--pos`/`--neg` only for
+    bought/sold and up/down, spacing `--s-1..8`, four type sizes, two weights, Inter self-hosted.
+    Old token names are aliases. Page-family styles: `rd-entity.css`, `rd-stock.css`,
+    `rd-people.css`, `rd-hubs.css`, `rd-home.css`, `rd-landing.css`, `rd-prose.css`, `rd-kit.css`,
+    `rd-final.css`.
+  - Entity pages: identity, facts, answer (two-line clamp), glance tiles with sparklines
+    (`lib/glancespark.ts`), a row of compact charts (`Viz` prop `compact`), then **group tabs**
+    (`GroupBar.astro`, `PageGroup.astro`): one group shown at a time, "All" shows everything, the
+    choice is remembered for the visit. Every group is in the HTML, so search engines, find-in-page
+    after "All", row anchors and the verifiers still see every row.
+  - **Preview tables** (`.tablewrap[data-preview]`, `scripts/tablecap.ts`): 5 rows, a "Show all N
+    rows" button, then a 20-row scroll box with a sticky head. Rows are never removed from the page.
+  - **A link to something hidden opens it** (`scripts/reveal.ts`): a hash that targets a row, a
+    section in another tab or a closed reference block switches the tab, opens the block and shows
+    the row. Anything new that hides content must be taught to `reveal.ts`.
+  - `Panel.astro` and the `.panels` 12-column grid for hubs and the home page; `HubFigures.astro`
+    figure strips; reference text ("What this table shows", method notes) in closed
+    `details.ref[data-remember]` blocks with the heading inside the summary.
+  - Home page: route tiles with 12-week sparklines (`HomeTop.astro`, `lib/hometop*.ts`), notable
+    trades, the trade map, then panels. A cluster row reads "▲ 6 Bought" (insiders in the cluster)
+    and "7 traded" (`tradedLabel`, `withTraded` in `lib/notable.ts`: everyone at the company with an
+    open-market purchase or sale between the cluster's first and last trade date).
+  - Header 48px with a row-density button (`#densityBtn`); footer shortened.
+  - **Top ad:** `BaseLayout` renders the page and inserts the top ad slot after the title block
+    (`lib/adplace.ts`, tests `scripts/adplace.test.ts`). A CSS reorder was tried first and caused
+    layout shift. Reserved heights are unchanged.
+- **Browser storage:** one session-storage key, `stm.ui` (row density, open blocks, expanded tables,
+  chosen tab), gone when the tab closes; named on the privacy page. localStorage keys are still
+  only `theme` and `stm.screens.congress`. `verify-screener` and `verify-finscreen` allow `stm.ui`.
+- **Checks.** `scripts/verify-redesign.mjs <before-dir> <after-dir> [--browser <chrome>]` compares
+  two builds page by page: same URLs, titles, headings, JSON-LD, table rows and data blocks; no
+  sideways scroll at 390px. Run it against a build of the commit before a layout change. The usual
+  gate was green on the seed (astro check 0, 424 unit tests, every verifier, a11y light and dark).
+- **After a merge from main, grep the tree for conflict markers before committing**
+  (`grep -rIl -E "^(<<<<<<<|>>>>>>>) "`): one commit in this work carried markers in
+  `reviewed.json` and a page file.
+- **Not done:** on-demand pages (`OdPageView`) have the new structure but no group tabs and were not
+  checked in a browser; pages with very little data are mostly their two ad blocks; `flowEntity` in
+  `BaseLayout` is now never true (dead code); "N traded" counts sales under a 10b5-1 plan; real
+  phones and Safari were not tested (Chromium only).
