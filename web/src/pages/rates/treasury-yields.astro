@@ -75,6 +75,7 @@ const description = hasData
         <div class="cell"><div class="k">10Y − 3M spread</div><div class={`v ${s10v3m != null && s10v3m < 0 ? "neg" : ""}`}>{bp(s10v3m)}</div><div class="delta">{s10v3m != null && s10v3m < 0 ? "inverted" : "normal slope"}</div></div>
       </section>
 
+      <div class="panels">
       <section class="panel chartpanel">
         <div class="chart-head">
           <h2>The curve today</h2>
@@ -89,12 +90,22 @@ const description = hasData
         </div>
         <p class="disclaimer">Maturity is on a log scale so short and long tenors both read clearly. Hover or tap a maturity for exact values.</p>
       </section>
+      {trend && (
+        <section class="panel chartpanel">
+          <div class="chart-head"><h2>10-year yield, year to date</h2></div>
+          <div class="chartwrap" data-series={JSON.stringify(["10-year"])}>
+            <Fragment set:html={trend} />
+            <div class="tip" hidden></div>
+          </div>
+        </section>
+      )}
+      </div>
 
       <AdSlot label="Advertisement" />
 
       <h2>Every maturity</h2>
       <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")} note="every day held, one column per maturity" />
-      <div class="tablewrap">
+      <div class="tablewrap" data-preview="8">
         <table class="data">
           <thead>
             <tr>
@@ -123,15 +134,6 @@ const description = hasData
       </div>
       <p class="disclaimer">Changes in basis points (1 bp = 0.01%). "1 month" compares with {curve!.monthAgoDate ? formatDate(curve!.monthAgoDate) : "—"}; "year to date" with {curve!.yearStartDate ? formatDate(curve!.yearStartDate) : "—"}.</p>
 
-      {trend && (
-        <section class="panel chartpanel">
-          <div class="chart-head"><h2>10-year yield, year to date</h2></div>
-          <div class="chartwrap" data-series={JSON.stringify(["10-year"])}>
-            <Fragment set:html={trend} />
-            <div class="tip" hidden></div>
-          </div>
-        </section>
-      )}
     </>
   ) : (
     <section class="panel">

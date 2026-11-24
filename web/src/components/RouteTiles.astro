@@ -1,0 +1,17 @@
+---
+// A landing's headline tiles that also route (design/system.md section 7): each tile is a link to a page or an
+// in-page panel, carrying one live figure the page already computes. The wrapper carries "hubfigs" so lib/adplace.ts
+// places the top ad after the tiles, as it did after HubFigures. Tiles with no figure are dropped, never shown empty.
+interface Item { href: string; k: string; v: string | number | null | undefined; n?: string }
+interface Props { items: Item[]; label?: string }
+const { items, label = "Headline figures" } = Astro.props;
+const shown = items.filter((i) => i.v !== "" && i.v != null).slice(0, 6);
+const fmt = (v: string | number) => (typeof v === "number" ? v.toLocaleString("en-US") : v);
+---
+{shown.length >= 2 && (
+  <nav class="routes hubfigs ltiles" aria-label={label}>
+    {shown.map((i) => (
+      <a href={i.href}><div class="k">{i.k}</div><div class="v">{fmt(i.v as string | number)}</div>{i.n && <div class="n">{i.n}</div>}</a>
+    ))}
+  </nav>
+)}

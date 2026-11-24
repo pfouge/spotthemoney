@@ -41,9 +41,12 @@ const description = fitDescription([
         </div>
         <p class="soft wash-window">{t.window}.{t.newest ? <> Newest on file: <span data-newest={t.newest}>{formatDate(t.newest)}</span> ({t.newestLabel}).</> : null}</p>
         {t.items.length > 0 && (
-          <ul class="wash-items" aria-label={`Newest in ${t.title}`}>
-            {t.items.map((i) => <li><a href={i.href}>{i.text}</a>{i.date ? <span class="soft"> · {formatDate(i.date)}</span> : null}</li>)}
-          </ul>
+          <details class="wash-more">
+            <summary>Newest filings ({t.items.length})</summary>
+            <ul class="wash-items" aria-label={`Newest in ${t.title}`}>
+              {t.items.map((i) => <li><a href={i.href}>{i.text}</a>{i.date ? <span class="soft"> · {formatDate(i.date)}</span> : null}</li>)}
+            </ul>
+          </details>
         )}
       </article>
     ))}

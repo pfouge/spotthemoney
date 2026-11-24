@@ -654,6 +654,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 - Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
 - Numbers: /congress/ 11.6 to 7.5 screens at 1280, 14.8 to 10.2 at 390; first figure y 774 to 544; first table y 3185 to 3129. /stocks/ 4.2 to 2.9 and 5.6 to 3.5; /washington/ 4.3 to 3.3 and 7.3 to 5.4. Route tiles with a live figure each were not built (skipped).
 
+**Redesign: how each principle was applied** (L2, /congress/, /insiders/, /stocks/, /washington/, /disclosures/)
+1. Answer first: title, answer clamped to two lines with "more", then route tiles (`RouteTiles`, class `hubfigs`, so the top ad follows the tiles; the title block is crumbs, h1, lede, answer).
+2. One screen, one idea: tiles route to the screener, directory, committees, votes, outside spending, late filers (congress); filings, planned sales, large and institutional holders, clusters (insiders); each carries a live figure already in scope.
+3. Dashboard grid: trade map in a span-12 panel, one `.viz-grid` row of compact charts, tables as panels with 5 to 8 row previews and "Show all N rows"; /insiders/ puts every feed under tabs over one panel (all rows stay in the DOM).
+4. Fold the rest: "More views", FAQ, explanations and /washington/ newest filings are closed details; hash links open them.
+5. One table per question: previews replace stacked 100-row tables; each panel links to its screener or hub.
+6. Phones: charts are one swipeable row, tiles two across, tables scroll inside their wrapper; no page-level sideways scroll.
+7. Kit tokens only: sizes 12/14/16/24, weights 400/600; the heatmap's own tile text (11 to 18px) is not changed.
+Numbers (1280 / 390, px): congress 7640/9846 to 4570/6362; insiders 9173/11773 to 4068/5119; stocks 2743/3275 to 2806/3558; washington 2977/4896 to 2772/4307; disclosures 2384/2908 to 2327/2851. About 480px of each page is reserved ad space and the heatmap panel is 959px; neither is changed here.
+
 ### 3.9 Rates and markets detail pages
 
 **Routes:** `/rates/i-bonds/`, `/rates/tips/`, `/rates/treasury-yields/`, `/markets/largest-stock-exchanges/`
@@ -716,6 +726,16 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 - Consistency: one HubFigures component, one `.ent` row format, one `details.ref` pattern on every page of this type.
 - Progressive disclosure: method, coverage and "how to read" blocks are `<details data-remember>` closed by default, headings unchanged.
 - Numbers: treasury-yields page 5.3 to 4.7 screens at 1280, 5.7 to 4.9 at 390; first figure y 631 to 544; first table y 1792 to 1675. Markets 8.9 to 5.9 screens at 1280, 11.5 to 7.1 at 390.
+
+**Redesign: how each principle was applied** (L2, /rates/ and its three detail pages, /markets/largest-stock-exchanges/)
+1. Answer first: headline figure as the `--t-lg` number (datastrip, bignum) under the answer; /rates/ opens with four route tiles (I bonds, Treasury 10-year, TIPS 10-year real, world markets).
+2. One screen, one idea: chart before table; the curve and the 10-year year-to-date chart sit side by side as panels; the two world-market bar charts sit side by side from 1100px.
+3. Tables are 8-row previews with "Show all N rows"; the four markets tables are panels in a 2-column grid.
+4. Fold the rest: what-each-page-covers, how-the-three-rates-differ, where-the-numbers-come-from and how-the-I-Bond-rate-works are closed details; the I-Bond calculator keeps its ids and script and stays open.
+5. Chart SVGs are held to 320px; the `.panel` name clash with the kit is neutralised for the formula line (`p.panel`).
+6. Phones: single column, no sideways page scroll.
+7. Kit tokens only.
+Numbers (1280 / 390): rates 2400/3387 to 2086/2661; i-bonds 3408/4118 to 3059/3724; treasury-yields 4216/4333 to 3416/4326; tips 2660/3102 to 2673/3115; markets 5333/6309 to 4077/5980.
 
 ### 3.10 Dataset hub (client-side filter)
 

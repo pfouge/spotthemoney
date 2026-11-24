@@ -9,7 +9,10 @@ import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
-import HubFigures from "../../components/HubFigures.astro";
+import RouteTiles from "../../components/RouteTiles.astro";
+import Panel from "../../components/Panel.astro";
+import { sitePlanned } from "../../lib/plannedsales-build";
+import { siteLarge } from "../../lib/largeholders-build";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -46,6 +49,10 @@ const clusters = (() => {
     .filter((c) => c.buyers >= 3).sort((a, b) => b.buyers - a.buyers || b.total - a.total);
 })();
 
+let plannedCount = 0, largeCount = 0;
+try { plannedCount = sitePlanned(model).all.length; } catch { /* hub not available */ }
+try { largeCount = siteLarge(model).all.length; } catch { /* hub not available */ }
+const instCount = model.inst.shown && model.inst.period ? model.inst.managersInPeriod : 0;
 const buyRatio = month.length ? month.filter((t) => t.code === "P").length / Math.max(1, month.filter((t) => t.side === "sell").length) : null;
 const underReview = all.some((t) => !t.isPublished);
 const lastUpdated = all[0]?.filedAt ?? model.builtAt;
@@ -73,54 +80,71 @@ const feeds = [
   <p class="lede">Form 4 filings for the tracked set, the day after they reach EDGAR, with preset feeds for the patterns people actually look for.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR Form 4" />
-  <HubFigures items={[{k:"Trades, last 7 days",v:num(week.length)},{k:"Trades, last 30 days",v:num(month.length)},{k:"Open-market buys, 30 days",v:num(month.filter((t) => t.code === "P").length)}]} />
+  <RouteTiles items={[
+    { href: "#newest", k: "Newest filings", v: num(week.length), n: "Trades, last 7 days" },
+    ...(plannedCount > 0 ? [{ href: "/planned-sales/", k: "Planned sales", v: num(plannedCount), n: "Form 144 notices" }] : []),
+    ...(largeCount > 0 ? [{ href: "/large-holders/", k: "Large holders", v: num(largeCount), n: "13D and 13G holders" }] : []),
+    ...(instCount > 0 ? [{ href: "/institutional-holders/", k: "Institutional holders", v: num(instCount), n: "Managers filing a 13F" }] : []),
+    { href: "#cluster-buys", k: "Cluster buys", v: num(clusters.length), n: "Stocks, last 30 days" },
+    { href: "#top-buys-month", k: "Open-market buys", v: num(month.filter((t) => t.code === "P").length), n: "Trades, last 30 days" },
+  ]} />
   <ReviewNote show={underReview} what="Form 4 rows" />
 
-  <h2 id="heatmap" class="hm-h2">Trade map <span class="tag live">Live</span></h2>
-  <Heatmap kind="insiders" primary={true} />
-
-  <nav class="feeds" aria-label="Preset feeds">
-    <a href="#heatmap">Trade map</a>
-    {model.txns.some((t) => t.isPublished && t.source === "sec_form4") && <a href="#charts">Charts</a>}
-    <a href="#newest">Newest</a>
-    {feeds.map((f) => <a href={`#${f.id}`}>{f.title.replace(/ \(.*\)$/, "")}</a>)}
-    <a href="/stocks/">By stock or company</a>
-  </nav>
+  <div class="panels">
+    <Panel span={12}>
+      <h2 slot="title" id="heatmap" class="hm-h2">Trade map <span class="tag live">Live</span></h2>
+      <Heatmap kind="insiders" primary={true} />
+    </Panel>
+  </div>
 
   <VizInsiders />
 
-  <h2 id="newest">Newest disclosures</h2>
-  <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "insider-trades-latest.csv")} note="every Form 4 row disclosed in the last 90 days; earlier quarters are on the downloads page" />
-  <p class="section-note" data-feed-link>In a feed reader: RSS feeds of the newest <a href="/feeds/insider-purchases.xml">open-market purchases</a> and of <a href="/feeds/insider-trades.xml">purchases and sales</a> (<a href="/feeds/">about the feeds</a>).</p>
-  <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved Form 4 rows yet. The daily sec_form4 job fills this table (see the ingest status in the footer of the methodology page)." />
+  <div class="panels">
+    <Panel span={12} open={{ href: "/stocks/", label: "By stock or company" }}>
+      <div data-ltabs>
+        <div class="ltabs" role="tablist" aria-label="Insider feeds">
+          <button type="button" role="tab" data-ltab="newest" class="on" aria-selected="true">Newest</button>
+          {feeds.map((f) => <button type="button" role="tab" data-ltab={f.id} aria-selected="false" tabindex="-1">{f.title.replace(/ \(.*\)$/, "")}</button>)}
+        </div>
+        <div data-lpane="newest" class="on">
+          <h2 id="newest">Newest disclosures</h2>
+          <DownloadCsv file={(await getDownloads()).files.find((f) => f.name === "insider-trades-latest.csv")} note="every Form 4 row disclosed in the last 90 days; earlier quarters are on the downloads page" />
+          <p class="section-note" data-feed-link>In a feed reader: RSS feeds of the newest <a href="/feeds/insider-purchases.xml">open-market purchases</a> and of <a href="/feeds/insider-trades.xml">purchases and sales</a> (<a href="/feeds/">about the feeds</a>).</p>
+          <TxnTable model={model} txns={all} showPerson showSecurity limit={100} emptyReason="No approved Form 4 rows yet. The daily sec_form4 job fills this table (see the ingest status in the footer of the methodology page)." />
+        </div>
+        <div data-lpane="cluster-buys">
+          <h2 id="cluster-buys">Cluster buys (30 days)</h2>
+  {clusters.length === 0 ? <p class="empty-reason">No ticker had three or more distinct insiders buying on the open market in the last 30 days.</p> : (
+      <div class="tablewrap">
+        <table class="data">
+          <thead><tr><th>Ticker</th><th class="num">Insiders buying</th><th class="num">Total bought</th><th>Buyers</th></tr></thead>
+          <tbody>
+            {clusters.map((c) => (
+              <tr>
+                <td class="mono"><a href={securityPath(c.security)}>{c.security.ticker}</a></td>
+                <td class="num">{c.buyers}</td>
+                <td class="num strong">{money(c.total)}</td>
+                <td>{[...new Set(c.txns.map((t) => t.personId))].filter((x): x is number => x != null).slice(0, 6).map((pid) => { const p = model.people.get(pid)!; const pp = personPath(p); return <span class="chip">{pp ? <a href={pp}>{p.name}</a> : p.name}</span>; })}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+        </div>
+        {feeds.filter((f) => f.txns).map((f) => (
+          <div data-lpane={f.id}>
+            <h2 id={f.id}>{f.title}</h2>
+            <TxnTable model={model} txns={f.txns!} showPerson showSecurity limit={50} emptyReason={`Nothing matched this filter in the window (${num(month.length)} transactions checked).`} />
+          </div>
+        ))}
+      </div>
+    </Panel>
+  </div>
+  <script>import "../../scripts/landing-tabs";</script>
 
   <AdSlot label="Advertisement" />
-
-  <h2 id="cluster-buys">Cluster buys (30 days)</h2>
-  {clusters.length === 0 ? <p class="empty-reason">No ticker had three or more distinct insiders buying on the open market in the last 30 days.</p> : (
-    <div class="tablewrap">
-      <table class="data">
-        <thead><tr><th>Ticker</th><th class="num">Insiders buying</th><th class="num">Total bought</th><th>Buyers</th></tr></thead>
-        <tbody>
-          {clusters.map((c) => (
-            <tr>
-              <td class="mono"><a href={securityPath(c.security)}>{c.security.ticker}</a></td>
-              <td class="num">{c.buyers}</td>
-              <td class="num strong">{money(c.total)}</td>
-              <td>{[...new Set(c.txns.map((t) => t.personId))].filter((x): x is number => x != null).slice(0, 6).map((pid) => { const p = model.people.get(pid)!; const pp = personPath(p); return <span class="chip">{pp ? <a href={pp}>{p.name}</a> : p.name}</span>; })}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
-
-  {feeds.filter((f) => f.txns).map((f) => (
-    <>
-      <h2 id={f.id}>{f.title}</h2>
-      <TxnTable model={model} txns={f.txns!} showPerson showSecurity limit={50} emptyReason={`Nothing matched this filter in the window (${num(month.length)} transactions checked).`} />
-    </>
-  ))}
 
   <MiniCharts kind="insiders" />
 

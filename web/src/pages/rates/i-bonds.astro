@@ -109,7 +109,7 @@ const description = hasData
     <p class="disclaimer" id="note"></p>
   </section>
 
-  <h2>How the I-Bond rate works</h2>
+  <details class="ref" data-remember id="ref-how-the-i-bond-rate-works"><summary><h2 id="how-the-i-bond-rate-works">How the I-Bond rate works</h2></summary><div class="ref-body">
   <p>
     A Series I savings bond earns a <strong>composite rate</strong> that combines a
     <strong>fixed rate</strong> (set for the life of the bond at purchase) and a
@@ -123,6 +123,7 @@ const description = hasData
     <strong>3 months</strong> of interest. Figures here are estimates that assume the current rate
     persists; the actual rate your bond earns resets every six months.
   </p>
+  </div></details>
 
   <AdSlot pos="low" />
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "i-bond-rates.csv")?.path], name: "Series I savings bond rates", path: "/rates/i-bonds/", description, dateModified: rate?.effectiveDate ?? new Date().toISOString().slice(0, 10), keywords: ["I-Bond", "I bond rate", "savings bonds", "inflation"], sources: [SOURCES.fiscaldata, SOURCES.bls], parentCatalogPath: "/rates/" })} />
