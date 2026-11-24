@@ -11,31 +11,31 @@
    flex row so `order` can put the ad right after the title block: crumbs, h1, and the lede, facts list
    or answer that follows it. Everything else keeps its source order (order 20). A page that matches
    neither selector is untouched and keeps the ad where it was. The ad's reserved height is the same. */
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) { display: flex; flex-flow: row wrap; align-content: flex-start; column-gap: var(--s-3); }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > * { flex: 0 0 100%; min-width: 0; order: 20; }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > nav.crumbs { order: 0; }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > .eyebrow { order: 1; }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > :is(h1, .title-row) { order: 2; }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > :is(h1, .title-row) + :is(p, dl, .answer, .lede, .hero, div.hero, section.hero) { order: 4; }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > :is(h1, .title-row) + .lede + dl { order: 4; }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > .ad-top { order: 5; }
-main > .container:is(:has(> .title-row), :has(> .ad-top):has(> h1)) > .ad-multiplex { order: 99; }
+main > .container.flow-entity { display: flex; flex-flow: row wrap; align-content: flex-start; column-gap: var(--s-3); }
+main > .container.flow-entity > * { flex: 0 0 100%; min-width: 0; order: 20; }
+main > .container.flow-entity > nav.crumbs { order: 0; }
+main > .container.flow-entity > .eyebrow { order: 1; }
+main > .container.flow-entity > :is(h1, .title-row) { order: 2; }
+main > .container.flow-entity > :is(h1, .title-row) + :is(p, dl, .answer, .lede, .hero, div.hero, section.hero) { order: 4; }
+main > .container.flow-entity > :is(h1, .title-row) + .lede + dl { order: 4; }
+main > .container.flow-entity > .ad-top { order: 5; }
+main > .container.flow-entity > .ad-multiplex { order: 99; }
 
 /* Identity line: h1, Follow, then Cite and Share on the same line. The answer's two buttons stay inside
    .answer in the markup (the share script and verifiers look for them there); its box is dissolved so
    its parts take their own place in the flow. */
-main > .container:has(> .title-row) > .title-row { flex: 1 1 0; min-width: 0; align-self: center; }
-main > .container:has(> .title-row) > .answer,
-main > .container:has(> .title-row) > .answer > .answer-foot { display: contents; }
-main > .container:has(> .title-row) > .answer .answer-actions { order: 3; flex: none; align-self: center; }
-main > .container:has(> .title-row) > .answer .answer-text { order: 8; flex: 0 0 100%; margin: var(--s-4) 0 var(--s-1); max-width: 72ch; }
-main > .container:has(> .title-row) > .answer .answer-more { order: 8; margin: 0 0 var(--s-1); }
-main > .container:has(> .title-row) > .answer .answer-meta { order: 9; flex: 0 0 100%; margin: 0 0 var(--s-2); }
-main > .container:has(> .title-row) > .review-note { order: 10; }
-main > .container:has(> .title-row) > dl.facts { order: 4; }
-main > .container:has(> .title-row) > .glance { order: 6; }
-main > .container:has(> .title-row) > .datastrip { order: 7; }
-main > .container:has(> .title-row) > .title-row h1 { font-size: var(--t-lg); line-height: var(--lh-lg); }
+main > .container.flow-entity > .title-row { flex: 1 1 0; min-width: 0; align-self: center; }
+main > .container.flow-entity > .answer,
+main > .container.flow-entity > .answer > .answer-foot { display: contents; }
+main > .container.flow-entity > .answer .answer-actions { order: 3; flex: none; align-self: center; }
+main > .container.flow-entity > .answer .answer-text { order: 8; flex: 0 0 100%; margin: var(--s-4) 0 var(--s-1); max-width: 72ch; }
+main > .container.flow-entity > .answer .answer-more { order: 8; margin: 0 0 var(--s-1); }
+main > .container.flow-entity > .answer .answer-meta { order: 9; flex: 0 0 100%; margin: 0 0 var(--s-2); }
+main > .container.flow-entity > .review-note { order: 10; }
+main > .container.flow-entity > dl.facts { order: 4; }
+main > .container.flow-entity > .glance { order: 6; }
+main > .container.flow-entity > .datastrip { order: 7; }
+main > .container.flow-entity > .title-row h1 { font-size: var(--t-lg); line-height: var(--lh-lg); }
 
 /* ---- 2. identity facts, glance tiles and the figure row read as one group ---------------------- */
 .facts { gap: var(--s-3) var(--s-5); margin: var(--s-2) 0 var(--s-1); }
