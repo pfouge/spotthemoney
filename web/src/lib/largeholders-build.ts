@@ -31,7 +31,7 @@ export function siteLarge(m: Flagship): SiteLarge {
         ins.push({
           company, holder: cleanText(s.reporterName, 120) ?? "Not stated", path: holderPath(m, s), schedule: s.schedule, amend: s.isAmendment,
           percent: percentStated(s.percent), shares: sharesStated(s.shares), event: s.eventDate, filed: s.filedAt, accession: s.accession,
-          persons: Math.max(1, s.reporterCount), url: s.sourceUrl,
+          persons: Math.max(1, s.reporterCount), url: s.sourceUrl, hk: h.holder,
         });
       }
     }

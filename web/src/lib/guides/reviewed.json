@@ -89,11 +89,11 @@
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "6f13e1f83fd08c67",
-      "web/src/lib/downloads.ts": "a10dfa6d02a655d2",
+      "web/src/lib/downloads.ts": "6ce0e86a8ffda854",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "c173e267d4ad4553",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "caae6ebab02cc61e",
+      "web/src/lib/datafiles.ts": "95324dcdbabcb8e3",
       "web/src/pages/developers.astro": "93373951752def3c"
     }
   },
@@ -210,8 +210,8 @@
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
-      "web/src/lib/schedule13.ts": "6a56ade8c9999b1d",
-      "web/src/lib/largeholders.ts": "0f9bce0e302a9874",
+      "web/src/lib/schedule13.ts": "c7e9645b4be286da",
+      "web/src/lib/largeholders.ts": "002df0ef59a1f404",
       "web/src/components/LargeHolders.astro": "9f60fdac84de2cd0",
       "web/src/components/ReportedHoldings.astro": "08f15f24215b39d5"
     }

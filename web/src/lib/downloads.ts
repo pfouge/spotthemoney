@@ -306,7 +306,7 @@ async function build(): Promise<Downloads> {
   add(file({ name: "planned-sales-form144.csv", group: "insiders", kind: "notices", title: "Planned sales: SEC Form 144 notices", about: "One row per notice of a proposed sale of restricted or control shares, for the companies this site tracks. A notice is a plan to sell, not a sale.", updated: newest(notices.map((n) => n.filedAt)) }, noticeCols, notices));
 
   // Large holders: SEC Schedules 13D and 13G about companies on the site, every statement on
-  // record (a page shows each holder's newest one only). The model holds none until that load
+  // record (a page shows each holder's newest one only, per class of shares). The model holds none until that load
   // has reached today (lib/schedule13-build.ts), so the file appears with the page sections.
   const statements = sortStatements([...m.schedule13.byCik.entries()].flatMap(([cik, xs]) => (byCik.get(cik)?.slug ? xs : [])));
   const newestForHolder = new Set<string>();
@@ -324,12 +324,12 @@ async function build(): Promise<Downloads> {
     { key: "holder_sec_number", about: "SEC number (CIK) of the filer of the statement, ten digits.", get: (x) => x.filerCik },
     { key: "reporting_persons", about: "How many reporting persons the statement names. Members of a group each report the group's combined holding.", get: (x) => x.reporterCount || null },
     { key: "security_class", about: "Class of the securities, as filed.", get: (x) => cleanText(x.securityClass, 160) },
-    { key: "cusip", about: "CUSIP number of the class, when the statement gives one.", get: (x) => cleanText(x.issuerCusip, 20) },
+    { key: "cusip", about: "CUSIP number of the class of shares, as typed on the statement, when it gives one.", get: (x) => cleanText(x.issuerCusip, 20) },
     { key: "shares_stated", about: "The largest amount beneficially owned that any one reporting person states. Never a sum across persons. What the filer says it owned on the event date, not a trade.", get: (x) => sharesStated(x.shares) },
     { key: "percent_of_class", about: "The largest percent of the class that any one reporting person states, 0 to 100. Under 5 means the holder reports it is no longer above the 5% mark.", get: (x) => percentStated(x.percent) },
     { key: "event_date", about: "The date of the event that required the statement: the day the figures are as of.", get: (x) => x.eventDate },
     { key: "rules", about: "Schedule 13G: the rule the statement is filed under, as filed; several are separated by semicolons.", get: (x) => (x.rules.length ? x.rules.map((r) => cleanText(r, 60)).filter(Boolean).join("; ") : null) },
-    { key: "newest_for_holder", about: "true when this is the newest statement on record by this filer about this company: the row a page shows. Older statements are false.", get: (x) => newestForHolder.has(x.accession) },
+    { key: "newest_for_holder", about: "true when this is the row a page shows: the newest statement on record by this filer about this company, or, when the filer reports on several classes of the company's shares (CUSIP numbers whose statements overlap in time), its newest about that class. Older statements are false.", get: (x) => newestForHolder.has(x.accession) },
     { key: "purpose_as_filed", about: `Schedule 13D only: the filer's "purpose of transaction" text, as filed, white space collapsed, at most ${PURPOSE_MAX.toLocaleString("en-US")} characters. Not shown on pages; nothing is derived from it.`, get: (x) => (x.schedule === "13D" ? cleanText(x.purpose, PURPOSE_MAX) : null) },
     { key: "accession", about: "The SEC's accession number of the statement.", get: (x) => x.accession },
     { key: "sec_url", about: "Link to the statement on the SEC's EDGAR system.", get: (x) => x.sourceUrl },
