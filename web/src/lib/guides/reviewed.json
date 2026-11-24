@@ -41,8 +41,8 @@
       "web/src/lib/naics.ts": "e383c21b014850a8",
       "web/src/lib/assistance.ts": "8d1ebeffb90c1862",
       "web/src/pages/grants/index.astro": "0128b561f87d1309",
-      "web/src/lib/dla.ts": "f65e108d3d3d388a",
-      "web/src/components/MilitaryOrders.astro": "015415265e9e25b2"
+      "web/src/lib/dla.ts": "78c481fa36111fd5",
+      "web/src/components/MilitaryOrders.astro": "bcd805aa1fa94c6b"
     }
   },
   "form-13f-institutional-holdings": {

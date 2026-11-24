@@ -6,7 +6,8 @@
 // is a base contract (a PIID whose ninth character is D, G or A); links go to nsnexplorer.com with a
 // dashed NSN and to DIBBS. One company shows the same figures on every page that carries its panel.
 // With --db: the orders and value of each panel are recounted from the database, by the supplier
-// codes the panel names, with this script's own copy of the order rule.
+// codes the panel names and from its window start (data-since), with this script's own copy of the
+// order rule. The heading says "last 12 months" only when the window is a full year.
 // --require fails when no page has a panel (use when the build is known to have read the database).
 const args = process.argv.slice(2);
 const base = (args.find((a) => !a.startsWith("--") && !/^\d+$/.test(a) && !a.startsWith("postgres")) ?? "http://127.0.0.1:4321").replace(/\/$/, "");
@@ -52,10 +53,13 @@ for (const { p, html } of panels) {
   const sec = html.match(/<section[^>]*>/)[0];
   const orders = Number(attr(sec, "data-orders")), value = Number(attr(sec, "data-value")), parts = Number(attr(sec, "data-parts"));
   const cages = (attr(sec, "data-cages") ?? "").split(",").filter(Boolean);
-  const first = attr(sec, "data-first"), last = attr(sec, "data-last");
+  const first = attr(sec, "data-first"), last = attr(sec, "data-last"), since = attr(sec, "data-since");
+  ok(since && since >= floor && since <= today, `${p}: window start ${since} outside ${floor}..${today}`);
+  const h2 = unesc(html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/)?.[1] ?? "");
+  ok(since > floor ? /since [A-Z][a-z]+ \d{4}\)/.test(h2) : /last 12 months\)/.test(h2), `${p}: heading "${h2}" does not match window start ${since}`);
   ok(orders > 0 && value > 0 && parts > 0 && parts <= orders, `${p}: figures orders ${orders} value ${value} parts ${parts}`);
   ok(cages.length > 0, `${p}: no supplier codes on the panel`);
-  ok(first && last && first >= floor && last <= today && first <= last, `${p}: dates ${first} to ${last} outside ${floor}..${today}`);
+  ok(first && last && first >= (since ?? floor) && last <= today && first <= last, `${p}: dates ${first} to ${last} outside ${since}..${today}`);
   const figs = [...html.matchAll(/<span class="v"[^>]*>([^<]*)</g)].map((m) => m[1].trim());
   ok(figs.length === 3, `${p}: ${figs.length} headline figures`);
   if (figs.length) ok(figs[0] === orders.toLocaleString("en-US"), `${p}: headline orders "${figs[0]}" vs ${orders}`);
@@ -88,9 +92,9 @@ for (const { p, html } of panels) {
     const [r] = await pg.unsafe(`
       select count(*)::int as n, coalesce(round(sum(obligation)), 0)::float8 as v, min(action_date)::text as f, max(action_date)::text as l, count(distinct raw->>'nsn')::int as parts
         from pub.contract_actions
-       where raw->>'cage' = any($1) and action_date >= current_date - ${WINDOW} and action_date <= current_date and obligation > 0
+       where raw->>'cage' = any($1) and action_date >= $2::date and action_date <= current_date and obligation > 0
          and raw->>'nsn' is not null
-         and (coalesce(raw->>'deliveryOrder', '') <> '' or upper(substr(coalesce(raw->>'awardNumber', ''), 9, 1)) not in ('D', 'G', 'A'))`, [cages]);
+         and (coalesce(raw->>'deliveryOrder', '') <> '' or upper(substr(coalesce(raw->>'awardNumber', ''), 9, 1)) not in ('D', 'G', 'A'))`, [cages, since]);
     ok(r.n === orders, `${p}: ${orders} orders on the page, ${r.n} in the database`);
     ok(Math.abs(r.v - value) <= 1, `${p}: value ${value} on the page, ${r.v} in the database`);
     ok(r.parts === parts && r.f === first && r.l === last, `${p}: parts/first/last ${parts}/${first}/${last} vs ${r.parts}/${r.f}/${r.l}`);

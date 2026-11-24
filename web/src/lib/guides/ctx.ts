@@ -10,7 +10,7 @@ import { PAY_YEARS, PAY_LARGE, PAY_SMALL } from "../execpay";
 import { INST_TOP, INST_MIN_MANAGERS, INST_SHOWN_DAYS, quarterDate as instQuarterDate } from "../inst13f";
 import { instHubShown } from "../inst13f-hub";
 import { ASSISTANCE_WINDOW_DAYS } from "../assistance";
-import { DLA_WINDOW_DAYS } from "../dla";
+import { DLA_WINDOW_DAYS, windowLabel } from "../dla";
 import { feedDef } from "../feeds";
 import { ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS, FEED_NEW_MAX_AGE_DAYS } from "../account";
 import { WATCH_WINDOW_DAYS } from "../watchcards";
@@ -62,7 +62,7 @@ export interface GuideCtx {
   /** Days back that grants, loans and direct payments are listed (lib/assistance.ts). */
   assistanceWindowDays: number;
   /** True when military parts orders were read from nsnexplorer.com for at least one company (lib/dla.ts), and the days back they cover. */
-  dlaShown: boolean; dlaWindowDays: number;
+  dlaShown: boolean; dlaWindowDays: number; dlaWindow: string;
   /** True once Form 144 notices are shown on pages (lib/form144.ts), and the rows a page's table prints. */
   /** True when Form 13F holders are shown on pages (lib/inst13f.ts); managers listed per company; managers a quarter needs to count as loaded; days a load may be old; the newer quarter end as text. */
   instShown: boolean; instTop: number; instMinManagers: string; instShownDays: number; instPeriod: string;
@@ -125,7 +125,7 @@ async function build(): Promise<GuideCtx> {
     contractDescriptionShown: DESCRIPTION_SHOWN,
     instShown: instHubShown(m), instTop: INST_TOP, instMinManagers: INST_MIN_MANAGERS.toLocaleString("en-US"), instShownDays: INST_SHOWN_DAYS, instPeriod: m.inst.period ? instQuarterDate(m.inst.period) : "",
     assistanceWindowDays: ASSISTANCE_WINDOW_DAYS,
-    dlaShown: m.dla.byCompany.size > 0, dlaWindowDays: DLA_WINDOW_DAYS,
+    dlaShown: m.dla.byCompany.size > 0, dlaWindowDays: DLA_WINDOW_DAYS, dlaWindow: windowLabel(m.dla),
     form144Shown: m.form144.shown, form144Rows: NOTICE_ROWS, form144ValueMaxPerShare: VALUE_MAX_PER_SHARE.toLocaleString("en-US"),
     schedule13Shown: m.schedule13.shown, holderRows: HOLDER_ROWS, holderThreshold: THRESHOLD_PERCENT, holderRecordStart: RECORD_START_LABEL, cusipTypoMax: TYPO_MAX_DISTANCE,
     financialsShown: m.financials.byCik.size > 0, finYears: YEARS_SHOWN, finQuarters: QUARTERS_SHOWN, finMinImpliedShares: MIN_IMPLIED_SHARES.toLocaleString("en-US"),

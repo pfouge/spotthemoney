@@ -2,7 +2,7 @@
 // Run: npx tsx --test scripts/dla.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isOrder, makeMatcher, companyDla, monthKeys, dashedNsn, nsnUrl, supplierUrl, trimDivision, dlaLog, emptyDla, TOP_PARTS, LATEST_ORDERS, type OrderRow } from "../web/src/lib/dla";
+import { isOrder, makeMatcher, companyDla, monthKeys, coverageStart, windowStart, windowLabel, dashedNsn, nsnUrl, supplierUrl, trimDivision, dlaLog, emptyDla, TOP_PARTS, LATEST_ORDERS, type OrderRow } from "../web/src/lib/dla";
 
 test("isOrder: delivery orders and purchase orders count, base contracts and agreements do not", () => {
   assert.equal(isOrder("SPE4A726F1234", "SPE4A721D0001"), true);   // delivery order under a D contract
@@ -101,4 +101,18 @@ test("links: dashed NSN on nsnexplorer, CAGE upper case", () => {
 
 test("dlaLog: says when nothing was read", () => {
   assert.match(dlaLog(emptyDla()), /not read/);
+});
+
+test("window: starts where the daily record does, never more than 365 days back", () => {
+  const months = [{ month: "2025-12", n: 15 }, { month: "2026-02", n: 44 }, { month: "2026-05", n: 2606 }, { month: "2026-07", n: 62637 }, { month: "2026-09", n: 100087 }, { month: "2026-11", n: 65948 }];
+  assert.equal(coverageStart(months), "2026-07-01", "May holds under 20% of September");
+  assert.equal(windowStart("2026-11-24", "2026-07-01"), "2026-07-01");
+  assert.equal(windowStart("2027-09-10", "2026-07-01"), "2026-09-10", "a full year once the record is older");
+  assert.equal(windowStart("2026-11-24", null), "2025-11-24");
+  assert.equal(windowLabel({ since: "2026-07-01", builtOn: "2026-11-24" }), "since July 2026");
+  assert.equal(windowLabel({ since: "2025-11-24", builtOn: "2026-11-24" }), "last 12 months");
+  assert.deepEqual(monthKeys("2026-11-24", "2026-07-01"), ["2026-07", "2026-08", "2026-09", "2026-10", "2026-11"]);
+  const d = companyDla([], [row("2026-02-03", "1", 9e8), row("2026-08-01", "2", 10)], "2026-11-24", "2026-07-01")!;
+  assert.equal(d.orders, 1, "a stray record before the window is left out");
+  assert.equal(d.months.length, 5);
 });

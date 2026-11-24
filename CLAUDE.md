@@ -4649,15 +4649,19 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   Methodology `#parts-orders`; a section and a FAQ in guide `federal-contracts-usaspending`
   (shown only when orders were read: `ctx.dlaShown`).
 - **Live read, no copy.** The build reads nsnexplorer's Supabase project (`slprnvtdgzmpeqsmemgq`)
-  through `NSN_DATABASE_URL` (GitHub secret; Session pooler, port 5432), login `stm_reader`:
+  through `NSN_DATABASE_URL` (GitHub secret; Session pooler, port 5432, SSL required), login `stm_reader`:
   NOINHERIT, read-only by default, 120 s statement timeout, select on `pub.contract_actions`,
   `pub.suppliers`, `pub.nsns` only. Never grant it `ops` or the account tables. `deploy.yml`
   declares the secret and every caller (ingest, Congress PTR, publish, backfill) passes it;
   `qa.yml` reads it too; `check-build-secrets.mjs` checks its password is not in the output.
   Without the secret, or if the read fails, the section, methodology paragraph and guide section
   are left out and the build goes on (`lib/dla-build.ts`, own try/catch in `flagship.ts`).
+- **Window.** nsnexplorer's daily DIBBS record really starts in **July 2026** (60k–100k records a
+  month since; a few dozen stray older records before). The window is 365 days back or the first
+  month holding 20% of the busiest month's records (`coverageStart`, `windowStart`), whichever is
+  later; headings say "since July 2026" until a full year exists (`windowLabel`), then "last 12 months".
 - **Rules** (`web/src/lib/dla.ts`, pure; tests `scripts/dla.test.ts`): rows are DIBBS records
-  (`raw ? 'cage'`), last 365 days, never after today, obligation > 0. **An order is a record with
+  (`raw ? 'cage'`) in the window, never after today, obligation > 0. **An order is a record with
   a delivery order number, or one whose PIID's ninth character is not D, G or A**: base contracts
   and agreements are posted with their ceiling (one respirator-cartridge contract reads $60B).
   Supplier → company: (1) same name under `orgKey` (normalizeOrgName, " DIV "/" DBA " cut,
@@ -4679,5 +4683,5 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   Local stand-in: `scripts/seed-nsn-local.sql` into a database `nsn` (reseed does it).
 - **Rebuild trigger.** nsnexplorer's `ingest-daily.yml` gained a job `notify-spotthemoney` (after
   the DIBBS load) that dispatches spotthemoney's `deploy.yml` with secret `STM_DISPATCH_TOKEN`
-  (fine-grained token on pfouge/spotthemoney, Actions read and write). Without the secret it only
-  warns; spotthemoney still rebuilds on its own daily run.
+  (fine-grained token `nsnexplorer-dispatch-spotthemoney` on pfouge/spotthemoney, Actions read and
+  write, **expires 2027-11-24**: renew it before then). Without the secret it only warns.

@@ -29,6 +29,30 @@
 import { normalizeOrgName } from "@stm/shared";
 
 export const DLA_WINDOW_DAYS = 365;
+/**
+ * nsnexplorer's daily record of DIBBS awards began in July 2026; before that it holds a few dozen
+ * stray records a month. The window starts at the first month holding at least this share of the
+ * busiest month's records (found from the data at each build), or 365 days back, whichever is later,
+ * so the panel never calls a few months "the last 12 months".
+ */
+export const COVERAGE_MIN_SHARE = 0.2;
+/** The first day of the first month holding COVERAGE_MIN_SHARE of the busiest month's records. */
+export function coverageStart(months: { month: string; n: number }[]): string | null {
+  const sorted = [...months].sort((a, b) => a.month.localeCompare(b.month));
+  const max = Math.max(0, ...sorted.map((x) => x.n));
+  const hit = sorted.find((x) => x.n > 0 && x.n >= max * COVERAGE_MIN_SHARE);
+  return hit ? hit.month.slice(0, 7) + "-01" : null;
+}
+/** The window's first day: 365 days before the build day, or the coverage start when that is later. */
+export function windowStart(builtOn: string, coverage: string | null): string {
+  const floor = new Date(Date.parse(builtOn + "T00:00:00Z") - DLA_WINDOW_DAYS * 864e5).toISOString().slice(0, 10);
+  return coverage && coverage > floor ? coverage : floor;
+}
+/** "last 12 months" when the window is a full year, "since July 2026" otherwise. */
+export function windowLabel(d: Pick<DlaData, "since" | "builtOn">): string {
+  if (!d.since || !d.builtOn || d.since <= windowStart(d.builtOn, null)) return "last 12 months";
+  return `since ${MON_LONG[Number(d.since.slice(5, 7)) - 1]} ${d.since.slice(0, 4)}`;
+}
 /** Base contracts and agreements carry a ceiling, never counted (the PIID's ninth character). */
 export const CEILING_TYPES = ["D", "G", "A"] as const;
 export const PREFIX_MIN_CHARS = 8;
@@ -120,22 +144,24 @@ export interface CompanyDla {
   suppliers: SupplierRef[]; orders: number; value: number; parts: number; first: string; last: string;
   months: { key: string; label: string; value: number; orders: number }[]; topParts: PartRow[]; latest: OrderRow[];
 }
-export interface DlaData { connected: boolean; newest: string | null; builtOn: string | null; byCompany: Map<number, CompanyDla>; cages: number; matchedCages: number }
-export const emptyDla = (): DlaData => ({ connected: false, newest: null, builtOn: null, byCompany: new Map(), cages: 0, matchedCages: 0 });
+export interface DlaData { connected: boolean; newest: string | null; builtOn: string | null; since: string | null; byCompany: Map<number, CompanyDla>; cages: number; matchedCages: number }
+export const emptyDla = (): DlaData => ({ connected: false, newest: null, builtOn: null, since: null, byCompany: new Map(), cages: 0, matchedCages: 0 });
 
+const MON_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-/** The 12 calendar months ending with the build month, oldest first ("2025-12" ... "2026-11"). */
-export function monthKeys(builtOn: string): string[] {
+/** Calendar months from the window's first month to the build month, oldest first, at most 12 ("2026-07" ... "2026-11"). */
+export function monthKeys(builtOn: string, since?: string | null): string[] {
   const [y, m] = builtOn.split("-").map(Number) as [number, number];
-  return Array.from({ length: 12 }, (_, i) => { const d = new Date(Date.UTC(y, m - 1 - (11 - i), 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; });
+  const all = Array.from({ length: 12 }, (_, i) => { const d = new Date(Date.UTC(y, m - 1 - (11 - i), 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; });
+  return since ? all.filter((k) => k >= since.slice(0, 7)) : all;
 }
 const monthLabel = (k: string) => `${MON[Number(k.slice(5, 7)) - 1]} ${k.slice(0, 4)}`;
 
 /** One company's summary from its matched suppliers' order rows. */
-export function companyDla(suppliers: SupplierRef[], rows: OrderRow[], builtOn: string): CompanyDla | null {
-  const live = rows.filter((r) => Number.isFinite(r.value) && r.value > 0);
+export function companyDla(suppliers: SupplierRef[], rows: OrderRow[], builtOn: string, since?: string | null): CompanyDla | null {
+  const live = rows.filter((r) => Number.isFinite(r.value) && r.value > 0 && (!since || r.date >= since));
   if (!live.length) return null;
-  const keys = monthKeys(builtOn);
+  const keys = monthKeys(builtOn, since);
   const months = keys.map((k) => ({ key: k, label: monthLabel(k), value: 0, orders: 0 }));
   const mi = new Map(keys.map((k, i) => [k, i]));
   const parts = new Map<string, PartRow>();
@@ -169,7 +195,7 @@ export const RULE_TEXT: Record<MatchRule, string> = {
   prefix: "name starts with the company's",
   subsidiary: "known subsidiary",
 };
-export const DLA_CAVEAT = "Orders the Defense Logistics Agency posted on DIBBS for suppliers matched to this company by name, over the last 12 months. Base contracts are posted with a ceiling, not money spent, and are not counted; orders placed with subsidiaries under other names are missed, so the figures are a floor.";
+export const DLA_CAVEAT = "Orders the Defense Logistics Agency posted on DIBBS for suppliers matched to this company by name. Base contracts are posted with a ceiling, not money spent, and are not counted; orders placed with subsidiaries under other names are missed, so the figures are a floor.";
 
 /** One build-log line to compare with SQL. */
 export function dlaLog(d: DlaData, label: (companyId: number) => string = String): string {
@@ -177,5 +203,5 @@ export function dlaLog(d: DlaData, label: (companyId: number) => string = String
   const cos = [...d.byCompany.values()];
   const orders = cos.reduce((a, c) => a + c.orders, 0), value = cos.reduce((a, c) => a + c.value, 0);
   const top = [...d.byCompany].sort((a, b) => b[1].value - a[1].value).slice(0, 6).map(([id, c]) => `${label(id)} ${c.orders}/$${(c.value / 1e6).toFixed(1)}M`).join(", ");
-  return `military parts orders (DLA via nsnexplorer): ${d.cages} supplier codes with orders in ${DLA_WINDOW_DAYS} days, ${d.matchedCages} matched to ${cos.length} companies; ${orders} orders, $${(value / 1e6).toFixed(1)}M; newest order ${d.newest ?? "none"}; top (orders/value): ${top}`;
+  return `military parts orders (DLA via nsnexplorer): ${d.cages} supplier codes with orders from ${d.since ?? "?"}, ${d.matchedCages} matched to ${cos.length} companies; ${orders} orders, $${(value / 1e6).toFixed(1)}M; newest order ${d.newest ?? "none"}; top (orders/value): ${top}`;
 }

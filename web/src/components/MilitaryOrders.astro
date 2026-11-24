@@ -1,6 +1,6 @@
 ---
 // "Military parts orders" on company and stock pages (lib/dla.ts has the rules, lib/dla-build.ts the read).
-// Orders the Defense Logistics Agency posted on DIBBS in the last 12 months for supplier codes matched
+// Orders the Defense Logistics Agency posted on DIBBS in the window (lib/dla.ts windowStart) for supplier codes matched
 // to this company, read at build time from nsnexplorer.com's database. Renders nothing without orders.
 // Panel shape from design/system.md section 8: headline figures and one small chart, then two tables
 // previewed at 5 rows, each opening in place.
@@ -8,22 +8,23 @@ import type { Flagship } from "../lib/flagship";
 import { money, num, plural } from "../lib/flagship";
 import { formatDate } from "../lib/format";
 import { columnsSvg, PHONE_W } from "../lib/viz";
-import { dashedNsn, nsnUrl, supplierUrl, itemText, RULE_TEXT, DLA_CAVEAT, NSN_SITE } from "../lib/dla";
+import { dashedNsn, nsnUrl, supplierUrl, itemText, windowLabel, RULE_TEXT, DLA_CAVEAT, NSN_SITE } from "../lib/dla";
 import PanelFigs from "./PanelFigs.astro";
 
 interface Props { model: Flagship; companyId: number; name: string }
 const { model, companyId, name } = Astro.props;
 const d = model.dla.byCompany.get(companyId);
+const win = windowLabel(model.dla);
 const day = (s: string) => s.replaceAll("-", "");
-const chart = d ? columnsSvg(d.months.map((x) => ({ label: x.label.slice(0, 3), value: x.value })), `${name}: Defense Logistics Agency order value by month, ${d.months[0]!.label} to ${d.months[11]!.label}`, PHONE_W) : "";
+const chart = d ? columnsSvg(d.months.map((x) => ({ label: x.label.slice(0, 3), value: x.value })), `${name}: Defense Logistics Agency order value by month, ${d.months[0]!.label} to ${d.months[d.months.length - 1]!.label}`, PHONE_W) : "";
 const supplierWord = d && d.suppliers.length === 1 ? "one supplier code" : `${num(d?.suppliers.length ?? 0)} supplier codes`;
 ---
 {d && (
-  <section class="panel" data-panel aria-labelledby="parts-orders" data-dla data-company={companyId} data-orders={d.orders} data-value={Math.round(d.value)} data-parts={d.parts} data-cages={d.suppliers.map((s) => s.cage).join(",")} data-first={d.first} data-last={d.last}>
-    <h2 id="parts-orders">Military parts orders (Defense Logistics Agency, last 12 months)</h2>
+  <section class="panel" data-panel aria-labelledby="parts-orders" data-dla data-company={companyId} data-orders={d.orders} data-value={Math.round(d.value)} data-parts={d.parts} data-cages={d.suppliers.map((s) => s.cage).join(",")} data-first={d.first} data-last={d.last} data-since={model.dla.since}>
+    <h2 id="parts-orders">Military parts orders (Defense Logistics Agency, {win})</h2>
     <PanelFigs items={[{ v: num(d.orders), k: "orders" }, { v: money(d.value), k: "order value" }, { v: num(d.parts), k: d.parts === 1 ? "part ordered" : "different parts" }]} />
     <p data-dla-summary>The Defense Logistics Agency placed {plural(d.orders, "order")} worth {money(d.value, { compact: false })} with {supplierWord} matched to {name} between {formatDate(d.first)} and {formatDate(d.last)}, for {plural(d.parts, "different part")}.</p>
-    {chart && <figure class="dla-chart" data-dla-chart><div set:html={chart} /><figcaption>Order value by month of the order, last 12 months.</figcaption></figure>}
+    {chart && <figure class="dla-chart" data-dla-chart><div set:html={chart} /><figcaption>Order value by month of the order, {win}.</figcaption></figure>}
 
     <h3 id="parts-orders-items">Parts ordered most</h3>
     <div class="tablewrap"><table class="data" data-sortable data-dla-parts><thead><tr>
