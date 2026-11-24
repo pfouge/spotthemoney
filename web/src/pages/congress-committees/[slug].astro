@@ -4,6 +4,7 @@
 // only, so the trades are every trade on record for today's members, whenever they were made.
 // A committee seat is context. Nothing here ties a trade to the committee's business.
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import Preview from "../../components/Preview.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
@@ -54,12 +55,13 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   <h1>{c.name}</h1>
   <p class="lede">Current members and the stock trades they have disclosed.</p>
 
-  <dl class="facts" data-committee-facts>
+  <dl class="facts facts-figs" data-committee-facts data-people>
     <div><dt>Chamber</dt><dd>{CHAMBER_LABEL[c.chamber]}</dd></div>
     <div><dt>Members on record</dt><dd data-fact="members">{num(n)}</dd></div>
     {parties.length > 0 && <div><dt>By party</dt><dd>{parties.map((p) => `${num(p.n)} ${PARTY_LABEL[p.k]}${p.n === 1 ? "" : "s"}`).join(", ")}</dd></div>}
     <div><dt>Members with trades</dt><dd data-fact="with-trades">{num(c.withTrades)}</dd></div>
     <div><dt>Trades on record</dt><dd data-fact="trades">{num(c.trades)}</dd></div>
+    {c.trades > 0 && <div><dt>Trades, last 12 months</dt><dd data-fact="trades-12m">{num(c.trades12m)}</dd></div>}
     {c.subcommittees.length > 0 && <div><dt>Subcommittees</dt><dd>{num(c.subcommittees.length)}</dd></div>}
     {c.url && <div><dt>Official site</dt><dd><a href={c.url} rel="noopener" target="_blank">Committee website ↗</a></dd></div>}
   </dl>
@@ -73,10 +75,11 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
 
   {c.jurisdiction && <p class="section-note">{c.jurisdiction} <span class="soft">(The description is the congress-legislators dataset's own wording.)</span></p>}
 
-  <section aria-labelledby="members" data-committee-members>
+  <div class="panels">
+  <section class="panel" data-panel data-span="12" aria-labelledby="members" data-committee-members>
     <h2 id="members">Members</h2>
     <p class="section-note">Today's assignments, committee leaders first. "Trades" counts every transaction row in the member's reports on this site, whenever the trade was made. Click a column title to sort.</p>
-    <div class="tablewrap"><table class="data" data-sortable>
+    <div class="tablewrap" data-preview="8"><table class="data" data-sortable>
       <thead><tr>
         {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
       </tr></thead>
@@ -104,10 +107,10 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   </section>
 
   {stocks.length > 0 && (
-    <section aria-labelledby="most-traded" data-committee-stocks>
+    <section class="panel" data-panel aria-labelledby="most-traded" data-committee-stocks>
       <h2 id="most-traded">Most-traded stocks, last 12 months</h2>
       <p class="section-note">Tickers that appear most often in the reports these members disclosed in the last 365 days. A count of report rows, not a holding and not a view on the stock.</p>
-      <div class="tablewrap"><table class="data" data-sortable>
+      <div class="tablewrap" data-preview="6"><table class="data" data-sortable>
         <thead><tr>
           <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by ticker">Ticker<span class="arr" aria-hidden="true"></span></button></th>
           <th>Company</th>
@@ -116,6 +119,7 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by purchases">Purchases<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by sales">Sales<span class="arr" aria-hidden="true"></span></button></th>
           <th aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by latest disclosure">Latest disclosure<span class="arr" aria-hidden="true"></span></button></th>
+          <th class="hb-h"><span class="sr-only">Share of trades</span></th>
         </tr></thead>
         <tbody>
           {stocks.map((s) => {
@@ -131,6 +135,7 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
                 <td class="num" data-v={s.buys}>{num(s.buys)}</td>
                 <td class="num" data-v={s.sells}>{num(s.sells)}</td>
                 <td class="mono" data-v={dayKey(s.latest)}>{s.latest ? formatDate(s.latest) : ""}</td>
+                <td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * s.trades / Math.max(1, ...stocks.map((z) => z.trades))))}%`}></i></td>
               </tr>
             );
           })}
@@ -141,20 +146,20 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
   )}
 
   {c.trades > 0 && (
-    <section aria-labelledby="trades" data-committee-trades>
+    <section class="panel" data-panel data-span="12" aria-labelledby="trades" data-committee-trades>
       <h2 id="trades">Trades disclosed by members</h2>
       <p class="section-note">Newest disclosures first, each with a link to the original report. {c.trades > COMMITTEE_TRADE_ROWS ? `The table holds the ${COMMITTEE_TRADE_ROWS} most recent of ${num(c.trades)} rows; every row is on the member's own page.` : "Every row is also on the member's own page."} A trade may predate the member's seat on this committee.</p>
       <ScreenerLink committee={c.code} n={screenerCountsFor(model, personPath).committee.get(c.code) ?? 0} of="by this committee's members" />
-      <TxnTable model={model} txns={c.txns} showPerson showSecurity limit={COMMITTEE_TRADE_ROWS} />
+      <Preview rows={8}><TxnTable model={model} txns={c.txns} showPerson showSecurity limit={COMMITTEE_TRADE_ROWS} /></Preview>
     </section>
   )}
 
   {lcMembers.length > 0 && (
-    <section aria-labelledby="lobbyist-contributions" data-committee-lobbycontrib data-n={lcMembers.length}>
+    <section class="panel" data-panel aria-labelledby="lobbyist-contributions" data-committee-lobbycontrib data-n={lcMembers.length}>
       <h2 id="lobbyist-contributions">Lobbyist contributions naming members</h2>
       <p class="section-note" data-lcc-summary>{plural(lcMembers.length, "current member")} of the {n} on record {lcMembers.length === 1 ? "is" : "are"} named as honoree, or have a campaign committee named as payee, in at least one contribution item on a lobbyist's Form LD-203 report.</p>
       <p class="section-note" data-lcc-caveat>{COMMITTEE_LOBBY_CAVEAT} <a href="/lobbyist-contributions/">All lobbyist contributions</a></p>
-      <div class="tablewrap"><table class="data" data-sortable>
+      <div class="tablewrap" data-preview="6"><table class="data" data-sortable>
         <thead><tr>
           <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by member">Member<span class="arr" aria-hidden="true"></span></button></th>
           <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by items">Items<span class="arr" aria-hidden="true"></span></button></th>
@@ -174,6 +179,8 @@ const heads = [sortTh("Member", "text"), sortTh("Party", "text"), sortTh("Seat",
       </table></div>
     </section>
   )}
+
+  </div>
 
   <AdSlot />
 

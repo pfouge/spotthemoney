@@ -16,7 +16,7 @@ const heads = [{ label: "Date", type: "num" }, { label: "Spender", type: "text" 
 const sides = o ? [{ key: "S", label: "Reported in support", rows: o.supportBy }, { key: "O", label: "Reported in opposition", rows: o.opposeBy }].filter((s) => s.rows.length) : [];
 ---
 {o && o.countedRows > 0 && (
-  <section aria-labelledby="outside-spending" data-outside-spending data-counted={o.countedRows} data-support={Math.round(o.totals.support)} data-oppose={Math.round(o.totals.oppose)}>
+  <section class="panel" data-panel data-span="12" aria-labelledby="outside-spending" data-outside-spending data-counted={o.countedRows} data-support={Math.round(o.totals.support)} data-oppose={Math.round(o.totals.oppose)}>
     <h2 id="outside-spending">Outside spending: independent expenditures</h2>
     <p data-os-summary>{memberOutsideSentence(name, model.outside.cycle, o.totals)}</p>
     <p class="os-note" data-os-caveat>{OUTSIDE_CAVEAT} <a href="/guides/campaign-donations-fec-data/#independent-expenditures">What an independent expenditure is</a>.</p>
@@ -48,7 +48,7 @@ const sides = o ? [{ key: "S", label: "Reported in support", rows: o.supportBy }
       </div>
     )}
     <h3>Newest expenditures</h3>
-    <div class="tablewrap"><table class="data" data-sortable data-os-rows><thead><tr>
+    <div class="tablewrap" data-preview="6"><table class="data" data-sortable data-os-rows><thead><tr>
       {heads.map((h) => <th class={h.type === "num" && h.label === "Amount" ? "num" : ""} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
       <th>Filing</th>
     </tr></thead><tbody>

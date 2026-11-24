@@ -48,7 +48,7 @@ const heads: { label: string; type: "text" | "num" | "date"; cls?: string }[] = 
   <h1>{d.name}</h1>
   <p class="lede">Companies the SEC classifies in this division, and the trades disclosed in them.</p>
 
-  <dl class="facts" data-industry-facts data-built={built}>
+  <dl class="facts facts-figs" data-industry-facts data-built={built} data-people>
     <div><dt>SIC division</dt><dd><span class="mono">{d.code}</span>, major groups {range}</dd></div>
     <div><dt>Industry codes</dt><dd data-fact="codes">{num(d.codes.length)}</dd></div>
     <div><dt>Companies</dt><dd data-fact="companies">{num(n)}</dd></div>
@@ -64,26 +64,28 @@ const heads: { label: string; type: "text" | "num" | "date"; cls?: string }[] = 
     <a href="#codes">Industry codes</a><a href="#companies">Companies</a><a href="#about">About this page</a>{others.length > 0 && <a href="#others">Other divisions</a>}
   </nav>
 
-  <section aria-labelledby="codes" data-industry-codes>
+  <div class="panels">
+  <section class="panel" data-panel data-span="12" aria-labelledby="codes" data-industry-codes>
     <h2 id="codes">Industry codes in this division</h2>
     <p class="section-note">The SIC codes that companies on this site carry, in the SEC's wording. A code opens the first of its companies in the table below. Click a column title to sort.</p>
-    <div class="tablewrap"><table class="data" data-sortable>
+    <div class="tablewrap" data-preview="8"><table class="data" data-sortable>
       <thead><tr>
         <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by code">Code<span class="arr" aria-hidden="true"></span></button></th>
         <th aria-sort="none" data-type="text"><button type="button" class="sort" aria-label="Sort by industry">Industry<span class="arr" aria-hidden="true"></span></button></th>
         <th class="num" aria-sort="none" data-type="num"><button type="button" class="sort" aria-label="Sort by companies">Companies<span class="arr" aria-hidden="true"></span></button></th>
+        <th class="hb-h"><span class="sr-only">Share of companies</span></th>
       </tr></thead>
       <tbody>
-        {d.codes.map((c) => <tr data-sic={c.sic}><td class="mono" data-v={c.sic}><a href={`#${c.anchor}`}>{c.sic}</a></td><td data-v={(c.description ?? "").toLowerCase()}>{c.description ?? ""}</td><td class="num" data-v={c.companies}>{num(c.companies)}</td></tr>)}
+        {d.codes.map((c) => <tr data-sic={c.sic}><td class="mono" data-v={c.sic}><a href={`#${c.anchor}`}>{c.sic}</a></td><td data-v={(c.description ?? "").toLowerCase()}>{c.description ?? ""}</td><td class="num" data-v={c.companies}>{num(c.companies)}</td><td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * c.companies / Math.max(1, ...d.codes.map((z) => z.companies))))}%`}></i></td></tr>)}
       </tbody>
     </table></div>
   </section>
 
-  <section aria-labelledby="companies" data-industry-companies>
+  <section class="panel" data-panel data-span="12" aria-labelledby="companies" data-industry-companies>
     <h2 id="companies">Companies</h2>
     <p class="section-note">By industry code, then by name. The three counts are rows disclosed in the 12 months to {formatDate(built)}: open-market purchases and sales reported by insiders on Form 4, and rows of House and Senate reports in the company's stock. Click a column title to sort.</p>
     {finCount > 0 && <p class="section-note" data-finscreen-link data-n={finCount}><a href={finScreenerHref({ division: d.slug })}>Open the {plural(finCount, "company", "companies")} in this division with a fiscal year on file in the financials screener</a>: revenue, net income and total assets as each company filed them with the SEC.</p>}
-    <div class="tablewrap"><table class="data" data-sortable>
+    <div class="tablewrap" data-preview="10"><table class="data" data-sortable>
       <thead><tr>
         {heads.map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
       </tr></thead>
@@ -102,6 +104,7 @@ const heads: { label: string; type: "text" | "num" | "date"; cls?: string }[] = 
       </tbody>
     </table></div>
   </section>
+  </div>
 
   <div class="prose">
   <AdSlot />

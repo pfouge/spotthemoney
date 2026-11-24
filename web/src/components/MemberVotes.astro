@@ -15,12 +15,12 @@ const heads = [{ label: "Date", type: "num" }, { label: "Roll call", type: "text
 const dayNum = (d: string) => d.replaceAll("-", "");
 ---
 {v && v.rows.length > 0 && (
-  <section aria-labelledby="votes" data-votes data-yea={v.yea} data-nay={v.nay} data-present={v.present} data-not-voting={v.notVoting} data-total={v.total}>
+  <section class="panel" data-panel aria-labelledby="votes" data-votes data-yea={v.yea} data-nay={v.nay} data-present={v.present} data-not-voting={v.notVoting} data-total={v.total}>
     <h2 id="votes">Recorded votes</h2>
     <p data-votes-summary>{memberVotesSentence(name, v)}</p>
     <p class="vt-note" data-votes-caveat>{VOTES_CAVEAT} <a href="/guides/how-to-read-a-roll-call-vote/">How to read a roll call vote</a>.</p>
     <p class="vt-note"><a href={votesHref({ member: slug, chamber })} data-votes-link>All {CHAMBER_LABEL[chamber]} roll calls, with {name}'s position</a>{v.total > v.rows.length && <> · {num(v.total)} positions on record, the newest {VOTE_ROWS} below</>}</p>
-    <div class="tablewrap"><table class="data" data-sortable><thead><tr>
+    <div class="tablewrap" data-preview="6"><table class="data" data-sortable><thead><tr>
       {heads.map((h) => <th aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
     </tr></thead><tbody>
       {v.rows.map((r) => (

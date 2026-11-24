@@ -16,7 +16,7 @@ const usd = (x: number) => `$${Math.round(x).toLocaleString("en-US")}`;
 const heads = (what: string) => [{ label: what, type: "text", cls: "" }, { label: "Sum", type: "num", cls: "num" }, { label: "Receipts", type: "num", cls: "num" }];
 ---
 {list.length > 0 && (
-  <section aria-labelledby="campaign-committee" data-campaign data-committees={list.length}>
+  <section class="panel" data-panel aria-labelledby="campaign-committee" data-campaign data-committees={list.length}>
     <h2 id="campaign-committee">Campaign committee</h2>
     <p class="cc-note" data-cc-caveat>{CAMPAIGN_CAVEAT} <a href="/methodology/#campaign-committee">How this is worked out</a> · <a href="/donations/">All committees</a>.</p>
     {list.map((c) => (
@@ -33,7 +33,7 @@ const heads = (what: string) => [{ label: what, type: "text", cls: "" }, { label
           {c.employers.length > 0 && (
             <div>
               <h4>Largest employers named by donors</h4>
-              <div class="tablewrap"><table class="data" data-sortable data-cc-employers><thead><tr>
+              <div class="tablewrap" data-preview="6"><table class="data" data-sortable data-cc-employers><thead><tr>
                 {heads("Employer").map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
               </tr></thead><tbody>
                 {c.employers.map((r) => <tr><td class="wrap" data-v={r.key.toLowerCase().replace(/[<>"]/g, "")}>{r.key}</td><td class="num" data-v={Math.round(r.sum)}>{usd(r.sum)}</td><td class="num" data-v={r.count}>{num(r.count)}</td></tr>)}
@@ -44,7 +44,7 @@ const heads = (what: string) => [{ label: what, type: "text", cls: "" }, { label
           {c.states.length > 0 && (
             <div>
               <h4>Largest donor states</h4>
-              <div class="tablewrap"><table class="data" data-sortable data-cc-states><thead><tr>
+              <div class="tablewrap" data-preview="6"><table class="data" data-sortable data-cc-states><thead><tr>
                 {heads("State").map((h) => <th class={h.cls} aria-sort="none" data-type={h.type}><button type="button" class="sort" aria-label={`Sort by ${h.label.toLowerCase()}`}>{h.label}<span class="arr" aria-hidden="true"></span></button></th>)}
               </tr></thead><tbody>
                 {c.states.map((r) => <tr><td data-v={r.key.toLowerCase()}>{r.key}</td><td class="num" data-v={Math.round(r.sum)}>{usd(r.sum)}</td><td class="num" data-v={r.count}>{num(r.count)}</td></tr>)}

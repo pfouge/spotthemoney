@@ -1,6 +1,7 @@
 ---
 // Insider profile: /insiders/<slug>/ — one page per person with an insider role (Form 4 filer).
 // Answer-first (roadmap B.3), then the transactions, then sources, last-updated, disclaimer.
+import Preview from "../../components/Preview.astro";
 import Glance from "../../components/Glance.astro";
 import GroupBar from "../../components/GroupBar.astro";
 import PageGroup from "../../components/PageGroup.astro";
@@ -101,7 +102,7 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
   <div class="title-row"><h1>{p.name}</h1><Follow kind="insider" entity={p.slug!} label={p.name} /></div>
   <p class="lede">{title}</p>
 
-  <dl class="facts" data-entity-facts>
+  <dl class="facts" data-entity-facts data-people>
     {company && <div><dt>Company</dt><dd>{cpath ? <a href={cpath}>{company.name}</a> : company.name}</dd></div>}
     {uniqueTickers.length > 0 && <div><dt>{uniqueTickers.length === 1 ? "Ticker" : "Tickers"}</dt><dd>{uniqueTickers.slice(0, 4).map((s, i) => <>{i > 0 && ", "}<a class="mono" href={securityPath(s)}>{s.ticker}</a></>)}{uniqueTickers.length > 4 ? ` and ${uniqueTickers.length - 4} more` : ""}</dd></div>}
     {p.firstFiledAt && <div><dt>First filing on record</dt><dd>{formatDate(p.firstFiledAt)}</dd></div>}
@@ -124,41 +125,47 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
     <div class="cell"><div class="k">Avg. disclosure lag</div><div class="v">{avg(txns.map((t) => t.lagDays)) == null ? "—" : `${avg(txns.map((t) => t.lagDays))!.toFixed(1)}d`}</div></div>
   </section>
 
+  <VizPerson person={p} />
+
   <GroupBar groups={groupList} />
 
   <PageGroup id="trading" label="Trading">
-  <VizPerson person={p} />
+  <div class="panels">
 
   {txns.length > 0 && (
-    <section aria-labelledby="by-type">
+    <section class="panel" data-panel data-span="12" aria-labelledby="by-type">
       <h2 id="by-type">What kind of transactions</h2>
       <p class="section-note">Most Form 4 rows are pay arriving or tax being withheld, not a decision to buy or sell. Only code P is an open-market purchase and code S an open-market sale. What each code means: <a href="/guides/form-4-transaction-codes/">Form 4 transaction codes</a>.</p>
       <div class="split">
-        <div class="tablewrap">
+        <div class="tablewrap" data-preview="6">
           <table class="data" data-entity-codes>
             <caption class="sr-only">Rows by Form 4 transaction code</caption>
-            <thead><tr><th>Code</th><th>Meaning</th><th class="num">Rows</th><th class="num">Shares</th><th class="num">Value</th></tr></thead>
-            <tbody>{codes.map((c) => <tr><th scope="row" class="mono">{c.code}</th><td>{c.label}</td><td class="num">{num(c.rows)}</td><td class="num">{num(c.shares)}</td><td class="num">{c.value ? money(c.value) : "—"}</td></tr>)}</tbody>
+            <thead><tr><th>Code</th><th>Meaning</th><th class="num">Rows</th><th class="num">Shares</th><th class="num">Value</th><th class="hb-h"><span class="sr-only">Share of rows</span></th></tr></thead>
+            <tbody>{codes.map((c) => <tr><th scope="row" class="mono">{c.code}</th><td>{c.label}</td><td class="num">{num(c.rows)}</td><td class="num">{num(c.shares)}</td><td class="num">{c.value ? money(c.value) : "—"}</td><td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * c.rows / Math.max(1, ...codes.map((z) => z.rows))))}%`}></i></td></tr>)}</tbody>
           </table>
         </div>
-        <div class="tablewrap">
+        <div class="tablewrap" data-preview="6">
           <table class="data" data-entity-years id="by-year">
             <caption class="sr-only">Rows by year of the trade</caption>
-            <thead><tr><th>Year</th><th class="num">Rows</th><th class="num">Bought</th><th class="num">Sold</th></tr></thead>
-            <tbody>{years.map((y) => <tr><th scope="row" class="mono">{y.year}</th><td class="num">{num(y.rows)}</td><td class="num">{y.buys ? `${num(y.buys)} · ${money(y.bought)}` : "0"}</td><td class="num">{y.sells ? `${num(y.sells)} · ${money(y.sold)}` : "0"}</td></tr>)}</tbody>
+            <thead><tr><th>Year</th><th class="num">Rows</th><th class="num">Bought</th><th class="num">Sold</th><th class="hb-h"><span class="sr-only">Share of rows</span></th></tr></thead>
+            <tbody>{years.map((y) => <tr><th scope="row" class="mono">{y.year}</th><td class="num">{num(y.rows)}</td><td class="num">{y.buys ? `${num(y.buys)} · ${money(y.bought)}` : "0"}</td><td class="num">{y.sells ? `${num(y.sells)} · ${money(y.sold)}` : "0"}</td><td class="hb" aria-hidden="true"><i style={`--b:${Math.max(2, Math.round(100 * y.rows / Math.max(1, ...years.map((z) => z.rows))))}%`}></i></td></tr>)}</tbody>
           </table>
         </div>
       </div>
     </section>
   )}
 
+  <section class="panel" data-panel data-span="12" aria-labelledby="transactions">
   <h2 id="transactions">Transactions</h2>
+  <p class="pn-sentence">{num(txns.length)} transactions on record: {num(openMarketBuys.length)} open-market buys, {num(sells.length)} sales.</p>
   <DownloadCsv file={tickerFile} label={tickerFile ? `Download ${tickerFile.name.replace(".csv", "").toUpperCase()} trades (CSV)` : undefined} note="every filer in this ticker, this insider included" />
-  <TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet. The filings below may be amendments, holdings-only reports, or rows still under review." />
+  <Preview rows={8}><TxnTable model={model} txns={txns} showSecurity emptyReason="No approved transactions yet. The filings below may be amendments, holdings-only reports, or rows still under review." /></Preview>
+  </section>
 
+  <section class="panel" data-panel aria-labelledby="filings">
   <h2 id="filings">Filings</h2>
   {p.filings.length === 0 ? <p class="empty-reason">No filings on record.</p> : (
-    <div class="tablewrap">
+    <div class="tablewrap" data-preview="6">
       <table class="data">
         <thead><tr><th>Filed</th><th>Form</th><th>Accession</th><th class="num">Rows</th><th>Status</th><th>Source</th></tr></thead>
         <tbody>
@@ -176,8 +183,10 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
       </table>
     </div>
   )}
+  </section>
 
   <FiledNotices model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "notices")} />
+  </div>
 
   </PageGroup>
 
@@ -185,7 +194,9 @@ const tickerFile = topTicker ? (await getDownloads()).stock.get(topTicker.toLowe
 
   {holdingsN > 0 && (
     <PageGroup id="ownership" label="Ownership">
+    <div class="panels">
     <ReportedHoldings model={model} cik={p.cik} name={p.name} file={(await getDownloads()).files.find((f) => f.kind === "holders")} />
+    </div>
     </PageGroup>
   )}
 
