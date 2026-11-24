@@ -27,3 +27,13 @@ Each entry: the decision, why, and how to reverse it.
 9. **The scheduled parity task could not be paused** (permission refused on 2026-11-22) and another session is merging
    company pages. Their changes land on main during this work; each redesign pull request is rebased on main and
    re-checked before merging.
+10. **Homepage: direction A ("front page of record") chosen over direction B ("search first").** Both were built and
+    measured (`design/home/scoring.md`; first screens in `design/home/a-*.png` and `b-*.png`). For a first-time visitor
+    the first screen has three jobs. Both directions say what the site is and show the search field. A shows 11 live
+    figures with 12-week sparklines on a desktop first screen (B: 8) and 6 on a phone (B: none of the dataset figures,
+    which start below the fold), and every figure in A is a one-click route to its page type. B's right-hand list of
+    newest filings shows liveness but not breadth, and on a quiet day it is nearly empty. Taken from B into A: the
+    "Recently active" line of example tickers and members under the search field. Reverse: build with
+    `PUBLIC_HOME_DIR=b` (both directions stay in `web/src/components/HomeTop.astro`).
+11. **The top advertisement moves below each page's title block.** It sat above the breadcrumb and title (115px on
+    most pages), so no first screen began with what the page is. Its reserved height is unchanged.

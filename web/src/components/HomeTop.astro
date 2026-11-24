@@ -21,6 +21,9 @@ const spark = (t: RouteTile) => (t.spark.length >= 2 ? sparkSvg(t.spark, { w: 96
       <p class="lede">New filings from corporate insiders and members of Congress that match a plain rule, newest first, each linked to the filing. <a href="/methodology/#notable">How a trade becomes notable</a>.</p>
     </section>
     <button type="button" class="home-search" data-search-open aria-haspopup="dialog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>{searchText}</span></button>
+    {recent.length > 0 && (
+      <p class="ht-recent" data-recent><span class="ht-k">Recently active:</span>{recent.map((r) => <a href={r.href}>{r.text}</a>)}</p>
+    )}
     {routes.length > 0 && (
       <nav class="ht-tiles" aria-label="Datasets" data-routes>
         {routes.map((t) => (
