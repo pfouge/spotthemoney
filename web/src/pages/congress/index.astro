@@ -7,6 +7,7 @@ import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -50,6 +51,7 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
   <p class="lede">Periodic transaction reports as filed, with the days-to-report on every row and a link to the original document.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote={hasSenate ? "Sources: House Clerk PTRs; Senate eFD PTRs" : "Source: House Clerk PTRs (Senate pending)"} />
+  <HubFigures items={[{k:"Disclosed trades",v:num(all.length)},{k:"Last 30 days",v:num(month.length)},{k:"Members with trades",v:num(withRows.length)}]} />
   <ReviewNote show={underReview} what="Congressional rows" />
   {pendingOcr > 0 && <p class="note">{plural(pendingOcr, "filing is", "filings are")} scanned PDFs awaiting human review and show no rows yet.</p>}
 
@@ -101,8 +103,9 @@ const ld = datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.na
 
   <MiniCharts kind="congress" />
 
-  <h2>How to read this</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read this</h2></summary><div class="ref-body">
   <p>Members report ranges, not amounts, and have {CONGRESS_DEADLINE_DAYS} days to file after a trade. "Late" means the report was filed more than {CONGRESS_DEADLINE_DAYS} days after the transaction date. Owner shows whether a holding is the member's own, a spouse's, a dependent's, or joint. See <a href="/methodology/">methodology</a>.</p>
+  </div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Disclosures shown as filed; no inference about intent is made or implied.</p>
   <JsonLd data={ld} />
   <SectionFaq section="congress" />

@@ -5,6 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural, money, personPath, securityPath, sideLabel, amountLabel, assetLabel, withinDays } from "../../lib/flagship";
@@ -45,6 +46,7 @@ const ld = datasetLd({ name: "Newest disclosures feed", path: "/disclosures/", d
   <h1>Newest disclosures</h1>
   <p class="lede">One stream, four official sources, newest first. Updated daily after each ingest run.</p>
   <Answer text={answer} updated={feed[0]?.at ?? model.builtAt} sourceNote="Sources: SEC EDGAR; House Clerk; Senate LDA; USAspending" />
+  <HubFigures items={[{k:"Items shown",v:num(feed.length)},{k:"Today",v:num(today)},{k:"Last 7 days",v:num(week)}]} />
   <ReviewNote show={feed.some((i) => i.review)} what="Some insider and congressional rows" />
   {feed.length === 0 ? <p class="empty-reason">The feed is empty until the first ingest runs complete.</p> : (
     <div class="tablewrap"><table class="data"><thead><tr><th>Date</th><th>Kind</th><th>Who</th><th>What</th><th class="num">Amount</th><th>Source</th></tr></thead><tbody>
@@ -52,11 +54,13 @@ const ld = datasetLd({ name: "Newest disclosures feed", path: "/disclosures/", d
     </tbody></table></div>
   )}
   <div class="prose">
-  <h2 id="about-this-page">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about-this-page"><summary><h2 id="about-this-page">What this page shows</h2></summary><div class="ref-body">
   <p>This is a single list of the newest public records the site has read, whatever their kind: trades reported by corporate insiders, trades reported by members of Congress, lobbying reports and federal contract awards. The date is the day the record was disclosed or posted, which is later than the event it describes. A member of Congress has up to 45 days to report a trade, and an insider two business days.</p>
   <p>"Who" is the person or organisation that filed or received the record, "What" is the stock, client or agency involved, and "Source" opens the original document on the government website it came from. Insider amounts are shares multiplied by the reported price. Congressional amounts are the dollar range the member reported.</p>
-  <h2 id="where-from">Where the data comes from</h2>
+  </div></details>
+  <details class="ref" data-remember id="ref-where-from"><summary><h2 id="where-from">Where the data comes from</h2></summary><div class="ref-body">
   <p>Insider trades come from SEC EDGAR, congressional trades from the House Clerk and the Senate's financial disclosure system, lobbying reports from the Senate's Lobbying Disclosure Act database, and contract awards from USAspending.gov. The site reads these once a day, except Senate trade reports, which are added in batches. To look at one kind of record on its own, use the <a href="/insiders/">Insiders</a>, <a href="/congress/">Congress</a>, <a href="/lobbying/">Lobbying</a> or <a href="/contracts/">Contracts</a> pages. The <a href="/methodology/">Methodology</a> explains how each source is read.</p>
+  </div></details>
   </div>
   <AdSlot label="Advertisement" />
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed; disclosures lag the underlying event and may be amended.</p>

@@ -2,7 +2,7 @@
   "campaign-donations-fec-data": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/donations/index.astro": "ea0b33b7e5071c22",
+      "web/src/pages/donations/index.astro": "07cc491bbf78ca34",
       "ingest/src/sources/fec_committees.ts": "8c61e370f5ab8cc3",
       "web/src/lib/campaign.ts": "9318bf48159367b1",
       "web/src/components/CampaignCommittee.astro": "5bcfe6579f926483",
@@ -36,11 +36,11 @@
     "covers": {
       "ingest/src/sources/usaspending.ts": "cb89baca2f6a40b0",
       "ingest/src/sources/usaspending_details.ts": "07829dbe76ba5f00",
-      "web/src/pages/contracts/index.astro": "a07ab122e02a5459",
+      "web/src/pages/contracts/index.astro": "8ba861b5e4096c34",
       "web/src/lib/contracts.ts": "c37352d0a3425c41",
       "web/src/lib/naics.ts": "e383c21b014850a8",
       "web/src/lib/assistance.ts": "8d1ebeffb90c1862",
-      "web/src/pages/grants/index.astro": "73ce39da64167226"
+      "web/src/pages/grants/index.astro": "0128b561f87d1309"
     }
   },
   "form-13f-institutional-holdings": {
@@ -110,7 +110,7 @@
       "web/src/lib/watchcards-build.ts": "646d3aeb7f64b6d2",
       "web/src/scripts/watchcards.ts": "73e5abc9c1535b1c",
       "web/src/lib/feeds.ts": "ee8aabc55d188199",
-      "web/src/pages/feeds/index.astro": "69e01bdc3fcc4b30",
+      "web/src/pages/feeds/index.astro": "28a379716f17494e",
       "db/migrations/0025_email_alerts_stage1.sql": "20f18614f837af9a",
       "ingest/src/lib/digest.ts": "0d80de65efc76bf5",
       "ingest/src/jobs/alerts_digest.ts": "290ac0a3893c1e11",
@@ -125,12 +125,12 @@
       "web/src/lib/profile.ts": "bd5d636516362e3f",
       "web/src/pages/congress/[slug].astro": "ba23075a153684eb",
       "web/src/lib/directory.ts": "0466a663969706ab",
-      "web/src/pages/congress-members.astro": "162b192f22c116a9",
+      "web/src/pages/congress-members.astro": "7f963f509f3e04b3",
       "web/src/lib/committees.ts": "b0ef39eec547918e",
-      "web/src/pages/congress-committees/index.astro": "f6bdffb814b346d8",
+      "web/src/pages/congress-committees/index.astro": "2af462e60abb13a0",
       "web/src/pages/congress-committees/[slug].astro": "f1774dae75085773",
       "web/src/lib/screener.ts": "528bda637853c2d1",
-      "web/src/pages/congress-trades.astro": "5072c08712060bb7",
+      "web/src/pages/congress-trades.astro": "44649ba3b43c9704",
       "web/src/components/ScreenerLink.astro": "25ec42b48f4aead5",
       "web/src/lib/tickerhistory.ts": "50fdeba2cb1f0a66",
       "web/src/lib/savedscreens.ts": "971608586608dc5f"
@@ -141,7 +141,7 @@
     "covers": {
       "web/src/lib/votes.ts": "9b0a82a4ee0565c5",
       "web/src/components/MemberVotes.astro": "b778b73ab8274d2a",
-      "web/src/pages/congress-votes.astro": "48b6310c8416700d"
+      "web/src/pages/congress-votes.astro": "4d24d892e148cdd1"
     }
   },
   "how-to-use-the-trade-map": {
@@ -162,12 +162,12 @@
     }
   },
   "insider-buying-vs-insider-selling": {
-    "reviewed": "2026-11-23",
+    "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
       "web/src/components/VizFlow.astro": "c60219a0038ce83c",
-      "web/src/pages/insiders/index.astro": "77d3347fcbca5c30"
+      "web/src/pages/insiders/index.astro": "dc18b07ce0c5c550"
     }
   },
   "insider-options-and-derivatives": {
@@ -190,12 +190,12 @@
     "reviewed": "2026-11-24",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
-      "web/src/pages/lobbying/index.astro": "663e97f26df53b0c",
+      "web/src/pages/lobbying/index.astro": "9e6edb32bda4e948",
       "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
-      "web/src/pages/lobbying-issues/index.astro": "a33c2d2d4f48fb57",
+      "web/src/pages/lobbying-issues/index.astro": "1964da964f00a214",
       "web/src/pages/lobbying-issues/[slug].astro": "bc56d51a66734c39",
       "web/src/lib/lobbygifts.ts": "c02e8630901b7b5e",
-      "web/src/pages/lobbyist-contributions/index.astro": "dc180609d452663e"
+      "web/src/pages/lobbyist-contributions/index.astro": "cb483e5440050222"
     }
   },
   "rule-10b5-1-trading-plans": {
@@ -217,15 +217,15 @@
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
-    "reviewed": "2026-11-15",
+    "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/rates/tips.astro": "9cc8ad6cb088cd02"
+      "web/src/pages/rates/tips.astro": "bb524f369987a5c8"
     }
   },
   "treasury-yield-curve-explained": {
-    "reviewed": "2026-11-20",
+    "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/rates/treasury-yields.astro": "39886db10f83dced"
+      "web/src/pages/rates/treasury-yields.astro": "e0590addf9f7596f"
     }
   },
   "what-disclosure-data-cannot-tell-you": {
@@ -262,7 +262,7 @@
       "web/src/components/Financials.astro": "c66dacfc59b1679a",
       "web/src/components/FiledNotices.astro": "f813f28aea86489d",
       "web/src/lib/finscreen.ts": "f279a40cad54b481",
-      "web/src/pages/company-financials.astro": "b773f88b5d92e363"
+      "web/src/pages/company-financials.astro": "18b9cd6322207b6b"
     }
   }
 }

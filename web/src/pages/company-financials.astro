@@ -12,6 +12,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
+import HubFigures from "../components/HubFigures.astro";
 import JsonLd from "../components/JsonLd.astro";
 import DownloadCsv from "../components/DownloadCsv.astro";
 import { getDownloads } from "../lib/downloads";
@@ -53,6 +54,7 @@ const cap = (i: number) => RATIOS[i]!.cap.toLocaleString("en-US");
   <p class="lede">The newest fiscal year or quarter of each company this site tracks, in one table, as the company filed it with the SEC. Narrow it by industry, currency, revenue, net income and total assets, and sort any column.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: companies' annual and quarterly reports to the SEC (XBRL company facts); SEC industry codes" />
+  <HubFigures items={[{k:"Companies",v:num(all.length)},{k:"With a fiscal year",v:num(years.length)},{k:"With a quarter",v:num(quarters.length)},{k:"Newest filing",v:(newestFiled ?? "").slice(0,10)}]} />
 
   {all.length === 0 ? <p class="empty-reason">No company financials on file yet.</p> : (
     <div class="finscreen" data-finscreen data-src={FIN_SCREENER_DATA} data-held-href={heldHref} data-total={years.length}>
@@ -119,7 +121,7 @@ const cap = (i: number) => RATIOS[i]!.cap.toLocaleString("en-US");
         <tbody data-fs="rows">
           {first.rows.map((r) => (
             <tr data-cik={r.c.cik}>
-              <td>{r.c.path ? <a href={r.c.path}>{r.c.name}</a> : r.c.name}{r.c.ticker && <span class="soft small mono"> {r.c.ticker}</span>}</td>
+              <td><span class="ent">{r.c.path ? <a href={r.c.path}>{r.c.name}</a> : r.c.name}{r.c.ticker && <span class="tk"> {r.c.ticker}</span>}</span></td>
               <td>{r.c.division && <a href={divisionPagePath(r.c.division.slug)}>{r.c.division.name}</a>}</td>
               <td class="mono">{fsShortDate(r.p.end)}</td>
               {figureCols.map((c) => c.kind === "pay" ? <td class="num" data-pay>{fsPayText(r.c)}</td>
@@ -144,13 +146,14 @@ const cap = (i: number) => RATIOS[i]!.cap.toLocaleString("en-US");
     </div>
   )}
 
-  <h2 id="about">What this table shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this table shows</h2></summary><div class="ref-body">
   <p>One row for each company this site tracks whose annual or quarterly reports to the SEC are on file here. "Newest fiscal year" shows the latest full fiscal year the company has reported; "Newest quarter" shows the latest quarter it has reported on its own. The columns are revenue, net income, diluted earnings per share, total assets and shareholders' equity, each exactly as the company filed it, with the last day of the period and a link to the newest report the figures were taken from (its form, for example 10-K or 10-Q; the filing date is in the download). Companies have different fiscal years, so the periods in one view do not all end on the same day: the "ended" column says which period each row is.</p>
   <p id="recent">A company stays in the table with the last fiscal year or quarter it reported, however long ago that was, so a few rows are old: a company that was taken over, stopped filing or changed its reporting keeps its final period. "{RECENT_OPTION}", under Period end, leaves those rows out. It keeps a row whose period ended at most {num(RECENT_DAYS)} days before the day this page was built; {num(recentYears)} of the {num(years.length)} fiscal years and {num(recentQuarters)} of the {num(quarters.length)} quarters do. Eighteen months is wide on purpose: an annual report arrives two to three months after the year ends, and the year it covers stays the newest for twelve months after that. The filter goes by the date alone and says nothing about a company.</p>
   <p>No amount here is estimated or converted, and the columns the table opens on hold filed figures only. An empty cell means the report gave no such figure under a heading this site reads. A fourth fiscal quarter is not filed on its own, so "Newest quarter" is never a fourth quarter. "not shown" marks a figure this site holds back because, as stored, it fails one of three checks (for example earnings per share that would mean fewer than {num(MIN_IMPLIED_SHARES)} shares); the <a href="/methodology/#financials">methodology</a> lists them, and the <a href="/downloads/">CSV file</a> keeps the filed figure. A held-back figure passes no filter on its column.</p>
   <p id="currencies">Amounts are in the currency the company reports in, and that currency is printed with every amount that is not in U.S. dollars. The revenue and total-assets filters are in U.S. dollars: "{revMinLabel(REV_MIN_STEPS[1])}" keeps companies whose filed revenue for the period is {stepLabel(REV_MIN_STEPS[1])} or higher, and a company that reports in another currency passes neither filter, because this site converts nothing. For the same reason, sorting by an amount lists the dollar figures first and the others, with empty cells, after them. "{NI_OPTION.pos}" and "{NI_OPTION.neg}" go by the sign of the filed figure and cover every currency.</p>
   <p>The industry is the division of the SEC's industry code (SIC) for the company, the same label as on the <a href="/industries/">industry pages</a>; it is a classification, not a judgement. Sorting a column orders the companies by what that column holds and by nothing else. This table has no score, rating or forecast, and no figure that needs a share price. "CEO pay, as reported" is the principal executive officer's total in the Summary Compensation Table, from the Pay Versus Performance table of the company's proxy statement, for the newest fiscal year the company has one for; "Pay year" is the last day of that fiscal year. Pay is in dollars as the company tagged it for the SEC, belongs to the company rather than to the period shown, and is not set against any other figure here; a company with none on file shows an empty cell and sorts last. The <a href="/executive-pay/">executive pay page</a> has all four figures. A company's page has more: three fiscal years and four quarters, cash and total liabilities, and cash flow for fiscal years. How the figures are read: <a href="/methodology/#financials-screener">methodology</a>. What the figures are: <a href="/guides/what-is-form-4/#financials">the guide</a>.</p>
   <p id="ratios">"{COLS_OPTION.ratios}", under Columns, swaps part of the table for two ratios this site works out, each placed right after the two amounts it comes from. Net margin is {ratioInputs("net_margin")} for the period, as a percentage. Liabilities to equity is {ratioInputs("liabilities_to_equity")} on the last day of the period; total liabilities is shown in that view for this purpose, and is empty where the report gives no such total. They are the same two ratios, worked out the same way, as at the foot of the tables on a company's page: arithmetic on two amounts of one row, not figures the company filed. An empty cell means one of the two amounts is missing or not shown. "{RATIO_NA}" means revenue was zero or below, or equity was zero or negative, where the result would say nothing. A net margin beyond {cap(0)}% either way, or a liabilities to equity figure above {cap(1)}, is printed in words ("over {cap(0)}%"), because it comes from a period with almost no revenue or almost no equity; the download has the number. A ratio needs no currency, so sorting by one takes in every company with both amounts, whatever it reports in, with "{RATIO_NA}" and empty cells last. The order is by that one worked-out number and is no verdict on any company: what is usual differs widely between industries, and a bank or an insurer normally carries liabilities many times its equity. There is no filter on a ratio.</p>
+  </div></details>
   <AdSlot />
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures shown as filed with the SEC; no judgement about any company is made or implied.</p>

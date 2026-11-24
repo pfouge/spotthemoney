@@ -11,6 +11,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
+import HubFigures from "../components/HubFigures.astro";
 import JsonLd from "../components/JsonLd.astro";
 import DownloadCsv from "../components/DownloadCsv.astro";
 import HubStyles from "../components/HubStyles.astro";
@@ -47,6 +48,7 @@ const th = (k: PsSortKey, cls = "") => ({ k, label: HEAD[k], cls, on: k === DEFA
   <p class="lede">Notices of planned sales of restricted or control shares, filed with the SEC on Form 144, about the companies on this site.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR, Form 144 notices" />
+  <HubFigures items={[{k:"Notices on record",v:num(all.length)},{k:"Companies",v:num(companies)},{k:"Sellers",v:num(sellers)}]} />
 
   {!shown ? <p class="empty-reason">Form 144 notices are being refreshed. Check back after the next daily update.</p> : (
     <div class="hubscr" data-hub-root data-src={PLANNED_DATA} data-held-href={heldHref} data-total={all.length} data-built={built}>
@@ -73,8 +75,6 @@ const th = (k: PsSortKey, cls = "") => ({ k, label: HEAD[k], cls, on: k === DEFA
         </div>
       </div>
       <p class="section-note hub-count"><span data-hub="count" aria-live="polite">{psSummaryLine(first)}</span> <button type="button" class="linklike" data-hub="reset" hidden>Reset filters</button></p>
-      <DownloadCsv file={csv} note="every notice on record for these companies, not only the rows filtered here" />
-      <p class="dl-row hub-dl"><button type="button" class="dl" data-hub="download">Download these rows (CSV)</button> <span class="dl-meta">The notices that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
 
       <div class="tablewrap"><table class="data hub-table">
         <thead><tr>
@@ -88,7 +88,7 @@ const th = (k: PsSortKey, cls = "") => ({ k, label: HEAD[k], cls, on: k === DEFA
           {first.rows.map((r) => (
             <tr data-accession={r.accession}>
               <td class="mono">{shortDate(r.filed)}{r.amend && <span class="ps-sub">Amendment</span>}</td>
-              <td><a href={r.c.path}>{r.c.name}</a>{r.c.ticker && <span class="soft small mono"> {r.c.ticker}</span>}</td>
+              <td><span class="ent"><a href={r.c.path}>{r.c.name}</a>{r.c.ticker && <span class="tk"> {r.c.ticker}</span>}</span></td>
               <td class="wrap">{r.s.path ? <a href={r.s.path}>{r.s.name}</a> : r.s.name}</td>
               <td class="wrap">{r.relationship ?? ""}</td>
               <td class="num">{r.shares != null ? num(r.shares) : ""}</td>
@@ -107,13 +107,16 @@ const th = (k: PsSortKey, cls = "") => ({ k, label: HEAD[k], cls, on: k === DEFA
         <button type="button" class="chip" data-hub="next" disabled={first.pages <= 1}>Next</button>
         <label class="hub-per soft">Rows per page <select data-hub-ctl="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
       </div>
+      <p class="dl-row hub-dl"><button type="button" class="dl" data-hub="download">Download these rows (CSV)</button> <span class="dl-meta">The notices that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+      <DownloadCsv file={csv} note="every notice on record for these companies, not only the rows filtered here" />
       <noscript><p class="section-note">These are the first {num(first.rows.length)} of {num(first.total)} notices filed in the last 30 days. The filters need JavaScript; the CSV file above has every notice on record.</p></noscript>
     </div>
   )}
 
-  <h2 id="about">What this table shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this table shows</h2></summary><div class="ref-body">
   <p>One row for each Form 144 notice filed in the last 12 months about a company with a page on this site. A holder files the form before selling restricted or control shares under Rule 144. It states a plan: the sale may happen later, in part or not at all, and the notice does not say which notice an amendment replaces, so rows are not added together and this page counts notices, companies and sellers only.</p>
   <p>Every figure is the filer's own, as filed. A stated market value of more than {VALUE_MAX_PER_SHARE.toLocaleString("en-US")} dollars a share cannot be right for the number of shares, so it reads "not shown" and passes no value filter; the figure as filed is in the CSV file. A seller's name links to an insider's page only when the filer's SEC number is that person's. The industry is the SEC's, a label only. See the <a href="/methodology/#form-144">methodology</a> and the <a href="/guides/what-is-form-4/#form-144">guide to Form 144</a>.</p>
+  </div></details>
   <AdSlot />
   <p class="disclaimer"><strong>Not investment advice.</strong> Notices shown as filed with the SEC; no judgement about any seller is made or implied.</p>
   {ld && <JsonLd data={ld} />}

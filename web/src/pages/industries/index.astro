@@ -6,6 +6,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import { getFlagship, num, plural } from "../../lib/flagship";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -41,6 +42,7 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
   <p class="lede">The companies on this site, grouped by the industry code the SEC gives each one.</p>
 
   <Answer text={answer} updated={model.builtAt} sourceNote="Source: SEC EDGAR (industry codes and Form 4); House and Senate reports" />
+  <HubFigures items={[{k:"Divisions",v:num(x.divisions.length)},{k:"Companies with a code",v:num(x.withCode)},{k:"Companies placed",v:num(placed)}]} />
 
   {x.divisions.length === 0 ? <p class="empty-reason">No industry codes on file yet.</p> : (
     <section aria-labelledby="list" data-industries-list data-built={built}>
@@ -70,11 +72,12 @@ const heads: { label: string; type: "text" | "num"; cls?: string }[] = [
   <div class="prose">
   <AdSlot />
 
-  <h2 id="about">What this page shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this page shows</h2></summary><div class="ref-body">
   <p>The SEC gives every company that files with it a four-digit Standard Industrial Classification (SIC) code, such as 3674 for semiconductors. This page groups the companies on this site by the division of the SIC manual their code falls in, which is read from the code's first two digits. {x.divisions.length > 0 && <>Of the {num(x.companies)} companies here, <span data-fact="with-code">{num(x.withCode)}</span> have a code on file and <span data-fact="no-code">{num(noCode)}</span> do not (mostly funds and trusts){x.noDivision > 0 ? <>; {num(x.noDivision)} have a code that falls in no division and are not listed</> : null}.</>}</p>
   <p>The classification dates from 1987 and its divisions are broad. Software companies are under Services, and drug makers and chip makers are both under Manufacturing. A company has one code even when it works in several industries, and the SEC chooses it. So a division is a label for finding companies, not a measure of anything.</p>
   <p>"With insider purchases" counts companies where an insider reported at least one open-market purchase (Form 4 code P) in the 12 months, and "With insider sales" the same for open-market sales (code S). Awards, option exercises, gifts and shares withheld for tax are not counted. "Traded by Congress" counts companies whose stock is in at least one row of a House or Senate report in the same 12 months. A filing is counted by the day it was disclosed. The counts cover the companies this site tracks, not the whole market, and they say nothing about why anyone traded.</p>
   <p>See the <a href="/stocks/">list of stocks and companies</a>, the <a href="/methodology/#industries">methodology</a>, the <a href="/guides/what-is-form-4/">guide to Form 4</a> and the <a href="/downloads/">downloads page</a>, where one file lists every company with its code.</p>
+  </div></details>
   </div>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public records shown as filed.</p>
   <JsonLd data={ld} />

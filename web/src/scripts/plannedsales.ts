@@ -11,7 +11,7 @@ import { nf } from "../lib/hubscreen";
 export const plannedRow = (r: PsRow, heldHref: string): HTMLTableRowElement => {
   return h("tr", { "data-accession": r.accession },
     h("td", { class: "mono" }, shortDate(r.filed), r.amend ? h("span", { class: "ps-sub" }, "Amendment") : null),
-    h("td", {}, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "soft small mono" }, ` ${r.c.ticker}`) : null),
+    h("td", {}, h("span", { class: "ent" }, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "tk" }, ` ${r.c.ticker}`) : null)),
     h("td", { class: "wrap" }, r.s.path ? h("a", { href: r.s.path }, r.s.name) : r.s.name),
     h("td", { class: "wrap" }, r.relationship ?? ""),
     h("td", { class: "num" }, r.shares != null ? nf(r.shares) : ""),

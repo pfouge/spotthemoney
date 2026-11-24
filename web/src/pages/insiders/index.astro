@@ -9,6 +9,7 @@ import SectionFaq from "../../components/SectionFaq.astro";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
+import HubFigures from "../../components/HubFigures.astro";
 import ReviewNote from "../../components/ReviewNote.astro";
 import TxnTable from "../../components/TxnTable.astro";
 import JsonLd from "../../components/JsonLd.astro";
@@ -72,6 +73,7 @@ const feeds = [
   <p class="lede">Form 4 filings for the tracked set, the day after they reach EDGAR, with preset feeds for the patterns people actually look for.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR Form 4" />
+  <HubFigures items={[{k:"Trades, last 7 days",v:num(week.length)},{k:"Trades, last 30 days",v:num(month.length)},{k:"Open-market buys, 30 days",v:num(month.filter((t) => t.code === "P").length)}]} />
   <ReviewNote show={underReview} what="Form 4 rows" />
 
   <h2 id="heatmap" class="hm-h2">Trade map <span class="tag live">Live</span></h2>
@@ -122,8 +124,9 @@ const feeds = [
 
   <MiniCharts kind="insiders" />
 
-  <h2>How to read this</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read this</h2></summary><div class="ref-body">
   <p>Code P is an open-market purchase, the signal most readers care about, because an insider chose to spend cash. S is a sale (often pre-scheduled under a Rule 10b5-1 plan; flagged when the filing says so). M is an option exercise and A a grant; both are shown but never counted as buys. Values are shares × the reported price. Every row links to the filing on EDGAR. Method details: <a href="/methodology/">methodology</a>.</p>
+  </div></details>
   <p class="disclaimer"><strong>Not investment advice.</strong> Public disclosures shown as filed; they may lag the trade or be amended. No recommendation is made or implied.</p>
   <JsonLd data={ld} />
   <SectionFaq section="insiders" />

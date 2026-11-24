@@ -149,7 +149,7 @@ const description = [
   </div>
 
   <div class="prose">
-  <h2 id="how-to-read">How to read this</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2 id="how-to-read">How to read this</h2></summary><div class="ref-body">
   <ul>
     <li><strong>These are exchanges, not countries.</strong> Each bar is the value of the domestic companies listed on one exchange or exchange group. The United States bar adds together its two main exchanges, Nasdaq ({trillions(top.parts[0].usdMillions)}) and NYSE ({trillions(top.parts[1].usdMillions)}), in {asOf}.</li>
     <li><strong>London comes from a different source.</strong> The London Stock Exchange is not in the World Federation of Exchanges table. Its bar is the exchange's own figure for UK companies on its Main Market at the end of {asOf}, {gbp(LSE.ukMainMarketGbpMillions)} for {LSE.ukMainMarketCompanies} companies, converted at ${LSE.usdPerGbp} to the pound (the {LSE.rateSource} for {formatDate(LSE.rateDate)}). That gives {trillions(LONDON.usdMillions)}. It is counted by a different publisher, so treat London's rank as approximate. Companies on AIM, London's market for smaller companies ({gbp(LSE.aimGbpMillions)} in all), are not included because the exchange does not split that figure between UK and foreign companies.</li>
@@ -160,8 +160,10 @@ const description = [
     <li><strong>The European Union total is slightly too high.</strong> Euronext includes the Oslo exchange and Nasdaq Nordic and Baltics includes Iceland. Norway and Iceland are outside the EU, and the source does not report them separately. Nasdaq Nordic and Baltics carries Sweden's flag because it is based in Stockholm, and Euronext carries the EU flag because it runs exchanges in several countries.</li>
     <li><strong>The figures are several weeks old when published.</strong> The World Federation of Exchanges releases each month's table in the following weeks. Everything on this page is for {asOf} and was read from the sources on {formatDate(WFE.retrieved)}. Market values move every trading day.</li>
   </ul>
-  <h2 id="where-from">Where the data comes from</h2>
+  </div></details>
+  <details class="ref" data-remember id="ref-where-from"><summary><h2 id="where-from">Where the data comes from</h2></summary><div class="ref-body">
   <p>Every figure except London's is from the <a href={WFE.url} rel="noopener">{WFE.name}, {WFE.publication}, {WFE.issue} issue</a>, table "{WFE.table}", {asOf} column, shown as published. London's is from the <a href={LSE.url} rel="noopener">{LSE.name}'s {LSE.publication}</a>, converted with the <a href={LSE.rateUrl} rel="noopener">{LSE.rateSource}</a>. The totals, the multiples and the gap are worked out from those figures on this page, and the <a href="/methodology/">methodology page</a> covers how the rest of this site handles its sources.</p>
+  </div></details>
   </div>
   <p class="disclaimer"><strong>Not investment advice.</strong> World Federation of Exchanges and London Stock Exchange statistics for {asOf}.</p>
 

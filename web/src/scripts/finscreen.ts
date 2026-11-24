@@ -59,7 +59,7 @@ async function start(root: HTMLElement): Promise<void> {
   const rowEl = (r: FsRow, cols: FsCols): HTMLTableRowElement => {
     const url = reportUrl(r);
     return h("tr", { "data-cik": r.c.cik },
-      h("td", {}, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "soft small mono" }, ` ${r.c.ticker}`) : null),
+      h("td", {}, h("span", { class: "ent" }, r.c.path ? h("a", { href: r.c.path }, r.c.name) : r.c.name, r.c.ticker ? h("span", { class: "tk" }, ` ${r.c.ticker}`) : null)),
       h("td", {}, r.c.division ? h("a", { href: divisionPagePath(r.c.division.slug) }, r.c.division.name) : null),
       h("td", { class: "mono" }, fsShortDate(r.p.end)),
       ...columnsOf(cols).map((c) => {

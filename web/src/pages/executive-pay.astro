@@ -9,6 +9,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "../components/AdSlot.astro";
 import Crumbs from "../components/Crumbs.astro";
 import Answer from "../components/Answer.astro";
+import HubFigures from "../components/HubFigures.astro";
 import JsonLd from "../components/JsonLd.astro";
 import DownloadCsv from "../components/DownloadCsv.astro";
 import { getDownloads } from "../lib/downloads";
@@ -41,6 +42,7 @@ const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LAB
   <p class="lede">The newest fiscal year of executive pay for each company on this site that has filed it, from the Pay Versus Performance table of its proxy statement. Narrow the list by industry, fiscal year and size of the principal executive officer's total, and sort any column.</p>
 
   <Answer text={answer} updated={lastUpdated} sourceNote="Source: SEC EDGAR XBRL data, Pay Versus Performance (ecd taxonomy); SEC industry codes" />
+  <HubFigures items={[{k:"Companies and years on file",v:num(all.length)},{k:"Fiscal years",v:num(years.length)}]} />
 
   {all.length === 0 ? <p class="empty-reason">No executive pay figures on file yet.</p> : (
     <div class="paycompare" data-paycompare data-src={PAY_DATA} data-total={all.length}>
@@ -60,8 +62,6 @@ const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LAB
         </div>
       </div>
       <p class="section-note pc-count"><span data-pc="count" aria-live="polite">{paySummaryLine(first)}</span> <button type="button" class="linklike" data-pc="reset" hidden>Reset filters</button></p>
-      <DownloadCsv file={csv} note="every company and fiscal year on file, not only the rows filtered here" />
-      <p class="dl-row pc-dl"><button type="button" class="dl" data-pc="download">Download these rows (CSV)</button> <span class="dl-meta">The companies that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
 
       <div class="tablewrap"><table class="data pc-table">
         <thead><tr>
@@ -78,7 +78,7 @@ const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LAB
             const u = payFilingUrl(r.c.cik, r.accession);
             return (
               <tr data-cik={r.c.cik}>
-                <td>{r.c.path ? <a href={r.c.path}>{r.c.name}</a> : r.c.name}{r.c.ticker && <span class="soft small mono"> {r.c.ticker}</span>}</td>
+                <td><span class="ent">{r.c.path ? <a href={r.c.path}>{r.c.name}</a> : r.c.name}{r.c.ticker && <span class="tk"> {r.c.ticker}</span>}</span></td>
                 <td>{r.c.division && <a href={`/industries/${r.c.division.slug}/`}>{r.c.division.name}</a>}</td>
                 <td class="mono">{shortDate(r.fye)}</td>
                 {PAY_KEYS.map((k) => {
@@ -99,14 +99,17 @@ const HEAD = { company: "Company", year: "Fiscal year ending", ...PAY_COLUMN_LAB
         <button type="button" class="chip" data-pc="next" disabled={first.pages <= 1}>Next</button>
         <label class="pc-per soft">Rows per page <select data-pc="per" aria-label="Rows per page">{PER_PAGE.map((p) => <option value={p} selected={p === DEFAULT_PER}>{p}</option>)}</select></label>
       </div>
+      <p class="dl-row pc-dl"><button type="button" class="dl" data-pc="download">Download these rows (CSV)</button> <span class="dl-meta">The companies that match the filters, in the order shown, every page. The file is made in your browser; nothing is sent anywhere.</span></p>
+      <DownloadCsv file={csv} note="every company and fiscal year on file, not only the rows filtered here" />
       <noscript><p class="section-note">These are the first {num(first.rows.length)} of {num(all.length)} companies, by the principal executive officer's total. The filters need JavaScript; the CSV file above has every company and fiscal year.</p></noscript>
     </div>
   )}
 
-  <h2 id="about">What this table shows</h2>
+  <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this table shows</h2></summary><div class="ref-body">
   <p>{PAY_CAVEAT}</p>
   <p>Each row is one company and its newest fiscal year on file, so the years in one view do not all end on the same day: the "{HEAD.year}" column says which year each row is. The four figures are, in dollars, the principal executive officer's total in the Summary Compensation Table and compensation actually paid, then the same two as an average over the company's other named executive officers. A dash means the company did not tag that figure. Nothing is added up, converted or compared; the page has no ranking of companies by pay quality, no score and no comparison with any trade.</p>
   <p>Sorting a column orders the companies by that filed figure and nothing else, with missing figures last. Industry is the division of the SEC's industry code for the company. How the figures are read: <a href="/methodology/#executive-pay">methodology</a>. What the table is and how to read it: <a href="/guides/executive-pay-pay-versus-performance/">the guide</a>.</p>
+  </div></details>
   <AdSlot />
 
   <p class="disclaimer"><strong>Not investment advice.</strong> Figures shown as filed with the SEC; no judgement about any company or person is made or implied.</p>

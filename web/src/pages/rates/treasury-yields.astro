@@ -150,7 +150,7 @@ const description = hasData
     </div>
   )}
 
-  <h2>How to read the yield curve</h2>
+  <details class="ref" data-remember id="ref-how-to-read"><summary><h2>How to read the yield curve</h2></summary><div class="ref-body">
   <p>
     The yield curve plots what the U.S. government pays to borrow for different lengths of time, from one
     month to thirty years. Normally it slopes upward because lenders want more to lock money up longer. When
@@ -164,6 +164,7 @@ const description = hasData
     Source: U.S. Department of the Treasury, Daily Treasury Par Yield Curve Rates.
   </p>
 
+  </div></details>
   <AdSlot pos="low" />
   <JsonLd data={datasetLd({ downloads: [(await getDownloads()).files.find((f) => f.name === "treasury-yields.csv")?.path], name: "U.S. Treasury par yield curve (daily)", path: "/rates/treasury-yields/", description, dateModified: curve?.latestDate ?? new Date().toISOString().slice(0, 10), keywords: ["Treasury yields", "yield curve", "10-year Treasury", "2s10s spread"], sources: [SOURCES.treasury], parentCatalogPath: "/rates/" })} />
 </BaseLayout>
