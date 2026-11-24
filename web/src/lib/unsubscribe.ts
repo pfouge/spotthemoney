@@ -76,20 +76,22 @@ export function unsubPage(view: UnsubView, token: string | null | undefined): st
 <meta name="color-scheme" content="light dark">
 <title>${esc(title)} | Spot the Money</title>
 <style>
-:root { color-scheme: light dark; --bg: #ffffff; --ink: #14181c; --soft: #55606b; --line: #d5dbe1; --btn: #14181c; --btn-ink: #ffffff; }
-@media (prefers-color-scheme: dark) { :root { --bg: #0f1215; --ink: #eef1f4; --soft: #a3adb7; --line: #2c343c; --btn: #eef1f4; --btn-ink: #0f1215; } }
+/* Tokens copied from styles/global.css (redesign, 2026-11-23). This page is a document of its own: no stylesheet is loaded. */
+:root { color-scheme: light dark; --bg: #FFFFFF; --bg-2: #F4F5F7; --ink: #14171A; --ink-2: #59616B; --line: #E3E6EA; --line-2: #C7CCD3; --accent: #1F4FD8; --accent-on: #FFFFFF; --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --t-sm: 14px; --t-md: 16px; --t-lg: 24px; --r-pill: 999px; --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0F1215; --bg-2: #181C21; --ink: #E7EAEE; --ink-2: #A3ACB7; --line: #262C33; --line-2: #3A424C; --accent: #8CB0FF; --accent-on: #0F1215; } }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif; }
-main { max-width: 560px; margin: 0 auto; padding: 40px 20px 56px; }
-.brand { display: inline-block; margin-bottom: 28px; color: var(--ink); font-weight: 700; letter-spacing: .08em; text-decoration: none; font-size: 14px; }
-h1 { font-size: 26px; line-height: 1.2; margin: 0 0 14px; }
-p { margin: 0 0 14px; }
-.soft { color: var(--soft); font-size: 15px; }
-a { color: inherit; }
-form { margin: 22px 0; }
-button { font: inherit; font-weight: 600; min-height: 48px; padding: 0 26px; border-radius: 999px; border: 1px solid var(--btn); background: var(--btn); color: var(--btn-ink); cursor: pointer; }
-button:focus-visible, a:focus-visible { outline: 3px solid Highlight; outline-offset: 3px; }
-hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0 16px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--t-md)/24px var(--font-sans); }
+main { max-width: 560px; margin: 0 auto; padding: var(--s-7) var(--s-4) var(--s-7); }
+.brand { display: inline-block; margin-bottom: var(--s-6); color: var(--ink); font-weight: 600; text-decoration: none; font-size: var(--t-sm); line-height: 20px; }
+h1 { font-size: var(--t-lg); line-height: 28px; font-weight: 600; margin: 0 0 var(--s-3); }
+p { margin: 0 0 var(--s-3); }
+.soft { color: var(--ink-2); font-size: var(--t-sm); line-height: 20px; }
+a { color: var(--accent); text-underline-offset: 2px; }
+.brand { color: var(--ink); }
+form { margin: var(--s-5) 0; }
+button { font: inherit; font-weight: 600; min-height: 48px; padding: 0 var(--s-5); border-radius: var(--r-pill); border: 1px solid var(--accent); background: var(--accent); color: var(--accent-on); cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: var(--s-6) 0 var(--s-4); }
 </style>
 </head>
 <body>

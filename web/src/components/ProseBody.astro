@@ -1,0 +1,30 @@
+---
+// Wraps long running text in the page shape of the prose pages (redesign, 2026-11-23): the text in a
+// 68ch column and a sticky "On this page" list beside it. The list is read from the h2 headings of
+// the rendered body; a heading with no id gets one made from its text, so existing anchors keep
+// working and nothing has to be listed by hand. Fewer than three headings: no list.
+import Toc from "./Toc.astro";
+interface Props { label?: string; min?: number }
+const { label, min = 3 } = Astro.props;
+let html = await Astro.slots.render("default");
+const items: { id: string; text: string }[] = [];
+const used = new Set<string>(Array.from(html.matchAll(/\bid="([^"]+)"/g), (m) => m[1]));
+html = html.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/g, (all, attrs: string, inner: string) => {
+  const text = inner.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+  let id = /\bid="([^"]+)"/.exec(attrs)?.[1];
+  if (!id) {
+    const base = text.toLowerCase().replace(/&[a-z#0-9]+;/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "section";
+    id = base; let n = 2;
+    while (used.has(id)) id = `${base}-${n++}`;
+    used.add(id);
+    attrs += ` id="${id}"`;
+  }
+  if (text) items.push({ id, text });
+  return `<h2${attrs}>${inner}</h2>`;
+});
+const showToc = items.length >= min;
+---
+<div class:list={["prose-grid", showToc && "has-toc"]}>
+  {showToc && <Toc items={items} label={label} />}
+  <div class="prose-main prose" set:html={html} />
+</div>

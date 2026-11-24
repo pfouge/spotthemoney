@@ -866,6 +866,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | guidehub-faq-390 | 30.2 | 261 | - | - | 9 | 3 | 4 | 2 | 125 | 0 | 0 | 19 ({'s': 'a.faq-more', 'right': 409, 'w': 393}) | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Guides hub and FAQ, 2026-11-23)
+- overview first: Answer block and group chips first; each FAQ group is a heading with its questions under it.
+- grouping: Questions sit under the existing group headings; the group chips jump to them.
+- one meaning per attribute: Plus/minus marks only the disclosure; links are accent, nothing else uses accent.
+- data-ink: Hairlines between questions, no boxes; every row is a question.
+- hierarchy by contrast: Questions are 14px semibold summaries, answers regular 16px.
+- consistency: Same `details` pattern as the methodology and the guides' own Q&A; `a.faq-more` now wraps.
+- progressive disclosure: 70 answers closed behind their questions; `data-remember` and the address hash open one.
+- before/after: /faq/ 18.1 screens at 1280 and 30.2 at 390 before; 8.1 and 10.7 after (14,492px prose block to 7,306px page); no table on the page.
+
 ### 3.15 Guide page
 
 **Routes:** `/guides/[slug]/`
@@ -897,6 +908,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | guide-what-is-form-4-1280 | 10.9 | 293 | - | - | 10 | 3 | 3 | 2 | 12 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 | guide-what-is-form-4-390 | 18.7 | 261 | - | - | 11 | 3 | 4 | 2 | 12 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Guide page, 2026-11-23)
+- overview first: Title, answer, In brief, then a contents list (sticky at 1280, closed disclosure at 390).
+- grouping: Sections, questions, sources, related guides are separate h2 groups listed in the contents.
+- one meaning per attribute: Accent is link only; the contents list uses ink.
+- data-ink: No extra frames; the list has one hairline.
+- hierarchy by contrast: One 68ch column, h2 semibold, body regular.
+- consistency: Same `Toc` and `prose-grid` as methodology, legal and corrections pages.
+- progressive disclosure: Guide questions are closed `details`; contents closed on a phone.
+- before/after: what-is-form-4: 10.9 screens at 1280 and 18.7 at 390 before; 6.9 and 10.5 after; no table before the first section.
 
 ### 3.16 Writing hub
 
@@ -932,6 +954,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | writinghub-writing-390 | 3.5 | 261 | - | - | 7 | 3 | 4 | 2 | 6 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Writing hub, 2026-11-23)
+- overview first: Empty state or list of article cards, newest first.
+- grouping: One card per article with title, deck, author and read time.
+- one meaning per attribute: Tag chips only for Draft.
+- data-ink: Cards are hairline rows in the same grid as guide cards.
+- hierarchy by contrast: Title semibold, deck regular, meta in ink-2.
+- consistency: `guide-cards` grid shared with the guides hub, `minmax(280px,1fr)`.
+- progressive disclosure: Nothing hidden.
+- before/after: No change in height beyond the shared grid (empty hub in this build).
+
 ### 3.17 Article
 
 **Routes:** `/writing/[slug]/`
@@ -960,6 +993,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | article-late-1280 | 5 | 293 | - | 1145 | 12 | 4 | 3 | 2 | 10 | 0 | 0 | 0 | 1 | 0/1 | 0 (none) |
 | article-late-390 | 7.8 | 289 | - | 1576 | 11 | 4 | 4 | 2 | 10 | 0 | 0 | 0 | 1 | 0/1 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Article, 2026-11-23)
+- overview first: Title, deck, byline, summary, then the body at 68ch.
+- grouping: Body, questions, tags, author box, more writing are separate blocks.
+- one meaning per attribute: Numeric table columns right-aligned with tabular figures; links accent.
+- data-ink: The author box has one top hairline only.
+- hierarchy by contrast: h2 semibold with 32px above; byline in ink-2.
+- consistency: Questions use the shared `details.faq-item`.
+- progressive disclosure: Article questions closed.
+- before/after: Late-trades article: 4.5 screens at 1280 and 7.2 at 390 after (5.0 and 7.8 before); first table y 819 at 1280.
 
 ### 3.18 Author page
 
@@ -995,6 +1039,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | author-stm-1280 | 2 | 293 | - | - | 10 | 3 | 3 | 2 | 6 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 | author-stm-390 | 3.2 | 261 | - | - | 9 | 3 | 4 | 2 | 6 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Author page, 2026-11-23)
+- overview first: Name, bio and links in the title block, then the list of articles.
+- grouping: Articles are the one list.
+- one meaning per attribute: Accent only on links.
+- data-ink: No boxes.
+- hierarchy by contrast: Name is the h1.
+- consistency: Cards as on the writing hub.
+- progressive disclosure: None needed.
+- before/after: Unchanged height; only the shared card grid applies.
 
 ### 3.19 Reference and static pages
 
@@ -1096,6 +1151,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | reference-corrections-390 | 3.5 | 261 | - | - | 8 | 3 | 4 | 3 | 3 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Reference and static pages, 2026-11-23)
+- overview first: Answer block, then a contents list; methodology opens with the first two sections only.
+- grouping: Methodology sections are one disclosure each; legal pages are plain h2 sections; downloads and developers keep their jump pills.
+- one meaning per attribute: Plus/minus is the only marker; accent is link only.
+- data-ink: Legal pages are body text only, no boxes.
+- hierarchy by contrast: h2 semibold, 68ch text, sticky contents at 1024px and up.
+- consistency: One `ProseBody`/`Toc` pair builds the contents from the page's own h2s on methodology, privacy, terms, about, contact and corrections; headings with no id (corrections) get one from their text.
+- progressive disclosure: 10 of 12 methodology sections closed, remembered per visit; a link to any id inside a closed section (there are about 35 paragraph anchors in 'matching') opens it (`openToHash` in ui.ts).
+- before/after: methodology 20.5 screens at 1280 and 41.1 at 390 before; 3.6 and 5.4 after. privacy 7.5 and 12.1, terms 5.3 and 7.9, developers 6.7 and 11.9 (9.8 and 18.5 before). The methodology table is inside the 'coverage' disclosure.
+
 ### 3.20 Account (watchlist, shared watchlist)
 
 **Routes:** `/watchlist/`, `/watchlist/shared/`; also `/alerts/unsubscribe` (not measured)
@@ -1126,6 +1192,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | account-shared-390 | 1.7 | 118 | - | - | 3 | 2 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
 
+
+**Redesign: how each principle was applied** (Account (watchlist, shared watchlist), 2026-11-23)
+- overview first: Sign-in prompt or the lists, nothing else on the page.
+- grouping: One body, filled by script.
+- one meaning per attribute: Accent for the sign-in button only.
+- data-ink: No new frames.
+- hierarchy by contrast: h1 then lede.
+- consistency: Page width limited to 68ch on a phone and tablet, full width from 1024px.
+- progressive disclosure: Rows are filled by the script; unchanged.
+- before/after: Unchanged (script-filled; not signed in here).
+
 ### 3.21 Embeds
 
 **Routes:** `/embed/congress/[slug]/`, `/embed/stocks/[ticker]/`
@@ -1150,6 +1227,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | embed-stock-390 | 1 | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |
 
 
+
+**Redesign: how each principle was applied** (Embeds, 2026-11-23)
+- overview first: The chart alone with a source line.
+- grouping: One chart and one footer.
+- one meaning per attribute: Tokens only.
+- data-ink: No chrome added.
+- hierarchy by contrast: Footer in ink-2 12px.
+- consistency: Uses the same tokens as the site via global.css.
+- progressive disclosure: None.
+- before/after: Unchanged.
+
 ### 3.22 Search dialog (layout)
 
 **Routes:** in `BaseLayout.astro` (`#searchDlg`), index `/data/search.json`
@@ -1171,6 +1259,17 @@ Tables with no numeric column at all (identified as text-only): `hub-company-eve
 | search-home-1280 | 6.2 | 272 | 1224 | - | 19 | 4 | 8 | 6 | 36 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 | search-home-390 | 9.9 | 240 | 1658 | - | 18 | 4 | 8 | 6 | 35 | 0 | 0 | 0 | 0 | 0/0 | 0 (none) |
 
+
+
+**Redesign: how each principle was applied** (Search dialog and share dialog, 2026-11-23)
+- overview first: Input first, results under it.
+- grouping: Share channels, extras and cite are three groups.
+- one meaning per attribute: Accent only on the primary button.
+- data-ink: One border, one shadow.
+- hierarchy by contrast: Radius 8px, 4px controls.
+- consistency: Touch targets grow to 44px at 640px and below; the dialogs use the shared tokens.
+- progressive disclosure: Cite stays folded into the share dialog as before.
+- before/after: Unchanged height.
 
 ## 4. Blocks per page type that must survive the redesign (regression list)
 

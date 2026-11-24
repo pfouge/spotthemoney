@@ -88,7 +88,7 @@
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
-      "web/src/pages/terms.astro": "6f13e1f83fd08c67",
+      "web/src/pages/terms.astro": "717bde0d44213bfc",
       "web/src/lib/downloads.ts": "a10dfa6d02a655d2",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "c173e267d4ad4553",
@@ -114,7 +114,7 @@
       "db/migrations/0025_email_alerts_stage1.sql": "20f18614f837af9a",
       "ingest/src/lib/digest.ts": "0d80de65efc76bf5",
       "ingest/src/jobs/alerts_digest.ts": "290ac0a3893c1e11",
-      "web/src/lib/unsubscribe.ts": "8187f83a87f174bc"
+      "web/src/lib/unsubscribe.ts": "a4ec40f7b310d7fb"
     }
   },
   "how-to-read-a-congressional-trade-report": {
@@ -229,12 +229,12 @@
     }
   },
   "what-disclosure-data-cannot-tell-you": {
-    "reviewed": "2026-11-20",
+    "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "shared/src/tradevalue.ts": "fa250c11636cb867",
       "web/src/lib/coverage.ts": "45cb5bf5a564ff9d",
-      "web/src/pages/terms.astro": "6f13e1f83fd08c67"
+      "web/src/pages/terms.astro": "717bde0d44213bfc"
     }
   },
   "what-is-form-4": {

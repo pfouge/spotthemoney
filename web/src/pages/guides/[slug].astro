@@ -7,6 +7,7 @@ import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import Answer from "../../components/Answer.astro";
 import JsonLd from "../../components/JsonLd.astro";
+import Toc from "../../components/Toc.astro";
 import { getGuides, guidePath, GROUPS, type Guide } from "../../lib/guides";
 import { SITE_URL } from "../../lib/seo";
 import { autolink } from "../../lib/links";
@@ -50,16 +51,9 @@ const ld = [
       <ul>{g.keyFacts.map((k) => <li>{k}</li>)}</ul>
     </section>
 
-    <nav class="guide-toc" aria-label="On this page">
-      <strong>On this page</strong>
-      <ol>
-        {g.sections.map((s) => <li><a href={`#${s.id}`}>{s.h}</a></li>)}
-        <li><a href="#questions">Questions and answers</a></li>
-        {g.sources.length > 0 && <li><a href="#sources">Sources</a></li>}
-      </ol>
-    </nav>
-
-    <div class="prose guide-body">
+    <div class="prose-grid has-toc">
+    <Toc items={[...g.sections.map((x) => ({ id: x.id, text: x.h })), { id: "questions", text: "Questions and answers" }, ...(g.sources.length > 0 ? [{ id: "sources", text: "Sources" }] : [])]} />
+    <div class="prose prose-main guide-body">
       {sections.map((s, i) => (
         <>
           <section>
@@ -74,10 +68,10 @@ const ld = [
         <h2 id="questions">Questions and answers</h2>
         <div class="faq-list">
           {g.faqs.map((f) => (
-            <div class="faq-item">
-              <h3>{f.q}</h3>
+            <details class="faq-item">
+              <summary><h3>{f.q}</h3></summary>
               <p>{f.a}</p>
-            </div>
+            </details>
           ))}
         </div>
       </section>
@@ -100,6 +94,7 @@ const ld = [
           <ul>{g.sources.map((s) => <li><a href={s.url} rel="noopener">{s.name}</a></li>)}</ul>
         </section>
       )}
+    </div>
     </div>
 
     <p class="disclaimer"><strong>Not investment advice.</strong> This guide explains public records and how this site presents them. It makes no recommendation to buy or sell anything. <a href="/guides/">All guides</a> · <a href="/faq/">All questions</a> · <a href="/corrections/">Report an error</a></p>

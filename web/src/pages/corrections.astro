@@ -3,6 +3,7 @@
 // page makes a commitment (five working days) and describes a legal posture; gate 3 of the
 // autonomous session says draft it, mark it, ship it marked.
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ProseBody from "../components/ProseBody.astro";
 import Crumbs from "../components/Crumbs.astro";
 import JsonLd from "../components/JsonLd.astro";
 import { SITE_URL, CONTACT_EMAIL } from "../lib/seo";
@@ -22,6 +23,7 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <Answer text={`To report an error on Spot the Money, email ${CONTACT_EMAIL} with the page URL and the figure you believe is wrong. Reports are answered with a fix or an explanation within five working days, and material corrections are logged publicly on this page.`} updated={POLICY_UPDATED} sourceNote="Corrections policy" />
   <p class="note"><strong>Draft: needs review.</strong> This policy is published in draft while it is reviewed; the commitments below are already honoured.</p>
 
+  <ProseBody min={5}>
   <h2>How to report</h2>
   <p>Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> with the page URL, the figure you believe is wrong and, if you have it, the filing or record that shows the correct value. Reports from the person or organisation named on the page are handled first.</p>
 
@@ -37,4 +39,5 @@ const ld = { "@context": "https://schema.org", "@type": "WebPage", "@id": `${SIT
   <h2>Use of this site</h2>
   <p>The rules for using and reusing what is published here, and the limits of what it can tell you, are in the <a href="/terms/">Terms of use</a>. What the site does and does not collect about visitors is in the <a href="/privacy/">Privacy policy</a>.</p>
   <JsonLd data={ld} />
+  </ProseBody>
 </BaseLayout>
