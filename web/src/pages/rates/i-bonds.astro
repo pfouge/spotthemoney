@@ -8,7 +8,7 @@ import Answer from "../../components/Answer.astro";
 import Crumbs from "../../components/Crumbs.astro";
 import { getLatestIBondRate, getCpiSeries, getIBondHistory } from "../../lib/db";
 import Viz from "../../components/Viz.astro";
-import { rateStepsSvg } from "../../lib/viz";
+import { rateStepsSvg, PHONE_W } from "../../lib/viz";
 import { formatPercent, formatDate } from "../../lib/format";
 import { resetOutlook, monthLabel } from "../../lib/ibond";
 import { datasetLd, SOURCES } from "../../lib/seo";
@@ -56,8 +56,8 @@ const description = hasData
   )}
 
   <div class="viz-grid">
-    <Viz title="I-Bond rate history" question="How has the I-Bond rate moved at each six-month reset?" wide={true}
-      legend={[["v-one", "Composite rate"], ["v-muted", "Fixed-rate part"]]} svg={rateStepsSvg(history, true)} svgNarrow={rateStepsSvg(history)}
+    <Viz compact title="I-Bond rate history" question="How has the I-Bond rate moved at each six-month reset?"
+      legend={[["v-one", "Composite rate"], ["v-muted", "Fixed-rate part"]]} svg={rateStepsSvg(history, true)} svgNarrow={rateStepsSvg(history)} svgPhone={rateStepsSvg(history, false, PHONE_W)}
       summary={peak ? `Over the last ${history.length} rate periods the composite rate peaked at ${peak.composite!.toFixed(2)}% for bonds issued from ${formatDate(peak.date)}. The fixed-rate part stays with a bond for its life; the rest resets with inflation.` : undefined} />
   </div>
 

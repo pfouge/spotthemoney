@@ -15,15 +15,15 @@ const tot = weeks.reduce((a, w) => ({ buy: a.buy + w.buy, sell: a.sell + w.sell 
 const ratioNow = g && g.sell > 0 ? g.buy / g.sell : null;
 ---
 {g && (
-  <Viz title="Buy / sell pressure" question="Are corporate insiders buying or selling right now, and how does that compare with the past year?"
+  <Viz compact title="Buy / sell pressure" question="Are corporate insiders buying or selling right now, and how does that compare with the past year?"
     svg={gaugeSvg(g)} svgPhone={gaugeSvg(g, PHONE_W)}
     summary={ratioNow != null ? `In the last 30 days insiders bought ${usd(g.buy)} and sold ${usd(g.sell)} on the open market: $${ratioNow.toFixed(2)} bought for every dollar sold. Pre-scheduled 10b5-1 plan trades are left out.` : undefined} />
 )}
-<Viz title="Activity calendar" question={`Which days saw the most trading by ${who}, and in which direction? One square per day for the last year.`}
+<Viz compact title="Activity calendar" question={`Which days saw the most trading by ${who}, and in which direction? One square per day for the last year.`}
   legend={[["v-buy", "Net buying"], ["v-sell", "Net selling"], ["v-none", "No trades"]]}
-  svg={calendarSvg(days, todayIso())}
+  svg={calendarSvg(days, todayIso())} svgPhone={calendarSvg(days, todayIso(), PHONE_W)}
   summary={busiest ? `${days.size} days in the last year had at least one disclosed trade. The busiest was ${new Date(busiest[0] + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}, with ${usd(busiest[1].buy + busiest[1].sell)} traded. Darker squares mean more dollars.` : undefined} />
-<Viz title="Weekly flow" question="Is buying or selling building up week over week? Buying rises above the line, selling drops below it."
+<Viz compact title="Weekly flow" question="Is buying or selling building up week over week? Buying rises above the line, selling drops below it."
   legend={[["v-buy", "Bought"], ["v-sell", "Sold"]]}
-  svg={flowSvg(weeks)}
+  svg={flowSvg(weeks)} svgPhone={flowSvg(weeks, PHONE_W)}
   summary={tot.buy + tot.sell > 0 ? `Over the last 26 weeks ${who} bought ${usd(tot.buy)} and sold ${usd(tot.sell)}, by trade date.` : undefined} />

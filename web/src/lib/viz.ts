@@ -116,35 +116,35 @@ export function gaugeSvg(d: { buy: number; sell: number; monthly: { label: strin
 }
 
 // ── 04 activity calendar ────────────────────────────────────────────────────────────────
-export function calendarSvg(days: Map<string, { buy: number; sell: number; n: number }>, endIso: string): string {
+export function calendarSvg(days: Map<string, { buy: number; sell: number; n: number }>, endIso: string, W = 584): string {
   if (days.size === 0) return "";
   const end = dayNum(endIso), endDow = (new Date(end * 86400000).getUTCDay() + 6) % 7; // Mon = 0
   const weeks = 53, start = end - endDow - (weeks - 1) * 7;
   const totals = [...days.values()].map((d) => d.buy + d.sell).filter((v) => v > 0);
   const mx = Math.max(1, ...totals);
-  const W = 584, cw = 10.4, ch = 12, H = 7 * ch + 30;
+  const cw = (W - 30) / 53, cell = Math.max(3, cw - 1.8), ch = 12, H = 7 * ch + 30;
   let o = open(W, H, "Disclosed trading by day over the last year", "vz-time");
   ["Mon", "Wed", "Fri"].forEach((d, i) => { o += text(0, 20 + i * 2 * ch, d); });
-  let lastMonth = -1;
+  let lastMonth = -1, lastX = -99;
   for (let w = 0; w < weeks; w++) {
     for (let dow = 0; dow < 7; dow++) {
       const n = start + w * 7 + dow;
       if (n > end) continue;
       const iso = isoOf(n), v = days.get(iso), x = 30 + w * cw, y = 10 + dow * ch;
-      if (dow === 0) { const m = new Date(n * 86400000).getUTCMonth(); if (m !== lastMonth && w < weeks - 2) { o += text(x, H - 4, MONTH[m]!); lastMonth = m; } }
+      if (dow === 0) { const m = new Date(n * 86400000).getUTCMonth(); if (m !== lastMonth && w < weeks - 2) { if (x - lastX >= 30) { o += text(x, H - 4, MONTH[m]!); lastX = x; } lastMonth = m; } }
       const tot = v ? v.buy + v.sell : 0;
-      if (!v || (tot === 0 && v.n === 0)) { o += `<rect x="${f1(x)}" y="${y}" width="8.6" height="10" rx="2" class="v-none"/>`; continue; }
+      if (!v || (tot === 0 && v.n === 0)) { o += `<rect x="${f1(x)}" y="${y}" width="${f1(cell)}" height="10" rx="2" class="v-none"/>`; continue; }
       const net = v.buy - v.sell, op = tot > 0 ? 0.28 + 0.72 * Math.sqrt(tot / mx) : 0.28;
-      o += `<rect x="${f1(x)}" y="${y}" width="8.6" height="10" rx="2" class="${net >= 0 && v.buy > 0 ? "v-buy" : tot === 0 ? "v-muted" : "v-sell"}" fill-opacity="${op.toFixed(2)}"${tip(`${iso}|${v.n} trade${v.n === 1 ? "" : "s"} · ${net >= 0 ? "▲ net bought" : "▼ net sold"} ${usd(Math.abs(net))}`)}/>`;
+      o += `<rect x="${f1(x)}" y="${y}" width="${f1(cell)}" height="10" rx="2" class="${net >= 0 && v.buy > 0 ? "v-buy" : tot === 0 ? "v-muted" : "v-sell"}" fill-opacity="${op.toFixed(2)}"${tip(`${iso}|${v.n} trade${v.n === 1 ? "" : "s"} · ${net >= 0 ? "▲ net bought" : "▼ net sold"} ${usd(Math.abs(net))}`)}/>`;
     }
   }
   return o + "</svg>";
 }
 
 // ── 05 weekly flow bars ─────────────────────────────────────────────────────────────────
-export function flowSvg(weeks: { label: string; buy: number; sell: number }[]): string {
+export function flowSvg(weeks: { label: string; buy: number; sell: number }[], W = 560): string {
   if (!weeks.some((w) => w.buy + w.sell > 0)) return "";
-  const W = 560, H = 214, mid = 104, mx = Math.max(...weeks.map((w) => Math.max(w.buy, w.sell)), 1), bw = W / weeks.length, half = 88;
+  const H = 214, mid = 104, mx = Math.max(...weeks.map((w) => Math.max(w.buy, w.sell)), 1), bw = W / weeks.length, half = 88;
   let o = open(W, H, "Weekly dollars bought and sold", "vz-time");
   o += `<line x1="0" x2="${W}" y1="${mid}" y2="${mid}" class="v-axis"/>`;
   weeks.forEach((w, i) => {
@@ -235,10 +235,9 @@ export function scatterSvg(points: { label: string; x: number; y: number; size: 
   const mxX = Math.max(K, ...points.map((p) => Math.abs(p.x))), mxY = Math.max(K, ...points.map((p) => Math.abs(p.y))), mxS = Math.max(1, ...points.map((p) => p.size));
   const sx = (v: number) => cx + Math.sign(v) * (lg(v) / lg(mxX)) * hx, sy = (v: number) => cy - Math.sign(v) * (lg(v) / lg(mxY)) * hy;
   let o = open(W, H, "Net congressional trading against net insider trading, one dot per stock, log scales");
-  o += `<rect x="${l}" y="${t}" width="${r - l}" height="${b - t}" class="v-plot"/>`;
   // decade gridlines with dollar labels: every decade on a normal card, every other one on a phone
   const decades = (mx: number) => [1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11].filter((d) => d <= mx);
-  const stepX = W < 500 ? 2 : 1, dx = decades(mxX), dy = decades(mxY), dec = (d: number) => (d >= 1e9 ? `$${d / 1e9}B` : d >= 1e6 ? `$${d / 1e6}M` : `$${d / 1e3}K`);
+  const pick3 = <T>(a: T[]): T[] => (a.length <= 3 ? a : [a[0]!, a[Math.floor((a.length - 1) / 2)]!, a[a.length - 1]!]), stepX = 1, dx = pick3(decades(mxX)), dy = pick3(decades(mxY)), dec = (d: number) => (d >= 1e9 ? `$${d / 1e9}B` : d >= 1e6 ? `$${d / 1e6}M` : `$${d / 1e3}K`);
   dx.forEach((d, i) => {
     for (const sgn of [-1, 1]) {
       const X = sx(sgn * d);
@@ -350,11 +349,11 @@ export function columnsSvg(cols: { label: string; value: number }[], label: stri
 }
 
 // ── 13 holdings step lines ──────────────────────────────────────────────────────────────
-export function stepLinesSvg(series: { name: string; points: { date: string; value: number }[] }[], unitLabel = "shares"): string {
+export function stepLinesSvg(series: { name: string; points: { date: string; value: number }[] }[], unitLabel = "shares", W = 560): string {
   const live = series.filter((s) => s.points.length >= 2).slice(0, 2);
   if (live.length === 0) return "";
   const all = live.flatMap((s) => s.points), d0 = Math.min(...all.map((p) => dayNum(p.date))), d1 = Math.max(...all.map((p) => dayNum(p.date)));
-  const mx = Math.max(...all.map((p) => p.value)) || 1, W = 560, H = 214, l = 56, r = 500, top = 14, bot = 180;
+  const mx = Math.max(...all.map((p) => p.value)) || 1, H = 214, l = 50, r = W - 56, top = 14, bot = 180;
   const x = (iso: string) => l + ((dayNum(iso) - d0) / (d1 - d0 || 1)) * (r - l), y = (v: number) => bot - (v / mx) * (bot - top);
   const short = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${Math.round(v / 1e3)}K` : String(Math.round(v)));
   let o = open(W, H, `${unitLabel} held after each filing`, "vz-time");
@@ -388,7 +387,7 @@ export function timelineSvg(dots: { date: string; value: number; side: string; l
     if (!other) o += `<line x1="${f1(X)}" x2="${f1(X)}" y1="${mid}" y2="${f1(Y)}" class="v-grid"/>`;
     o += `<circle cx="${f1(X)}" cy="${f1(Y)}" r="${f1(other ? 4 : R)}" class="${other ? "v-muted" : buy ? "v-buy" : "v-sell"} ring" fill-opacity=".86" stroke-width="2"${tip(`${d.label}|${d.date} · ${buy ? "▲ bought" : other ? "other transaction" : "▼ sold"}${d.value > 0 ? ` ${usd(d.value)}` : ""}`)}/>`;
   });
-  for (let m = 0; m < 12; m++) { const n = start + Math.round((m * days) / 12), dt = new Date(n * 86400000); o += text(x(isoOf(n)), H - 6, `${MONTH[dt.getUTCMonth()]}${dt.getUTCMonth() === 0 || m === 0 ? " " + String(dt.getUTCFullYear()).slice(2) : ""}`); }
+  for (let m = 0; m < 12; m += W < 700 ? 2 : 1) { const n = start + Math.round((m * days) / 12), dt = new Date(n * 86400000); o += text(x(isoOf(n)), H - 6, `${MONTH[dt.getUTCMonth()]}${dt.getUTCMonth() === 0 || m === 0 ? " " + String(dt.getUTCFullYear()).slice(2) : ""}`); }
   return o + "</svg>";
 }
 
@@ -404,7 +403,7 @@ export function treemapSvg(items: { name: string; value: number; label: string; 
       let g = `<rect x="${f1(x + 1)}" y="${f1(y + 1)}" width="${f1(Math.max(0, w - 2))}" height="${f1(Math.max(0, h - 2))}" rx="3" class="v-one"${tip(`${it.name}|${it.label}`)}/>`;
       if (h > 24 && nm) g += text(x + 7, y + 17, nm, "v-on vb");
       if (h > 40 && nm && fits(it.label)) g += text(x + 7, y + 32, it.label, "v-on");
-      o += it.href ? `<a href="${esc(it.href)}">${g}</a>` : g;
+      o += it.href ? `<a href="${esc(it.href)}" aria-label="${esc(`${it.name}, ${it.label}`)}">${g}</a>` : g;
       return;
     }
     const tot = list.reduce((a, b2) => a + b2.value, 0);
@@ -420,17 +419,17 @@ export function treemapSvg(items: { name: string; value: number; label: string; 
 }
 
 // ── 18 reporting-lag strip ──────────────────────────────────────────────────────────────
-export function lagStripSvg(bars: { days: number; label: string }[], deadline: number, deadlineLabel = `${deadline}-day deadline`): string {
+export function lagStripSvg(bars: { days: number; label: string }[], deadline: number, deadlineLabel = `${deadline}-day deadline`, W = 560): string {
   const live = bars.filter((b) => Number.isFinite(b.days) && b.days >= 0).slice(-40);
   if (live.length < 2) return "";
-  const W = 560, H = 176, base = 150, top = 14, mx = Math.max(deadline * 1.3, ...live.map((b) => b.days)), bw = (W - 40) / live.length, y = (d: number) => base - (d / mx) * (base - top);
+  const H = 176, base = 150, top = 14, mx = Math.max(deadline * 1.3, ...live.map((b) => b.days)), bw = (W - 40) / live.length, y = (d: number) => base - (d / mx) * (base - top);
   let o = open(W, H, "Days to report for each filing, oldest to newest", "vz-time");
   live.forEach((b, i) => {
     const late = b.days > deadline;
     o += `<rect x="${f1(30 + i * bw + 1.5)}" y="${f1(Math.min(base - 2, y(b.days)))}" width="${f1(Math.max(2, bw - 3))}" height="${f1(Math.max(2, base - y(b.days)))}" rx="3" class="${late ? "v-late" : "v-one"}"${tip(`${b.label}|${b.days} day${b.days === 1 ? "" : "s"} to report${late ? " · late" : ""}`)}/>`;
   });
   o += `<line x1="30" x2="${W - 10}" y1="${base}" y2="${base}" class="v-axis"/><line x1="30" x2="${W - 10}" y1="${f1(y(deadline))}" y2="${f1(y(deadline))}" class="v-rule"/>`;
-  o += text(W - 10, y(deadline) - 6, deadlineLabel, "vi vb", "end") + text(30, H - 6, "oldest filing") + text(W - 10, H - 6, "newest", "vt", "end");
+  o += text(W - 10, y(deadline) - 6, deadlineLabel, "vi vb v-halo", "end") + text(30, H - 6, "oldest filing") + text(W - 10, H - 6, "newest", "vt", "end");
   return o + "</svg>";
 }
 
@@ -455,10 +454,10 @@ export function flowDiagramSvg(flows: { left: string; right: string; value: numb
 }
 
 // ── 22 I-Bond history steps ─────────────────────────────────────────────────────────────
-export function rateStepsSvg(periods: { date: string; composite: number | null; fixed: number | null }[], wide = false): string {
+export function rateStepsSvg(periods: { date: string; composite: number | null; fixed: number | null }[], wide = false, width?: number): string {
   const p = periods.filter((x) => x.composite != null);
   if (p.length < 2) return "";
-  const W = wide ? 1120 : 560, H = wide ? 280 : 214, l = 38, r = W - 12, base = H - 28, top = 14, mx = Math.max(...p.map((x) => x.composite!)) * 1.08, step = (r - l) / p.length;
+  const W = width ?? (wide ? 1120 : 560), H = wide && !width ? 280 : 214, l = 38, r = W - 12, base = H - 28, top = 14, mx = Math.max(...p.map((x) => x.composite!)) * 1.08, step = (r - l) / p.length;
   const x = (i: number) => l + i * step, y = (v: number) => base - (v / mx) * (base - top);
   let o = open(W, H, "I-Bond composite rate and fixed rate by six-month period", "vz-time");
   const ticks = mx > 8 ? [0, 5, 10] : mx > 4 ? [0, 2.5, 5] : [0, 1, 2];
@@ -484,7 +483,7 @@ export function curvePlaybackSvg(tenors: string[], frames: { label: string; valu
   const d = (vals: (number | null)[]) => { let s = "", on = false; vals.forEach((v, i) => { if (v == null) { on = false; return; } s += `${on ? "L" : "M"}${f1(x(i))},${f1(y(v))}`; on = true; }); return s; };
   const last = frames[frames.length - 1]!;
   let o = `<svg class="vz" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Treasury yield curve, month by month" data-curve data-lo="${lo}" data-hi="${hi}" data-l="${l}" data-r="${r}" data-base="${base}" data-top="${top}" data-frames="${esc(JSON.stringify(frames))}">`;
-  const stepv = hi - lo > 3 ? 1 : 0.5;
+  const stepv = [0.5, 1, 2, 5, 10].find((k) => (hi - lo) / k <= 2) ?? 10;
   for (let g = lo; g <= hi + 1e-9; g += stepv) o += `<line x1="${l}" x2="${r}" y1="${f1(y(g))}" y2="${f1(y(g))}" class="v-grid"/>` + text(l - 6, y(g) + 4, `${g.toFixed(1)}%`, "vt", "end");
   tenors.forEach((t, i) => { if (wide || (tenors.length <= 9 && W >= 500) || i % (W < 500 ? 3 : 2) === 0 || i === tenors.length - 1) o += text(x(i), H - 8, t, "vt", "middle"); });
   o += `<path d="${d(frames[0]!.values)}" class="v-line2" fill="none" stroke-width="2"/>` + text(r, y(frames[0]!.values.filter((v) => v != null).pop() ?? lo) + 16, frames[0]!.label, "vt", "end");
@@ -501,7 +500,7 @@ export function tradePricesSvg(pts: { date: string; price: number; side: string;
   const d0 = dayNum(live[0]!.date), d1 = Math.max(d0 + 30, dayNum(live[live.length - 1]!.date));
   const lo0 = Math.min(...live.map((p) => p.price)), hi0 = Math.max(...live.map((p) => p.price)), pad = (hi0 - lo0) * 0.1 || hi0 * 0.05;
   // round gridlines: a 1/2/5 step that gives three to five lines across the range
-  const raw = (hi0 - lo0 + 2 * pad) / 3, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((k) => k * mag).find((v) => v >= raw)!;
+  const raw = (hi0 - lo0 + 2 * pad) / 2, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((k) => k * mag).find((v) => v >= raw)!;
   const lo = Math.max(0, Math.floor((lo0 - pad) / step) * step), hi = Math.ceil((hi0 + pad) / step) * step, ticks: number[] = [];
   for (let g = lo; g <= hi + step / 1e6; g += step) ticks.push(g);
   const x = (iso: string) => l + ((dayNum(iso) - d0) / (d1 - d0)) * (r - l), y = (v: number) => base - ((v - lo) / (hi - lo)) * (base - top);
@@ -521,5 +520,65 @@ export function tradePricesSvg(pts: { date: string; price: number; side: string;
   });
   const fmt = (n: number) => { const dt = new Date(n * 86400000); return `${MONTH[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`; };
   o += text(l, H - 6, fmt(d0)) + text(r, H - 6, fmt(d1), "vt", "end");
+  return o + "</svg>";
+}
+
+// ── 24 monthly bars: bought up, sold down (design/system.md section 8) ─────────────────────
+/** Twelve months (or any count) of bought above a baseline and sold below it, one shared scale. Only the last month is
+ *  labelled with its figures; the first month names the start; every bar carries a hover tip. `fmt` formats the figures
+ *  (dollars by default; pass a plain formatter for counts). Returns "" when nothing was bought or sold. */
+export function monthBarsSvg(months: { label: string; up: number; down: number }[], opts: { w?: number; h?: number; label?: string; fmt?: (n: number) => string; unit?: string } = {}): string {
+  const m = months.map((x) => ({ label: x.label, up: finite(x.up) ? Math.max(0, x.up) : 0, down: finite(x.down) ? Math.max(0, x.down) : 0 }));
+  if (m.length < 2 || !m.some((x) => x.up + x.down > 0)) return "";
+  const W = opts.w ?? PHONE_W, H = opts.h ?? 150, fmt = opts.fmt ?? usd, unit = opts.unit ?? "";
+  const top = 18, bot = H - 18, mid = (top + bot) / 2, half = mid - top - 2;
+  const mx = Math.max(...m.map((x) => Math.max(x.up, x.down)));
+  const l = 4, r = W - 4, step = (r - l) / m.length, bw = Math.max(2, step - 3);
+  let o = open(W, H, opts.label ?? `Bought above and sold below the line, by month, ${m[0]!.label} to ${m[m.length - 1]!.label}`);
+  m.forEach((x, i) => {
+    const X = l + i * step + (step - bw) / 2, hu = (x.up / mx) * half, hd = (x.down / mx) * half;
+    const t = `${x.label}|▲ bought ${fmt(x.up)}${unit}|▼ sold ${fmt(x.down)}${unit}`;
+    if (hu > 0.4) o += `<rect x="${f1(X)}" y="${f1(mid - hu - 1)}" width="${f1(bw)}" height="${f1(Math.max(1, hu))}" rx="2" class="v-buy"${tip(t)}/>`;
+    if (hd > 0.4) o += `<rect x="${f1(X)}" y="${f1(mid + 1)}" width="${f1(bw)}" height="${f1(Math.max(1, hd))}" rx="2" class="v-sell"${tip(t)}/>`;
+    if (hu <= 0.4 && hd <= 0.4) o += `<rect x="${f1(X)}" y="${f1(mid - 0.5)}" width="${f1(bw)}" height="1" class="v-muted"${tip(t)}/>`;
+  });
+  o += `<line x1="${l}" x2="${r}" y1="${mid}" y2="${mid}" class="v-axis"/>`;
+  const last = m[m.length - 1]!;
+  if (last.up > 0) o += text(r, mid - (last.up / mx) * half - 5, fmt(last.up), "vi vb", "end");
+  if (last.down > 0) o += text(r, mid + (last.down / mx) * half + 13, fmt(last.down), "vi vb", "end");
+  o += text(l, H - 4, m[0]!.label) + text(r, H - 4, last.label, "vt", "end");
+  return o + "</svg>";
+}
+
+// ── 25 one stacked bar: how a total is split (never a pie) ────────────────────────────────
+/** One horizontal bar cut into parts, each part named and valued directly: inside the part when the text fits,
+ *  otherwise under the bar on one of two staggered rows; a name that fits nowhere is left to the hover tip.
+ *  `cls` is the fill class of a part (v-c1 to v-c4, v-one, v-muted, v-buy, v-sell). Returns "" when the total is not positive. */
+export function stackBarSvg(parts: { label: string; value: number; cls: string }[], opts: { w?: number; label?: string; fmt?: (n: number) => string } = {}): string {
+  const live = parts.filter((p) => finite(p.value) && p.value > 0);
+  const total = live.reduce((a, p) => a + p.value, 0);
+  if (live.length === 0 || total <= 0) return "";
+  const W = opts.w ?? PHONE_W, fmt = opts.fmt ?? usd, l = 2, r = W - 2, bw = r - l, barY = 6, barH = 24, H = 82;
+  let o = open(W, H, opts.label ?? `Split of ${fmt(total)}: ${live.map((p) => `${p.label} ${fmt(p.value)}`).join(", ")}`);
+  const rowEnd = [-1e9, -1e9];
+  let x = l;
+  live.forEach((p, i) => {
+    const w = (p.value / total) * bw, last = i === live.length - 1;
+    const text1 = `${p.label} ${fmt(p.value)}`;
+    o += `<rect x="${f1(x)}" y="${barY}" width="${f1(Math.max(1, w - (last ? 0 : 2)))}" height="${barH}" rx="3" class="${p.cls}"${tip(`${p.label}|${fmt(p.value)} · ${((p.value / total) * 100).toFixed(1)}%`)}/>`;
+    const pct = `${((p.value / total) * 100).toFixed(0)}%`;
+    if (w >= tw(pct) + 10) o += text(x + 6, barY + 16, pct, "vt v-on vb", "start", ' pointer-events="none"');
+    // direct label under the bar, left edge at the part's start; two rows so neighbours do not collide
+    const lw = tw(text1);
+    const row = x >= rowEnd[0]! + 8 ? 0 : x >= rowEnd[1]! + 8 ? 1 : -1;
+    const anchorEnd = x + lw > r + 2;
+    const lx0 = anchorEnd ? Math.max(l, r - lw) : x;
+    if (row >= 0 && (anchorEnd ? lx0 >= (rowEnd[row] ?? -1e9) + 8 : true)) {
+      rowEnd[row] = lx0 + lw;
+      o += `<line x1="${f1(x + 1)}" x2="${f1(x + 1)}" y1="${barY + barH}" y2="${barY + barH + (row ? 36 : 14)}" class="v-grid"/>`;
+      o += text(lx0 + 4, barY + barH + 14 + row * 18 + 1, text1, "vt vi", "start");
+    }
+    x += w;
+  });
   return o + "</svg>";
 }

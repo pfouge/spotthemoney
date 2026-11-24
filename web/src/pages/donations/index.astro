@@ -36,7 +36,7 @@ const ld = datasetLd({ name: "Campaign contributions to tracked committees (FEC 
   <HubFigures items={[{k:"Committees with receipts held",v:num(committees.length)},{k:"Receipts held",v:money(total)}]} />
   {(() => { const byState = new Map(model.donationsByState.filter((r) => isMapState(r.key)).map((r) => [r.key, r.total] as [string, number])); const top = [...byState.entries()].sort((a, b) => b[1] - a[1])[0]; return (
     <div class="viz-grid">
-      <Viz title="Donations by state" question={`Where does the money come from? Itemized receipts held for the last ${model.donationWindowDays} days, by the donor's state.`} wide={true}
+      <Viz compact tall title="Donations by state" question={`Where does the money come from? Itemized receipts held for the last ${model.donationWindowDays} days, by the donor's state.`}
         svg={tileMapSvg(byState, "in itemized receipts held", undefined, 1120)} svgNarrow={tileMapSvg(byState, "in itemized receipts held")} svgPhone={tileMapSvg(byState, "in itemized receipts held", undefined, 360)}
         summary={top ? `Donors in ${byState.size - (byState.has("DC") ? 1 : 0)} states${byState.has("DC") ? " and DC" : ""} appear in the receipts held; ${top[0]} is the largest source. This reflects the sample of receipts on this site, not every contribution.` : undefined} />
     </div>); })()}

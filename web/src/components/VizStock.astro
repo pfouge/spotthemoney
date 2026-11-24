@@ -33,18 +33,18 @@ const any = whoSvg || pricesSvg || held.length || lobbyTotal > 0 || agencies.len
   <section aria-label="Charts">
     <h2 id="charts">{name} in charts</h2>
     <div class="viz-grid">
-      <Viz title="Who is trading this stock" question="Which people account for the buying and selling over the last 12 months?"
+      <Viz compact tall title="Who is trading this stock" question="Which people account for the buying and selling over the last 12 months?"
         legend={[["v-buy", "Bought"], ["v-sell", "Sold"]]} svg={whoSvg} svgPhone={whoPhone} summary={whoSummary}
         embed={s ? `/embed${securityPath(s)}` : null} embedTitle={`Who is trading ${name}`} />
-      <Viz title="Prices insiders traded at" question="What price did insiders buy and sell at? Each marker is one open-market trade at the share price reported on its Form 4."
+      <Viz compact tall title="Prices insiders traded at" question="What price did insiders buy and sell at? Each marker is one open-market trade at the share price reported on its Form 4."
         legend={[["v-buy", "▲ Bought"], ["v-sell", "▼ Sold"], ["v-muted", "Average reported price that day"]]} svg={pricesSvg} svgPhone={pricesPhone} summary={pricesSummary} />
-      <Viz title="Insider holdings over time" question="Is an insider building or unwinding a position? Shares held directly after each filing."
-        legend={held.map((h, i) => [i === 0 ? "v-one" : "v-muted", h.name] as [string, string])} svg={stepLinesSvg(held)}
+      <Viz compact title="Insider holdings over time" question="Is an insider building or unwinding a position? Shares held directly after each filing."
+        legend={held.map((h, i) => [i === 0 ? "v-one" : "v-muted", h.name] as [string, string])} svg={stepLinesSvg(held)} svgPhone={stepLinesSvg(held, "shares", PHONE_W)}
         summary={held.length ? `${held[0]!.name} reported ${Math.round(held[0]!.points[held[0]!.points.length - 1]!.value).toLocaleString("en-US")} shares held after the latest filing, against ${Math.round(held[0]!.points[0]!.value).toLocaleString("en-US")} at the first on record.` : undefined} />
-      {c && <Viz title="Lobbying spend by quarter" question={`How much has ${c.name} reported spending on federal lobbying?`}
+      {c && <Viz compact title="Lobbying spend by quarter" question={`How much has ${c.name} reported spending on federal lobbying?`}
         svg={columnsSvg(lobby, `${c.name} reported lobbying by quarter`)} svgPhone={columnsSvg(lobby, `${c.name} reported lobbying by quarter`, PHONE_W)}
         summary={lobbyTotal > 0 ? `${c.name} reported ${usd(lobbyTotal)} in lobbying over the last eight quarters, from filings matched by exact company name.` : undefined} />}
-      {c && <Viz title="Federal contracts by agency" question={`Which agencies awarded ${c.name} contracts that started in the last 180 days?`}
+      {c && <Viz compact tall title="Federal contracts by agency" question={`Which agencies awarded ${c.name} contracts that started in the last 180 days?`}
         svg={rankBarsSvg(agencies, `${c.name} contract dollars by awarding agency`)} svgPhone={rankBarsSvg(agencies, `${c.name} contract dollars by awarding agency`, PHONE_W)}
         summary={agencies.length ? `Federal contract awards to ${c.name} that started in the last 180 days have a combined award value of ${usd(contractTotal)}, most from ${agencies[0]!.label}.` : undefined} />}
     </div>

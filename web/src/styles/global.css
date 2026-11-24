@@ -262,7 +262,6 @@ a.card:hover h3 { text-decoration: underline; text-underline-offset: 2px; }
    than 12 body rows scrolls inside its box (the head stays in view); scripts/tablecap.ts adds "Show all
    N rows". The screeners and hubs page their own rows, so they are not capped. */
 .tablewrap { overflow: auto; margin-top: var(--s-2); -webkit-overflow-scrolling: touch; }
-.tablewrap:has(tbody tr:nth-child(13)):not([data-nocap]):not([data-open]):not(:has(table.scr-table, table.fs-table, table.dir-table, table.vt-table, table.hub-table, table.ev-hub-table, table.pc-table)) { max-height: calc(33px + 12 * var(--row) + 1px); }
 table.data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--t-sm); }
 table.data th, table.data td { padding: 0 var(--s-3); height: var(--row); border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
 table.data thead th { position: sticky; top: 0; z-index: 2; height: 32px; background: var(--bg-2); border-bottom: 1px solid var(--line-2); font-size: var(--t-xs); font-weight: 600; color: var(--ink-2); }
@@ -489,7 +488,7 @@ main :is(p, li, dd) a:not([class]), main :is(p, li, dd) a.mono { text-decoration
 .tv-chart .tradingview-widget-container, .tv-chart .tradingview-widget-container__widget { height: 100%; width: 100%; }
 .tv-note { margin: var(--s-2) 0 0; color: var(--ink-2); font-size: var(--t-xs); line-height: var(--lh-xs); }
 @media (max-width: 640px) { .tv-chart { height: 480px; } .tv-info { min-height: 190px; } }
-.viz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-6) var(--s-5); margin: var(--s-5) 0; }
+.viz-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6) var(--s-5); margin: var(--s-5) 0; }
 .viz { margin: 0; padding: 0; min-width: 0; }
 .viz-wide { grid-column: 1 / -1; }
 .viz-grid:not(:has(*)) { display: none; }
@@ -564,7 +563,7 @@ svg.vz [data-tip] { cursor: default; } svg.vz a [data-tip], svg.vz a { cursor: p
 .tape .tb { color: var(--tape-buy); font-weight: 600; } .tape .ts { color: var(--tape-sell); font-weight: 600; }
 @keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .tape-run { animation: none; } }
-@media (max-width: 860px) { .viz-grid { grid-template-columns: 1fr; } .viz-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .viz-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* Phones: the tape is one more moving strip above the content; the Newest page carries the same rows. */
 @media (max-width: 640px) { .tape { display: none; } .viz { padding: var(--s-4) var(--s-4) var(--s-4); } .viz-tiles { gap: var(--s-2); } }
 /* slim /embed/ pages */

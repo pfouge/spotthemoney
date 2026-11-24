@@ -180,3 +180,25 @@ const syncToc = (): void => {
 };
 syncToc();
 tocMq.addEventListener("change", syncToc);
+
+// Panel caveats (components/Panel.astro): one line, with "more" when the text is longer. Without JavaScript the
+// whole note shows (the clamp in rd-kit.css only applies under html.js).
+function initPanelNotes(): void {
+  for (const note of document.querySelectorAll<HTMLElement>(".pn-note-wrap > .pn-note")) {
+    if (note.scrollHeight <= note.clientHeight + 1 && note.scrollWidth <= note.clientWidth + 1) continue;
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "pn-note-more";
+    btn.setAttribute("aria-expanded", "false");
+    if (!note.id) note.id = `pn-note-${Math.random().toString(36).slice(2, 8)}`;
+    btn.setAttribute("aria-controls", note.id);
+    btn.textContent = "more";
+    btn.addEventListener("click", () => {
+      const open = !note.hasAttribute("data-open");
+      if (open) note.setAttribute("data-open", ""); else note.removeAttribute("data-open");
+      btn.setAttribute("aria-expanded", String(open));
+      btn.textContent = open ? "less" : "more";
+    });
+    note.after(btn);
+  }
+}
+initPanelNotes();

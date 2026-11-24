@@ -19,7 +19,7 @@ const agree = pts.filter((p) => Math.sign(p.x) === Math.sign(p.y)).length;
   <h2 id="more-views">More views</h2>
   <div class="viz-grid">
     {scatter && (
-      <Viz title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock traded by both groups in the last year."
+      <Viz compact tall title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock traded by both groups in the last year."
         svg={scatterSvg(pts)} svgPhone={scatterSvg(pts, PHONE_W)}
         summary={pts.length ? `${pts.length} stocks were traded by both groups in the last year; in ${agree} of them Congress and insiders moved the same way. Dot size is total dollars traded; both axes are log scales.` : undefined} />
     )}

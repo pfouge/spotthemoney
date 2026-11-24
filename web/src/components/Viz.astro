@@ -22,10 +22,16 @@ interface Props {
   embed?: string | null;
   embedTitle?: string;
   id?: string;
+  /** Small form for dashboards and `.viz-grid`: icon-only share, one-line question, the reading in a closed "Reading" disclosure, the 360-wide build at every width, at most 180px tall. */
+  compact?: boolean;
+  /** Compact charts that need height to stay readable (scatter, tile map, treemap, flows, rank lists): cap 360px instead of 180px. */
+  tall?: boolean;
+  /** Compact charts only: a taller cap in px for a chart that is the subject of its page (a long ranked list). */
+  maxh?: number;
   /** Force visibility for slot-only bodies (cards, tiles). Defaults to "there is an SVG". */
   show?: boolean;
 }
-const { title, question, svg = "", svgNarrow = "", svgPhone = "", legend = [], summary, wide = false, mid = false, embed = null, embedTitle, id, show } = Astro.props;
+const { title, question, svg = "", svgNarrow = "", svgPhone = "", legend = [], summary, wide = false, mid = false, embed = null, embedTitle, id, show, compact = false, tall = false, maxh } = Astro.props;
 const visible = show ?? svg !== "";
 // Every chart card has an anchor so the Share button can link straight to it.
 const anchor = id ?? chartId(title);
@@ -35,16 +41,18 @@ const snippet = embed
   : "";
 ---
 {visible && (
-  <figure class:list={["viz", { "viz-wide": wide, "viz-mid": mid }]} id={anchor}>
+  <figure class:list={["viz", { "viz-wide": wide, "viz-mid": mid, "viz-compact": compact, "viz-tall": compact && tall }]} id={anchor} style={compact && maxh ? `--viz-maxh:${maxh}px` : undefined}>
     <figcaption class="viz-head">
       <div class="viz-top"><h3>{title}</h3><button type="button" class="share-btn share-btn-quiet" data-share="chart" aria-label={`Share this chart: ${title}`}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg><span>Share</span></button></div>
-      {question && <p class="viz-q">{question}</p>}
+      {question && <p class="viz-q" title={compact ? question : undefined}>{question}</p>}
     </figcaption>
     {legend.length > 0 && (
       <div class="viz-legend">{legend.map(([cls, label]) => <span><i class={cls}></i>{label}</span>)}</div>
     )}
-    <div class="viz-body">{svgNarrow || svgPhone ? (<Fragment><div class="vz-a" set:html={svg} />{svgNarrow && <div class="vz-b" set:html={svgNarrow} />}{svgPhone && <div class="vz-c" set:html={svgPhone} />}</Fragment>) : <Fragment set:html={svg} />}<slot /></div>
-    {summary && <p class="viz-sum">{summary}</p>}
+    <div class="viz-body">{compact ? (<div class="vz-a" set:html={svgPhone || svgNarrow || svg} />) : svgNarrow || svgPhone ? (<Fragment><div class="vz-a" set:html={svg} />{svgNarrow && <div class="vz-b" set:html={svgNarrow} />}{svgPhone && <div class="vz-c" set:html={svgPhone} />}</Fragment>) : <Fragment set:html={svg} />}<slot /></div>
+    {summary && (compact
+      ? <details class="vz-read"><summary>Reading</summary><p class="viz-sum">{summary}</p></details>
+      : <p class="viz-sum">{summary}</p>)}
     {embed && (
       <details class="viz-embed">
         <summary>Embed this chart</summary>

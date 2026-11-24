@@ -2,7 +2,7 @@
   "campaign-donations-fec-data": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/donations/index.astro": "07cc491bbf78ca34",
+      "web/src/pages/donations/index.astro": "b815d9c87ba921ad",
       "ingest/src/sources/fec_committees.ts": "8c61e370f5ab8cc3",
       "web/src/lib/campaign.ts": "9318bf48159367b1",
       "web/src/components/CampaignCommittee.astro": "5bcfe6579f926483",
@@ -36,7 +36,7 @@
     "covers": {
       "ingest/src/sources/usaspending.ts": "cb89baca2f6a40b0",
       "ingest/src/sources/usaspending_details.ts": "07829dbe76ba5f00",
-      "web/src/pages/contracts/index.astro": "8ba861b5e4096c34",
+      "web/src/pages/contracts/index.astro": "e396ee48b9cfac1e",
       "web/src/lib/contracts.ts": "c37352d0a3425c41",
       "web/src/lib/naics.ts": "e383c21b014850a8",
       "web/src/lib/assistance.ts": "8d1ebeffb90c1862",
@@ -76,10 +76,10 @@
     }
   },
   "how-i-bond-rates-work": {
-    "reviewed": "2026-11-20",
+    "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/ibond.ts": "25119c31f8a07e82",
-      "web/src/pages/rates/i-bonds.astro": "1b26ec19ff2c3bcb"
+      "web/src/pages/rates/i-bonds.astro": "37cfc4579fb14e69"
     }
   },
   "how-to-cite-and-reuse": {
@@ -104,7 +104,7 @@
       "db/migrations/0026_watch_feed_new_age.sql": "bcb89a59da716eba",
       "web/src/lib/account.ts": "522c937089cc8f0a",
       "web/src/scripts/account.ts": "4604217b975ebb66",
-      "web/src/scripts/watchlist.ts": "575c63bcd2bf694d",
+      "web/src/scripts/watchlist.ts": "d8266b15bcdcffc7",
       "web/src/components/Follow.astro": "08c98b2cdae7c3b9",
       "web/src/lib/watchcards.ts": "b6298374e7234d2d",
       "web/src/lib/watchcards-build.ts": "646d3aeb7f64b6d2",
@@ -145,7 +145,7 @@
     }
   },
   "how-to-use-the-trade-map": {
-    "reviewed": "2026-11-16",
+    "reviewed": "2026-11-24",
     "covers": {
       "web/src/lib/notable.ts": "1311804488343b01",
       "web/src/components/NotableFeed.astro": "ce6ab08c10ce4f73",
@@ -153,9 +153,9 @@
       "web/src/scripts/heatmap.ts": "6951fe4f66db5b37",
       "web/src/scripts/scatter.ts": "d447fcedcdd69b9e",
       "web/src/lib/trade-cross.ts": "19ac0ffacd6686b3",
-      "web/src/components/MiniCharts.astro": "4a34216ef3c2d7e2",
+      "web/src/components/MiniCharts.astro": "c26496438d1fe52a",
       "web/src/components/MiniHeatmap.astro": "c6c11a50c9af0e2f",
-      "web/src/components/VizHome.astro": "4fa08e8cd73ef0cb",
+      "web/src/components/VizHome.astro": "56b1a5d1f2bdbd8e",
       "web/src/lib/heatmap.ts": "9726eae1fadb943d",
       "web/src/lib/capband.ts": "34f03ea8cd70b9f9",
       "web/src/scripts/share.ts": "d701447fb386a23e"
@@ -166,7 +166,7 @@
     "covers": {
       "web/src/lib/vizdata.ts#isSignal": "5fdd87e9e4ca89c7",
       "web/src/lib/vizdata.ts#gaugeData": "10662d275b54fe19",
-      "web/src/components/VizFlow.astro": "c60219a0038ce83c",
+      "web/src/components/VizFlow.astro": "a3d5b368e2132686",
       "web/src/pages/insiders/index.astro": "dc18b07ce0c5c550"
     }
   },
@@ -190,7 +190,7 @@
     "reviewed": "2026-11-24",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
-      "web/src/pages/lobbying/index.astro": "9e6edb32bda4e948",
+      "web/src/pages/lobbying/index.astro": "07316fca4522d4eb",
       "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
       "web/src/pages/lobbying-issues/index.astro": "1964da964f00a214",
       "web/src/pages/lobbying-issues/[slug].astro": "c6ffb39f06eacdd2",
@@ -225,7 +225,7 @@
   "treasury-yield-curve-explained": {
     "reviewed": "2026-11-24",
     "covers": {
-      "web/src/pages/rates/treasury-yields.astro": "e0590addf9f7596f"
+      "web/src/pages/rates/treasury-yields.astro": "73c6891a297ee350"
     }
   },
   "what-disclosure-data-cannot-tell-you": {

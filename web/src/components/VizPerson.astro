@@ -17,7 +17,7 @@ const mix = portfolioMix(model, p.txns);
 const lag = lagBars(model, p);
 const lateN = lag.bars.filter((b) => b.days > lag.deadline).length;
 const path = personPath(p);
-const timeline = timelineSvg(dots, { endIso: todayIso() }), timelineNarrow = timelineSvg(dots, { endIso: todayIso(), width: 560 });
+const timeline = timelineSvg(dots, { endIso: todayIso() }), timelineNarrow = timelineSvg(dots, { endIso: todayIso(), width: 560 }), timelinePhone = timelineSvg(dots, { endIso: todayIso(), width: PHONE_W });
 const hasOther = yearDots.some((d) => d.side !== "buy" && d.side !== "sell");
 const part = (n: number, one: string, many: string, total: number) => (n === 0 ? `no ${many}` : `${n} ${n === 1 ? one : many} worth ${usd(total)}`);
 const otherN = yearDots.length - buys.length - sells.length;
@@ -32,14 +32,14 @@ const tlSummary = !yearDots.length ? undefined
   <section aria-label="Charts">
     <h2 id="charts">Trading in charts</h2>
     <div class="viz-grid">
-      <Viz title="Trade timeline" question="When does this person trade, how big, and in which direction? Every trade in the last 12 months." wide={true}
+      <Viz compact title="Trade timeline" question="When does this person trade, how big, and in which direction? Every trade in the last 12 months." wide={true}
         legend={[["v-buy", "Bought (above the line)"], ["v-sell", "Sold (below the line)"], ...(hasOther ? [["v-muted", "Other transaction"] as [string, string]] : [])]}
-        svg={timeline} svgNarrow={timelineNarrow} summary={tlSummary} embed={path && p.isCongress ? `/embed${path}` : null} embedTitle={`${p.name} disclosed trades`} />
-      <Viz title="Portfolio mix" question="Which stocks does this person trade most? Tile size is dollars traded, all time on record."
+        svg={timeline} svgNarrow={timelineNarrow} svgPhone={timelinePhone} summary={tlSummary} embed={path && p.isCongress ? `/embed${path}` : null} embedTitle={`${p.name} disclosed trades`} />
+      <Viz compact tall title="Portfolio mix" question="Which stocks does this person trade most? Tile size is dollars traded, all time on record."
         svg={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`)} svgPhone={treemapSvg(mix, `Stocks ${p.name} has traded, by dollars`, 230, PHONE_W)}
         summary={mix.length ? `${p.name} has traded ${mix.length} ${mix.length === 1 ? "stock" : "stocks"} on record; the largest by dollars is ${[...mix].sort((a, b) => b.value - a.value)[0]!.name}.` : undefined} />
-      <Viz title="Reporting lag" question={`Does this person report on time? One bar per filing against the ${p.isCongress ? `${lag.deadline}-day` : "Form 4"} deadline.`}
-        legend={[["v-one", "On time"], ["v-late", "Late"]]} svg={lagStripSvg(lag.bars, lag.deadline, p.isCongress ? undefined : "Form 4 deadline")}
+      <Viz compact title="Reporting lag" question={`Does this person report on time? One bar per filing against the ${p.isCongress ? `${lag.deadline}-day` : "Form 4"} deadline.`}
+        legend={[["v-one", "On time"], ["v-late", "Late"]]} svg={lagStripSvg(lag.bars, lag.deadline, p.isCongress ? undefined : "Form 4 deadline")} svgPhone={lagStripSvg(lag.bars, lag.deadline, p.isCongress ? undefined : "Form 4 deadline", PHONE_W)}
         summary={lag.bars.length >= 2 ? `${lateN} of ${lag.bars.length} filings on record were reported after the ${deadlineText}.` : undefined} />
     </div>
   </section>

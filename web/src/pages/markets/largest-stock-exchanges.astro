@@ -75,7 +75,7 @@ const description = [
   <Answer text={answer} updated={WFE.retrieved} sourceNote={`Sources: ${WFE.name}; ${LSE.name} for the United Kingdom. Figures for ${asOf}`} />
 
   <div class="viz-grid">
-    <Viz wide mid id="largest-stock-markets" title={`The world's largest stock markets, ${asOf}`}
+    <Viz compact maxh={640} id="largest-stock-markets" title={`The world's largest stock markets, ${asOf}`}
       question="How big is each major stock market, in U.S. dollars?"
       svg={rankBarsSvg(rankRows, rankLabel, WIDE_W)} svgNarrow={rankBarsSvg(rankRows, rankLabel, 640)} svgPhone={rankBarsSvg(rankRows, rankLabel, PHONE_W)}
       legend={rankLegend}
@@ -89,7 +89,7 @@ const description = [
     {tiles.map((t) => <div class="viz-tile"><div class="k">{t.k}</div><div class="v">{t.v}</div><div class="d">{t.d}</div></div>)}
   </div>
   <div class="viz-grid">
-    <Viz wide mid id="united-states-and-blocs" title={`United States, Commonwealth, China and European Union, ${asOf}`}
+    <Viz compact tall id="united-states-and-blocs" title={`United States, Commonwealth, China and European Union, ${asOf}`}
       question="How much larger is the U.S. stock market than the Commonwealth's, China's and the European Union's?"
       svg={rankBarsSvg(pairRows, pairLabel, WIDE_W)} svgNarrow={rankBarsSvg(pairRows, pairLabel, 640)} svgPhone={rankBarsSvg(pairRows, pairLabel, PHONE_W)}
       summary={`In ${asOf} companies listed on Nasdaq and NYSE were worth ${trillions(US_MILLIONS, 1)}: ${cwMultiple} the ${trillions(COMMONWEALTH_MILLIONS, 1)} listed on ${COMMONWEALTH_EXCHANGES.length} exchanges in Commonwealth countries, ${chinaMultiple} the ${trillions(CHINA_MILLIONS, 1)} listed in mainland China (${chinaNames}) and ${multiple} the ${trillions(EU_MILLIONS, 1)} listed on the ${EU_EXCHANGES.length} exchanges based in the European Union.`}>

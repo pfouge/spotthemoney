@@ -21,7 +21,7 @@ function tradeRow(r: FeedRow, showNew: boolean): HTMLTableRowElement {
   );
 }
 function tradeTable(rows: FeedRow[], showNew: boolean, caption: string): HTMLElement {
-  return h("div", { class: "tablewrap" },
+  return h("div", { class: "tablewrap", "data-nocap": "" },
     h("table", { class: "data" },
       h("caption", { class: "sr-only" }, caption),
       h("thead", {}, h("tr", {}, ...["Disclosed", "Who", "What", "Stock", "Size as filed", "Source"].map((t) => h("th", { scope: "col" }, t)))),
