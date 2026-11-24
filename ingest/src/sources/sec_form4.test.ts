@@ -2,7 +2,7 @@
 //   npx tsx --test ingest/src/sources/sec_form4.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities, collectForm4Entries, guardFutureTxnDate, rotateByDay, outageCounter } from "./sec_form4.js";
+import { parseForm4Xml, slugifyCompany, primaryTicker, decodeXmlEntities, collectForm4Entries, guardFutureTxnDate, rotateByDay, outageCounter, isNotFound } from "./sec_form4.js";
 
 const XML = `<?xml version="1.0"?>
 <ownershipDocument>
@@ -172,6 +172,15 @@ test("outageCounter: trips on failures in a row, any success resets it", () => {
   const off = outageCounter(0);
   off.fail(); off.fail(); off.fail();
   assert.equal(off.tripped, false);
+});
+
+test("isNotFound: only the http layer's 404 message, not 5xx, 403 or text that mentions 404", () => {
+  assert.equal(isNotFound("HTTP 404 from www.sec.gov/Archives/edgar/data/1565687/000156568726000161/index.json"), true);
+  assert.equal(isNotFound("HTTP 503 from www.sec.gov/Archives/edgar/data/1/2/index.json"), false);
+  assert.equal(isNotFound("HTTP 403 from www.sec.gov/x"), false);
+  assert.equal(isNotFound("HTTP 429 from www.sec.gov/x (retry-after 600s — not waiting)"), false);
+  assert.equal(isNotFound("fetch failed"), false);
+  assert.equal(isNotFound("write failed: row 404 HTTP 404 from"), false);
 });
 
 test("history listing: pages back to the since date and stops there", async () => {

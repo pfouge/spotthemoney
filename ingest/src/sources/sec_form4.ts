@@ -45,6 +45,8 @@
 //     newest 40 reach back decades; one 2002 filing was fetched and quarantined every day);
 //   - outage stop: SEC_FORM4_MAX_CONSECUTIVE_FAILURES (default 5) failed tickers or filings in
 //     a row end the run as "failed" with its stats, in minutes instead of at the job timeout;
+//     a filing that answers 404 (listed, folder not served yet) is no failure: it is counted
+//     in stats.filings_not_yet_served and asked for again by the next run;
 //   - budget: SEC_FORM4_MAX_MINUTES (default 40) ends a slow run cleanly as "partial"; the
 //     universe is walked from a start point that moves each day (rotateByDay), so a run cut
 //     short does not skip the same tickers every time.
@@ -822,6 +824,14 @@ export function outageCounter(limit: number): { fail(): void; ok(): void; readon
   };
 }
 
+/**
+ * True when a request failed because the SEC answered "not found" (the http layer's message is
+ * "HTTP 404 from <host><path>"). A 404 is an answer, so it is no sign of an outage.
+ */
+export function isNotFound(message: string): boolean {
+  return /^HTTP 404 from /.test(message);
+}
+
 export interface Form4RunOptions {
   /** History pass: walk each ticker's listing back to this date (YYYY-MM-DD). */
   since?: string;
@@ -891,6 +901,8 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
   let filingsFetched = 0;
   let filingsSkippedExisting = 0;
   let filingsQuarantined = 0;
+  let filingsNotYetServed = 0;
+  const notYetServedSample: string[] = [];
   let transactionsWritten = 0;
   let futureDatesNulled = 0;
   let documentsArchived = 0;
@@ -994,10 +1006,20 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
           ctx.rowsChanged += stored.transactions;
           outage.ok();
         } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (isNotFound(message)) {
+            // The listing names a filing a few minutes before its folder is served: on a busy
+            // afternoon one filer's five new Form 4s answered 404 in a row and ended two runs as
+            // "SEC EDGAR is not answering" (2026-11-23). Nothing is stored, so the next run asks
+            // again. Not an outage, and not a quarantine (40 of them would trip that breaker).
+            filingsNotYetServed++;
+            if (notYetServedSample.length < 20) notYetServedSample.push(entry.accession);
+            continue;
+          }
           filingsQuarantined++;
           failuresThisTicker++;
           outage.fail();
-          lastFailure = err instanceof Error ? err.message : String(err);
+          lastFailure = message;
           ctx.quarantine(
             entry.accession,
             `per-filing failure: ${lastFailure}`,
@@ -1046,6 +1068,11 @@ export async function ingestSecForm4(opts: Form4RunOptions = {}): Promise<Ingest
   ctx.extra["filings_fetched"] = filingsFetched;
   ctx.extra["filings_skipped_existing"] = filingsSkippedExisting;
   ctx.extra["filings_quarantined"] = filingsQuarantined;
+  ctx.extra["filings_not_yet_served"] = filingsNotYetServed;
+  if (filingsNotYetServed > 0) {
+    ctx.extra["filings_not_yet_served_sample"] = notYetServedSample;
+    console.log(`${SOURCE}: ${filingsNotYetServed} listed filing(s) answered 404 (not served yet); the next run asks again, e.g. ${notYetServedSample.slice(0, 6).join(", ")}`);
+  }
   ctx.extra["transactions_written"] = transactionsWritten;
   ctx.extra["future_dates_nulled"] = futureDatesNulled;
   ctx.extra["documents_archived"] = documentsArchived;
