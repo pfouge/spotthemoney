@@ -1,12 +1,10 @@
 ---
 // Home page chart deck: headline tiles, the direction charts for everyone, Congress vs insiders
 // (the leaderboards moved to the right rail: HomeLeaderboards.astro). Everything here is drawn from the same in-memory model as the page.
-import MiniHeatmap from "./MiniHeatmap.astro";
-import Viz from "./Viz.astro";
 import VizFlow from "./VizFlow.astro";
 import { getFlagship } from "../lib/flagship";
-import { sparklineSvg, scatterSvg, usd, PHONE_W } from "../lib/viz";
-import { headlineTiles, agreementPoints, isInsiderTxn } from "../lib/vizdata";
+import { sparklineSvg, usd } from "../lib/viz";
+import { headlineTiles, isInsiderTxn } from "../lib/vizdata";
 const model = await getFlagship();
 const h = headlineTiles(model);
 const tiles = [
@@ -15,8 +13,6 @@ const tiles = [
   { k: "Late filings this week", v: String(h.late(h.cur)), series: h.weeks.map(h.late), d: h.delta(h.late(h.cur), h.late(h.prev), (n) => String(n)) },
   { k: "Insider buying share this week", v: h.share(h.cur) == null ? "—" : `${h.share(h.cur)!.toFixed(0)}%`, series: h.weeks.map((w) => h.share(w) ?? 0), d: h.share(h.cur) == null || h.share(h.prev) == null ? "of open-market dollars" : h.delta(h.share(h.cur)!, h.share(h.prev)!, (n) => `${n.toFixed(0)} pts`) },
 ];
-const pts = agreementPoints(model);
-const agree = pts.filter((p) => Math.sign(p.x) === Math.sign(p.y)).length;
 const signal = model.txns.filter((t) => t.isPublished);
 ---
 {model.txns.length > 0 && (
@@ -29,10 +25,6 @@ const signal = model.txns.filter((t) => t.isPublished);
     </div>
     <div class="viz-grid home-charts">
       <VizFlow txns={signal.filter(isInsiderTxn)} who="corporate insiders" gauge={true} />
-      <Viz compact tall title="Congress vs. insiders" question="Where do members of Congress and a company's own insiders agree, and where do they disagree? One dot per stock."
-        svg={scatterSvg(pts)} svgPhone={scatterSvg(pts, PHONE_W)}
-        summary={pts.length ? `${pts.length} stocks were traded by both groups in the last year; in ${agree} of them Congress and insiders moved the same way. Dot size is total dollars traded; both axes are log scales.` : undefined} />
-      <MiniHeatmap kind="all" />
     </div>
   </section>
 )}
