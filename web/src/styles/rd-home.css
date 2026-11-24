@@ -66,7 +66,7 @@ html.js .home-answer .answer-text:not([data-open]) { display: -webkit-box; -webk
 .nf-count { margin: var(--s-2) 0 var(--s-1); }
 .nf-cap { margin: 0 0 var(--s-1); }
 .nf-list { border-top: 1px solid var(--line); display: block; }
-.nf-item { display: grid; grid-template-columns: 52px minmax(0, 1.5fr) 76px 76px minmax(0, 1.2fr) minmax(0, 1fr) 32px; align-items: center; gap: 0 var(--s-3); min-height: 40px; padding: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.nf-item { display: grid; grid-template-columns: 52px minmax(0, 1.5fr) 104px 76px minmax(0, 1.2fr) minmax(0, 1fr) 32px; align-items: center; gap: 0 var(--s-3); min-height: 40px; padding: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
 .nf-item .nf-c { flex-direction: row; align-items: center; gap: var(--s-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; grid-column: auto; grid-row: auto; min-width: 0; font-size: var(--t-sm); line-height: var(--lh-sm); }
 .nf-item .nf-date { color: var(--ink-2); font-size: var(--t-xs); }
 .nf-item .nf-stock { display: flex; }
@@ -92,14 +92,14 @@ html.js .home-answer .answer-text:not([data-open]) { display: -webkit-box; -webk
 .nf-about summary { cursor: pointer; color: var(--accent); padding: var(--s-1) 0; }
 .nf-about .nf-foot, .nf-about .nf-sellnote { max-width: 80ch; }
 @media (max-width: 1099px) {
-  .nf-item { grid-template-columns: 52px minmax(0, 1.4fr) 72px 76px minmax(0, 1fr) 32px; }
+  .nf-item { grid-template-columns: 52px minmax(0, 1.4fr) 100px 76px minmax(0, 1fr) 32px; }
   .nf-item .nf-tags { display: none; }
   .nf-detail { grid-column: 2 / -1; }
 }
 @media (max-width: 640px) {
   .nf-list { display: block; }
   .nf-list[data-preview] .nf-item:nth-child(n+7) { display: none; }
-  .nf-item { grid-template-columns: 44px minmax(0, 1fr) 64px 32px; grid-template-rows: auto; min-height: 44px; gap: 0 var(--s-2); }
+  .nf-item { grid-template-columns: 44px minmax(0, 1fr) 88px 32px; grid-template-rows: auto; min-height: 44px; gap: 0 var(--s-2); }
   .nf-item .nf-val, .nf-item .nf-who { display: none; }
   .nf-item .nf-act { font-size: var(--t-xs); }
   .nf-item .nf-detail { grid-column: 1 / -1; }
@@ -207,3 +207,4 @@ figure.viz.rail-card { border: 0; padding: 0; background: none; box-shadow: none
 
 /* anchors on this page clear the sticky header (and the tape) */
 #howMap, #nfAbout, #hmSwitch, #hmMore, #htTiles, #notableH, .hp-map [id], .home-cov, .ht-band [id] { scroll-margin-top: 96px; }
+.nf-item .nf-act b { white-space: nowrap; }

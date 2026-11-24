@@ -2,7 +2,7 @@
 // selection live in lib/notable.ts (shared with the build, which writes the default view into the
 // HTML). All text goes in as text nodes (scripts/dom.ts): names and labels come from filings.
 import { h, type Kids } from "./dom";
-import { DEFAULT_STATE, FEED_PAGE, PREVIEW_ROWS, PREVIEW_ROWS_PHONE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, capLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
+import { actLabel, DEFAULT_STATE, FEED_PAGE, PREVIEW_ROWS, PREVIEW_ROWS_PHONE, PRESETS, PRESET_HASH, REASON_LABEL, SORTS, WINDOWS, countLine, capLine, emptyLine, presetFromHash, resolveView, shortDate, type Entry, type FeedItem, type FeedCluster, type FeedState, type NotableData, type Preset, type SortKey, type Win } from "../lib/notable";
 
 const KEYS = ["nw", "np", "nq", "ns"] as const;
 
@@ -22,7 +22,7 @@ function itemEl(e: FeedItem): HTMLElement {
   return h("li", { class: "nf-item" },
     cell("nf-date", h("time", { datetime: e.d }, shortDate(e.d))),
     cell("nf-stock", link(e.tp, "nf-tk", e.tk), sub(e.co)),
-    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, e.b ? "▲ Bought" : "▼ Sold")),
+    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, actLabel(e.b))),
     cell("nf-val", h("b", {}, e.vl)),
     cell("nf-who", e.np ? h("a", { href: e.np }, e.n) : h("b", {}, e.n)),
     cell("nf-tags", ...e.tg.map((t) => h("span", { class: "nf-tag" }, REASON_LABEL[t]))),
@@ -40,7 +40,7 @@ function clusterEl(e: FeedCluster): HTMLElement {
   return h("li", { class: "nf-item nf-cluster" },
     cell("nf-date", h("time", { datetime: e.d }, shortDate(e.d))),
     cell("nf-stock", link(e.tp, "nf-tk", e.tk), sub(e.co)),
-    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, e.b ? "▲ Bought" : "▼ Sold")),
+    cell(`nf-act ${e.b ? "buy" : "sell"}`, h("b", {}, actLabel(e.b, e.n))),
     cell("nf-val", h("b", {}, e.vl)),
     cell("nf-who", h("b", {}, `${e.n} insiders`)),
     cell("nf-tags", h("span", { class: "nf-tag" }, e.b ? REASON_LABEL.cluster : REASON_LABEL["cluster-sell"])),

@@ -178,7 +178,7 @@ const footGroups = [...document.querySelectorAll<HTMLElement>("footer.site .foot
   btn.setAttribute("aria-label", `${(head.textContent ?? "").trim()}: show or hide the links`);
   head.appendChild(btn);
   const set = (open: boolean): void => { list.hidden = !open; btn.setAttribute("aria-expanded", String(open)); nav.classList.toggle("open", open); };
-  btn.addEventListener("click", () => set(list.hidden));
+  btn.addEventListener("click", () => set(Boolean(list.hidden)));
   return set;
 }).filter((f): f is (open: boolean) => void => !!f);
 const syncFoot = (): void => { for (const set of footGroups) set(!footMq.matches); };

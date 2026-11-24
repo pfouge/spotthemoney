@@ -419,3 +419,8 @@ export function emptyLine(s: FeedState, offerAll = false): string {
   if (s.q.trim()) tips.push("a shorter search");
   return tips.length ? `Nothing matched. Loosen a filter: try ${tips.join(", ")}.` : "Nothing matched: no notable trades were filed in this window.";
 }
+
+/** The direction cell of a feed row: "▲ Bought", or "▲ 6 Bought" when several people did (a cluster). */
+export function actLabel(buy: boolean | 0 | 1, people = 1): string {
+  return `${buy ? "▲" : "▼"} ${people > 1 ? `${people} ` : ""}${buy ? "Bought" : "Sold"}`;
+}

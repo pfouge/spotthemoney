@@ -3,7 +3,7 @@
 // All, newest filed) is written into the HTML here, so the page works without JavaScript and
 // search engines see it; scripts/notable.ts takes over from /data/notable.json for everything else.
 // The markup of one item must match what the script builds (same classes, same order).
-import { resolveView, DEFAULT_STATE, PRESETS, SORTS, WINDOWS, WIN_LABEL, FEED_PAGE, PREVIEW_ROWS_PHONE, REASON_LABEL, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_PCT, CLUSTER_SELL_MIN_VALUE, countLine, capLine, emptyLine, shortDate, longDate, type NotableData, type Entry } from "../lib/notable";
+import { actLabel, resolveView, DEFAULT_STATE, PRESETS, SORTS, WINDOWS, WIN_LABEL, FEED_PAGE, PREVIEW_ROWS_PHONE, REASON_LABEL, CLUSTER_SELL_MIN_INSIDERS, CLUSTER_SELL_MIN_PCT, CLUSTER_SELL_MIN_VALUE, countLine, capLine, emptyLine, shortDate, longDate, type NotableData, type Entry } from "../lib/notable";
 import { money } from "../lib/flagship";
 interface Props { data: NotableData }
 const { data } = Astro.props;
@@ -40,7 +40,7 @@ const empty = data.items.length === 0 && data.clusters.length === 0;
         <li class="nf-item nf-cluster">
           <div class="nf-c nf-date"><time datetime={e.d}>{shortDate(e.d)}</time></div>
           <div class="nf-c nf-stock">{e.tp ? <a class="nf-tk" href={e.tp}>{e.tk}</a> : <span class="nf-tk">{e.tk}</span>}<span class="nf-sub">{e.co}</span></div>
-          <div class={`nf-c nf-act ${e.b ? "buy" : "sell"}`}><b>{e.b ? "▲ Bought" : "▼ Sold"}</b></div>
+          <div class={`nf-c nf-act ${e.b ? "buy" : "sell"}`}><b>{actLabel(e.b, e.n)}</b></div>
           <div class="nf-c nf-val"><b>{e.vl}</b></div>
           <div class="nf-c nf-who"><b>{e.n} insiders</b></div>
           <div class="nf-c nf-tags"><span class="nf-tag">{e.b ? REASON_LABEL.cluster : REASON_LABEL["cluster-sell"]}</span></div>
@@ -55,7 +55,7 @@ const empty = data.items.length === 0 && data.clusters.length === 0;
         <li class="nf-item">
           <div class="nf-c nf-date"><time datetime={e.d}>{shortDate(e.d)}</time></div>
           <div class="nf-c nf-stock">{e.tp ? <a class="nf-tk" href={e.tp}>{e.tk}</a> : <span class="nf-tk">{e.tk}</span>}<span class="nf-sub">{e.co}</span></div>
-          <div class={`nf-c nf-act ${e.b ? "buy" : "sell"}`}><b>{e.b ? "▲ Bought" : "▼ Sold"}</b></div>
+          <div class={`nf-c nf-act ${e.b ? "buy" : "sell"}`}><b>{actLabel(e.b)}</b></div>
           <div class="nf-c nf-val"><b>{e.vl}</b></div>
           <div class="nf-c nf-who">{e.np ? <a href={e.np}>{e.n}</a> : <b>{e.n}</b>}</div>
           <div class="nf-c nf-tags">{e.tg.map((t) => <span class="nf-tag">{REASON_LABEL[t]}</span>)}</div>
