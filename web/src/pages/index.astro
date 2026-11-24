@@ -16,6 +16,9 @@ import { dataCatalogLd, SITE_URL } from "../lib/seo";
 import { weekCounts } from "../lib/washhub-build";
 import { weekLog, WEEK_DAYS } from "../lib/washhub";
 import VizHome from "../components/VizHome.astro";
+import HomeTop from "../components/HomeTop.astro";
+import { homeRoutes, recentlyActive } from "../lib/hometop-build";
+import { routesLog } from "../lib/hometop";
 
 const model = await getFlagship();
 const hasSenate = senateShown(model);
@@ -42,6 +45,10 @@ const ibondRate = ibond?.compositeRate != null ? formatPercent(ibond.compositeRa
 const curve = await getYieldCurve();
 const tenY = curve?.tenors.find((t) => t.label === "10Y")?.latest ?? null;
 const tenYRate = tenY != null ? formatPercent(tenY) : "—";
+const homeDir = import.meta.env.PUBLIC_HOME_DIR === "b" ? "b" : "a";
+const routes = homeRoutes(model, feed.companies, tenY != null && ibond?.compositeRate != null ? { tenYear: tenYRate, ibond: ibondRate } : null);
+console.log(routesLog(routes));
+const active = recentlyActive(model);
 const washingtonLive = (model.counts.lobbying ?? 0) + (model.counts.contracts ?? 0) + (model.counts.committees ?? 0) > 0;
 
 const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", description: "Free public U.S. disclosure data: congressional stock trades, corporate insider trades, Treasury rates, donations, lobbying, federal contracts.", datasets: [
@@ -52,16 +59,13 @@ const catalog = dataCatalogLd({ path: "/", name: "Spot the Money data catalog", 
 const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `${SITE_URL}/#website`, name: "Spot the Money", url: `${SITE_URL}/`, description: "Who in Congress and which corporate insiders are buying and selling: disclosed trades on one heatmap, updated daily, free.", publisher: { "@id": `${SITE_URL}/#organization` } };
 ---
 <BaseLayout title="Notable Insider & Congress Stock Trades | Spot the Money" description="Notable stock trades by corporate insiders and members of Congress as filed: cluster buys, large sales, big stake changes. Free, with links to each filing." section="Heatmap">
-  <section class="hero hero-map">
-    <h1>Notable trades by insiders and Congress</h1>
-    <p class="lede">New filings from corporate insiders and members of Congress that match a plain rule, newest first, each linked to the filing. <a href="/methodology/#notable">How a trade becomes notable</a>.</p>
-  </section>
-  <p class="note nf-coverage">{coverage} <a href="/methodology/#coverage">What is covered</a>.</p>
+  <HomeTop dir={homeDir} routes={routes} feed={feed} active={active} />
 
   <section class="answer" data-answer>
     <p class="answer-text">{answer}</p>
     <p class="answer-meta"><span>Last updated {lastDisclosed ? new Date(lastDisclosed + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : "no filings yet"}</span><span> · Sources: House Clerk PTRs; Senate eFD reports; SEC EDGAR Form 4</span></p>
   </section>
+  <p class="note nf-coverage">{coverage} <a href="/methodology/#coverage">What is covered</a>.</p>
 
   <NotableFeed data={feed} />
 
@@ -79,8 +83,8 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
 
   <h2 id="heatmap" class="nf-maph">Trade map</h2>
   <p class="soft small nf-mapnote">{hasSenate ? "Members of Congress" : "House members"} and corporate insiders on one map, sized by dollars and colored by direction. The map has its own window and filters, and covers about {num(mapCompanies)} companies (large companies and every stock a member of Congress has traded), not the whole market.</p>
-  <aside class="nf-howto" aria-labelledby="howMapH">
-    <h3 id="howMapH">How to read the map</h3>
+  <details class="nf-howto" data-remember id="howMap">
+    <summary><h3 id="howMapH">How to read the map</h3></summary>
     <p>
       Each dot is one stock: further right is more bought, further left more sold, and the color runs
       from red (mostly sales) through yellow to green (mostly purchases). The switch under the chart
@@ -91,7 +95,7 @@ const website = { "@context": "https://schema.org", "@type": "WebSite", "@id": `
       Disclosures lag the trade (Congress has 45 days, insiders two business days) and every row
       links to the original filing. <a href="/methodology/">Methodology</a>. <strong>Not investment advice.</strong>
     </p>
-  </aside>
+  </details>
   <div class="hm-switch">
     <div class="seg" id="hmSwitch" role="tablist" aria-label="Choose whose trades to show">
       <button type="button" class="on" data-pane="all" role="tab" aria-selected="true">All insiders</button>

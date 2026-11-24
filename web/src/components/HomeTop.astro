@@ -1,0 +1,70 @@
+---
+// The home page's first screen, in two directions chosen at build time (PUBLIC_HOME_DIR=a|b, default a).
+// A "front page of record": descriptor, h1, lede, search, then the route tiles as a grid.
+// B "search first": two columns (search and recently active names | newest notable filings), then the tiles as one swipeable line.
+// Presentation only: the h1 and lede text are the page's own; every figure comes from the build model (lib/hometop.ts).
+import { sparkSvg } from "../lib/viz";
+import type { RouteTile, ActiveItem } from "../lib/hometop";
+import { resolveView, DEFAULT_STATE, shortDate, type NotableData, type Entry } from "../lib/notable";
+interface Props { dir: "a" | "b"; routes: RouteTile[]; feed: NotableData; active: { tickers: ActiveItem[]; members: ActiveItem[] } }
+const { dir, routes, feed, active } = Astro.props;
+const searchText = "Search a stock, a member of Congress, an insider or a company";
+const newest = dir === "b" ? resolveView(feed, DEFAULT_STATE).entries.slice(0, 6) : [];
+const recent = [...active.tickers, ...active.members];
+const spark = (t: RouteTile) => (t.spark.length >= 2 ? sparkSvg(t.spark, { w: 96, h: 24, label: `${t.label}: ${t.spark.reduce((a, b) => a + b, 0)} in the last 12 weeks, by week` }) : "");
+---
+<p class="site-what">Spot the Money shows where money moves around public companies and government: stock trades by members of Congress and corporate insiders, large holders, lobbying, donations and federal contracts, each row linked to its official filing. Free, no sign-up.</p>
+{dir === "a" ? (
+  <div class="home-top ht-a" data-home-dir="a">
+    <section class="hero hero-map">
+      <h1>Notable trades by insiders and Congress</h1>
+      <p class="lede">New filings from corporate insiders and members of Congress that match a plain rule, newest first, each linked to the filing. <a href="/methodology/#notable">How a trade becomes notable</a>.</p>
+    </section>
+    <button type="button" class="home-search" data-search-open aria-haspopup="dialog"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>{searchText}</span></button>
+    {routes.length > 0 && (
+      <nav class="ht-tiles" aria-label="Datasets" data-routes>
+        {routes.map((t) => (
+          <a class="ht-tile" href={t.href} data-route={t.key}>
+            <span class="ht-k">{t.label}</span>
+            <span class="ht-row"><span class="ht-v">{t.figure}</span>{spark(t) && <span class="ht-spark" set:html={spark(t)} />}</span>
+            <span class="ht-c">{t.unit}</span>
+            <span class="ht-c">{t.caption}</span>
+          </a>
+        ))}
+      </nav>
+    )}
+  </div>
+) : (
+  <div class="home-top ht-b" data-home-dir="b">
+    <div class="ht-grid">
+      <section class="hero hero-map ht-left">
+        <h1>Notable trades by insiders and Congress</h1>
+        <p class="lede">New filings from corporate insiders and members of Congress that match a plain rule, newest first, each linked to the filing. <a href="/methodology/#notable">How a trade becomes notable</a>.</p>
+        <button type="button" class="home-search home-search-lg" data-search-open aria-haspopup="dialog"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>{searchText}</span></button>
+        {recent.length > 0 && (
+          <p class="ht-recent" data-recent><span class="ht-k">Recently active:</span>{recent.map((r) => <a href={r.href}>{r.text}</a>)}</p>
+        )}
+      </section>
+      <section class="ht-right" aria-labelledby="htNewH">
+        <h2 id="htNewH">Newest notable filings</h2>
+        {newest.length > 0 ? (
+          <ul class="ht-new" data-newest>
+            {newest.map((e: Entry) => e.k === "c" ? (
+              <li><time datetime={e.d}>{shortDate(e.d)}</time><span class="ht-who">{e.n} insiders</span>{e.tp ? <a class="ht-tk" href={e.tp}>{e.tk}</a> : <span class="ht-tk">{e.tk}</span>}<span class={`ht-act ${e.b ? "buy" : "sell"}`}>{e.b ? "▲ Bought" : "▼ Sold"}</span><span class="ht-val">{e.vl}</span></li>
+            ) : (
+              <li><time datetime={e.d}>{shortDate(e.d)}</time>{e.np ? <a class="ht-who" href={e.np}>{e.n}</a> : <span class="ht-who">{e.n}</span>}{e.tp ? <a class="ht-tk" href={e.tp}>{e.tk}</a> : <span class="ht-tk">{e.tk}</span>}<span class={`ht-act ${e.b ? "buy" : "sell"}`}>{e.b ? "▲ Bought" : "▼ Sold"}</span><span class="ht-val">{e.vl}</span></li>
+            ))}
+          </ul>
+        ) : <p class="ht-c">No notable trades have been filed yet.</p>}
+        <p class="ht-all"><a href="#notable">All notable trades</a></p>
+      </section>
+    </div>
+    {routes.length > 0 && (
+      <nav class="ht-line" aria-label="Datasets" data-routes>
+        {routes.map((t) => (
+          <a class="ht-tile" href={t.href} data-route={t.key}><span class="ht-k">{t.shortLabel}</span><span class="ht-v">{t.figure}</span></a>
+        ))}
+      </nav>
+    )}
+  </div>
+)}
