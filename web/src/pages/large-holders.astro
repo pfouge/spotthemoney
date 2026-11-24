@@ -108,13 +108,8 @@ const th = (k: LhSortKey) => ({ k, label: HEAD[k], on: k === DEFAULT_LH_VIEW.sor
     </div>
   )}
 
-<<<<<<< HEAD
   <details class="ref" data-remember id="ref-about"><summary><h2 id="about">What this table shows</h2></summary><div class="ref-body">
-  <p>One row for each holder and company: the holder's newest Schedule 13D or 13G statement about a company with a page on this site. A holder files a statement after passing {FILING_THRESHOLD}% of a class of a company's voting shares, and again when it falls below {FILING_THRESHOLD}%, so a row under {FILING_THRESHOLD}% is a notice that the holder is no longer above that mark.</p>
-=======
-  <h2 id="about">What this table shows</h2>
   <p>One row for each holder and company: the holder's newest Schedule 13D or 13G statement about a company with a page on this site. A holder that reports on two classes of one company's shares has a row for each class, and is counted once. A holder files a statement after passing {FILING_THRESHOLD}% of a class of a company's voting shares, and again when it falls below {FILING_THRESHOLD}%, so a row under {FILING_THRESHOLD}% is a notice that the holder is no longer above that mark.</p>
->>>>>>> origin/main
   <p>A statement says what the filer says it owned on the event date, not what it traded. When a statement names several reporting persons, the percent and shares are the largest that any one of them states, never a sum, and rows are not added together: this page counts holders and companies only. The record starts with statements published from {RECORD_START_LABEL} on, so it is not a full list of shareholders. A holder's name links to a page here only when the filer's SEC number belongs to exactly one person or company with a page. See the <a href="/methodology/#schedule-13">methodology</a> and the <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">guide to Schedules 13D and 13G</a>.</p>
   </div></details>
   <AdSlot />

@@ -134,7 +134,7 @@ test("with the switch off the privacy page, terms and guide keep their wording",
   const privacy = read("../web/src/pages/privacy.astro");
   assert.match(privacy, /Not yet offered: new trades appear on your watchlist page only\./);
   // The date a change other than email alerts last moved (2026-11-23: the session-storage key stm.ui for row density and open sections).
-  assert.match(privacy, /const BASE_UPDATED = "2026-11-23";/);
+  assert.match(privacy, /const BASE_UPDATED = "2026-11-24";/);
   assert.match(privacy, /alertsLaunchProblem\(\)/);
   assert.match(privacy, /We do not record whether you open an email/);
   assert.match(read("../web/src/pages/terms.astro"), /const BASE_UPDATED = "2026-10-10";/);
