@@ -18,6 +18,13 @@
 //     counts: on production (2026-11-24) 54 filer and company pairs carry two numbers, 26 of
 //     them overlap (two classes) and 28 follow one another (the same stake under a new number).
 //     A holder with any statement that gives no CUSIP is never split.
+//   - Before that test, a number that cannot be a CUSIP number (it fails the check digit, or is
+//     not nine characters) and is within TYPO_MAX_DISTANCE characters of exactly one nearest
+//     valid number of the same holder and company is read as that number mistyped: its
+//     statements join that number's. So a slip of the keyboard between two statements under
+//     the right number does not make a second row. On production (2026-11-24) 8 of 1,021
+//     numbers fail the check and one of them sits beside the number it was meant to be. A
+//     wrong number that happens to pass the check (one in ten does) is not caught.
 //   - The figures are the filer's own, as filed. `shares` and `percent` are the largest any one
 //     reporting person states (members of a group each report the group's combined holding), so
 //     nothing is added up: not across reporting persons and not across holders.
@@ -108,14 +115,55 @@ export const holderKey = (s: Statement): string => (s.filerCik ? `c:${s.filerCik
 /**
  * The CUSIP number of a statement as a key for its class of shares: white space out, capitals,
  * the nine characters inside a U.S. ISIN ("US50101L1061"), and "" for none or all zeros. The
- * number is otherwise taken as typed: a mistyped number is another key, which the overlap test
- * in rowsByClass then treats as a number that changed.
+ * number is otherwise taken as typed: a mistyped number is another key. classRows folds such a
+ * key into the number it was meant to be when it can tell (cusipValid, keyDistance); otherwise
+ * the overlap test treats it like any other number.
  */
 export function classKey(cusip: string | null | undefined): string {
   const c = String(cusip ?? "").replace(/\s+/g, "").toUpperCase();
   if (!c || /^0+$/.test(c)) return "";
   if (c.length === 12 && c.startsWith("US")) return c.slice(2, 11);
   return c;
+}
+
+/** A number that fails the check may differ from a valid one by at most this many characters to be read as that number mistyped. */
+export const TYPO_MAX_DISTANCE = 2;
+
+const cusipCharValue = (ch: string): number => {
+  const c = ch.charCodeAt(0);
+  if (c >= 48 && c <= 57) return c - 48;
+  if (c >= 65 && c <= 90) return c - 55;
+  return ch === "*" ? 36 : ch === "@" ? 37 : ch === "#" ? 38 : -1;
+};
+
+/**
+ * True when a class key can be a CUSIP number: nine characters, the ninth being the check digit
+ * of the first eight (digits count as themselves, letters as 10 to 35, "*", "@" and "#" as 36
+ * to 38; every second value is doubled; the digits of the eight values are added; the check
+ * digit brings the sum to a multiple of ten). A number that passes can still be the wrong one.
+ */
+export function cusipValid(key: string): boolean {
+  if (key.length !== 9) return false;
+  let sum = 0;
+  for (let i = 0; i < 8; i++) {
+    let v = cusipCharValue(key[i]!);
+    if (v < 0) return false;
+    if (i % 2 === 1) v *= 2;
+    sum += Math.floor(v / 10) + (v % 10);
+  }
+  return key[8] === String((10 - (sum % 10)) % 10);
+}
+
+/**
+ * How far apart two keys are as typed: the number of differing characters when they are equally
+ * long, 1 when one is the other with a single character added, and Infinity otherwise.
+ */
+export function keyDistance(a: string, b: string): number {
+  if (a.length === b.length) { let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d; }
+  const [long, short] = a.length > b.length ? [a, b] : [b, a];
+  if (long.length - short.length !== 1) return Infinity;
+  for (let i = 0; i < long.length; i++) if (long.slice(0, i) + long.slice(i + 1) === short) return 1;
+  return Infinity;
 }
 
 export interface Holder {
@@ -127,27 +175,81 @@ export interface Holder {
   holder: string;
 }
 
+export interface ClassRows {
+  rows: { latest: Statement; statements: number }[];
+  /** Numbers read as replaced by a later number (no row of their own). */
+  changed: number;
+  /** Numbers that fail the CUSIP check and were read as another number of the holder, mistyped. */
+  mistyped: number;
+}
+
 /**
  * The rows for ONE filer's statements about ONE company, given newest first: one row, the
  * newest statement, unless the statements name several CUSIP numbers whose filing dates overlap
- * (see the header). A number all of whose statements were filed before all statements under
- * another number is taken to have been replaced by it and gets no row. The statements of
- * replaced numbers are counted with the row of the newest statement.
+ * (see the header). First a number that cannot be a CUSIP number joins the one valid number
+ * nearest to it, when that is within TYPO_MAX_DISTANCE characters and no other valid number is
+ * as near. Then a number all of whose statements were filed before all statements under another
+ * number is taken to have been replaced by it and gets no row. The statements of replaced
+ * numbers are counted with the row of the newest statement.
  */
-export function rowsByClass(xs: readonly Statement[]): { latest: Statement; statements: number }[] {
-  if (!xs.length) return [];
-  const groups = new Map<string, { latest: Statement; first: string; last: string; n: number }>();
-  for (const s of xs) {
+export function classRows(xs: readonly Statement[]): ClassRows {
+  if (!xs.length) return { rows: [], changed: 0, mistyped: 0 };
+  type G = { key: string; latest: Statement; at: number; first: string; last: string; n: number };
+  const groups = new Map<string, G>();
+  xs.forEach((s, i) => {
     const k = classKey(s.issuerCusip);
     const g = groups.get(k);
-    if (g) { g.n++; if (s.filedAt < g.first) g.first = s.filedAt; } else groups.set(k, { latest: s, first: s.filedAt, last: s.filedAt, n: 1 });
+    if (g) { g.n++; if (s.filedAt < g.first) g.first = s.filedAt; } else groups.set(k, { key: k, latest: s, at: i, first: s.filedAt, last: s.filedAt, n: 1 });
+  });
+  const one = (mistyped: number): ClassRows => ({ rows: [{ latest: xs[0]!, statements: xs.length }], changed: 0, mistyped });
+  if (groups.size === 1 || groups.has("")) return one(0);
+  let mistyped = 0;
+  const valid = [...groups.values()].filter((g) => cusipValid(g.key));
+  for (const g of [...groups.values()]) {
+    if (cusipValid(g.key)) continue;
+    let best: G | null = null, bestD = Infinity, tie = false;
+    for (const v of valid) {
+      const d = keyDistance(g.key, v.key);
+      if (d < bestD) { best = v; bestD = d; tie = false; } else if (d === bestD) tie = true;
+    }
+    if (!best || tie || bestD > TYPO_MAX_DISTANCE) continue;
+    best.n += g.n;
+    if (g.first < best.first) best.first = g.first;
+    if (g.last > best.last) best.last = g.last;
+    if (g.at < best.at) { best.at = g.at; best.latest = g.latest; }
+    groups.delete(g.key);
+    mistyped++;
   }
-  if (groups.size === 1 || groups.has("")) return [{ latest: xs[0]!, statements: xs.length }];
-  const all = [...groups.values()];
+  if (groups.size === 1) return one(mistyped);
+  // Newest first, so the group of the newest statement, which is always kept, comes first.
+  const all = [...groups.values()].sort((x, y) => x.at - y.at);
   const kept = all.filter((g) => !all.some((o) => o !== g && o.first > g.last));
-  // The group of the newest statement has the latest filing date of all, so it is always kept and comes first.
-  const replaced = all.filter((g) => !kept.includes(g)).reduce((a, g) => a + g.n, 0);
-  return kept.map((g, i) => ({ latest: g.latest, statements: g.n + (i === 0 ? replaced : 0) }));
+  const replaced = all.filter((g) => !kept.includes(g));
+  const extra = replaced.reduce((n, g) => n + g.n, 0);
+  return { rows: kept.map((g, i) => ({ latest: g.latest, statements: g.n + (i === 0 ? extra : 0) })), changed: replaced.length, mistyped };
+}
+
+/** The rows of classRows alone. */
+export const rowsByClass = (xs: readonly Statement[]): { latest: Statement; statements: number }[] => classRows(xs).rows;
+
+/** One company's statements, newest first, by holder; statements dated after the build day are left out. */
+function byHolder(xs: readonly Statement[], builtAt: string): Map<string, Statement[]> {
+  const end = String(builtAt).slice(0, 10);
+  const by = new Map<string, Statement[]>();
+  for (const s of sortStatements(xs)) {
+    if (!isDate(s.filedAt) || (isDate(end) && s.filedAt > end)) continue;
+    const k = holderKey(s);
+    const ys = by.get(k);
+    if (ys) ys.push(s); else by.set(k, [s]);
+  }
+  return by;
+}
+
+/** For the build log: the holders of one company with a number read as replaced, and with a number read as mistyped. */
+export function classNotes(xs: readonly Statement[], builtAt: string): { changed: number; mistyped: number } {
+  let changed = 0, mistyped = 0;
+  for (const ys of byHolder(xs, builtAt).values()) { const r = classRows(ys); if (r.changed) changed++; if (r.mistyped) mistyped++; }
+  return { changed, mistyped };
 }
 
 /**
@@ -157,16 +259,8 @@ export function rowsByClass(xs: readonly Statement[]): { latest: Statement; stat
  * no percent last; ties by shares, then name, then accession.
  */
 export function holdersOf(xs: readonly Statement[], builtAt: string): Holder[] {
-  const end = String(builtAt).slice(0, 10);
-  const by = new Map<string, Statement[]>();
-  for (const s of sortStatements(xs)) {
-    if (!isDate(s.filedAt) || (isDate(end) && s.filedAt > end)) continue;
-    const k = holderKey(s);
-    const ys = by.get(k);
-    if (ys) ys.push(s); else by.set(k, [s]);
-  }
   const rows: Holder[] = [];
-  for (const [holder, ys] of by) for (const r of rowsByClass(ys)) rows.push({ ...r, holder });
+  for (const [holder, ys] of byHolder(xs, builtAt)) for (const r of rowsByClass(ys)) rows.push({ ...r, holder });
   const pct = (h: Holder) => percentStated(h.latest.percent) ?? -1;
   return rows.sort((a, b) =>
     pct(b) - pct(a) || (sharesStated(b.latest.shares) ?? -1) - (sharesStated(a.latest.shares) ?? -1)
@@ -225,7 +319,7 @@ export const HOLDER_CAVEAT =
 /** One build-log line to compare with SQL. */
 export function schedule13Log(d: Schedule13Data, builtAt: string, companyCiks: ReadonlySet<string>): string {
   if (!d.shown) return `large holders (Schedules 13D and 13G): not shown (newest filing on file ${d.lastFiled ?? "none"}; the load has not reached the build day ${builtAt.slice(0, 10)})`;
-  let rows = 0, amend = 0, issuers = 0, holders = 0, below = 0, on13D = 0, capped = 0, most = 0, maxShares = 0, newest = "", tableRows = 0, multi = 0, multiCos = 0;
+  let rows = 0, amend = 0, issuers = 0, holders = 0, below = 0, on13D = 0, capped = 0, most = 0, maxShares = 0, newest = "", tableRows = 0, multi = 0, multiCos = 0, changed = 0, mistyped = 0;
   for (const [cik, xs] of d.byCik) {
     if (!companyCiks.has(cik)) continue;
     rows += xs.length; issuers++;
@@ -234,11 +328,13 @@ export function schedule13Log(d: Schedule13Data, builtAt: string, companyCiks: R
     const sum = holderSummary(hs);
     holders += sum.holders; below += sum.below; on13D += sum.on13D;
     tableRows += sum.rows; multi += sum.multiClass; if (sum.multiClass) multiCos++;
+    const notes = classNotes(xs, builtAt);
+    changed += notes.changed; mistyped += notes.mistyped;
     if (hs.length > HOLDER_ROWS) capped++;
     if (hs.length > most) most = hs.length;
     for (const s of xs) { if ((s.shares ?? 0) > maxShares) maxShares = s.shares ?? 0; if (s.filedAt > newest) newest = s.filedAt; }
   }
-  return `large holders (Schedules 13D and 13G): shown; ${rows} statements for ${issuers} companies on the site (${amend} amendments), newest ${newest || "none"}; ${holders} holders, ${tableRows} rows by newest statement and class (${multi} holders with more than one class, on ${multiCos} companies), ${below} rows under ${THRESHOLD_PERCENT}%, ${on13D} on Schedule 13D; most rows for one company ${most}; ${capped} companies with more than ${HOLDER_ROWS}; largest stated holding ${Math.round(maxShares)} shares`;
+  return `large holders (Schedules 13D and 13G): shown; ${rows} statements for ${issuers} companies on the site (${amend} amendments), newest ${newest || "none"}; ${holders} holders, ${tableRows} rows by newest statement and class (${multi} holders with more than one class, on ${multiCos} companies), ${below} rows under ${THRESHOLD_PERCENT}%, ${on13D} on Schedule 13D; most rows for one company ${most}; ${capped} companies with more than ${HOLDER_ROWS}; largest stated holding ${Math.round(maxShares)} shares; ${changed} holders with a number that changed, ${mistyped} with a mistyped number read as the right one`;
 }
 
 /** A second build-log line: the filer's side. `people` and `companies` = 10-digit CIKs of people and companies with a page. */

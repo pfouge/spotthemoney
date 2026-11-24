@@ -210,7 +210,7 @@
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "web/src/components/TxnTable.astro": "1483d043734df0b3",
-      "web/src/lib/schedule13.ts": "c7e9645b4be286da",
+      "web/src/lib/schedule13.ts": "2078c43ed4ee349b",
       "web/src/lib/largeholders.ts": "002df0ef59a1f404",
       "web/src/components/LargeHolders.astro": "9f60fdac84de2cd0",
       "web/src/components/ReportedHoldings.astro": "08f15f24215b39d5"

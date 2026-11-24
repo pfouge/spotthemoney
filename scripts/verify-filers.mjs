@@ -164,11 +164,39 @@ if (!has("large-holders-13d-13g.csv")) {
   // the company pages use: a number last used before another was first used was replaced by it,
   // and a filer with a statement that gives no number is never split).
   const classKey = (c) => { const k = String(c ?? "").replace(/^'/, "").replace(/\s+/g, "").toUpperCase(); return !k || /^0+$/.test(k) ? "" : k.length === 12 && k.startsWith("US") ? k.slice(2, 11) : k; };
+  const cusipOk = (k) => {
+    if (k.length !== 9) return false;
+    let sum = 0;
+    for (let i = 0; i < 8; i++) {
+      const ch = k[i]; const at = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ*@#".indexOf(ch);
+      if (at < 0) return false;
+      const v = i % 2 ? at * 2 : at;
+      sum += Math.trunc(v / 10) + (v % 10);
+    }
+    return k[8] === String((10 - (sum % 10)) % 10);
+  };
+  const apart = (a, b) => {
+    if (a.length === b.length) return [...a].filter((ch, i) => ch !== b[i]).length;
+    const [l, s] = a.length > b.length ? [a, b] : [b, a];
+    return l.length - s.length === 1 && [...l].some((_, i) => l.slice(0, i) + l.slice(i + 1) === s) ? 1 : Infinity;
+  };
   const perClass = (rs) => { // one filer's statements about one company, newest first
     const groups = new Map();
     for (const r of rs) { const k = classKey(r.cusip); const g = groups.get(k); if (g) { if (r.filed_date < g.first) g.first = r.filed_date; } else groups.set(k, { r, first: r.filed_date, last: r.filed_date }); }
     if (groups.size < 2 || groups.has("")) return [rs[0]];
-    const gs = [...groups.values()];
+    // A number that cannot be a CUSIP number joins the one nearest valid number, at most two characters away.
+    const good = [...groups.keys()].filter(cusipOk);
+    for (const k of [...groups.keys()].filter((x) => !cusipOk(x))) {
+      const near = good.map((g) => ({ g, d: apart(k, g) })).sort((a, b) => a.d - b.d);
+      if (!(near.length && near[0].d <= 2 && (near.length === 1 || near[1].d > near[0].d))) continue;
+      const bad = groups.get(k), to = groups.get(near[0].g);
+      if (bad.first < to.first) to.first = bad.first;
+      if (bad.last > to.last) { to.last = bad.last; }
+      if (rs.indexOf(bad.r) < rs.indexOf(to.r)) to.r = bad.r;
+      groups.delete(k);
+    }
+    if (groups.size < 2) return [rs[0]];
+    const gs = [...groups.values()].sort((a, b) => rs.indexOf(a.r) - rs.indexOf(b.r));
     return gs.filter((a) => !gs.some((b) => b !== a && b.first > a.last)).map((g) => g.r);
   };
   const holdings = (xs) => {

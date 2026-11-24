@@ -4483,3 +4483,46 @@ it in the pull request that changes a cell.**
   every data set is already loaded, and the monthly `form13f-bulk` run of the 20th uses the default
   of 2. So the table trims itself on 2026-12-20. A delete does not shrink the file on disk; the
   space is reused. Not done by hand: an unattended delete of 1.8 million rows is not this run's call.
+
+### Large holders: a mistyped CUSIP number is read as the right one (2026-11-24, scheduled parity run) — queue item (m3)
+
+- **What.** Before the overlap test of `rowsByClass`, a number that cannot be a CUSIP number
+  (not nine characters, or its ninth character is not the check digit of the first eight) joins
+  the ONE valid number of the same holder and company that is nearest to it, when that is at
+  most `TYPO_MAX_DISTANCE` (2) characters away and no other valid number is as near. Its
+  statements count with that number, and it can be that number's newest statement. So a slip of
+  the keyboard between two statements under the right number no longer makes a second row. No
+  migration, no data job change, no new file, no page layout change.
+- **Production check first (SQL, 2026-11-24):** 1,021 different numbers on 6,482 statements about
+  tracked companies; 8 fail the check (4 of them are 10 characters; one is the word
+  "MULTIPLES", used by two funds' holders), on 14 statements. **Only one of the 8 sits beside
+  another number of the same holder: Aurora Innovation, Baillie Gifford, 051774907 then
+  051774107**, and the overlap test already read that pair as a number that changed, so **no
+  row on production changes today**. The Solstice case named in the methodology (BlackRock's
+  "SBW2K5V75" between two statements under 83443Q103) is NOT caught: that string passes the
+  check digit by chance, as one wrong number in ten does. The rule is a guard for the next slip.
+- **Code** (`web/src/lib/schedule13.ts`; tests `scripts/schedule13-typo.test.ts`): `cusipValid`,
+  `keyDistance` (differing characters at equal length; 1 when one is the other with one character
+  added), `classRows` (rows, plus `changed` and `mistyped` counts), `rowsByClass` (its rows),
+  `classNotes` (for the build log). Two numbers that both fail the check are never joined; two
+  valid numbers are never joined, however near (Alphabet's two classes are 2 characters apart);
+  a tie between two valid numbers is left alone; a holder with a statement that gives no number
+  is still never split.
+- **Build log** line `[web] large holders (Schedules 13D and 13G): ...` now ends `; N holders with
+  a number that changed, M with a mistyped number read as the right one`, and the deploy step's
+  `verify-schedule13` line has the same two counts from the CSV with its own copy of the rule
+  (`verify-filers` has its own copy for the filer's side). **The two lines must agree after a
+  deploy.** Expected on production: 27 and 1 (28 and no second count before).
+- **Methodology:** the sentence "it cannot tell a mistyped number from a new one" now says what
+  is and is not caught. **Fault found and fixed on the way: the methodology printed the
+  "Planned sales" and "Large holders" paragraphs twice** (two `<p>` with one id each; the
+  second copies were older versions left by a merge). The older copies are removed, and
+  `verify-schedule13` fails if `id="schedule-13"` appears more than once. Branch `redesign/v2`
+  already has one copy of each; it will meet this change in its next rebase.
+- Guide `ten-percent-owners-and-joint-filings` (`#large-holders`, the point "One holder can
+  have two rows"): three sentences, the limit through `ctx.cusipTypoMax`; re-read and accepted.
+- The seed's Lockheed Martin has a holder with 539830019 (fails the check) between two
+  statements under 539830109: one row.
+- Not done: a second look at numbers that pass the check but belong to another company (would
+  need a CUSIP reference list, which is licensed data); the same rule for Form 144 (it stores no
+  CUSIP).

@@ -91,7 +91,7 @@ test("schedule 13: the build log line and the coverage sentence follow the one d
   d.byCik.set("0000000001", sortStatements([st({ accession: "a-1", filedAt: "2026-01-01", percent: 8 }), st({ accession: "a-2", percent: 3, isAmendment: true }), st({ accession: "b-1", filerCik: "0000000202", schedule: "13D", shares: 5_000_000 })]));
   d.byCik.set("0000000002", [st({ accession: "z-1", issuerCik: "0000000002" })]);
   assert.equal(schedule13Log(d, built, new Set(["0000000001"])),
-    "large holders (Schedules 13D and 13G): shown; 3 statements for 1 companies on the site (1 amendments), newest 2026-11-10; 2 holders, 2 rows by newest statement and class (0 holders with more than one class, on 0 companies), 1 rows under 5%, 1 on Schedule 13D; most rows for one company 2; 0 companies with more than 25; largest stated holding 5000000 shares");
+    "large holders (Schedules 13D and 13G): shown; 3 statements for 1 companies on the site (1 amendments), newest 2026-11-10; 2 holders, 2 rows by newest statement and class (0 holders with more than one class, on 0 companies), 1 rows under 5%, 1 on Schedule 13D; most rows for one company 2; 0 companies with more than 25; largest stated holding 5000000 shares; 0 holders with a number that changed, 0 with a mistyped number read as the right one");
   // Coverage sentence: "not shown" exactly while the load is behind.
   const src = { ...emptyStored(), rows: 7, amendments: 3, issuers: 4, trackedRows: 5, firstFiled: "2025-10-01", kinds: { "13D": 2, "13G": 5 } };
   for (const last of ["2026-11-10", "2026-11-09", "2026-08-12"]) {
