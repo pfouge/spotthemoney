@@ -26,7 +26,7 @@ import { eventsInWindow } from "../../lib/events8k";
 import { payOf } from "../../lib/execpay-build";
 import { payGlance, shownYears as payShownYears } from "../../lib/execpay";
 import { financialsOf } from "../../lib/financials-build";
-import { holdersOf, holdingsOf } from "../../lib/schedule13";
+import { holderCount, holdingCompanies, holdingsOf } from "../../lib/schedule13";
 import { statementsFiledBy } from "../../lib/schedule13-build";
 import ReportedHoldings from "../../components/ReportedHoldings.astro";
 import WashingtonRecords from "../../components/WashingtonRecords.astro";
@@ -84,11 +84,11 @@ const contractsTotal = sum(contracts.map((r) => r.amount));
 const lobbyingYear = new Date().getUTCFullYear();
 const lobbyingYtd = lobbying.filter((r) => r.year === lobbyingYear);
 // Schedule 13 statements the company filed about other companies on the site.
-const holdingsN = home ? holdingsOf(statementsFiledBy(model, company!.cik), model.builtAt).length : 0;
+const holdingsN = home ? holdingCompanies(holdingsOf(statementsFiledBy(model, company!.cik), model.builtAt)) : 0;
 // Form 144 notices about the company, last 12 months (empty until that load has reached today).
 const plannedN = company?.cik ? noticesInWindow(model.form144.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
 // Holders with a Schedule 13D or 13G on record about the company (empty until that load has reached today).
-const holdersN = company?.cik ? holdersOf(model.schedule13.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt).length : 0;
+const holdersN = company?.cik ? holderCount(model.schedule13.byCik.get(company.cik.padStart(10, "0")) ?? [], model.builtAt) : 0;
 // Managers with a Form 13F position in the company (empty until that load is recent).
 const instC = company?.cik && model.inst.shown ? model.inst.byCik.get(company.cik.padStart(10, "0")) ?? null : null;
 const instN = instC?.managers ?? 0;

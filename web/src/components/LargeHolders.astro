@@ -26,7 +26,7 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 const attrText = (t: string) => t.toLowerCase().replace(/[<>"]/g, "");
 ---
 {holders.length > 0 && (
-  <section class="panel" data-panel aria-labelledby="large-holders" data-large-holders data-cik={cik!.padStart(10, "0")} data-holders={s.holders} data-at-or-above={s.atOrAbove} data-below={s.below} data-no-percent={s.noPercent} data-statements={s.statements}>
+  <section class="panel" data-panel aria-labelledby="large-holders" data-large-holders data-cik={cik!.padStart(10, "0")} data-holders={s.holders} data-rows={s.rows} data-at-or-above={s.atOrAbove} data-below={s.below} data-no-percent={s.noPercent} data-statements={s.statements}>
     <h2 id="large-holders">Large holders: Schedules 13D and 13G</h2>
     <p data-lh-summary>{summarySentence(name, s)}</p>
     <p class="lh-note" data-lh-caveat>{HOLDER_CAVEAT} <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">What Schedules 13D and 13G are</a>.</p>

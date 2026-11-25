@@ -5,7 +5,7 @@
 // number, several series of one company, and a statement with no number.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classKey, rowsByClass, sortStatements, holdersOf, holderSummary, summarySentence, holdingsOf, holdingsSentence, type Statement } from "../web/src/lib/schedule13";
+import { classKey, rowsByClass, sortStatements, holdersOf, holderSummary, holderCount, holdingCompanies, summarySentence, holdingsOf, holdingsSentence, type Statement } from "../web/src/lib/schedule13";
 
 const base: Statement = { accession: "0000000000-26-000001", formType: "SCHEDULE 13G", schedule: "13G", isAmendment: false, filedAt: "2026-11-10", eventDate: "2026-09-30",
   issuerCik: "0000000001", issuerCusip: "000000AA1", securityClass: "Common Stock", filerCik: "0000000101", reporterName: "Fund One LP", reporterCount: 1,
@@ -71,11 +71,16 @@ test("schedule 13: a holder with two classes is one holder in two rows, on the c
   assert.deepEqual({ holders: s.holders, rows: s.rows, multiClass: s.multiClass, atOrAbove: s.atOrAbove, below: s.below, noPercent: s.noPercent, statements: s.statements },
     { holders: 2, rows: 3, multiClass: 1, atOrAbove: 2, below: 1, noPercent: 0, statements: 4 });
   assert.equal(s.atOrAbove + s.below + s.noPercent, s.rows);
+  assert.equal(holderCount(xs, built), 2, "the tile counts holders, not the three rows");
+  assert.equal(holderCount([], built), 0);
+  assert.equal(holderCount([xs[4]!], built), 0, "a statement dated after the build day is no holder yet");
   assert.equal(summarySentence("Acme", s), "2 holders have filed an ownership statement (Schedule 13D or 13G) about Acme with the SEC since October 2025, 1 of them about more than one class of shares, so the table has 3 rows, one for each holder and class. In the newest statement of each row, 2 report 5% or more of a class of shares, 1 reports less than 5%.");
   // The filer's side uses the same test, company by company.
   const mine = [xs[0]!, xs[1]!, st({ accession: "z-1", issuerCik: "0000000002", issuerCusip: "111111AA1", filedAt: "2026-01-05", percent: 9 }), st({ accession: "z-2", issuerCik: "0000000002", issuerCusip: "111111AB9", filedAt: "2026-07-05", percent: 8 })];
   const hd = holdingsOf(mine, built);
   assert.deepEqual(hd.map((h) => [h.latest.issuerCik, h.latest.accession, h.statements]), [["0000000002", "z-2", 2], ["0000000001", "v-1", 1], ["0000000001", "v-2", 1]]);
+  assert.equal(holdingCompanies(hd), 2, "the filer's tile counts companies, not the three rows");
+  assert.equal(holdingCompanies([]), 0);
   assert.equal(holdingsSentence("Fund One LP", hd), "Fund One LP is the filer of an ownership statement (Schedule 13D or 13G) about 2 companies this site tracks, filed with the SEC since October 2025, about more than one class of shares in 1 of them, so the table has 3 rows. Of the newest statement in each row, 2 report 5% or more of a class of shares, 1 reports less than 5%.");
   for (const t of [summarySentence("Acme", s), holdingsSentence("Fund One LP", hd)]) assert.ok(!t.includes(String.fromCharCode(0x2014)) && !/\b(bought|sold|activist)\b/i.test(t));
 });

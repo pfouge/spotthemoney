@@ -17,7 +17,7 @@ import ReportedHoldings from "../../components/ReportedHoldings.astro";
 import { noticesInWindow } from "../../lib/form144";
 import { noticesFiledBy } from "../../lib/form144-build";
 import { eventsInYear } from "../../lib/events8k-build";
-import { holdingsOf } from "../../lib/schedule13";
+import { holdingCompanies, holdingsOf } from "../../lib/schedule13";
 import { statementsFiledBy } from "../../lib/schedule13-build";
 import AdSlot from "../../components/AdSlot.astro";
 import Crumbs from "../../components/Crumbs.astro";
@@ -64,7 +64,7 @@ const lastTrade = txns.map((t) => t.txnDate).filter(Boolean).sort().at(-1) ?? nu
 const uniqueTickers = [...new Map(tickers.map((s) => [s.ticker, s])).values()];
 // Form 144 notices and Schedule 13 statements submitted under this person's SEC number (empty until those loads are current).
 const filedN = noticesInWindow(noticesFiledBy(model, p.cik), model.builtAt).length;
-const holdingsN = holdingsOf(statementsFiledBy(model, p.cik), model.builtAt).length;
+const holdingsN = holdingCompanies(holdingsOf(statementsFiledBy(model, p.cik), model.builtAt));
 const noData = txns.length === 0;
 const glance = noData ? [] : [
   { label: "Transactions", value: num(txns.length), bars: monthlyDirection(txns.map((t) => ({ date: t.disclosedAt, side: t.side })), model.builtAt), note: lastTrade ? `Latest ${formatDate(lastTrade)}` : undefined, href: "#transactions" },

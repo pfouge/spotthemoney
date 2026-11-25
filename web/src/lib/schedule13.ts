@@ -294,6 +294,20 @@ export function holderSummary(hs: readonly Holder[]): HolderSummary {
   };
 }
 
+/**
+ * The figure for a page's "Large holders" tile: different holders with a statement on record
+ * about the company. A holder that reports on two classes of shares is one holder (the table
+ * has a row for each class; the tile does not count rows).
+ */
+export function holderCount(xs: readonly Statement[], builtAt: string): number {
+  return holderSummary(holdersOf(xs, builtAt)).holders;
+}
+
+/** The figure for a filer's "Large holdings reported" tile: different companies among its rows. */
+export function holdingCompanies(hs: readonly Holding[]): number {
+  return new Set(hs.map((h) => h.latest.issuerCik)).size;
+}
+
 const nf = (x: number) => x.toLocaleString("en-US");
 const many = (x: number, one: string, more: string) => `${nf(x)} ${x === 1 ? one : more}`;
 
@@ -404,7 +418,7 @@ export function holdingsSentence(name: string, hs: readonly Holding[]): string {
   if (atOrAbove) parts.push(`${nf(atOrAbove)} ${atOrAbove === 1 ? "reports" : "report"} ${THRESHOLD_PERCENT}% or more of a class of shares`);
   if (below) parts.push(`${nf(below)} ${below === 1 ? "reports" : "report"} less than ${THRESHOLD_PERCENT}%`);
   if (noPercent) parts.push(`${nf(noPercent)} ${noPercent === 1 ? "states" : "state"} no percentage`);
-  const companies = new Set(hs.map((h) => h.latest.issuerCik)).size;
+  const companies = holdingCompanies(hs);
   const head = `${name} is the filer of an ownership statement (Schedule 13D or 13G) about ${many(companies, "company", "companies")} this site tracks, filed with the SEC since ${RECORD_START_LABEL}`;
   if (hs.length > companies) return `${head}, about more than one class of shares in ${nf(multiCompanies(hs))} of them, so the table has ${many(hs.length, "row", "rows")}. Of the newest statement in each row, ${parts.join(", ")}.`;
   return `${head}. Of the newest statement about each, ${parts.join(", ")}.`;

@@ -211,14 +211,14 @@
     }
   },
   "ten-percent-owners-and-joint-filings": {
-    "reviewed": "2026-11-24",
+    "reviewed": "2026-11-25",
     "covers": {
       "web/src/lib/joint.ts": "1781ca3686529507",
       "web/src/components/TxnTable.astro": "e308d7ee77201988",
-      "web/src/lib/schedule13.ts": "2078c43ed4ee349b",
+      "web/src/lib/schedule13.ts": "ed8e42bf82909193",
       "web/src/lib/largeholders.ts": "002df0ef59a1f404",
-      "web/src/components/LargeHolders.astro": "9a5988ca60759423",
-      "web/src/components/ReportedHoldings.astro": "2a51ce9bbc17d6bf"
+      "web/src/components/LargeHolders.astro": "f4372177fcf69601",
+      "web/src/components/ReportedHoldings.astro": "e324162eac196f58"
     }
   },
   "tips-real-yields-and-breakeven-inflation": {
@@ -243,7 +243,7 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-24",
+    "reviewed": "2026-11-25",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
@@ -256,9 +256,9 @@
       "web/src/lib/server/od.ts": "b36780044da9cc4a",
       "web/src/components/OdPageView.astro": "5dd0ae8dd987fd43",
       "web/src/lib/market.ts": "1c1fe024c48cfb64",
-      "web/src/pages/stocks/[ticker].astro": "fe3e491c1ec52b9a",
-      "web/src/pages/insiders/[slug].astro": "f809619e406da8f2",
-      "web/src/pages/companies/[slug].astro": "7614041552092f28",
+      "web/src/pages/stocks/[ticker].astro": "33d3256ec3c987af",
+      "web/src/pages/insiders/[slug].astro": "354f8960a5dfca68",
+      "web/src/pages/companies/[slug].astro": "2ae307f83ace31c4",
       "web/src/lib/form144.ts": "5792da219a57b938",
       "web/src/lib/plannedsales.ts": "60e8951a617b18bc",
       "web/src/lib/inst13f.ts": "156ecec5730acd97",
