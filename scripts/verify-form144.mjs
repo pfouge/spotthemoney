@@ -244,6 +244,8 @@ for (const p of quiet) {
   ok(!r.text.includes("data-planned-sales"), `${p}: a section with no notice in the last 12 months`);
 }
 ok(/id="form-144"/.test(meth), "the methodology has no Form 144 section");
+// A merge once left a second, older copy without its id (2026-11-24), so count the id and the heading.
+ok((meth.match(/id="form-144"/g) ?? []).length === 1 && (meth.match(/<strong>Planned sales \(Form 144 notices\)\.<\/strong>/g) ?? []).length === 1, "the methodology has the planned sales paragraph more than once");
 ok(/more than 1,000,000 dollars a share/.test(text(meth)), "the methodology does not state the rule for a stated value that is not shown");
 const heldInTables = withRows.reduce((s, x) => s + x.win.slice(0, ROWS).filter(outOfRange).length, 0);
 ok(heldSeen >= heldInTables, `${heldInTables} out-of-range values should be held back in page tables, ${heldSeen} were seen`);

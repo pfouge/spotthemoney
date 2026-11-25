@@ -8,7 +8,7 @@ import type { Flagship } from "../lib/flagship";
 import type { DownloadFile } from "../lib/downloads";
 import { num, companyPath } from "../lib/flagship";
 import { formatDate } from "../lib/format";
-import { holdingsOf, holdingsSentence, cleanText, sharesStated, percentStated, percentLabel, belowThreshold, HOLDINGS_CAVEAT, HOLDER_ROWS, THRESHOLD_PERCENT } from "../lib/schedule13";
+import { holdingsOf, holdingCompanies, holdingsSentence, cleanText, sharesStated, percentStated, percentLabel, belowThreshold, HOLDINGS_CAVEAT, HOLDER_ROWS, THRESHOLD_PERCENT } from "../lib/schedule13";
 import { statementsFiledBy } from "../lib/schedule13-build";
 import { siteCompanyByCik } from "../lib/form144-build";
 import DownloadCsv from "./DownloadCsv.astro";
@@ -26,7 +26,7 @@ const dayNum = (d: string | null) => (d ? d.replaceAll("-", "") : "");
 const attrText = (t: string) => t.toLowerCase().replace(/[<>"]/g, "");
 ---
 {holdings.length > 0 && (
-  <section class="panel" data-panel data-span="12" aria-labelledby="reported-holdings" data-reported-holdings data-cik={cik!.trim().padStart(10, "0")} data-companies={holdings.length}>
+  <section class="panel" data-panel data-span="12" aria-labelledby="reported-holdings" data-reported-holdings data-cik={cik!.trim().padStart(10, "0")} data-companies={holdingCompanies(holdings)} data-rows={holdings.length}>
     <h2 id="reported-holdings">Large holdings this filer reports: Schedules 13D and 13G</h2>
     <p data-rh-summary>{holdingsSentence(name, holdings)}</p>
     <p class="rh-note" data-rh-caveat>{HOLDINGS_CAVEAT} <a href="/guides/ten-percent-owners-and-joint-filings/#large-holders">What Schedules 13D and 13G are</a>.</p>

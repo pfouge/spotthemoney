@@ -4685,3 +4685,34 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   the DIBBS load) that dispatches spotthemoney's `deploy.yml` with secret `STM_DISPATCH_TOKEN`
   (fine-grained token `nsnexplorer-dispatch-spotthemoney` on pfouge/spotthemoney, Actions read and
   write, **expires 2027-11-24**: renew it before then). Without the secret it only warns.
+
+### Tiles count holders and companies, not table rows; the methodology's two repeated paragraphs removed again (2026-11-25, scheduled parity run) — queue item (r2)
+
+- **What.** The "Large holders" tile on stock and company pages now reads the number of different
+  holders (`holderCount` in `web/src/lib/schedule13.ts`), and the "Large holdings reported" tile on
+  stock, company and insider pages the number of different companies (`holdingCompanies`). Both
+  counted table rows, so a holder that reports on two classes of shares was counted twice in the
+  tile while the sentence above the table counted it once. `ReportedHoldings.astro`:
+  `data-companies` is now companies and a new `data-rows` is the rows; `LargeHolders.astro` gained
+  `data-rows`. No migration, no data job change, no new file.
+- **Verifiers.** `verify-schedule13` reads the "Large holders" tile on every page it checks and
+  compares it with the holders it counts from the CSV; `verify-filers` does the same for "Large
+  holdings reported" and companies. Their last lines end `N "Large holders" tiles read, M of them on
+  a page with more rows than holders` and `N tiles read, M of them on a page with more rows than
+  companies`: **after a deploy, read both lines; a failure names the page.**
+- **Found on the way: the methodology printed the "Planned sales" and "Large holders" paragraphs
+  twice again.** PR #101 removed the older copies; the redesign's second pass (#102) brought them
+  back without their ids, so the id count in `verify-schedule13` did not see them. Removed again.
+  `verify-schedule13` and `verify-form144` now count the paragraph's heading as well as its id.
+  **After a merge of a long-lived branch, run
+  `grep -o '<p[^>]*><strong>[^<]*</strong>' web/src/pages/methodology.astro | sed 's/<p[^>]*>//' | sort | uniq -d`
+  (it should print nothing).**
+- Guide `ten-percent-owners-and-joint-filings` (one sentence in the point "One holder can have two
+  rows") and methodology `#schedule-13` (one clause) say the tile counts holders. `what-is-form-4`
+  re-read, unchanged.
+- **(r1) needed no change:** the 11 `verify-campaign` findings on member pages are gone since the
+  redesign (deploy of 2026-11-25: `verify-campaign: 5070 checks pass, 0 failures`).
+- Run notes: never start a second `gate.sh` while one runs (it happened again: the first one's
+  last steps wrote a false `rc=1 v-a11y` and an early `GATE DONE` into the new summary). The first
+  `reseed.sh` of a fresh workspace must run AFTER `npm ci` (the migration script needs the
+  `postgres` package).

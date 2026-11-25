@@ -147,7 +147,7 @@ if (!has("planned-sales-form144.csv")) {
 }
 
 // ── large holdings, the filer's side ────────────────────────────────────────────────────────
-let holdingPages = 0, holdingRows = 0, onCompanyPages = 0, twoClassFilers = 0;
+let holdingPages = 0, holdingRows = 0, onCompanyPages = 0, twoClassFilers = 0, holdingTiles = 0, tilesUnderRows = 0;
 if (!has("large-holders-13d-13g.csv")) {
   for (const c of companies.slice(0, 3)) ok(!(await get(pathOf(c.page_url))).text.includes("data-reported-holdings"), `${c.company}: a reported-holdings section with no statements file`);
 } else {
@@ -222,8 +222,13 @@ if (!has("large-holders-13d-13g.csv")) {
     if (!sec) continue;
     holdingPages++; if (!page.startsWith("/insiders/")) onCompanyPages++;
     ok(attr(sec.tag, "data-cik") === cik, `${page}: the section is for ${attr(sec.tag, "data-cik")}, expected ${cik}`);
-    ok(Number(attr(sec.tag, "data-companies")) === want0.length, `${page}: ${attr(sec.tag, "data-companies")} rows stated, ${want0.length} in the file`);
     const cos = new Set(want0.map((r) => r.issuer_cik)).size;
+    ok(Number(attr(sec.tag, "data-companies")) === cos, `${page}: ${attr(sec.tag, "data-companies")} companies stated, ${cos} in the file`);
+    ok(Number(attr(sec.tag, "data-rows")) === want0.length, `${page}: ${attr(sec.tag, "data-rows")} rows stated, ${want0.length} in the file`);
+    // The "At a glance" tile counts different companies, like the sentence, not the table's rows.
+    const tile = (html.match(/<span class="glance-v"[^>]*>([^<]*)<\/span>\s*<span class="glance-k"[^>]*>Large holdings reported<\/span>/) ?? [])[1];
+    ok(tile != null && tile.trim() === cos.toLocaleString("en-US"), `${page}: the "Large holdings reported" tile reads ${tile ?? "nothing"}, the file gives ${cos} companies (in ${want0.length} rows)`);
+    if (tile != null) { holdingTiles++; if (want0.length > cos) tilesUnderRows++; }
     const sum = text((sec.body.match(/<p[^>]*data-rh-summary[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
     ok(new RegExp(`about ${cos.toLocaleString("en-US")} compan(y|ies) this site tracks`).test(sum), `${page}: the summary does not state ${cos} companies`);
     ok((want0.length > cos) === /about more than one class of shares/.test(sum), `${page}: ${want0.length} rows about ${cos} companies and the summary ${want0.length > cos ? "does not say so" : "speaks of several classes"}`);
@@ -256,5 +261,5 @@ if (!has("large-holders-13d-13g.csv")) {
 
 console.log(failures
   ? `verify-filers: ${failures} of ${checks} checks failed`
-  : `verify-filers: ${checks} checks pass; planned sales on ${noticePages} insider pages (${noticeRows} rows, ${heldSeen} values held back); reported holdings on ${holdingPages} pages (${onCompanyPages} company pages, ${holdingRows} rows, ${twoClassFilers} company filers with two classes of one company)`);
+  : `verify-filers: ${checks} checks pass; planned sales on ${noticePages} insider pages (${noticeRows} rows, ${heldSeen} values held back); reported holdings on ${holdingPages} pages (${onCompanyPages} company pages, ${holdingRows} rows, ${twoClassFilers} company filers with two classes of one company; ${holdingTiles} tiles read, ${tilesUnderRows} of them on a page with more rows than companies)`);
 process.exit(failures ? 1 : 0);

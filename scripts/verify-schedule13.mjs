@@ -210,6 +210,7 @@ for (let i = 0; pick.size < Math.min(SAMPLE, withRows.length) && i < withRows.le
 for (const x of withRows.filter((x) => x.holders.length > x.distinct).slice(0, 20)) pick.set(x.p, x);
 for (const want of [(x) => x.holders.some((h) => pctOf(h.r) >= 0 && pctOf(h.r) < THRESHOLD), (x) => x.holders.some((h) => h.n > 1), (x) => x.holders.length > ROWS]) { const x = withRows.find(want); if (x) pick.set(x.p, x); }
 
+let tilesRead = 0, tilesUnderRows = 0;
 const pctLabel = (v) => `${Number(Number(v).toFixed(2))}%`;
 function checkSection(where, html, x) {
   const sec = section(html);
@@ -217,9 +218,13 @@ function checkSection(where, html, x) {
   if (!sec) return;
   const below = x.holders.filter((h) => pctOf(h.r) >= 0 && pctOf(h.r) < THRESHOLD).length, noPct = x.holders.filter((h) => pctOf(h.r) < 0).length;
   const above = x.holders.length - below - noPct, statements = x.holders.reduce((a, h) => a + h.n, 0);
-  for (const [name, want] of [["data-holders", x.distinct], ["data-at-or-above", above], ["data-below", below], ["data-no-percent", noPct], ["data-statements", statements]]) {
+  for (const [name, want] of [["data-holders", x.distinct], ["data-rows", x.holders.length], ["data-at-or-above", above], ["data-below", below], ["data-no-percent", noPct], ["data-statements", statements]]) {
     ok(Number(attr(sec.tag, name)) === want, `${where}: section states ${name} ${attr(sec.tag, name)}, the file gives ${want}`);
   }
+  // The "At a glance" tile counts different holders, like the sentence, not the table's rows.
+  const tile = (html.match(/<span class="glance-v"[^>]*>([^<]*)<\/span>\s*<span class="glance-k"[^>]*>Large holders<\/span>/) ?? [])[1];
+  ok(tile != null && tile.trim() === nf(x.distinct), `${where}: the "Large holders" tile reads ${tile ?? "nothing"}, the file gives ${x.distinct} holders (in ${x.holders.length} rows)`);
+  if (tile != null) { tilesRead++; if (x.holders.length > x.distinct) tilesUnderRows++; }
   const summary = text((sec.body.match(/<p[^>]*data-lh-summary[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
   const caveat = text((sec.body.match(/<p[^>]*data-lh-caveat[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
   ok(summary.startsWith(`${nf(x.distinct)} holder${x.distinct === 1 ? " has" : "s have"} filed an ownership statement`), `${where}: the summary sentence does not state ${x.distinct} holders`);
@@ -354,6 +359,8 @@ ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
   ok(/overlap in time/.test(text(meth)) && /is taken to have changed/.test(text(meth)), "the methodology states how two classes are told from a number that changed");
   ok(/fails the check digit/.test(text(meth)) && /is read as that number mistyped/.test(text(meth)) && /happens to pass the check is not caught/.test(text(meth)), "the methodology states when a mistyped number is recognised and when it is not");
   ok((meth.match(/id="schedule-13"/g) ?? []).length === 1, "the methodology has the large holders paragraph more than once");
+  // A merge once left a second copy without its id (2026-11-24), so count the heading too.
+  ok((meth.match(/<strong>Large holders \(Schedules 13D and 13G\)\.<\/strong>/g) ?? []).length === 1, "the methodology has the large holders paragraph more than once (counted by its heading)");
   const below = newest.filter((r) => r.percent_of_class !== "" && Number(r.percent_of_class) < 5).length;
   ok(below === 0 || /below 5%/.test(hub.text), "HUB: a statement under 5% is marked");
   ok(/not a report of a trade/i.test(ht) && /not to be added together/i.test(ht), "HUB: says a statement is not a trade and rows are not added");
@@ -368,5 +375,5 @@ ok(dl.includes(`/downloads/${FILE}`), `/downloads/ does not list ${FILE}`);
 }
 
 const holdersAll = withRows.reduce((a, x) => a + x.holders.length, 0), holdersDistinct = withRows.reduce((a, x) => a + x.distinct, 0);
-console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersDistinct} holders in ${holdersAll} rows by newest statement and class, ${splitHolders} holders with more than one class on ${splitPages.size} companies, ${changedNumbers} with a number that changed, ${mistypedNumbers} with a mistyped number read as the right one; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker)`);
+console.log(failures ? `verify-schedule13: ${failures} problem(s) in ${checks} checks` : `verify-schedule13: statements are shown; ${checks} checks pass on ${pagesRead} pages (${csv.rows.length} statements in the file for ${byPage.size} companies, ${holdersDistinct} holders in ${holdersAll} rows by newest statement and class, ${splitHolders} holders with more than one class on ${splitPages.size} companies, ${changedNumbers} with a number that changed, ${mistypedNumbers} with a mistyped number read as the right one; ${otherCompany} stock pages compared with the issuing company's rows, ${sharedSkipped} left out for a shared ticker; ${tilesRead} "Large holders" tiles read, ${tilesUnderRows} of them on a page with more rows than holders)`);
 process.exit(failures ? 1 : 0);
