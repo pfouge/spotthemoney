@@ -1,12 +1,14 @@
 ---
 // "Executive pay, as filed" on stock and company pages (lib/execpay.ts has the rules). The four
 // Pay Versus Performance figures per fiscal year, as the company tagged them. Nothing is computed
-// or held back; an unusually large or small figure carries a mark. No person is named, and this
-// section never appears on an insider page.
+// or held back; an unusually large or small figure carries a mark. A year in which the company reports
+// a principal executive figure for each of several people lists every figure in its cell, largest
+// first, with a mark "b" and one note; they are never added. No person is named, and this section
+// never appears on an insider page.
 import type { Flagship } from "../lib/flagship";
 import type { DownloadFile } from "../lib/downloads";
 import { payOf } from "../lib/execpay-build";
-import { shownYears, paySummary, payMoney, payMarked, payFilingUrl, shortDate, PAY_KEYS, PAY_ROW_LABEL, PAY_CAVEAT, PAY_MARK_NOTE, PAY_PATH } from "../lib/execpay";
+import { shownYears, paySummary, payMoney, payMarked, payFilingUrl, shortDate, eachOf, PAY_KEYS, PAY_ROW_LABEL, PAY_CAVEAT, PAY_MARK_NOTE, PAY_EACH_NOTE, PAY_PATH } from "../lib/execpay";
 import DownloadCsv from "./DownloadCsv.astro";
 
 interface Props { model: Flagship; cik: string | null | undefined; name: string; file?: DownloadFile | null }
@@ -14,8 +16,13 @@ const { model, cik, name, file } = Astro.props;
 const all = payOf(model, cik);
 const years = shownYears(all);
 const k10 = cik ? cik.padStart(10, "0") : "";
-let marks = 0;
-for (const y of years) for (const k of PAY_KEYS) if (payMarked(k, y.values[k])) marks++;
+let marks = 0, eachCells = 0;
+for (const y of years) for (const k of PAY_KEYS) {
+  if (payMarked(k, y.values[k])) marks++;
+  const each = eachOf(y, k);
+  if (each.length) eachCells++;
+  marks += each.filter((v) => payMarked(k, v)).length;
+}
 ---
 {years.length > 0 && (
   <section class="panel" data-panel aria-labelledby="executive-pay" id="executive-pay-section" data-executive-pay data-cik={k10} data-years={all.length} data-shown={years.length}>
@@ -33,6 +40,13 @@ for (const y of years) for (const k of PAY_KEYS) if (payMarked(k, y.values[k])) 
           <th scope="row" class="wrap">{PAY_ROW_LABEL[k]}</th>
           {years.map((y) => {
             const v = y.values[k];
+            const each = eachOf(y, k);
+            if (each.length) return (
+              <td class="num pay-each" data-v="" data-each={each.map((x) => Math.round(x)).join(";")} data-fye={y.fiscalYearEnd}>
+                {each.map((x) => <span class:list={["pay-one", x < 0 && "pay-neg"]} data-one={Math.round(x)}>{payMoney(x)}{payMarked(k, x) && <sup class="pay-mark" title={PAY_MARK_NOTE} data-pay-mark> a</sup>}</span>)}
+                <sup class="pay-mark" title={PAY_EACH_NOTE} data-pay-each-mark> b</sup>
+              </td>
+            );
             return v == null
               ? <td class="num" data-v="" data-fye={y.fiscalYearEnd}>—</td>
               : <td class:list={["num", v < 0 && "pay-neg"]} data-v={Math.round(v)} data-fye={y.fiscalYearEnd} data-marked={payMarked(k, v) ? "1" : undefined}>{payMoney(v)}{payMarked(k, v) && <sup class="pay-mark" title={PAY_MARK_NOTE} data-pay-mark> a</sup>}</td>;
@@ -48,12 +62,15 @@ for (const y of years) for (const k of PAY_KEYS) if (payMarked(k, y.values[k])) 
       </tr>
     </tbody></table></div>
     {marks > 0 && <p class="pay-note" data-pay-mark-note data-marks={marks}><sup class="pay-mark">a</sup> {PAY_MARK_NOTE}</p>}
+    {eachCells > 0 && <p class="pay-note" data-pay-each-note data-cells={eachCells}><sup class="pay-mark">b</sup> {PAY_EACH_NOTE}</p>}
     {all.length > years.length && <p class="pay-note" data-pay-more>The {years.length} newest of {all.length} fiscal years are shown. All are in the CSV file.</p>}
   </section>
 )}
 <style>
   .pay-note { color: var(--ink-soft); font-size: var(--t-sm); max-width: 80ch; }
   .pay-neg { color: var(--red-ink); }
+  .pay-one { display: block; }
+  .pay-each .pay-one:last-of-type { display: inline; }
   .pay-mark { color: var(--ink-soft); margin-left: var(--s-1); }
   .pay-table th[scope="row"] { min-width: 15rem; font-weight: 400; }
   @media (max-width: 640px) { .pay-table th[scope="row"] { min-width: 11rem; } }

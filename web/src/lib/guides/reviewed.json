@@ -24,10 +24,10 @@
     }
   },
   "executive-pay-pay-versus-performance": {
-    "reviewed": "2026-11-24",
+    "reviewed": "2026-11-26",
     "covers": {
-      "web/src/lib/execpay.ts": "1e3641fc39e22733",
-      "web/src/components/ExecutivePay.astro": "b6276efc784302ff",
+      "web/src/lib/execpay.ts": "e318bd6910581daa",
+      "web/src/components/ExecutivePay.astro": "44ac94c8003349cf",
       "shared/src/execpay.ts": "c63a2489e2570fac"
     }
   },
@@ -86,17 +86,17 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-24",
+    "reviewed": "2026-11-26",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "717bde0d44213bfc",
-      "web/src/lib/downloads.ts": "6ce0e86a8ffda854",
+      "web/src/lib/downloads.ts": "4dd8b3a8a447ad2d",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "e6d85649835449f9",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
-      "web/src/lib/datafiles.ts": "95324dcdbabcb8e3",
+      "web/src/lib/datafiles.ts": "bae8dbba78c85f4a",
       "web/src/pages/developers.astro": "a208e135a937443e"
     }
   },

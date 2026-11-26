@@ -83,13 +83,13 @@ test("csv: header, marked column, formula guard", () => {
   const pay = new Map([["0000000001", [y("2025-12-31", { peo_total: 1, peo_actually_paid: 2_400_000_000 })]]]);
   const rows = unpackPayHub(packPayHub("2026-11-20", [co("=X", "0000000001")], pay));
   const lines = payViewCsv(rows, DEFAULT_PAY_VIEW).replace(/^﻿/, "").split("\r\n");
-  assert.equal(lines[0], PAY_CSV_COLUMNS.map((c) => c.key).join(","));
-  assert.equal(lines[0], "company,cik,ticker,fiscal_year_end,peo_total,peo_actually_paid,neo_avg_total,neo_avg_actually_paid,marked,accession,source_url,page_url");
+  assert.equal(PAY_CSV_COLUMNS.map((c) => c.key).join(","), "company,cik,ticker,fiscal_year_end,peo_total,peo_actually_paid,neo_avg_total,neo_avg_actually_paid,marked,accession,source_url,page_url,peo_figures,peo_total_each,peo_actually_paid_each,read_from");
+  assert.equal(lines[0], "company,cik,ticker,fiscal_year_end,peo_total,peo_actually_paid,neo_avg_total,neo_avg_actually_paid,marked,accession,source_url,page_url,peo_figures");
   assert.match(lines[1]!, /^'=X,0000000001,=?[A-Z']*/);
   assert.match(lines[1]!, /,1,2400000000,,,true,/);
 });
 test("log line", () => {
   const d = emptyPay();
   d.byCik.set("0000000001", [y("2025-12-31", { peo_total: 1, peo_actually_paid: 2_400_000_000 })]);
-  assert.match(payLog(d, new Set(["0000000001"])), /2 figures for 1 companies on the site, newest year end 2025-12-31; 0 companies with more than 4 years; 0 with no principal executive total; 2 marked figures/);
+  assert.match(payLog(d, new Set(["0000000001"])), /2 measure and year cells for 1 companies on the site, newest year end 2025-12-31; 0 companies with more than 4 years; 0 with no single principal executive total; 2 marked figures/);
 });

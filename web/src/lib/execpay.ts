@@ -5,6 +5,14 @@
 // the principal executive officer's total in the Summary Compensation Table and "compensation actually
 // paid", and the same two as an average over the other named executive officers. Rules that follow:
 //   - Nothing is computed, converted or held back. A missing figure is a dash.
+//   - Two sources, one figure each (mergePay): the SEC's XBRL frames data (table exec_pay) first, and
+//     where it has no figure for a measure and year, the company's own proxy statement (table
+//     exec_pay_proxy), which also carries figures a company tagged with the person they belong to.
+//   - A year in which the company reports a principal executive figure for each of several people
+//     (the post changed hands) keeps every figure, largest first, in `each`. They are never added
+//     together, never ranked, and `values` has no entry for that measure, so no total, filter, sort
+//     or tile reads one of them as "the" figure. A zero among several per-person lines is an empty
+//     line of the table (a person who did not hold the post that year) and is left out.
 //   - A figure that is unusually large or small is marked, not changed (payMarked).
 //   - No person's name is shown with these figures (the data names none) and they never appear on
 //     insider pages: a principal executive officer's own page would otherwise look like a statement
@@ -21,7 +29,7 @@ export const PAY_DATA = "/data/executive-pay.json";
 /** Fiscal years a company's table shows, newest first. */
 export const PAY_YEARS = 4;
 export const PAY_CAVEAT =
-  "These figures come from the Pay Versus Performance table of the company's proxy statement, as the company tagged them for the SEC. Compensation actually paid is a measure defined by SEC rules that revalues share awards each year. It can be negative and is not the cash a person received. The data names no person, and a company that had two principal executives in a year, or tagged the table differently, can be missing.";
+  "These figures come from the Pay Versus Performance table of the company's proxy statement, as the company tagged them for the SEC. Compensation actually paid is a measure defined by SEC rules that revalues share awards each year. It can be negative and is not the cash a person received. The data names no person. A year in which the post changed hands has a figure for each person, shown apart and never added together, and a company whose proxy statement carries no tagged table is missing.";
 export const PAY_MARK_NOTE = "Marked figures are unusually large or small. They are shown as the company tagged them; check the filing.";
 /** A figure at or above this size in either direction is marked. */
 export const PAY_LARGE = 1_000_000_000;
@@ -48,15 +56,112 @@ export interface PayYear {
   fiscalYearEnd: string;                        // YYYY-MM-DD
   values: Partial<Record<PayMeasure, number>>;
   accession: string | null;                     // the filing the figures came from (peo_total's, else any)
+  /** Principal executive figures when the company reports one for each of several people that year,
+   *  largest first (two or more). `values` then has no entry for that measure. */
+  each?: Partial<Record<PeoMeasure, number[]>>;
+  /** Where the year's figures were read from. Absent means the frames data. */
+  from?: PaySource;
 }
+export type PeoMeasure = "peo_total" | "peo_actually_paid";
+export const PEO_KEYS: readonly PeoMeasure[] = ["peo_total", "peo_actually_paid"];
+export type PaySource = "frames" | "proxy" | "both";
+/** Counts over every company, for the build log. */
+export interface PaySources {
+  framesFigures: number;      // figures taken from the frames data
+  proxyFigures: number;       // single figures taken from a proxy statement (frames had none)
+  proxyRows: number;          // proxy-statement rows read
+  eachCells: number;          // measure and year cells that hold several figures
+  eachYears: number;          // company years with such a cell
+  eachCompanies: number;      // companies with such a year
+  eachNewest: number;         // companies whose newest year is such a year
+  emptyLines: number;         // zero lines left out of per-person figures
+  proxyOnlyCompanies: number; // companies with figures only from proxy statements
+}
+export const emptySources = (): PaySources => ({ framesFigures: 0, proxyFigures: 0, proxyRows: 0, eachCells: 0, eachYears: 0, eachCompanies: 0, eachNewest: 0, emptyLines: 0, proxyOnlyCompanies: 0 });
 export interface PayData {
   /** CIK (10 digits) to the company's fiscal years, newest first. */
   byCik: Map<string, PayYear[]>;
-  /** Rows read, over every company. */
+  /** Frames rows read, over every company. */
   rows: number;
   newestYearEnd: string | null;
+  sources: PaySources;
 }
-export const emptyPay = (): PayData => ({ byCik: new Map(), rows: 0, newestYearEnd: null });
+export const emptyPay = (): PayData => ({ byCik: new Map(), rows: 0, newestYearEnd: null, sources: emptySources() });
+
+export const PAY_EACH_NOTE =
+  "In a year marked b the company reports a figure for each of several people who held the principal executive officer post that year. Every figure is shown, largest first, and they are never added together. Each line is ordered by size on its own, so figures in the same position on two lines may belong to different people. The filing says who held the post and when.";
+/** The figures of a cell that holds several, or [] when the cell holds one figure or none. */
+export const eachOf = (y: PayYear, k: PayMeasure): number[] => (k === "peo_total" || k === "peo_actually_paid" ? y.each?.[k] ?? [] : []);
+/** Does the year hold any figure at all, single or several? */
+export const yearHasFigure = (y: PayYear): boolean => PAY_KEYS.some((k) => y.values[k] != null || eachOf(y, k).length > 0);
+/** How many principal executive figures the company reports for the year: 0, 1, or more. */
+export const peoFigures = (y: PayYear): number => Math.max(...PEO_KEYS.map((k) => (eachOf(y, k).length || (y.values[k] != null ? 1 : 0))));
+
+// ── two sources into one table ──────────────────────────────────────────────────────────
+export interface PayFact { measure: string; fiscalYearEnd: string; value: number; accession: string | null }
+export interface ProxyPayFact extends PayFact { seq: number; dimensioned: boolean }
+
+/** What a proxy statement's rows for ONE measure and year say: a single figure, or several.
+ *  - a row filed without a person is the figure;
+ *  - otherwise the rows are one per person: zero lines are empty lines of the table and are left out;
+ *    one figure left is the figure, two or more are kept apart (largest first); all zero is a zero. */
+export function proxyFigure(rows: readonly ProxyPayFact[]): { value?: number; each?: number[]; dropped: number } | null {
+  const ok = rows.filter((r) => Number.isFinite(r.value));
+  if (!ok.length) return null;
+  const plain = ok.filter((r) => !r.dimensioned).sort((a, b) => a.seq - b.seq)[0];
+  if (plain) return { value: plain.value, dropped: 0 };
+  const nz = ok.map((r) => r.value).filter((v) => v !== 0).sort((a, b) => b - a);
+  if (nz.length === 0) return { value: 0, dropped: ok.length - 1 };
+  if (nz.length === 1) return { value: nz[0]!, dropped: ok.length - 1 };
+  return { each: nz, dropped: ok.length - nz.length };
+}
+
+/** One company's fiscal years from its frames rows and its proxy-statement rows, newest first. */
+export function mergePay(frames: readonly PayFact[], proxy: readonly ProxyPayFact[], stats: PaySources = emptySources()): PayYear[] {
+  interface E { y: PayYear; peoAcc: string | null; f: boolean; p: boolean }
+  const years = new Map<string, E>();
+  const at = (fye: string): E => {
+    let e = years.get(fye);
+    if (!e) years.set(fye, (e = { y: { fiscalYearEnd: fye, values: {}, accession: null }, peoAcc: null, f: false, p: false }));
+    return e;
+  };
+  const other = (e: E, acc: string | null) => { if (acc && (!e.y.accession || acc > e.y.accession)) e.y.accession = acc; };
+  for (const r of frames) {
+    if (!isPayMeasure(r.measure) || !isDate(r.fiscalYearEnd) || r.value == null || !Number.isFinite(Number(r.value))) continue;
+    const e = at(r.fiscalYearEnd);
+    e.y.values[r.measure] = Number(r.value);
+    e.f = true;
+    stats.framesFigures++;
+    if (r.measure === "peo_total") e.peoAcc = r.accession; else other(e, r.accession);
+  }
+  const groups = new Map<string, ProxyPayFact[]>();
+  for (const r of proxy) {
+    if (!isPayMeasure(r.measure) || !isDate(r.fiscalYearEnd)) continue;
+    const k = `${r.fiscalYearEnd}|${r.measure}`;
+    const g = groups.get(k); if (g) g.push(r); else groups.set(k, [r]);
+  }
+  for (const [k, rows] of groups) {
+    const [fye, measure] = k.split("|") as [string, PayMeasure];
+    if (years.get(fye)?.y.values[measure] != null) continue;      // the frames data has this figure
+    const fig = proxyFigure(rows);
+    if (!fig) continue;
+    const e = at(fye);
+    const acc = [...rows].sort((a, b) => a.seq - b.seq)[0]!.accession;
+    if (fig.each && (measure === "peo_total" || measure === "peo_actually_paid")) { (e.y.each ??= {})[measure] = fig.each; stats.eachCells++; }
+    else if (fig.value != null) { e.y.values[measure] = fig.value; stats.proxyFigures++; }
+    else continue;                                                // several figures for an average: not a thing the table has
+    stats.emptyLines += fig.dropped;
+    e.p = true;
+    if (measure === "peo_total") e.peoAcc = acc; else other(e, acc);
+  }
+  const out = sortYears([...years.values()].map((e) => ({ ...e.y, accession: e.peoAcc ?? e.y.accession, from: (e.f && e.p ? "both" : e.p ? "proxy" : "frames") as PaySource })));
+  const several = out.filter((y) => y.each && PEO_KEYS.some((m) => (y.each![m]?.length ?? 0) > 0));
+  stats.eachYears += several.length;
+  if (several.length) stats.eachCompanies++;
+  if (out[0] && several.includes(out[0])) stats.eachNewest++;
+  if (out.length && out.every((y) => y.from === "proxy")) stats.proxyOnlyCompanies++;
+  return out;
+}
 
 const n = (x: number) => x.toLocaleString("en-US");
 const pl = (x: number, one: string, many = `${one}s`) => `${n(x)} ${x === 1 ? one : many}`;
@@ -75,7 +180,7 @@ export function payMarked(measure: PayMeasure, value: number | null | undefined)
   const total = measure === "peo_total" || measure === "neo_avg_total";
   return total && value >= 0 && value < PAY_SMALL;
 }
-export const yearMarked = (y: PayYear): boolean => PAY_KEYS.some((k) => payMarked(k, y.values[k]));
+export const yearMarked = (y: PayYear): boolean => PAY_KEYS.some((k) => payMarked(k, y.values[k]) || eachOf(y, k).some((v) => payMarked(k, v)));
 
 /** Fiscal years newest first; a year end that is not a date is dropped. */
 export const sortYears = (ys: readonly PayYear[]): PayYear[] => ys.filter((y) => isDate(y.fiscalYearEnd)).sort((a, b) => b.fiscalYearEnd.localeCompare(a.fiscalYearEnd));
@@ -111,8 +216,9 @@ export const SORT_KEYS = ["company", "year", "peo_total", "peo_actually_paid", "
 export type PaySortKey = (typeof SORT_KEYS)[number];
 
 export interface PayHubCompany { name: string; path: string; ticker: string; cik: string; division: { name: string; slug: string } | null }
-/** A row: [company index, fiscal year end, four figures (null when missing), accession or ""]. */
-export type PackedPay = [number, string, number | null, number | null, number | null, number | null, string];
+/** A row: [company index, fiscal year end, four figures (null when missing), accession or "", and, only
+ *  when the year holds several principal executive figures, how many for the total and for actually paid]. */
+export type PackedPay = [number, string, number | null, number | null, number | null, number | null, string, number?, number?];
 export interface PayHubData {
   built: string;
   divisions: { name: string; slug: string }[];
@@ -121,7 +227,16 @@ export interface PayHubData {
   /** Companies with a page, for the coverage sentence. */
   pages: number;
 }
-export interface PayHubRow { c: PayHubCompany; fye: string; v: Record<PayMeasure, number | null>; accession: string | null; marked: boolean }
+export interface PayHubRow { c: PayHubCompany; fye: string; v: Record<PayMeasure, number | null>; accession: string | null; marked: boolean; each: Record<PeoMeasure, number> }
+/** What a list cell says when the year holds several figures: a count, never one of the figures. */
+export const eachCellText = (count: number): string => `${n(count)} figures`;
+export const PAY_HUB_EACH_NOTE = "A count such as \"2 figures\" in a principal executive officer column means the company reports a figure for each of several people who held the post in that year. The company's page lists every figure; none is added to another, and such a row has no figure in that column for sorting or the size filter.";
+/** The sentence over the list about such rows, or "" when there are none. */
+export function payEachSentence(rows: readonly PayHubRow[]): string {
+  const k = rows.filter((r) => r.each.peo_total > 0 || r.each.peo_actually_paid > 0).length;
+  if (!k) return "";
+  return `${k === 1 ? "1 of these companies reports" : `${n(k)} of these companies report`} principal executive figures for more than one person in the newest year; the row then shows how many figures there are, and the company's page lists each.`;
+}
 
 export function packPayHub(built: string, companies: readonly PayHubCompany[], pay: ReadonlyMap<string, readonly PayYear[]>): PayHubData {
   const divisions: { name: string; slug: string }[] = [];
@@ -133,9 +248,12 @@ export function packPayHub(built: string, companies: readonly PayHubCompany[], p
   const cs: PayHubData["companies"] = [];
   for (const c of companies) {
     const y = sortYears(pay.get(c.cik) ?? [])[0];
-    if (!y || !PAY_KEYS.some((k) => y.values[k] != null)) continue;
+    if (!y || !yearHasFigure(y)) continue;
     const ci = cs.push([c.name, c.path, c.ticker, c.cik, c.division ? dix.get(c.division.slug)! : -1]) - 1;
-    rows.push([ci, y.fiscalYearEnd, y.values.peo_total ?? null, y.values.peo_actually_paid ?? null, y.values.neo_avg_total ?? null, y.values.neo_avg_actually_paid ?? null, y.accession ?? ""]);
+    const row: PackedPay = [ci, y.fiscalYearEnd, y.values.peo_total ?? null, y.values.peo_actually_paid ?? null, y.values.neo_avg_total ?? null, y.values.neo_avg_actually_paid ?? null, y.accession ?? ""];
+    const et = eachOf(y, "peo_total").length, ea = eachOf(y, "peo_actually_paid").length;
+    if (et || ea) row.push(et, ea);
+    rows.push(row);
   }
   rows.sort((a, b) => (b[2] ?? -Infinity) - (a[2] ?? -Infinity) || cs[a[0]]![0].localeCompare(cs[b[0]]![0]));
   return { built, divisions, companies: cs, rows, pages: companies.length };
@@ -144,7 +262,7 @@ export function unpackPayHub(d: PayHubData): PayHubRow[] {
   const cos: PayHubCompany[] = d.companies.map((c) => ({ name: c[0], path: c[1], ticker: c[2], cik: c[3], division: d.divisions[c[4]] ?? null }));
   return d.rows.map((r) => {
     const v: Record<PayMeasure, number | null> = { peo_total: r[2], peo_actually_paid: r[3], neo_avg_total: r[4], neo_avg_actually_paid: r[5] };
-    return { c: cos[r[0]]!, fye: r[1], v, accession: r[6] || null, marked: PAY_KEYS.some((k) => payMarked(k, v[k])) };
+    return { c: cos[r[0]]!, fye: r[1], v, accession: r[6] || null, marked: PAY_KEYS.some((k) => payMarked(k, v[k])), each: { peo_total: r[7] ?? 0, peo_actually_paid: r[8] ?? 0 } };
   });
 }
 
@@ -190,11 +308,16 @@ export function paySummaryLine(r: PayResult): string {
   if (r.total === 0) return r.all === 0 ? "No figures are on file yet." : "No company matches these filters.";
   return `${pl(r.total, "company", "companies")}. Showing ${n(r.from)} to ${n(r.to)}.`;
 }
+/** "about 8 in 10", "nearly all"; "" when there is nothing to say. */
+export function payShareWords(withFigures: number, withPage: number): string {
+  if (withPage <= 0 || withFigures <= 0) return "";
+  const share = withFigures / withPage;
+  return share >= 0.95 ? "nearly all" : `about ${Math.max(1, Math.round(share * 10))} in 10`;
+}
 export function payCoverageSentence(withFigures: number, withPage: number): string {
   if (withPage <= 0) return "";
-  const share = withFigures / withPage;
-  const frac = share >= 0.95 ? "nearly all" : `about ${Math.max(1, Math.round(share * 10))} in 10`;
-  return `${n(withFigures)} of the ${n(withPage)} companies with a page on this site have figures on file, ${frac}. The rest have not filed a Pay Versus Performance table in the data the SEC publishes, tagged it differently, or are not required to (smaller reporting companies, funds and companies without a proxy statement).`;
+  const frac = payShareWords(withFigures, withPage);
+  return `${n(withFigures)} of the ${n(withPage)} companies with a page on this site have figures on file, ${frac}. The rest have no proxy statement with a tagged Pay Versus Performance table in the SEC's data: funds, foreign companies and others that file no proxy statement, and companies whose proxy statement carries no such table.`;
 }
 export function fiscalYearOptions(all: readonly PayHubRow[]): { fy: string; companies: number }[] {
   const by = new Map<string, number>();
@@ -249,14 +372,22 @@ export const PAY_CSV_COLUMNS: Column<PayCsvRow>[] = [
   { key: "accession", about: "Accession number of the filing the figures came from", get: (r) => r.y.accession },
   { key: "source_url", about: "The filing's folder at the SEC", get: (r) => payFilingUrl(r.cik, r.y.accession) },
   { key: "page_url", about: "The company's page on this site", get: (r) => r.pagePath },
+  { key: "peo_figures", about: "How many principal executive officer figures the company reports for the year: 1 as a rule, more when the post changed hands, 0 when none is on file", get: (r) => peoFigures(r.y) },
+  { key: "peo_total_each", about: "Only when peo_figures is above 1: each person's total, dollars, largest first, separated by semicolons (no person is named; never added together; peo_total is then empty)", get: (r) => eachOf(r.y, "peo_total").map((v) => String(v)).join(";") || null },
+  { key: "peo_actually_paid_each", about: "Only when peo_figures is above 1: each person's compensation actually paid, dollars, largest first, separated by semicolons (ordered on its own, so positions do not match peo_total_each)", get: (r) => eachOf(r.y, "peo_actually_paid").map((v) => String(v)).join(";") || null },
+  { key: "read_from", about: "Where the year's figures were read: frames (the SEC's XBRL frames data), proxy (the company's proxy statement) or both", get: (r) => r.y.from ?? "frames" },
 ];
+// The list's own download has the count of figures, not each figure and not the source: the data file it is made from carries neither.
+const HUB_CSV_SKIP = new Set(["peo_figures", "peo_total_each", "peo_actually_paid_each", "read_from"]);
 const HUB_CSV: Column<PayHubRow>[] = PAY_CSV_COLUMNS.map((c) => ({
   ...c,
   get: (r: PayHubRow) => c.get({
     company: r.c.name, cik: r.c.cik, ticker: r.c.ticker, pagePath: r.c.path ? `https://spotthemoney.com${r.c.path}` : null,
     y: { fiscalYearEnd: r.fye, accession: r.accession, values: Object.fromEntries(PAY_KEYS.filter((k) => r.v[k] != null).map((k) => [k, r.v[k] as number])) },
   }),
-}));
+})).filter((c) => !HUB_CSV_SKIP.has(c.key)).concat([
+  { key: "peo_figures", about: "How many principal executive officer figures the company reports for the year", get: (r: PayHubRow) => Math.max(r.each.peo_total, r.each.peo_actually_paid) || (r.v.peo_total != null || r.v.peo_actually_paid != null ? 1 : 0) },
+]);
 export function payViewCsv(all: readonly PayHubRow[], v: PayView): string {
   return toCsv(HUB_CSV, sortPay(all.filter((r) => payMatches(r, v.f)), v.sort, v.dir));
 }
@@ -272,11 +403,12 @@ export function payLog(d: PayData, companyCiks: ReadonlySet<string>): string {
   for (const [cik, ys] of d.byCik) {
     if (!companyCiks.has(cik)) continue;
     cos++;
-    rows += ys.reduce((s, y) => s + PAY_KEYS.filter((k) => y.values[k] != null).length, 0);
+    rows += ys.reduce((s, y) => s + PAY_KEYS.filter((k) => y.values[k] != null || eachOf(y, k).length > 0).length, 0);
     if (ys.length > PAY_YEARS) over++;
     if (!ys.some((y) => y.values.peo_total != null)) neoOnly++;
-    for (const y of shownYears(ys)) for (const k of PAY_KEYS) if (payMarked(k, y.values[k])) marked++;
+    for (const y of shownYears(ys)) for (const k of PAY_KEYS) { if (payMarked(k, y.values[k])) marked++; marked += eachOf(y, k).filter((v) => payMarked(k, v)).length; }
     for (const y of ys) if (y.fiscalYearEnd > newest) newest = y.fiscalYearEnd;
   }
-  return `executive pay (Pay Versus Performance): ${d.rows} rows read; ${rows} figures for ${cos} companies on the site, newest year end ${newest || "none"}; ${over} companies with more than ${PAY_YEARS} years; ${neoOnly} with no principal executive total; ${marked} marked figures in the tables`;
+  const s = d.sources;
+  return `executive pay (Pay Versus Performance): ${d.rows} frames rows and ${s.proxyRows} proxy-statement rows read; ${rows} measure and year cells for ${cos} companies on the site, newest year end ${newest || "none"}; ${over} companies with more than ${PAY_YEARS} years; ${neoOnly} with no single principal executive total; ${marked} marked figures in the tables; sources: ${s.framesFigures} figures from frames, ${s.proxyFigures} from proxy statements, ${s.proxyOnlyCompanies} companies only from proxy statements; several principal executive figures: ${s.eachCells} cells in ${s.eachYears} company years of ${s.eachCompanies} companies, ${s.eachNewest} of them in the newest year; ${s.emptyLines} zero lines left out`;
 }

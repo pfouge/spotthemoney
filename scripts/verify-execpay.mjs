@@ -8,7 +8,11 @@
 // years, the mark on a figure of $1 billion or more or a total under $1,000, the way an amount is
 // printed, the filing folder address, the order of the list) and checks:
 //   - the file: columns, one row per company and year, the `marked` column against its own rule,
-//     the filing address against the accession;
+//     the filing address against the accession; a year with several principal executive figures
+//     (peo_figures above 1) has its figures in the `_each` columns, largest first, none of them zero,
+//     and an empty single-figure column;
+//   - on pages such a cell lists every figure with the mark "b" and one note, and is never a sum;
+//     the list shows a count ("2 figures") there, and the data file carries the two counts;
 //   - sampled company pages (one with more than 4 years, one with a single year, one with other
 //     named officers only, every company with a marked figure) and the stock page of each ticker:
 //     the columns, every cell, the dash, the minus sign, the marks and the one note, the Filing row;
@@ -21,7 +25,10 @@ const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:/.test(a)) ?? "http://127.0.0.1:4321").replace(/\/$/, "");
 const SAMPLE = args.includes("--sample") && Number(args[args.indexOf("--sample") + 1]) > 0 ? Number(args[args.indexOf("--sample") + 1]) : 8;
 const FILE = "executive-pay.csv";
-const COLUMNS = ["company", "cik", "ticker", "fiscal_year_end", "peo_total", "peo_actually_paid", "neo_avg_total", "neo_avg_actually_paid", "marked", "accession", "source_url", "page_url"];
+const COLUMNS = ["company", "cik", "ticker", "fiscal_year_end", "peo_total", "peo_actually_paid", "neo_avg_total", "neo_avg_actually_paid", "marked", "accession", "source_url", "page_url", "peo_figures", "peo_total_each", "peo_actually_paid_each", "read_from"];
+const PEO = ["peo_total", "peo_actually_paid"];
+const eachOf = (r, m) => (PEO.includes(m) && r[`${m}_each`] ? r[`${m}_each`].split(";").map(Number) : []);
+const EACH_NOTE = /reports a figure for each of several people who held the principal executive officer post that year\. Every figure is shown, largest first, and they are never added together\./;
 const MEASURES = ["peo_total", "peo_actually_paid", "neo_avg_total", "neo_avg_actually_paid"];
 const LABEL = { peo_total: "Principal executive officer: total, Summary Compensation Table", peo_actually_paid: "Principal executive officer: compensation actually paid", neo_avg_total: "Other named executive officers, average: total", neo_avg_actually_paid: "Other named executive officers, average: compensation actually paid" };
 const YEARS = 4, LARGE = 1e9, SMALL = 1000, HUB_FIRST = 50;
@@ -93,21 +100,37 @@ const csv = parseCsv(file.text);
 ok(JSON.stringify(csv.head) === JSON.stringify(COLUMNS), `${FILE} columns are ${csv.head.join(",")}`);
 ok(csv.rows.length > 0, `${FILE} has no rows`);
 const byCik = new Map();
-let markedRows = 0;
+let markedRows = 0, eachYears = 0, eachNewest = 0, proxyOnly = 0;
+const eachCos = new Set();
 const seen = new Set();
 for (const r of csv.rows) {
   ok(!seen.has(r.cik + r.fiscal_year_end), `${r.company} ${r.fiscal_year_end} twice`); seen.add(r.cik + r.fiscal_year_end);
   ok(/^\d{10}$/.test(r.cik) && /^\d{4}-\d{2}-\d{2}$/.test(r.fiscal_year_end), `${r.company}: cik ${r.cik} year ${r.fiscal_year_end}`);
-  const any = MEASURES.some((m) => r[m] !== "");
+  const any = MEASURES.some((m) => r[m] !== "" || eachOf(r, m).length > 0);
   ok(any, `${r.company} ${r.fiscal_year_end}: a row with no figure`);
-  const want = MEASURES.some((m) => marked(m, num(r[m])));
+  for (const m of PEO) {
+    const xs = eachOf(r, m);
+    if (!xs.length) continue;
+    ok(xs.length >= 2 && xs.every((v) => Number.isFinite(v) && v !== 0), `${r.company} ${r.fiscal_year_end} ${m}_each: "${r[`${m}_each`]}" is not two or more figures, none zero`);
+    ok(xs.every((v, i) => i === 0 || xs[i - 1] >= v), `${r.company} ${r.fiscal_year_end} ${m}_each is not largest first`);
+    ok(r[m] === "", `${r.company} ${r.fiscal_year_end}: ${m} holds a figure beside ${m}_each`);
+  }
+  const figs = Math.max(...PEO.map((m) => eachOf(r, m).length || (r[m] !== "" ? 1 : 0)));
+  ok(Number(r.peo_figures) === figs, `${r.company} ${r.fiscal_year_end}: peo_figures ${r.peo_figures}, the columns say ${figs}`);
+  ok(["frames", "proxy", "both"].includes(r.read_from), `${r.company} ${r.fiscal_year_end}: read_from "${r.read_from}"`);
+  if (figs > 1) { eachYears++; eachCos.add(r.cik); }
+  const want = MEASURES.some((m) => marked(m, num(r[m])) || eachOf(r, m).some((v) => marked(m, v)));
   ok(r.marked === String(want), `${r.company} ${r.fiscal_year_end}: marked is ${r.marked}, this script says ${want}`);
   if (want) markedRows++;
   ok(r.source_url === (r.accession ? folder(r.cik, r.accession) : ""), `${r.company} ${r.fiscal_year_end}: source_url ${r.source_url}`);
   ok(/^https:\/\/spotthemoney\.com\/(companies\/[a-z0-9-]+|stocks\/[a-z0-9.-]+)\/$/.test(r.page_url), `${r.company}: page_url ${r.page_url}`);
   const xs = byCik.get(r.cik) ?? []; xs.push(r); byCik.set(r.cik, xs);
 }
-for (const xs of byCik.values()) xs.sort((a, b) => (a.fiscal_year_end < b.fiscal_year_end ? 1 : -1));
+for (const xs of byCik.values()) {
+  xs.sort((a, b) => (a.fiscal_year_end < b.fiscal_year_end ? 1 : -1));
+  if (Number(xs[0].peo_figures) > 1) eachNewest++;
+  if (xs.every((r) => r.read_from === "proxy")) proxyOnly++;
+}
 ok([...byCik.values()].every((xs) => xs.every((r, i) => i === 0 || xs[i - 1].fiscal_year_end > r.fiscal_year_end)), "years of a company are not strictly newest first");
 
 // ── company pages ───────────────────────────────────────────────────────────────────────────
@@ -127,7 +150,7 @@ function compare(where, sec, cik) {
   ok(heads.every((h) => h[1] === shortDate(h[0])), `${where}: a column title is not the year-end date`);
   const trs = Object.fromEntries([...sec.body.matchAll(/<tr[^>]*data-pay="([^"]+)"[^>]*>([\s\S]*?)<\/tr>/g)].map((m) => [m[1], m[2]]));
   ok(Object.keys(trs).join() === MEASURES.join(), `${where}: lines ${Object.keys(trs).join()}`);
-  let marks = 0;
+  let marks = 0, eachCells = 0;
   for (const m of MEASURES) {
     const tr = trs[m]; if (!tr) continue;
     ok(text((tr.match(/<th[^>]*>([\s\S]*?)<\/th>/) ?? [])[1] ?? "") === LABEL[m], `${where} ${m}: label "${text((tr.match(/<th[^>]*>([\s\S]*?)<\/th>/) ?? [])[1] ?? "")}"`);
@@ -136,6 +159,19 @@ function compare(where, sec, cik) {
     want.forEach((r, i) => {
       const c = cells[i]; if (!c) return;
       const v = num(r[m]), t = text(c[2]);
+      const each = eachOf(r, m);
+      if (each.length) {
+        eachCells++;
+        const ms = each.filter((x) => marked(m, x)).length; marks += ms;
+        ok(attr(c[1], "data-each") === each.map((x) => Math.round(x)).join(";") && attr(c[1], "data-v") === "", `${where} ${m} ${r.fiscal_year_end}: data-each ${attr(c[1], "data-each")} against ${each.join(";")}`);
+        const wantText = each.map((x) => money(x) + (marked(m, x) ? " a" : "")).join("") + " b";
+        ok(t.replace(/\s+/g, "") === wantText.replace(/\s+/g, ""), `${where} ${m} ${r.fiscal_year_end}: printed "${t}", expected the figures "${wantText}"`);
+        ok(!t.includes(money(each.reduce((s, x) => s + x, 0))) || each.some((x) => money(x) === money(each.reduce((s, x2) => s + x2, 0))), `${where} ${m} ${r.fiscal_year_end}: the cell prints the sum of its figures`);
+        ok([...c[2].matchAll(/data-one="(-?\d+)"/g)].map((x) => Number(x[1])).join() === each.map((x) => Math.round(x)).join(), `${where} ${m} ${r.fiscal_year_end}: the figures in the cell are not the file's, in its order`);
+        ok((c[2].match(/data-pay-mark(?!-)/g) ?? []).length === ms, `${where} ${m} ${r.fiscal_year_end}: ${ms} of the cell's figures should carry the "a" mark`);
+        return;
+      }
+      ok(!/data-each=/.test(c[1]) && !/data-pay-each-mark/.test(c[2]), `${where} ${m} ${r.fiscal_year_end}: a "several figures" cell where the file has one figure or none`);
       if (v == null) { ok(t === "—" && attr(c[1], "data-v") === "", `${where} ${m} ${r.fiscal_year_end}: "${t}" where the file has no figure`); return; }
       const mk = marked(m, v); if (mk) marks++;
       ok(Number(attr(c[1], "data-v")) === Math.round(v), `${where} ${m} ${r.fiscal_year_end}: data-v ${attr(c[1], "data-v")} against ${v}`);
@@ -151,6 +187,10 @@ function compare(where, sec, cik) {
   const note = /data-pay-mark-note/.test(sec.body);
   ok(note === (marks > 0), `${where}: ${marks} marks, the note is ${note ? "there" : "missing"}`);
   if (note) ok(text(sec.body).includes(NOTE), `${where}: the note's wording`);
+  const en = sec.body.match(/<p[^>]*data-pay-each-note[^>]*>/);
+  ok(!!en === (eachCells > 0), `${where}: ${eachCells} cells with several figures, the note about them is ${en ? "there" : "missing"}`);
+  if (en) { ok(Number(attr(en[0], "data-cells")) === eachCells, `${where}: the note counts ${attr(en[0], "data-cells")} cells, the file has ${eachCells}`); ok(EACH_NOTE.test(text(sec.body)) && /may belong to different people/.test(text(sec.body)), `${where}: the wording of the note about several figures`); }
+  eachCellsSeen += eachCells;
   ok(rows.length > YEARS ? /data-pay-more/.test(sec.body) : !/data-pay-more/.test(sec.body), `${where}: the "newest ${YEARS}" note is wrong for ${rows.length} years`);
   const t = text(sec.body);
   ok(/names no person/.test(t) && /not the cash a person received/.test(t), `${where}: the caveat is missing`);
@@ -165,8 +205,10 @@ addp(ciks.find((c) => byCik.get(c).length > YEARS));
 addp(ciks.find((c) => byCik.get(c).length === 1));
 addp(ciks.find((c) => byCik.get(c).every((r) => r.peo_total === "")));
 for (const [c, rs] of byCik) if (rs.slice(0, YEARS).some((r) => r.marked === "true")) addp(c);
+// Companies with a several-figure year in their table: the first six, two of them with it in the newest year.
+{ let n = 0, nn = 0; for (const [c, rs] of byCik) { const inTable = rs.slice(0, YEARS).some((r) => Number(r.peo_figures) > 1), newest1 = Number(rs[0].peo_figures) > 1; if (newest1 && nn < 2) { nn++; addp(c); } else if (inTable && n < 4) { n++; addp(c); } } }
 for (let i = 0; pick.size < Math.max(SAMPLE, 4) && i < ciks.length; i += Math.max(1, Math.floor(ciks.length / SAMPLE))) addp(ciks[i]);
-let pages = 0, stockPages = 0, marksSeen = 0, noTile = 0;
+let pages = 0, stockPages = 0, marksSeen = 0, noTile = 0, eachCellsSeen = 0;
 for (const cik of pick) {
   const rows = byCik.get(cik);
   const path = new URL(rows[0].page_url).pathname;
@@ -208,13 +250,30 @@ for (const p of [...insiderLinks].slice(0, 12)) { const r = await get(p); if (r.
 const hub = await get("/executive-pay/");
 ok(hub.status === 200, `/executive-pay/ answers ${hub.status}`);
 const hubData = JSON.parse((await get("/data/executive-pay.json")).text);
-const newest = [...byCik.values()].map((rs) => rs[0]).filter((r) => MEASURES.some((m) => r[m] !== ""));
+const newest = [...byCik.values()].map((rs) => rs[0]).filter((r) => MEASURES.some((m) => r[m] !== "" || eachOf(r, m).length > 0));
 ok(hubData.rows.length === newest.length, `data file has ${hubData.rows.length} rows, the file has ${newest.length} companies`);
 const cmp = (a, b) => { const x = num(a.peo_total), y = num(b.peo_total); if (x == null && y == null) return a.company.toLowerCase().localeCompare(b.company.toLowerCase()) || (a.cik < b.cik ? -1 : 1); if (x == null) return 1; if (y == null) return -1; return y - x || a.company.toLowerCase().localeCompare(b.company.toLowerCase()) || (a.cik < b.cik ? -1 : 1); };
 const sorted = [...newest].sort(cmp);
 const hubCik = hubData.rows.map((r) => hubData.companies[r[0]][3]);
 ok(hubData.rows.every((r) => { const csvRow = byCik.get(hubData.companies[r[0]][3])[0]; return csvRow.fiscal_year_end === r[1] && [2, 3, 4, 5].every((k, i) => (num(csvRow[MEASURES[i]]) ?? null) === r[k]) && (csvRow.accession === r[6]); }), "data file differs from the CSV's newest year per company");
 ok(hubCik.join() === sorted.map((r) => r.cik).join(), "data file is not in the order the page opens in");
+ok(hubData.rows.every((r) => { const c = byCik.get(hubData.companies[r[0]][3])[0]; return (r[7] ?? 0) === eachOf(c, "peo_total").length && (r[8] ?? 0) === eachOf(c, "peo_actually_paid").length; }), "data file: the counts of several figures differ from the CSV");
+{
+  const trs = [...hub.text.matchAll(/<tr[^>]*data-cik="(\d{10})"[^>]*>([\s\S]*?)<\/tr>/g)];
+  for (const [, cik, body] of trs) {
+    const c = byCik.get(cik)?.[0]; if (!c) continue;
+    for (const m of PEO) {
+      const td = body.match(new RegExp(`<td([^>]*data-pay="${m}"[^>]*)>([\\s\\S]*?)<\\/td>`)); if (!td) continue;
+      const k = eachOf(c, m).length;
+      if (k) ok(attr(td[1], "data-each") === String(k) && text(td[2]) === `${k} figures`, `hub ${c.company} ${m}: "${text(td[2])}" where the file has ${k} figures`);
+      else ok(!/data-each=/.test(td[1]), `hub ${c.company} ${m}: a count of figures where the file has one figure or none`);
+    }
+  }
+  const sent = text((hub.text.match(/<p[^>]*data-pay-each-count[^>]*>([\s\S]*?)<\/p>/) ?? [])[1] ?? "");
+  ok(eachNewest === 0 ? sent === "" : sent.startsWith(eachNewest === 1 ? "1 of these companies reports" : `${eachNewest.toLocaleString("en-US")} of these companies report`), `hub: the sentence about several figures "${sent.slice(0, 80)}" against ${eachNewest} companies`);
+  const methText = text((await get("/methodology/")).text);
+  ok(/never adds them or picks one/.test(methText) && /the frames figure is used/.test(methText), "methodology does not state the two sources and the rule for several figures");
+}
 ok((await get("/data/executive-pay.json")).text.length < 500_000, "data file is large");
 const printed = [...hub.text.matchAll(/<tr[^>]*data-cik="(\d{10})"/g)].map((m) => m[1]);
 ok(printed.join() === sorted.slice(0, HUB_FIRST).map((r) => r.cik).join(), `the hub prints ${printed.length} rows in another order than the recount`);
@@ -298,5 +357,5 @@ try {
 
 console.log(failures
   ? `verify-execpay: ${failures} of ${checks} checks failed`
-  : `verify-execpay: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} company years for ${byCik.size} companies, ${markedRows} rows with a marked figure, ${marksSeen} marks read on pages, ${noTile} page without the glance tile; ${insiderPages} insider pages carry no section; ${without} companies without figures have no section; browser: ${browserChecks})`);
+  : `verify-execpay: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} company years for ${byCik.size} companies, ${proxyOnly} of them only from proxy statements; several principal executive figures in ${eachYears} company years of ${eachCos.size} companies, ${eachNewest} of them in the newest year, ${eachCellsSeen} such cells read on pages; ${markedRows} rows with a marked figure, ${marksSeen} marks read on pages, ${noTile} page without the glance tile; ${insiderPages} insider pages carry no section; ${without} companies without figures have no section; browser: ${browserChecks})`);
 process.exit(failures ? 1 : 0);

@@ -6,7 +6,8 @@ import { YEARS_SHOWN, QUARTERS_SHOWN, MIN_IMPLIED_SHARES, RATIOS } from "../fina
 import { HOLDER_ROWS, THRESHOLD_PERCENT, RECORD_START_LABEL, TYPO_MAX_DISTANCE } from "../schedule13";
 import { DESCRIPTION_SHOWN } from "../contracts";
 import { EVENT_ROWS, EVENT_WINDOW_DAYS } from "../events8k";
-import { PAY_YEARS, PAY_LARGE, PAY_SMALL } from "../execpay";
+import { PAY_YEARS, PAY_LARGE, PAY_SMALL, payShareWords } from "../execpay";
+import { sitePayHub } from "../execpay-build";
 import { INST_TOP, INST_MIN_MANAGERS, INST_SHOWN_DAYS, quarterDate as instQuarterDate } from "../inst13f";
 import { instHubShown } from "../inst13f-hub";
 import { ASSISTANCE_WINDOW_DAYS } from "../assistance";
@@ -78,7 +79,7 @@ export interface GuideCtx {
   /** True when Form 8-K reports are on file (lib/events8k.ts); the rows a company page prints and the window in days. */
   eventsShown: boolean; eventRows: number; eventWindowDays: number;
   /** True when executive pay figures are on file (lib/execpay.ts); the fiscal years a page shows; the size ("$1 billion", "$1,000") at which a figure is marked. */
-  execPayShown: boolean; payYears: number; payLarge: string; paySmall: string;
+  execPayShown: boolean; payYears: number; payLarge: string; paySmall: string; payCoverage: string;
   /** First filing date of the Form 4 record, as text ("October 1, 2025"). */
   form4Floor: string;
   /** Calendar days after which the site flags a Form 4 as late. */
@@ -131,7 +132,7 @@ async function build(): Promise<GuideCtx> {
     financialsShown: m.financials.byCik.size > 0, finYears: YEARS_SHOWN, finQuarters: QUARTERS_SHOWN, finMinImpliedShares: MIN_IMPLIED_SHARES.toLocaleString("en-US"),
     finMarginCap: RATIOS[0]!.cap.toLocaleString("en-US"), finLeCap: RATIOS[1]!.cap.toLocaleString("en-US"),
     eventsShown: m.events.byCik.size > 0, eventRows: EVENT_ROWS, eventWindowDays: EVENT_WINDOW_DAYS,
-    execPayShown: m.execPay.byCik.size > 0, payYears: PAY_YEARS, payLarge: `$${(PAY_LARGE / 1e9).toLocaleString("en-US")} billion`, paySmall: `$${PAY_SMALL.toLocaleString("en-US")}`,
+    execPayShown: m.execPay.byCik.size > 0, payCoverage: (() => { const d = sitePayHub(m).data; return payShareWords(d.rows.length, d.pages); })(), payYears: PAY_YEARS, payLarge: `$${(PAY_LARGE / 1e9).toLocaleString("en-US")} billion`, paySmall: `$${PAY_SMALL.toLocaleString("en-US")}`,
     form4Floor: new Date(FORM4_FLOOR + "T00:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }),
     form4LateAfterDays: FORM4_DEADLINE_DAYS,
     capBands: CAP_BANDS.map((b) => ({ label: b.label, range: b.range })),

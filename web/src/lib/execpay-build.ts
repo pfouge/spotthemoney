@@ -5,13 +5,16 @@ import { companyPath } from "./flagship-core";
 import { industryOf } from "./entity";
 import { divisionSlug } from "./industries";
 import { siteCompanyByCik } from "./form144-build";
-import { emptyPay, isPayMeasure, sortYears, packPayHub, type PayData, type PayHubCompany, type PayHubData, type PayYear } from "./execpay";
+import { emptyPay, isPayMeasure, mergePay, packPayHub, type PayData, type PayFact, type PayHubCompany, type PayHubData, type PayYear, type ProxyPayFact } from "./execpay";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sql = any;
 interface Row { cik: string; measure: string; fiscal_year_end: string; value: number | null; accession: string | null }
+interface ProxyRow extends Row { seq: number; dimensioned: boolean }
 
-/** Every stored figure about a company with a page (10-digit CIKs given), grouped by fiscal year. */
+/** Every stored figure about a company with a page (10-digit CIKs given), grouped by fiscal year: the
+ *  frames data first, a proxy statement's figure where frames has none (mergePay in lib/execpay.ts).
+ *  The proxy table is read in its own step, so a database without it still gives the frames figures. */
 export async function loadPay(sql: Sql, companyCiks: ReadonlySet<string>): Promise<PayData> {
   const out = emptyPay();
   if (!companyCiks.size) return out;
@@ -19,22 +22,31 @@ export async function loadPay(sql: Sql, companyCiks: ReadonlySet<string>): Promi
     select p.cik, p.measure, p.fiscal_year_end::text as fiscal_year_end, p.value::float8 as value, p.accession
       from exec_pay p
      where p.cik in (select lpad(c.cik, 10, '0') from site_companies c where c.cik is not null)`) as Row[];
-  const by = new Map<string, Map<string, { y: PayYear; peoAcc: string | null }>>();
+  let proxyRows: ProxyRow[] = [];
+  try {
+    proxyRows = (await sql`
+      select p.cik, p.measure, p.fiscal_year_end::text as fiscal_year_end, p.value::float8 as value, p.accession, p.seq::int as seq, p.dimensioned
+        from exec_pay_proxy p
+       where p.cik in (select lpad(c.cik, 10, '0') from site_companies c where c.cik is not null)`) as ProxyRow[];
+  } catch (err) {
+    console.warn("[web] executive pay from proxy statements skipped:", (err as Error).message);
+  }
+  const frames = new Map<string, PayFact[]>(), proxy = new Map<string, ProxyPayFact[]>();
+  const push = <T,>(m: Map<string, T[]>, k: string, v: T) => { const a = m.get(k); if (a) a.push(v); else m.set(k, [v]); };
   for (const r of rows) {
     if (!companyCiks.has(r.cik) || !isPayMeasure(r.measure) || r.value == null || !Number.isFinite(Number(r.value))) continue;
     out.rows++;
-    let years = by.get(r.cik);
-    if (!years) by.set(r.cik, (years = new Map()));
-    let e = years.get(r.fiscal_year_end);
-    if (!e) years.set(r.fiscal_year_end, (e = { y: { fiscalYearEnd: r.fiscal_year_end, values: {}, accession: null }, peoAcc: null }));
-    e.y.values[r.measure] = Number(r.value);
-    // The filing is the principal executive officer total's, else any figure's (newest accession when several).
-    if (r.measure === "peo_total") e.peoAcc = r.accession;
-    else if (r.accession && (!e.y.accession || r.accession > e.y.accession)) e.y.accession = r.accession;
+    push(frames, r.cik, { measure: r.measure, fiscalYearEnd: r.fiscal_year_end, value: Number(r.value), accession: r.accession });
   }
-  for (const [cik, years] of by) {
-    const ys = [...years.values()].map((e) => ({ ...e.y, accession: e.peoAcc ?? e.y.accession }));
-    out.byCik.set(cik, sortYears(ys));
+  for (const r of proxyRows) {
+    if (!companyCiks.has(r.cik) || !isPayMeasure(r.measure) || r.value == null || !Number.isFinite(Number(r.value))) continue;
+    out.sources.proxyRows++;
+    push(proxy, r.cik, { measure: r.measure, fiscalYearEnd: r.fiscal_year_end, value: Number(r.value), accession: r.accession, seq: Number(r.seq) || 0, dimensioned: r.dimensioned === true });
+  }
+  for (const cik of new Set([...frames.keys(), ...proxy.keys()])) {
+    const ys: PayYear[] = mergePay(frames.get(cik) ?? [], proxy.get(cik) ?? [], out.sources);
+    if (!ys.length) continue;
+    out.byCik.set(cik, ys);
     const newest = out.byCik.get(cik)![0]?.fiscalYearEnd;
     if (newest && (!out.newestYearEnd || newest > out.newestYearEnd)) out.newestYearEnd = newest;
   }

@@ -711,6 +711,43 @@ insert into exec_pay (cik, measure, tag, fiscal_year_end, value, accession, fram
   ('0000936468', 'neo_avg_total',          'NonPeoNeoAvgTotalCompAmt',        '2025-12-31', 8000000,   '0000936468-26-000011', 'CY2025'),
   ('0000936468', 'neo_avg_actually_paid',  'NonPeoNeoAvgCompActuallyPaidAmt', '2025-12-31', 9100000,   '0000936468-26-000011', 'CY2025'),
   ('0009999001', 'peo_total',              'PeoTotalCompAmt',                 '2025-12-31', 10000000,  '0009999001-26-000001', 'CY2025');
+-- Executive pay read from proxy statements (exec_pay_proxy, 0042), merged with the rows above at build time.
+-- Microsoft (nothing in exec_pay): newest year two per-person lines of which one is zero (one figure);
+-- the year before, two people (two figures in a cell, the two lines in different orders); the oldest
+-- filed without a person. Lockheed (exec_pay has the other officers only): the newest year has three
+-- per-person lines, one zero (two figures, so no tile and "2 figures" in the list), with one figure
+-- under $1,000 (marked); the year before one person. NVIDIA: a figure exec_pay lacks (other officers,
+-- actually paid, 2024) is filled, a rounded copy of a figure exec_pay has is ignored. Palantir: an
+-- older year whose per-person lines are all zero (one figure of zero, marked). One CIK has no company.
+delete from exec_pay_proxy;
+insert into exec_pay_proxy (cik, measure, fiscal_year_end, seq, tag, value, persons, dimensioned, accession, filed) values
+  ('0000789019', 'peo_total',             '2026-06-30', 0, 'PeoTotalCompAmt',                 30000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_total',             '2026-06-30', 1, 'PeoTotalCompAmt',                 0,        2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_actually_paid',     '2026-06-30', 0, 'PeoActuallyPaidCompAmt',          45000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_actually_paid',     '2026-06-30', 1, 'PeoActuallyPaidCompAmt',          0,        2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'neo_avg_total',         '2026-06-30', 0, 'NonPeoNeoAvgTotalCompAmt',        11000000, 0, false, '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'neo_avg_actually_paid', '2026-06-30', 0, 'NonPeoNeoAvgCompActuallyPaidAmt', 14000000, 0, false, '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_total',             '2025-06-30', 0, 'PeoTotalCompAmt',                 28000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_total',             '2025-06-30', 1, 'PeoTotalCompAmt',                 12000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_actually_paid',     '2025-06-30', 0, 'PeoActuallyPaidCompAmt',          40000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_actually_paid',     '2025-06-30', 1, 'PeoActuallyPaidCompAmt',          -2000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'neo_avg_total',         '2025-06-30', 0, 'NonPeoNeoAvgTotalCompAmt',        9000000,  0, false, '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_total',             '2024-06-30', 0, 'PeoTotalCompAmt',                 26000000, 0, false, '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_actually_paid',     '2024-06-30', 0, 'PeoActuallyPaidCompAmt',          31000000, 0, false, '0000789019-26-000050', '2026-10-20'),
+  ('0000936468', 'peo_total',             '2025-12-31', 0, 'PeoTotalCompAmt',                 23000000, 3, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'peo_total',             '2025-12-31', 1, 'PeoTotalCompAmt',                 857,      3, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'peo_total',             '2025-12-31', 2, 'PeoTotalCompAmt',                 0,        3, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'peo_actually_paid',     '2025-12-31', 0, 'PeoActuallyPaidCompAmt',          27500000, 3, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'peo_actually_paid',     '2025-12-31', 1, 'PeoActuallyPaidCompAmt',          0,        3, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'peo_actually_paid',     '2025-12-31', 2, 'PeoActuallyPaidCompAmt',          -400000,  3, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'neo_avg_total',         '2025-12-31', 0, 'NonPeoNeoAvgTotalCompAmt',        7999000,  0, false, '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'peo_total',             '2024-12-31', 0, 'PeoTotalCompAmt',                 22000000, 1, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0000936468', 'peo_actually_paid',     '2024-12-31', 0, 'PeoActuallyPaidCompAmt',          19000000, 1, true,  '0000936468-26-000020', '2026-03-10'),
+  ('0001045810', 'neo_avg_actually_paid', '2024-01-28', 0, 'NonPeoNeoAvgCompActuallyPaidAmt', 58000000, 0, false, '0001045810-26-000045', '2026-05-01'),
+  ('0001045810', 'peo_total',             '2026-01-25', 0, 'PeoTotalCompAmt',                 49870000, 0, false, '0001045810-26-000045', '2026-05-01'),
+  ('0001321655', 'peo_total',             '2024-12-31', 0, 'PeoTotalCompAmt',                 0,        2, true,  '0001321655-26-000010', '2026-04-15'),
+  ('0001321655', 'peo_total',             '2024-12-31', 1, 'PeoTotalCompAmt',                 0,        2, true,  '0001321655-26-000010', '2026-04-15'),
+  ('0009999001', 'peo_total',             '2024-12-31', 0, 'PeoTotalCompAmt',                 9000000,  0, false, '0009999001-26-000001', '2026-03-01');
 -- Form 13F institutional holdings (inst_managers, inst_holdings). Newer quarter 2026-09-30 has 1,201
 -- managers, the older quarter 2026-06-30 has 1,010, so both clear the 1,000-manager test.
 -- NVIDIA: 1,150 managers newer, 1,000 older. Palantir: 30 newer. Microsoft: 3 newer (managers 1-3),
