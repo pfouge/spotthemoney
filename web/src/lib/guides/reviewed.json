@@ -26,7 +26,7 @@
   "executive-pay-pay-versus-performance": {
     "reviewed": "2026-11-26",
     "covers": {
-      "web/src/lib/execpay.ts": "e318bd6910581daa",
+      "web/src/lib/execpay.ts": "a96c3207f19a5aba",
       "web/src/components/ExecutivePay.astro": "44ac94c8003349cf",
       "shared/src/execpay.ts": "c63a2489e2570fac"
     }

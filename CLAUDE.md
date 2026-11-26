@@ -4780,3 +4780,13 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   no way to tell which person a figure belongs to (would need the reader to store an order key
   per person, never a name); nothing on the on-demand pages; a held-back rule for figures that
   are plainly in the wrong scale.
+- **First production build (deploy 45731070298): the build log equals the SQL prediction on
+  every number** (4,950 and 17,215 rows; 15,648 cells for 821 companies; 9,897 from proxy
+  statements; 427 proxy-only companies; 801 cells in 403 years of 302 companies, 96 newest; 740
+  zero lines). `verify-execpay` reported 32 findings of 39,113, all one fault of the verifier:
+  a `peo_actually_paid_each` list whose first figure is negative starts with "-", so the CSV
+  writer's formula guard puts an apostrophe before it (16 rows on production), and the verifier
+  read that as not a number. The pages were right. Follow-up: the verifier undoes the guard
+  and checks it against the sign of the first figure, the column note says so, and the seed has
+  such a list (Microsoft, year ending June 30, 2025). **A seed case should put the awkward value
+  FIRST in a list as well as later.**
