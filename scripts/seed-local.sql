@@ -713,7 +713,8 @@ insert into exec_pay (cik, measure, tag, fiscal_year_end, value, accession, fram
   ('0009999001', 'peo_total',              'PeoTotalCompAmt',                 '2025-12-31', 10000000,  '0009999001-26-000001', 'CY2025');
 -- Executive pay read from proxy statements (exec_pay_proxy, 0042), merged with the rows above at build time.
 -- Microsoft (nothing in exec_pay): newest year two per-person lines of which one is zero (one figure);
--- the year before, two people (two figures in a cell, the two lines in different orders); the oldest
+-- the year before, two people (two figures in a cell; both actually-paid figures negative, so that
+-- list starts with a minus sign and the CSV cell carries the formula guard's apostrophe); the oldest
 -- filed without a person. Lockheed (exec_pay has the other officers only): the newest year has three
 -- per-person lines, one zero (two figures, so no tile and "2 figures" in the list), with one figure
 -- under $1,000 (marked); the year before one person. NVIDIA: a figure exec_pay lacks (other officers,
@@ -729,7 +730,7 @@ insert into exec_pay_proxy (cik, measure, fiscal_year_end, seq, tag, value, pers
   ('0000789019', 'neo_avg_actually_paid', '2026-06-30', 0, 'NonPeoNeoAvgCompActuallyPaidAmt', 14000000, 0, false, '0000789019-26-000050', '2026-10-20'),
   ('0000789019', 'peo_total',             '2025-06-30', 0, 'PeoTotalCompAmt',                 28000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
   ('0000789019', 'peo_total',             '2025-06-30', 1, 'PeoTotalCompAmt',                 12000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
-  ('0000789019', 'peo_actually_paid',     '2025-06-30', 0, 'PeoActuallyPaidCompAmt',          40000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
+  ('0000789019', 'peo_actually_paid',     '2025-06-30', 0, 'PeoActuallyPaidCompAmt',          -1500000, 2, true,  '0000789019-26-000050', '2026-10-20'),
   ('0000789019', 'peo_actually_paid',     '2025-06-30', 1, 'PeoActuallyPaidCompAmt',          -2000000, 2, true,  '0000789019-26-000050', '2026-10-20'),
   ('0000789019', 'neo_avg_total',         '2025-06-30', 0, 'NonPeoNeoAvgTotalCompAmt',        9000000,  0, false, '0000789019-26-000050', '2026-10-20'),
   ('0000789019', 'peo_total',             '2024-06-30', 0, 'PeoTotalCompAmt',                 26000000, 0, false, '0000789019-26-000050', '2026-10-20'),

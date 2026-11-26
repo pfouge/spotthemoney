@@ -162,3 +162,11 @@ test("the build-log line counts sources and several-figure years", () => {
   assert.match(line, /several principal executive figures: 1 cells in 1 company years of 1 companies, 1 of them in the newest year; 1 zero lines left out/);
   assert.match(line, /1 with no single principal executive total/);
 });
+
+test("the CSV: a list that starts with a negative figure carries the file's apostrophe for text beginning with a minus sign", () => {
+  const ys = mergePay([], [P("peo_actually_paid", "2025-12-31", 0, -1_500_000, true), P("peo_actually_paid", "2025-12-31", 1, -2_000_000, true), P("peo_total", "2025-12-31", 0, 9e6, true), P("peo_total", "2025-12-31", 1, 4e6, true)]);
+  const lines = toCsv(PAY_CSV_COLUMNS, ys.map((y) => ({ company: "Acme", cik: "0000000001", ticker: "ACM", pagePath: null, y }))).split("\r\n");
+  const head = lines[0]!.split(",");
+  assert.equal(lines[1]!.split(",")[head.indexOf("peo_actually_paid_each")], "'-1500000;-2000000");
+  assert.equal(lines[1]!.split(",")[head.indexOf("peo_total_each")], "9000000;4000000");
+});

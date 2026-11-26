@@ -27,7 +27,8 @@ const SAMPLE = args.includes("--sample") && Number(args[args.indexOf("--sample")
 const FILE = "executive-pay.csv";
 const COLUMNS = ["company", "cik", "ticker", "fiscal_year_end", "peo_total", "peo_actually_paid", "neo_avg_total", "neo_avg_actually_paid", "marked", "accession", "source_url", "page_url", "peo_figures", "peo_total_each", "peo_actually_paid_each", "read_from"];
 const PEO = ["peo_total", "peo_actually_paid"];
-const eachOf = (r, m) => (PEO.includes(m) && r[`${m}_each`] ? r[`${m}_each`].split(";").map(Number) : []);
+// A list whose first figure is negative starts with "-", so the file's formula guard puts an apostrophe before it (lib/csv.ts).
+const eachOf = (r, m) => (PEO.includes(m) && r[`${m}_each`] ? r[`${m}_each`].replace(/^'(?=-)/, "").split(";").map(Number) : []);
 const EACH_NOTE = /reports a figure for each of several people who held the principal executive officer post that year\. Every figure is shown, largest first, and they are never added together\./;
 const MEASURES = ["peo_total", "peo_actually_paid", "neo_avg_total", "neo_avg_actually_paid"];
 const LABEL = { peo_total: "Principal executive officer: total, Summary Compensation Table", peo_actually_paid: "Principal executive officer: compensation actually paid", neo_avg_total: "Other named executive officers, average: total", neo_avg_actually_paid: "Other named executive officers, average: compensation actually paid" };
@@ -100,7 +101,7 @@ const csv = parseCsv(file.text);
 ok(JSON.stringify(csv.head) === JSON.stringify(COLUMNS), `${FILE} columns are ${csv.head.join(",")}`);
 ok(csv.rows.length > 0, `${FILE} has no rows`);
 const byCik = new Map();
-let markedRows = 0, eachYears = 0, eachNewest = 0, proxyOnly = 0;
+let markedRows = 0, eachYears = 0, eachNewest = 0, proxyOnly = 0, negFirst = 0;
 const eachCos = new Set();
 const seen = new Set();
 for (const r of csv.rows) {
@@ -113,6 +114,8 @@ for (const r of csv.rows) {
     if (!xs.length) continue;
     ok(xs.length >= 2 && xs.every((v) => Number.isFinite(v) && v !== 0), `${r.company} ${r.fiscal_year_end} ${m}_each: "${r[`${m}_each`]}" is not two or more figures, none zero`);
     ok(xs.every((v, i) => i === 0 || xs[i - 1] >= v), `${r.company} ${r.fiscal_year_end} ${m}_each is not largest first`);
+    ok(r[`${m}_each`].startsWith("'") === (xs[0] < 0), `${r.company} ${r.fiscal_year_end} ${m}_each: the apostrophe guard and the sign of the first figure disagree`);
+    if (xs[0] < 0) negFirst++;
     ok(r[m] === "", `${r.company} ${r.fiscal_year_end}: ${m} holds a figure beside ${m}_each`);
   }
   const figs = Math.max(...PEO.map((m) => eachOf(r, m).length || (r[m] !== "" ? 1 : 0)));
@@ -206,6 +209,7 @@ addp(ciks.find((c) => byCik.get(c).length === 1));
 addp(ciks.find((c) => byCik.get(c).every((r) => r.peo_total === "")));
 for (const [c, rs] of byCik) if (rs.slice(0, YEARS).some((r) => r.marked === "true")) addp(c);
 // Companies with a several-figure year in their table: the first six, two of them with it in the newest year.
+for (const [c, rs] of byCik) if (rs.slice(0, YEARS).some((r) => PEO.some((m) => eachOf(r, m)[0] < 0))) { addp(c); break; }
 { let n = 0, nn = 0; for (const [c, rs] of byCik) { const inTable = rs.slice(0, YEARS).some((r) => Number(r.peo_figures) > 1), newest1 = Number(rs[0].peo_figures) > 1; if (newest1 && nn < 2) { nn++; addp(c); } else if (inTable && n < 4) { n++; addp(c); } } }
 for (let i = 0; pick.size < Math.max(SAMPLE, 4) && i < ciks.length; i += Math.max(1, Math.floor(ciks.length / SAMPLE))) addp(ciks[i]);
 let pages = 0, stockPages = 0, marksSeen = 0, noTile = 0, eachCellsSeen = 0;
@@ -357,5 +361,5 @@ try {
 
 console.log(failures
   ? `verify-execpay: ${failures} of ${checks} checks failed`
-  : `verify-execpay: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} company years for ${byCik.size} companies, ${proxyOnly} of them only from proxy statements; several principal executive figures in ${eachYears} company years of ${eachCos.size} companies, ${eachNewest} of them in the newest year, ${eachCellsSeen} such cells read on pages; ${markedRows} rows with a marked figure, ${marksSeen} marks read on pages, ${noTile} page without the glance tile; ${insiderPages} insider pages carry no section; ${without} companies without figures have no section; browser: ${browserChecks})`);
+  : `verify-execpay: ${checks} checks pass on ${pages} company pages and ${stockPages} stock pages (${csv.rows.length} company years for ${byCik.size} companies, ${proxyOnly} of them only from proxy statements; several principal executive figures in ${eachYears} company years of ${eachCos.size} companies, ${eachNewest} of them in the newest year, ${eachCellsSeen} such cells read on pages, ${negFirst} lists in the file start with a negative figure; ${markedRows} rows with a marked figure, ${marksSeen} marks read on pages, ${noTile} page without the glance tile; ${insiderPages} insider pages carry no section; ${without} companies without figures have no section; browser: ${browserChecks})`);
 process.exit(failures ? 1 : 0);

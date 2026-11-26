@@ -374,7 +374,7 @@ export const PAY_CSV_COLUMNS: Column<PayCsvRow>[] = [
   { key: "page_url", about: "The company's page on this site", get: (r) => r.pagePath },
   { key: "peo_figures", about: "How many principal executive officer figures the company reports for the year: 1 as a rule, more when the post changed hands, 0 when none is on file", get: (r) => peoFigures(r.y) },
   { key: "peo_total_each", about: "Only when peo_figures is above 1: each person's total, dollars, largest first, separated by semicolons (no person is named; never added together; peo_total is then empty)", get: (r) => eachOf(r.y, "peo_total").map((v) => String(v)).join(";") || null },
-  { key: "peo_actually_paid_each", about: "Only when peo_figures is above 1: each person's compensation actually paid, dollars, largest first, separated by semicolons (ordered on its own, so positions do not match peo_total_each)", get: (r) => eachOf(r.y, "peo_actually_paid").map((v) => String(v)).join(";") || null },
+  { key: "peo_actually_paid_each", about: "Only when peo_figures is above 1: each person's compensation actually paid, dollars, largest first, separated by semicolons (ordered on its own, so positions do not match peo_total_each; when the first figure is negative the cell starts with this file's apostrophe for text that begins with a minus sign)", get: (r) => eachOf(r.y, "peo_actually_paid").map((v) => String(v)).join(";") || null },
   { key: "read_from", about: "Where the year's figures were read: frames (the SEC's XBRL frames data), proxy (the company's proxy statement) or both", get: (r) => r.y.from ?? "frames" },
 ];
 // The list's own download has the count of figures, not each figure and not the source: the data file it is made from carries neither.
