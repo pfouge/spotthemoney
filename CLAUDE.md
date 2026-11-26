@@ -4716,3 +4716,67 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   last steps wrote a false `rc=1 v-a11y` and an early `GATE DONE` into the new summary). The first
   `reseed.sh` of a fresh workspace must run AFTER `npm ci` (the migration script needs the
   `postgres` package).
+
+### Executive pay: figures from proxy statements are shown; a year with several people keeps every figure apart (2026-11-26, scheduled parity run) — queue item (m2b)
+
+- **What.** "Executive pay, as filed" (stock and company pages), `/executive-pay/`, the pay column of
+  the financials screener and `executive-pay.csv` now read two tables: `exec_pay` (XBRL frames) and
+  `exec_pay_proxy` (each company's own proxy statement, stored since PR #99). No migration, no data
+  job change, no new file. Production before the change: 394 companies with figures; expected
+  after: 821 of about 1,000 (SQL, 2026-11-26).
+- **Rules** (`mergePay`, `proxyFigure` in `web/src/lib/execpay.ts`; tests
+  `scripts/execpay-merge.test.ts`; the loader `loadPay` in `execpay-build.ts` reads the proxy table
+  in its own try/catch, so a database without it still shows the frames figures):
+  - Per measure and fiscal year: the frames figure when there is one; otherwise the proxy
+    statement's. Checked on production first: where both have a figure 4,880 of 4,888 are equal,
+    and the 8 that differ are one company's figures rounded to thousands in the proxy file, so
+    frames wins.
+  - A proxy row filed without a person is the figure. Rows filed per person (`dimensioned`): **a
+    zero among them is an empty line of the table** (a proxy statement repeats every person's line
+    in every year and fills the years a person did not hold the post with zero: 740 such lines on
+    production) and is left out; one figure left is the year's figure; all zero is a figure of zero.
+  - **Two or more left: the year has several principal executive figures** (the post changed
+    hands: 403 company years of 302 companies on production, 96 of them the newest year). They go
+    in `PayYear.each[measure]`, largest first, and `values` has NO entry for that measure, so the
+    glance tile, the list's sort and size filter and the financials screener's pay column never
+    read one of them as "the" figure. Never added together, never named (the table stores no
+    person). **The two lines of a year are each ordered by size on their own** (`seq` is per
+    measure, not per person), and every note says so.
+  - Marks ("a": $1 billion or more, or a total under $1,000) apply to figures inside such a cell.
+    Nothing is held back, as before. Known on production: StandardAero's proxy figures are a
+    thousand times too large (filed in thousands) and show marked; Tesla's and NuScale's large
+    figures were already shown from frames.
+- **Pages.** `ExecutivePay.astro`: a several-figure cell is `td.pay-each[data-each="a;b"]` with one
+  `span.pay-one[data-one]` per figure, the mark "b" (`data-pay-each-mark`) and one note
+  (`p[data-pay-each-note][data-cells]`, `PAY_EACH_NOTE`). `/executive-pay/`: such a row shows a
+  count ("2 figures", `td[data-each]`, linked to the company page's section), a sentence over the
+  table (`p[data-pay-each-count]`) and a paragraph in "What this table shows". The data file's rows
+  have two optional entries at the end (how many figures for the total and for actually paid); the
+  top-level layout is unchanged. `PAY_CAVEAT` and `payCoverageSentence` no longer say a company
+  with two principal executives can be missing.
+- **CSV.** `executive-pay.csv` gained four columns at the end: `peo_figures` (0, 1 or more),
+  `peo_total_each`, `peo_actually_paid_each` (semicolon-separated, largest first, only when more
+  than one; the single-figure column is then empty) and `read_from` (frames, proxy, both). The
+  list's own download gains `peo_figures` only.
+- **Build log** line `[web] executive pay (Pay Versus Performance): F frames rows and P
+  proxy-statement rows read; C measure and year cells for N companies ...; sources: a figures from
+  frames, b from proxy statements, c companies only from proxy statements; several principal
+  executive figures: d cells in e company years of f companies, g of them in the newest year; h
+  zero lines left out`. Expected on production (SQL, 2026-11-26): 4,950 and 17,215 rows; 15,648
+  cells for 821 companies; 4,950 / 9,897 / 427; 801 cells in 403 years of 302 companies, 96 newest;
+  740 zero lines. The last line of `verify-execpay` (in the deploy's warning-only step) prints
+  companies, proxy-only companies and the several-figure counts from the CSV: **the two must
+  agree after a deploy.**
+- **Verifier.** `verify-execpay`: the four new columns against its own rules; every several-figure
+  cell on sampled pages (figures, order, marks, never the sum), the note and its count; the list's
+  count cells, sentence and data file; the methodology's wording. It always reads up to six
+  companies with such a year. The seed has the cases (Microsoft, Lockheed, NVIDIA, Palantir).
+- Methodology `#executive-pay` (two sources; `#executive-pay-several`), guide
+  `executive-pay-pay-versus-performance` (a paragraph in `#site`, `#limits` rewritten, one FAQ; the
+  coverage share comes from `ctx.payCoverage`). `how-to-cite-and-reuse` re-read, unchanged.
+- **The Write tool again turned `—`-style escapes in a new test file into the real
+  characters**; fixed with a script that builds the backslash with `chr(92)`.
+- Not done: the list does not print the figures of a several-figure year (a count and a link);
+  no way to tell which person a figure belongs to (would need the reader to store an order key
+  per person, never a name); nothing on the on-demand pages; a held-back rule for figures that
+  are plainly in the wrong scale.

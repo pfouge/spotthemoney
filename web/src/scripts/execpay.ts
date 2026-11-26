@@ -4,7 +4,7 @@
 // (scripts/dom.ts). Nothing is sent anywhere and nothing is stored in the browser.
 import { h } from "./dom";
 import {
-  unpackPayHub, payScreen, paySummaryLine, payViewCsv, payViewCsvName, parsePayHash, toPayHash, isPayViewHash, firstPayDir, payMoney, payMarked, payFilingUrl, shortDate,
+  unpackPayHub, eachCellText, payScreen, paySummaryLine, payViewCsv, payViewCsvName, parsePayHash, toPayHash, isPayViewHash, firstPayDir, payMoney, payMarked, payFilingUrl, shortDate,
   NO_PAY_FILTER, DEFAULT_PAY_VIEW, DEFAULT_PER, PAY_DATA, PAY_KEYS, PAY_MARK_NOTE, MIN_STEPS,
   type PayHubData, type PayHubRow, type PayView, type PayFilter, type PaySortKey,
 } from "../lib/execpay";
@@ -58,6 +58,8 @@ async function start(root: HTMLElement): Promise<void> {
       h("td", { class: "mono" }, shortDate(r.fye)),
       ...PAY_KEYS.map((k) => {
         const v = r.v[k];
+        const several = k === "peo_total" || k === "peo_actually_paid" ? r.each[k] : 0;
+        if (several > 0) return h("td", { class: "num", "data-pay": k, "data-each": String(several) }, r.c.path ? h("a", { href: `${r.c.path}#executive-pay` }, eachCellText(several)) : eachCellText(several));
         const cls = ["num", v != null && v < 0 ? "pc-neg" : "", k === "peo_total" ? "strong" : ""].filter(Boolean).join(" ");
         return h("td", { class: cls, "data-pay": k }, v == null ? "—" : payMoney(v), payMarked(k, v) ? h("sup", { class: "pc-mark", title: PAY_MARK_NOTE }, " a") : null);
       }),

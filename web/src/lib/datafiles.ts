@@ -59,7 +59,7 @@ export const WORKING_FILES: WorkingFile[] = [
     about: "Every Form 8-K report filed in the last 12 months by a company with a page here: one short list per report with its filing and event dates, item numbers and the address of the report at the SEC. The CSV file has every report on record.",
     top: ["built", "divisions", "companies", "rows"] },
   { path: "/data/executive-pay.json", title: "Executive pay rows", usedBy: "/executive-pay/", instead: "/downloads/executive-pay.csv",
-    about: "One short list per company with executive pay figures: its newest fiscal year as the company tagged it, the four figures in dollars and the filing they came from. The CSV file has every fiscal year on file.",
+    about: "One short list per company with executive pay figures: its newest fiscal year as the company tagged it, the four figures in dollars and the filing they came from; where a year has principal executive figures for several people, how many there are in place of an amount. The CSV file has every fiscal year on file.",
     top: ["built", "divisions", "companies", "rows", "pages"] },
   { path: "/data/planned-sales.json", title: "Planned sales hub rows", usedBy: "/planned-sales/", instead: "/downloads/planned-sales-form144.csv",
     about: "One short list per Form 144 notice filed in the last 12 months about a company with a page here, with companies and sellers written once. A stated value held back by the over-a-million-dollars-a-share check is left out of this file; the CSV file keeps it.",
