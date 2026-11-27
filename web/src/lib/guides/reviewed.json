@@ -86,13 +86,13 @@
     }
   },
   "how-to-cite-and-reuse": {
-    "reviewed": "2026-11-26",
+    "reviewed": "2026-11-27",
     "covers": {
       "web/src/lib/cite.ts": "27f70b9f4d8a4f57",
       "web/src/scripts/share.ts": "d701447fb386a23e",
       "web/src/components/SourcePanel.astro": "bd43a9bfb0d8c7e2",
       "web/src/pages/terms.astro": "717bde0d44213bfc",
-      "web/src/lib/downloads.ts": "4dd8b3a8a447ad2d",
+      "web/src/lib/downloads.ts": "ab99cd334d814ab1",
       "web/src/lib/csv.ts": "9e96e24e5bc8a7c8",
       "web/src/pages/downloads/index.astro": "e6d85649835449f9",
       "web/src/components/DownloadCsv.astro": "73f952882951a423",
@@ -192,14 +192,14 @@
     }
   },
   "lobbying-disclosure-reports": {
-    "reviewed": "2026-11-24",
+    "reviewed": "2026-11-27",
     "covers": {
       "ingest/src/sources/senate_lda.ts": "4f288b42fab3bbdc",
       "web/src/pages/lobbying/index.astro": "07316fca4522d4eb",
       "web/src/lib/lobbyissues.ts": "11ac72690bf98390",
       "web/src/pages/lobbying-issues/index.astro": "1964da964f00a214",
       "web/src/pages/lobbying-issues/[slug].astro": "af8ca15117d91a51",
-      "web/src/lib/lobbygifts.ts": "c02e8630901b7b5e",
+      "web/src/lib/lobbygifts.ts": "983ac7713ea79864",
       "web/src/pages/lobbyist-contributions/index.astro": "cb483e5440050222"
     }
   },

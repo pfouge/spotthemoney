@@ -4790,3 +4790,19 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
   and checks it against the sign of the first figure, the column note says so, and the seed has
   such a list (Microsoft, year ending June 30, 2025). **A seed case should put the awkward value
   FIRST in a list as well as later.**
+
+### Lobbyist contribution files cut into parts; three freshness data dates (2026-11-27, scheduled parity run) — queue item (m1), LD-203 half
+
+- **Fault.** The LD-203 catch-up finished on 2026-11-26 (`senate_lda_contributions` `catch_up_complete`), and
+  `lobbyist-contributions-2025-mid-year.csv` grew to 26.9 MiB. Cloudflare refuses any asset over 25 MiB, so the
+  closing deploys of that day's ingest and Congress runs failed at upload (the site stayed on the 18:40 UTC build).
+- **Rule** (`writeCsvFiles` in `web/src/lib/lobbygifts-build.ts`): a year that fits in `CSV_MAX_BYTES` (15 MiB) is one
+  file; otherwise one file per half-year; a half-year past the limit now rolls into `...-part-1.csv`, `-part-2.csv`
+  (filing order; a filing can straddle two parts). `CsvFile.part` carries the number; the downloads title says "part N".
+  `STM_LOBBY_CSV_MAX_BYTES` lowers the limit for tests only (1500 on the seed gives five parts).
+- **Verifiers.** `verify-lobbycontrib` and `verify-hubs` matched only `lobbyist-contributions-<year>.csv`, so a split year
+  read as "dataset empty". Both now take every lobbyist-contributions file the downloads page lists;
+  `verify-lobbycontrib` also checks each is under 25 MiB.
+- **Freshness.** `scripts/freshness-check.mjs` has data dates for LD-203 (`max(posted_at)`, 21 days), 8-K events
+  (`max(filed)`, 6 days) and roll-call votes (`max(voted_at)`, 45 days). Outside spending and assistance are still by run.
+- Guide `how-to-cite-and-reuse` names the split (re-read, accepted); `lobbying-disclosure-reports` re-read, unchanged.

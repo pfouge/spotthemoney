@@ -82,12 +82,19 @@ const CHECKS = [
   // a backlog is being worked through counts as alive; with nothing left it is a quick success.
   { code: "usaspending_details", label: "USAspending award details (by id)", runDays: 2 },
   // Seven sources added 2026-11-22 (migrations 0033 to 0039). Listed by run only until each first
-  // catch-up has reached today; add a data date then.
-  { code: "senate_lda_contributions", label: "Lobbyist contributions (LD-203)", runDays: 2 },
-  { code: "sec_company_events", label: "SEC company events (8-K)", runDays: 2 },
+  // catch-up has reached today; add a data date then (done for LD-203, 8-K and votes, 2026-11-26).
+  // LD-203: catch-up complete 2026-11-26; reports are posted every weekday, most near the
+  // July 30 and January 30 deadlines, so 21 days is a stall, not a quiet spell.
+  { code: "senate_lda_contributions", label: "Lobbyist contributions (LD-203)", runDays: 2, dataDays: 21,
+    newest: `select max(posted_at)::date from lobby_contribution_filings` },
+  // 8-K reports are filed every business day.
+  { code: "sec_company_events", label: "SEC company events (8-K)", runDays: 2, dataDays: 6,
+    newest: `select max(filed) from company_events` },
   { code: "sec_exec_pay", label: "SEC executive pay (XBRL frames)", runDays: 2 },
   { code: "sec_proxy_pay", label: "SEC executive pay (proxy statements)", runDays: 2 },
-  { code: "congress_votes", label: "House and Senate roll-call votes", runDays: 2 },
+  // Roll calls stop in recesses (August runs about five weeks); the site hides votes at 60 days.
+  { code: "congress_votes", label: "House and Senate roll-call votes", runDays: 2, dataDays: 45,
+    newest: `select max(voted_at)::date from congress_votes` },
   { code: "fec_independent_expenditures", label: "FEC independent expenditures", runDays: 2 },
   { code: "usaspending_assistance", label: "USAspending grants, loans, direct payments", runDays: 2 },
   { code: "fec_committees", label: "FEC committees", runDays: 8 },
