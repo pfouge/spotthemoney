@@ -47,7 +47,7 @@ export interface RecipientRow { name: string; role: "honoree" | "payee"; items: 
 export interface YearStat { year: number; items: number; filers: number; amount: number }
 export interface Subject { slug: string; years: YearStat[]; items: ItemRow[] }
 export interface CompanyContrib { companyId: number; registrants: string[]; years: YearStat[]; items: ItemRow[] }
-export interface CsvFile { name: string; year: number; period: string | null; rows: number; bytes: number; file: string; updated: string | null }
+export interface CsvFile { name: string; year: number; period: string | null; part: number | null; rows: number; bytes: number; file: string; updated: string | null }
 export interface LobbyContribData {
   available: boolean;
   newestYear: number | null;

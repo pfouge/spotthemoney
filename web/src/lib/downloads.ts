@@ -498,8 +498,8 @@ async function build(): Promise<Downloads> {
   // Lobbyist contributions (Form LD-203): files streamed to disk by lib/lobbygifts-build.ts.
   for (const cf of m.lobbyContrib.csv) {
     files.push({ path: `/downloads/${cf.name}`, name: cf.name, group: "washington", kind: "lobbycontrib",
-      title: `Lobbyist contributions, ${cf.year}${cf.period ? `, ${cf.period.replace(/_/g, " ")}` : ""}`,
-      about: `One row per item on the LD-203 reports lobbyists and lobbying firms filed for ${cf.year}${cf.period ? ` (${cf.period.replace(/_/g, " ")})` : ""}, names as typed by the filer. Earlier versions of an amended report are kept with counted = false.`,
+      title: `Lobbyist contributions, ${cf.year}${cf.period ? `, ${cf.period.replace(/_/g, " ")}` : ""}${cf.part ? `, part ${cf.part}` : ""}`,
+      about: `One row per item on the LD-203 reports lobbyists and lobbying firms filed for ${cf.year}${cf.period ? ` (${cf.period.replace(/_/g, " ")})` : ""}${cf.part ? `, part ${cf.part} of the period's file (a period too large for one file is cut into parts in filing order)` : ""}, names as typed by the filer. Earlier versions of an amended report are kept with counted = false.`,
       rows: cf.rows, updated: cf.updated, bytes: cf.bytes, columns: LOBBY_CSV_COLUMNS.map((c) => ({ key: c.key, about: c.about })), body: () => readCsvFile(cf) });
   }
 

@@ -132,7 +132,9 @@ else {
   ok(!!built, "week section states its build day");
   const events = await file("company-events.csv"), planned = await file("planned-sales-form144.csv"), holders = await file("large-holders-13d-13g.csv");
   const votes = await file("congress-votes.csv"), outside = await file("independent-expenditures.csv"), assist = await file("federal-assistance.csv");
-  const lcFiles = (await Promise.all([year - 1, year, year + 1].map((y) => file(`lobbyist-contributions-${y}.csv`)))).filter(Boolean).flat();
+  // Every lobbyist-contributions file the downloads page lists (one per year, or split by period and part).
+  const lcNames = [...new Set([...(await get("/downloads/")).text.matchAll(/lobbyist-contributions-\d{4}(?:-[a-z0-9-]+?)?\.csv/g)].map((m) => m[0]))];
+  const lcFiles = (await Promise.all(lcNames.map((n) => file(n)))).filter(Boolean).flat();
   const count = {
     events: events?.filter((r) => inWin(r.filed, built)).length,
     planned: planned?.filter((r) => inWin(r.filed_date, built)).length,

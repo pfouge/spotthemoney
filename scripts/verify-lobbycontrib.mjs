@@ -36,7 +36,8 @@ const honoree = (raw) => {
 };
 
 const idx = await get("/downloads/");
-const files = [...new Set([...idx.text.matchAll(/lobbyist-contributions-(\d{4})\.csv/g)].map((m) => m[1]))].sort();
+// Every lobbyist-contributions file the downloads page lists: one per year, or a year split by period and a big period by part.
+const files = [...new Set([...idx.text.matchAll(/lobbyist-contributions-(\d{4}(?:-[a-z0-9-]+?)?)\.csv/g)].map((m) => m[1]))].sort();
 const hub = await get("/lobbyist-contributions/");
 if (!files.length) {
   ok(!/data-lc-hub/.test(hub.text) || /noindex/.test(hub.text), "no CSV files, so the hub is empty and noindex");
@@ -44,7 +45,7 @@ if (!files.length) {
   console.log(`verify-lobbycontrib: dataset empty in this build; ${checks} checks, ${failures} failures`); process.exit(failures ? 1 : 0);
 }
 let rows = [];
-for (const y of files) { const r = await get(`/downloads/lobbyist-contributions-${y}.csv`); ok(r.status === 200, `CSV ${y} downloads`); rows.push(...parseCsv(r.text)); }
+for (const y of files) { const r = await get(`/downloads/lobbyist-contributions-${y}.csv`); ok(r.status === 200, `CSV ${y} downloads`); ok(Buffer.byteLength(r.text) <= 25 * 1024 * 1024, `CSV ${y} is under 25 MiB`); rows.push(...parseCsv(r.text)); }
 const today = new Date().toISOString().slice(0, 10);
 ok(rows.every((r) => !r.date || r.date <= today), "no item dated in the future");
 ok(rows.every((r) => r.amount === "" || /^-?\d+(\.\d+)?$/.test(r.amount)), "amounts are numbers or blank");

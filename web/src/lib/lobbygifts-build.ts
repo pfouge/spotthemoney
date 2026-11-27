@@ -5,9 +5,9 @@
 // aggregates; the lists are SQL with a limit; the one pass over every item is the CSV, which is
 // streamed from a cursor straight into temporary files (flat memory). downloads.ts reads those
 // files when it needs the text.
-import { createWriteStream, mkdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
+import { createWriteStream, mkdirSync, readFileSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { once } from "node:events";
 import { normalizeOrgName } from "@stm/shared";
 import type { Company, Person } from "./flagship-core";
@@ -176,6 +176,8 @@ export async function loadLobbyContrib(sql: Sql, people: Iterable<Person>, compa
   return out;
 }
 
+// Tests only: a smaller limit exercises the year, period and part splits on the seed.
+const MAX_BYTES = Number(process.env.STM_LOBBY_CSV_MAX_BYTES) || CSV_MAX_BYTES;
 const HEADER = BOM + CSV_COLUMNS.map((c) => c.key).join(",") + "\r\n";
 /** One streaming pass: every item of every filing, counted or not, written to a file per year (split by period if a year passes CSV_MAX_BYTES). */
 async function writeCsvFiles(sql: Sql, dir: string, urlOf: (h: string | null, payee: string | null) => string | null): Promise<CsvFile[]> {
@@ -186,46 +188,55 @@ async function writeCsvFiles(sql: Sql, dir: string, urlOf: (h: string | null, pa
       from lobby_contribution_items i join lobby_contribution_filings f using (filing_uuid)
      where f.filing_year is not null order by f.filing_year, f.filing_period, f.filing_uuid, i.seq`);
   // First pass counts bytes per year; we write every year to its own file and split by period afterwards if needed.
-  const files = new Map<string, { path: string; year: number; period: string | null; rows: number; bytes: number; updated: string | null; ws: ReturnType<typeof createWriteStream> }>();
+  const files = new Map<string, { path: string; year: number; period: string | null; part: number; rows: number; bytes: number; updated: string | null; ws: ReturnType<typeof createWriteStream> }>();
+  const done: (typeof files extends Map<string, infer V> ? V : never)[] = [];
   const today = new Date().toISOString().slice(0, 10);
-  const open = (key: string, year: number, period: string | null) => {
-    const path = join(dir, `${key}.csv`);
+  const open = (key: string, year: number, period: string | null, part = 1) => {
+    const path = join(dir, part > 1 ? `${key}-part-${part}.csv` : `${key}.csv`);
     const ws = createWriteStream(path); ws.write(HEADER);
-    const f = { path, year, period, rows: 0, bytes: Buffer.byteLength(HEADER), updated: null as string | null, ws }; files.set(key, f); return f;
+    const f = { path, year, period, part, rows: 0, bytes: Buffer.byteLength(HEADER), updated: null as string | null, ws }; files.set(key, f); return f;
   };
   // To keep memory flat we write per period files first (a period is a fraction of a year), then merge small ones.
   for await (const batch of q.cursor(2000)) {
     for (const r of batch as (ItemSql & { year: number; period: string | null; filer_type: string | null; registrant_name: string | null; lobbyist_name: string | null; contribution_type: string | null; contributor_name: string | null; payee_name: string | null; honoree_name: string | null; filing_uuid: string })[]) {
       const key = `lobbyist-contributions-${r.year}-${periodSlug(r.period)}`;
-      const f = files.get(key) ?? open(key, r.year, r.period);
+      let f = files.get(key) ?? open(key, r.year, r.period);
       const date = r.date && r.date <= today ? r.date : "";
       const cells = [r.year, r.period ? periodLabel(r.period) : "", r.filer_type ?? "", cleanText(r.registrant_name, 300), cleanText(r.lobbyist_name, 300), cleanText(r.contribution_type, 200), cleanText(r.contributor_name, 300),
         cleanText(r.payee_name, 300), cleanText(r.honoree_name, 300), r.amount, date, r.posted, counted.has(r.filing_uuid), urlOf(r.honoree_name, r.payee_name), r.filing_uuid, r.source_url];
       const line = cells.map((c) => csvCell(c as string | number | boolean | null)).join(",") + "\r\n";
+      // A period past CSV_MAX_BYTES rolls into numbered parts (Cloudflare serves no file over 25 MiB).
+      if (f.rows > 0 && f.bytes + Buffer.byteLength(line) > MAX_BYTES) {
+        f.ws.end(); await once(f.ws, "close"); done.push(f);
+        f = open(key, r.year, r.period, f.part + 1);
+      }
       if (!f.ws.write(line)) await once(f.ws, "drain");
       f.rows++; f.bytes += Buffer.byteLength(line);
       if (date && (!f.updated || date > f.updated)) f.updated = date;
     }
   }
-  for (const f of files.values()) { f.ws.end(); await once(f.ws, "close"); }
-  // One file per year when it fits; a year past the limit stays split by period.
-  const byYear = new Map<number, typeof files extends Map<string, infer V> ? V[] : never>();
-  for (const f of files.values()) { const l = byYear.get(f.year) ?? []; l.push(f); byYear.set(f.year, l); }
+  for (const f of files.values()) { f.ws.end(); await once(f.ws, "close"); done.push(f); }
+  // A period that rolled over: its first file becomes part 1, so every piece of it is named the same way.
+  const multi = new Set(done.filter((f) => f.part > 1).map((f) => `${f.year}|${f.period}`));
+  for (const f of done) if (f.part === 1 && multi.has(`${f.year}|${f.period}`)) { const to = f.path.replace(/\.csv$/, "-part-1.csv"); renameSync(f.path, to); f.path = to; }
+  // One file per year when it fits; a year past the limit stays split by period (and a big period by part).
+  const byYear = new Map<number, typeof done>();
+  for (const f of done) { const l = byYear.get(f.year) ?? []; l.push(f); byYear.set(f.year, l); }
   const list: CsvFile[] = [];
   for (const [year, fs] of byYear) {
-    fs.sort((x, y) => periodRank(x.period) - periodRank(y.period));
+    fs.sort((x, y) => periodRank(x.period) - periodRank(y.period) || x.part - y.part);
     const total = fs.reduce((a, f) => a + statSync(f.path).size, 0);
-    if (total <= CSV_MAX_BYTES) {
+    if (total <= MAX_BYTES) {
       const path = join(dir, `lobbyist-contributions-${year}.csv`);
       const ws = createWriteStream(path); ws.write(HEADER);
       for (const f of fs) { const text = readFileSync(f.path, "utf8").slice(HEADER.length); if (!ws.write(text)) await once(ws, "drain"); unlinkSync(f.path); }
       ws.end(); await once(ws, "close");
-      list.push({ name: `lobbyist-contributions-${year}.csv`, year, period: null, rows: fs.reduce((a, f) => a + f.rows, 0), bytes: statSync(path).size, file: path, updated: fs.reduce<string | null>((a, f) => (f.updated && (!a || f.updated > a) ? f.updated : a), null) });
+      list.push({ name: `lobbyist-contributions-${year}.csv`, year, period: null, part: null, rows: fs.reduce((a, f) => a + f.rows, 0), bytes: statSync(path).size, file: path, updated: fs.reduce<string | null>((a, f) => (f.updated && (!a || f.updated > a) ? f.updated : a), null) });
     } else {
-      for (const f of fs) list.push({ name: `lobbyist-contributions-${year}-${periodSlug(f.period)}.csv`, year, period: f.period, rows: f.rows, bytes: statSync(f.path).size, file: f.path, updated: f.updated });
+      for (const f of fs) list.push({ name: basename(f.path), year, period: f.period, part: multi.has(`${f.year}|${f.period}`) ? f.part : null, rows: f.rows, bytes: statSync(f.path).size, file: f.path, updated: f.updated });
     }
   }
-  return list.sort((a, b) => b.year - a.year || periodRank(b.period) - periodRank(a.period));
+  return list.sort((a, b) => b.year - a.year || periodRank(b.period) - periodRank(a.period) || (a.part ?? 0) - (b.part ?? 0));
 }
 
 export const readCsvFile = (f: CsvFile) => readFileSync(f.file, "utf8");
