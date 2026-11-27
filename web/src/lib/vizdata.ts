@@ -8,7 +8,7 @@
 //     withholding are not a view on the stock. Timelines and "who is trading" show every transaction.
 //   · dates are the TRADE date where known, else the disclosure date.
 
-import { type Flagship, type Txn, type Person, type Security, type Company, isLate, personPath, securityPath, CONGRESS_DEADLINE_DAYS, FORM4_DEADLINE_DAYS } from "./flagship";
+import { type Flagship, type Txn, type Person, type Security, type Company, isLate, personPath, securityPath, CONGRESS_DEADLINE_DAYS, FORM4_DEADLINE_DAYS } from "./flagship-core";
 
 const DAY = 86400000;
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);

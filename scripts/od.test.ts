@@ -80,3 +80,21 @@ test("an entity with no visible rows gets the empty answer, not a crash", () => 
   assert.equal(p.txns.length, 0);
   assert.match(answerText(p, "Acme", "", figures(p)), /no Form 4 transactions on record/);
 });
+
+test("a stock page feeds the chart deck: the security's own rows and each filing's shares held after", async () => {
+  const { tradePrices, holdingsSeries, whoIsTrading } = await import("../web/src/lib/vizdata.ts");
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = [
+    row(1, { txn: today, disc: today, owned: 5000 }),
+    row(2, { filing: 1, txn: today, disc: today, deriv: true, code: "M", owned: 99 }),
+    row(3, { txn: today, disc: today, side: "sell", code: "S", owned: 4000 }),
+  ];
+  const p = buildOd(doc("stock", rows, { filings: filingsFor(rows, `${today}T12:00:00Z`) }));
+  const s = p.security!;
+  assert.equal(s.insiderTxns.length, 3);
+  assert.equal(p.model.filings.get(1)!.heldAfter, 5000, "a derivative row's holdings never stand for the filing");
+  assert.equal(p.model.filings.get(3)!.heldAfter, 4000);
+  assert.equal(tradePrices(p.model, s).length, 2);
+  assert.deepEqual(holdingsSeries(p.model, s).map((h) => h.points.map((x) => x.value)), [[5000, 4000]]);
+  assert.equal(whoIsTrading(p.model, p.txns)[0]!.label, "Doe Jane");
+});

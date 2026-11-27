@@ -9,7 +9,7 @@ import GroupBar from "../../components/GroupBar.astro";
 import { monthlyCounts, monthlyDirection } from "../../lib/glancespark";
 import PageGroup from "../../components/PageGroup.astro";
 import { shownYears, shownQuarters } from "../../lib/financials";
-import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, industryOf, insiderPeriods, isOpenSale, isOpenBuy } from "../../lib/entity";
+import { insiderRows, memberRows, codeRows, relatedTickers, sizeOf, industryOf, insiderPeriods, isOpenSale, isOpenBuy, monthlyOpenMarket } from "../../lib/entity";
 import EntityActions from "../../components/EntityActions.astro";
 import { monthBarsSvg, PHONE_W } from "../../lib/viz";
 import { industryHref } from "../../lib/industries";
@@ -131,12 +131,7 @@ const periods = insider.length ? insiderPeriods(insider) : [];
 const signed = (n: number, f: (x: number) => string) => (n === 0 ? f(0) : `${n > 0 ? "+" : "\u2212"}${f(Math.abs(n))}`);
 const tone = (n: number) => (n > 0 ? "num pos" : n < 0 ? "num neg" : "num");
 // Open-market purchases (code P) and sales (code S) by month of disclosure, last 12 months, from rows already on the page.
-const monthBars = (() => {
-  const end = new Date(model.builtAt); const out: { key: string; label: string; up: number; down: number }[] = [];
-  for (let i = 11; i >= 0; i--) { const d = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1)); out.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }), up: 0, down: 0 }); }
-  for (const t of insider) { const m = out.find((x) => x.key === (t.disclosedAt ?? "").slice(0, 7)); if (!m) continue; if (isOpenBuy(t)) m.up += t.value ?? 0; else if (isOpenSale(t)) m.down += t.value ?? 0; }
-  return out;
-})();
+const monthBars = monthlyOpenMarket(insider, new Date(model.builtAt));
 const monthSvg = monthBarsSvg(monthBars, { label: `${s.ticker}: open-market insider purchases above the line and sales below it, by month of disclosure, last 12 months` });
 const periodFig = (days: number) => periods.find((p) => p.days === days);
 const anyUnpriced = periods.some((p) => p.unpriced > 0);

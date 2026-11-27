@@ -46,6 +46,13 @@ export function yearRows(txns: Txn[]): YearRow[] {
 // ── open-market buying and selling over a period (stock pages) ─────────────────────────────
 /** Open-market sale (Form 4 code S). Shares withheld for tax (F) and sales back to the company (D) are not counted here. */
 export const isOpenSale = (t: Txn) => isForm4(t) && t.code === "S" && t.side === "sell";
+/** Open-market purchase (up) and sale (down) dollars by month of disclosure, the 12 months ending `end` (the stock pages' month bars). */
+export function monthlyOpenMarket(txns: Txn[], end: Date): { key: string; label: string; up: number; down: number }[] {
+  const out: { key: string; label: string; up: number; down: number }[] = [];
+  for (let i = 11; i >= 0; i--) { const d = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - i, 1)); out.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }), up: 0, down: 0 }); }
+  for (const t of txns) { const m = out.find((x) => x.key === (t.disclosedAt ?? "").slice(0, 7)); if (!m) continue; if (isOpenBuy(t)) m.up += t.value ?? 0; else if (isOpenSale(t)) m.down += t.value ?? 0; }
+  return out;
+}
 /** The periods on a stock's page: days counted back from the build date, by the date a filing was disclosed. */
 export const INSIDER_PERIODS: { days: number; label: string }[] = [{ days: 90, label: "Last 3 months" }, { days: 365, label: "Last 12 months" }];
 export interface PeriodSummary {

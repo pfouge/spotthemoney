@@ -1,15 +1,20 @@
 ---
 // One component for the three on-demand entity pages (stage 3a): /insiders/<slug>/, /stocks/<ticker>/
 // and /companies/<slug>/ for entities outside the tracked set. Rendered by the Worker from the
-// json of one od_* call (lib/server/od.ts); reuses the static pages' table components and layout,
-// leaves out everything that needs the build-time model (charts, Follow, TradingView, CSV links,
-// Congress tables, contracts and lobbying, ads).
+// json of one od_* call (lib/server/od.ts); reuses the static pages' table components and layout.
+// The stock page draws the same charts as the build pages (VizDeck, the month bars, TradingView's
+// share price) from the rows it has; it still leaves out what needs the build-time model (Follow,
+// CSV links, Congress tables, contracts and lobbying, the Industry line).
 import BaseLayout from "../layouts/BaseLayout.astro";
 import AdSlot from "./AdSlot.astro";
 import Crumbs from "./Crumbs.astro";
 import Answer from "./Answer.astro";
 import EntityActions from "./EntityActions.astro";
 import TxnTable from "./TxnTable.astro";
+import VizDeck from "./VizDeck.astro";
+import TradingView from "./TradingView.astro";
+import { monthBarsSvg } from "../lib/viz";
+import { monthlyOpenMarket } from "../lib/entity";
 import JsonLd from "./JsonLd.astro";
 import { buildOd, figures, answerText, TABLE_ROWS, WHO_ROWS, type OdDoc } from "../lib/server/od";
 import type { GuideLink } from "../lib/server/odsource";
@@ -77,6 +82,10 @@ const jump: [string, string][] = !hasRows ? [] : [
 ];
 const avgLag = (() => { const v = txns.map((t) => t.lagDays).filter((x): x is number => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; })();
 const insiderWord = kind === "stock" ? sec!.ticker : name;
+// Stock pages: the charts the build pages carry, from the rows on this page (2026-11-27).
+const charts = kind === "stock" && !!sec && hasRows;
+const monthSvg = charts ? monthBarsSvg(monthlyOpenMarket(txns, new Date(model.builtAt)), { label: `${sec!.ticker}: open-market insider purchases above the line and sales below it, by month of disclosure, last 12 months` }) : null;
+const showTv = kind === "stock" && !!sec && ["equity", "etf", "adr"].includes(sec.type);
 ---
 <BaseLayout title={titles} description={description} noindex={page.noindex} section={section} tape={false} ads={hasRows} modified={page.lastUpdated}>
   <Crumbs crumbs={crumbs} />
@@ -102,6 +111,8 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
   <Answer actions={false} text={answer} updated={page.lastUpdated} sourceNote="Source: SEC EDGAR Form 4 filings" />
   {otherTickers.length > 0 && <p class="section-note" data-od-tickers-note>{company?.name ?? "This company"} has Form 4 filings on record under more than one ticker: <span class="mono">{[sec!.ticker, ...otherTickers].join(", ")}</span>. It is one company, so every row is on this one page. A ticker can differ because the symbol changed, because the company has more than one class of security, or because a filing states it differently.</p>}
 
+  {charts && <VizDeck model={model} txns={txns} security={sec!} embeds={false} />}
+
   <details class="more-figs" data-remember id="more-figures"><summary>More figures</summary>
   <section class="datastrip">
     <div class="cell"><div class="k">Transactions</div><div class="v">{num(stats.rowCount)}</div></div>
@@ -125,6 +136,7 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
     <section class="panel" data-panel aria-labelledby="insider-summary" data-entity-periods>
       <h2 id="insider-summary">Insider buying and selling in {insiderWord}: 3 and 12 months</h2>
       <p class="section-note">Open-market purchases (Form 4 code P) and open-market sales (code S) only. Awards, option exercises, gifts, shares withheld for tax and derivative rows are left out, and a trade reported in more than one filing is counted once. A row falls in a period by the date it was disclosed. Dollar figures are shares times the price on the filing, and net is bought minus sold.{anyUnpriced && " Rows with no price on the filing add shares but no dollars."} How this is counted: <a href="/methodology/#insider-summary">methodology</a>.</p>
+      {monthSvg && <figure class="pn-monthbars" data-month-bars><div set:html={monthSvg} /><figcaption>Open-market purchases above the line and sales below it, by month of disclosure, last 12 months.</figcaption></figure>}
       <div class="tablewrap" data-nocap>
         <table class="data periods">
           <thead><tr><th>Open-market trades</th>{f.periods.map((p) => <th class="num" scope="col">{p.label}</th>)}</tr></thead>
@@ -145,6 +157,8 @@ const insiderWord = kind === "stock" ? sec!.ticker : name;
       </div>
     </section>
   )}
+
+  {showTv && <TradingView symbol={sec!.ticker} name={name} span={f.periods.length > 0 ? "6" : "12"} />}
 
   {kind !== "insider" && f.who.length > 0 && (
     <section class="panel" data-panel aria-labelledby="insiders" data-entity-insiders>

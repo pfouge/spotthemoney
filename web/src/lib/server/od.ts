@@ -168,6 +168,17 @@ export function buildOd(doc: OdDoc, now: Date = new Date()): OdPage {
     txns.push(doc.kind === "insider" ? (jointOf != null && byId.get(jointOf)?.personId === own.personId ? dup : own) : dup);
   }
   if (doc.kind !== "insider") txns.sort((a, b) => (b.disclosedAt ?? "").localeCompare(a.disclosedAt ?? ""));
+  // The chart deck (components/VizDeck.astro) reads each security's own insider rows and each
+  // filing's shares held after it, as the build model carries them (lib/flagship.ts). Here both
+  // come from the rows on this page: held after = the last non-derivative row of the filing that
+  // states it, the same rule the build applies to the filing's XML.
+  for (const t of txns) {
+    const s = t.securityId != null ? model.securities.get(t.securityId) : undefined;
+    if (s) { s.txns.push(t); s.insiderTxns.push(t); }
+  }
+  const lastHeld = new Map<number, Txn>();
+  for (const t of built) if (t.ownedAfter != null && t.filingId != null && (lastHeld.get(t.filingId)?.id ?? -Infinity) < t.id) lastHeld.set(t.filingId, t);
+  for (const [fid, t] of lastHeld) { const f = model.filings.get(fid); if (f) f.heldAfter = t.ownedAfter; }
 
   let company: Company | null = null, security: Security | null = null;
   const siblings = (doc.siblings ?? []).map((s) => model.securities.get(s.id)!).filter(Boolean);
