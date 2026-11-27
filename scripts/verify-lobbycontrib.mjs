@@ -62,7 +62,11 @@ ok(Number(/data-superseded="(\d+)"/.exec(hub.text)?.[1] ?? 0) >= sup.size, `hub 
 const periodKey = (r) => `${r.filing_year}-${r.filing_period}`;
 const periods = new Map();
 for (const r of counted) { const p = periods.get(periodKey(r)) ?? periods.set(periodKey(r), { items: 0, amount: 0, filings: new Set() }).get(periodKey(r)); p.items++; p.amount += Number(r.amount || 0); p.filings.add(r.filing_uuid); }
-for (const [k, p] of periods) {
+// The CSV gives the period as a label ("Mid year"); the hub keys rows by the stored code ("mid_year").
+const normP = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+const hubKeys = new Map([...hub.text.matchAll(/data-period(?:-row)?="([^"]*)"/g)].map((m) => [normP(m[1]), m[1]]));
+for (const [label, p] of periods) {
+  const k = hubKeys.get(normP(label)) ?? label;
   const row = new RegExp(`<tr data-period-row="${k.replace(/[()]/g, "\\$&")}"[^>]*>([\\s\\S]*?)</tr>`).exec(hub.text)?.[1];
   const cell = new RegExp(`data-period="${k.replace(/[()]/g, "\\$&")}"[\\s\\S]*?</div></div>`).exec(hub.text)?.[0];
   const tds = row ? [...row.matchAll(/<td[^>]*data-v="([^"]*)"/g)].map((m) => m[1]) : null;
@@ -70,7 +74,7 @@ for (const [k, p] of periods) {
   else ok(!!cell, `${k} appears on the hub`);
 }
 // newest year: kinds, filers, recipients
-const newest = Math.max(...counted.map((r) => Number(r.filing_year)));
+const newest = counted.reduce((a, r) => Math.max(a, Number(r.filing_year) || 0), 0); // no spread: 200,000 rows overflow the stack
 const ny = counted.filter((r) => Number(r.filing_year) === newest);
 const types = new Map(); for (const r of ny) { const e = types.get(r.contribution_type) ?? types.set(r.contribution_type, { n: 0, a: 0 }).get(r.contribution_type); e.n++; e.a += Number(r.amount || 0); }
 const typeRows = [...hub.text.matchAll(/<tr data-type-row[^>]*>([\s\S]*?)<\/tr>/g)].map((m) => [...m[1].matchAll(/data-v="([^"]*)"/g)].map((x) => x[1]));
