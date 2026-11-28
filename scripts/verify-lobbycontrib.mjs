@@ -25,7 +25,8 @@ function parseCsv(t) {
   const head = out.shift() ?? [];
   return out.filter((r) => r.length === head.length).map((r) => Object.fromEntries(head.map((h, i) => [h, r[i]])));
 }
-const normOrg = (s) => (s ?? "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").replace(/\b(inc|incorporated|corp|corporation|co|company|llc|ltd|lp|llp|plc)\b/g, " ").replace(/\s+/g, " ").trim();
+// A copy of normalizeOrgName in shared/src/orgname.ts (the site's committee-name rule).
+const normOrg = (s) => (s ?? "").toUpperCase().replace(/[.,'"()]/g, " ").replace(/\b(INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LLC|LTD|LIMITED|PLC|THE|HOLDINGS?|GROUP)\b/g, " ").replace(/\s+/g, " ").trim();
 const nameKey = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/['’`]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 const TITLES = "the\\s+honorable|hon|senator|sen|representative|rep|congressman|congresswoman|speaker|leader|chairman|chairwoman|chair|dr|mr|mrs|ms";
 const honoree = (raw) => {
@@ -84,10 +85,14 @@ const filers = new Map(); for (const r of ny) { const e = filers.get(r.registran
 const filerRows = [...hub.text.matchAll(/<tr data-filer-row[^>]*>([\s\S]*?)<\/tr>/g)].map((m) => [...m[1].matchAll(/data-v="([^"]*)"/g)].map((x) => attr(x[1])));
 ok(filerRows.length === Math.min(50, filers.size), `filers shown ${filerRows.length}`);
 for (const [name, , n, a] of filerRows) { const f = [...filers].find(([k]) => k.toLowerCase() === name); ok(!!f && f[1].n === Number(n) && Math.round(f[1].a) === Number(a), `filer ${name}: ${n} items, ${a}`); }
-const recips = new Map(); for (const r of ny) { const k = (r.honoree || r.payee || "").toLowerCase().replace(/[<>"]/g, ""); if (!k) continue; recips.set(k, (recips.get(k) ?? 0) + 1); }
+// The site groups recipients by the name EXACTLY as typed (case kept) and by role (honoree, else
+// payee), so "Rep. Katherine Clark" and "REP. KATHERINE CLARK" are two rows. The hub's data-name
+// is lower case, so a row is checked against the counts of every exact spelling with that name.
+const exact = new Map(); for (const r of ny) { const nm = (r.honoree || "").trim() || (r.payee || "").trim(); if (!nm) continue; const k = `${(r.honoree || "").trim() ? "h" : "p"}|${nm}`; exact.set(k, (exact.get(k) ?? 0) + 1); }
+const recips = new Map(); for (const [k, n] of exact) { const lk = k.slice(2).toLowerCase().replace(/[<>"]/g, ""); (recips.get(lk) ?? recips.set(lk, []).get(lk)).push(n); }
 const recRows = [...hub.text.matchAll(/<tr data-recipient-row data-name="([^"]*)"[^>]*>([\s\S]*?)<\/tr>/g)].map((m) => [attr(m[1]), [...m[2].matchAll(/data-v="([^"]*)"/g)].map((x) => attr(x[1]))]);
-for (const [name, cells] of recRows) ok(recips.get(name) === Number(cells[2]), `recipient ${name}: ${cells[2]} items vs ${recips.get(name)}`);
-ok(recRows.length === Math.min(100, recips.size), `recipients shown ${recRows.length} vs ${recips.size}`);
+for (const [name, cells] of recRows) ok((recips.get(name) ?? []).includes(Number(cells[2])), `recipient ${name}: ${cells[2]} items vs ${(recips.get(name) ?? []).join(" or ")}`);
+ok(recRows.length === Math.min(100, exact.size), `recipients shown ${recRows.length} vs ${exact.size}`);
 
 // member matching, with this script's own rule
 const roster = new Map(); // slug -> full name, from the member pages named in the CSV plus the directory
@@ -113,10 +118,11 @@ const payeeBy = new Map(); // normalised committee name -> slug, or null when tw
 for (const c of ccRows) { const k = normOrg(c.committee); if (!k || !c.member_page_url) continue; const sl = lastSeg(c.member_page_url); payeeBy.set(k, payeeBy.has(k) && payeeBy.get(k) !== sl ? null : sl); }
 let derived = 0, byPayee = 0, mismatched = 0;
 for (const r of rows) {
-  const h = honoree(r.honoree); const hon = h ? byName.get(nameKey(h)) ?? null : null;
+  const h = honoree(r.honoree); const got = r.member_page_url ? lastSeg(r.member_page_url) : null;
+  // full name first; else the page's first-plus-last-name match, which this script can only confirm, not predict
+  const hon = h ? byName.get(nameKey(h)) ?? (got && pairKeys.get(got)?.has(nameKey(h)) ? got : null) : null;
   const pay = !hon && r.payee ? payeeBy.get(normOrg(r.payee)) ?? null : null;
   const want = hon || pay;
-  const got = r.member_page_url ? lastSeg(r.member_page_url) : null;
   if (hon) derived++; else if (pay) byPayee++;
   if (got && !want && !(h && (got.startsWith(nameKey(h).replace(/ /g, "-")) || pairKeys.get(got)?.has(nameKey(h))))) { mismatched++; console.log(`  unexpected match: ${r.honoree} / ${r.payee} -> ${got}`); }
   if (want && got !== want) { mismatched++; console.log(`  missed match: ${r.honoree} / ${r.payee} (want ${want}, got ${got})`); }
