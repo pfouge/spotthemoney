@@ -136,7 +136,9 @@ jobs:
             if node scripts/verify-$v.mjs http://127.0.0.1:4321 --sample 12 > "verify-$v.log" 2>&1; then
               echo "verify-$v: $(tail -n 2 "verify-$v.log" | tr '\n' ' ')"
             else
-              tail -n 60 "verify-$v.log"
+              # every failed check (up to 150), then the closing lines; a plain tail hid most of them
+              grep -m 150 -E '✗|missed match|unexpected match' "verify-$v.log" || true
+              tail -n 3 "verify-$v.log"
               echo "::warning title=verify-$v::this build's section does not match its CSV file; see the step log"
             fi
           done

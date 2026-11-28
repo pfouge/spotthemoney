@@ -1,12 +1,12 @@
 {
   "campaign-donations-fec-data": {
-    "reviewed": "2026-11-24",
+    "reviewed": "2026-11-28",
     "covers": {
       "web/src/pages/donations/index.astro": "b815d9c87ba921ad",
       "ingest/src/sources/fec_committees.ts": "8c61e370f5ab8cc3",
       "web/src/lib/campaign.ts": "9318bf48159367b1",
       "web/src/components/CampaignCommittee.astro": "b2ca9af1a429e965",
-      "web/src/lib/outsidespending.ts": "b4c9fa00fc85caa5",
+      "web/src/lib/outsidespending.ts": "750b472a9b375703",
       "web/src/components/OutsideSpending.astro": "4c38e557d0a2017e"
     }
   },
@@ -243,20 +243,20 @@
     }
   },
   "what-is-form-4": {
-    "reviewed": "2026-11-25",
+    "reviewed": "2026-11-28",
     "covers": {
       "web/src/lib/flagship-core.ts#FORM4_DEADLINE_DAYS": "381eeb9c5d6bd607",
       "web/src/lib/flagship-core.ts#isLate": "cab0d94228039fa5",
-      "web/src/lib/entity.ts": "7fe51ccb100b0294",
+      "web/src/lib/entity.ts": "c3d81c3ec2fe66e5",
       "web/src/lib/issuer.ts": "66a484d7fbf02590",
       "web/src/lib/industries.ts": "1780d87d2ac3a61a",
       "web/src/lib/links.ts": "66c5bbd9ec7effba",
       "web/src/lib/footnotes.ts": "b97e4487728d6b9e",
       "web/src/components/TxnTable.astro": "e308d7ee77201988",
-      "web/src/lib/server/od.ts": "b36780044da9cc4a",
-      "web/src/components/OdPageView.astro": "5dd0ae8dd987fd43",
+      "web/src/lib/server/od.ts": "0ae608e82e114807",
+      "web/src/components/OdPageView.astro": "30d2120d0f2501d1",
       "web/src/lib/market.ts": "1c1fe024c48cfb64",
-      "web/src/pages/stocks/[ticker].astro": "33d3256ec3c987af",
+      "web/src/pages/stocks/[ticker].astro": "f11e52af8d0cf14e",
       "web/src/pages/insiders/[slug].astro": "354f8960a5dfca68",
       "web/src/pages/companies/[slug].astro": "2ae307f83ace31c4",
       "web/src/lib/form144.ts": "5792da219a57b938",

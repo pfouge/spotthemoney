@@ -95,7 +95,10 @@ const CHECKS = [
   // Roll calls stop in recesses (August runs about five weeks); the site hides votes at 60 days.
   { code: "congress_votes", label: "House and Senate roll-call votes", runDays: 2, dataDays: 45,
     newest: `select max(voted_at)::date from congress_votes` },
-  { code: "fec_independent_expenditures", label: "FEC independent expenditures", runDays: 2 },
+  // Outside groups report spending every week, even in an off year (333 rows in August 2025);
+  // dates after today are dropped at load, so max(spent_at) is the newest real spending date.
+  { code: "fec_independent_expenditures", label: "FEC independent expenditures", runDays: 2, dataDays: 30,
+    newest: `select max(spent_at)::date from independent_expenditures` },
   { code: "usaspending_assistance", label: "USAspending grants, loans, direct payments", runDays: 2 },
   { code: "fec_committees", label: "FEC committees", runDays: 8 },
   // Receipts appear only after a committee files (monthly or quarterly), hence the long allowance.

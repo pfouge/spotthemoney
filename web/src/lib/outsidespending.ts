@@ -16,6 +16,14 @@ import type { Column } from "./csv";
 export const OUTSIDE_PATH = "/outside-spending/";
 export const OUTSIDE_ROWS = 25;
 export const OUTSIDE_SIDE_ROWS = 10;
+/**
+ * A single expenditure above this many dollars is kept as filed (rows and CSV) but enters no total.
+ * The largest real ones on record are about $28 million (statewide Senate ad buys in 2026); 16
+ * notices filed for one candidate in 2026 state $500 million to $9 billion each, which no
+ * campaign spends, and would otherwise put that candidate at the top of every table.
+ */
+export const OUTSIDE_AMOUNT_MAX = 100_000_000;
+export const amountOutOfRange = (amount: number | null): boolean => amount != null && amount > OUTSIDE_AMOUNT_MAX;
 export const DESCRIPTION_SHOWN = 80;
 export const CANDIDATE_MIN_ROWS = 5;
 export const CANDIDATE_MAX = 400;
@@ -60,8 +68,22 @@ export function countedFlags(rows: readonly { committeeId: string | null; commit
     return nr == null || (r.spentAt != null && r.spentAt > nr);
   });
 }
+/** Adds two dollar amounts in whole cents, so a total does not depend on the order rows are added in. */
+export const addCents = (a: number, b: number): number => (Math.round(a * 100) + Math.round(b * 100)) / 100;
+/**
+ * The value most rows give (ties: the first in alphabetical order); null when none gives one.
+ * Filings write a candidate's name, office and state in several ways ("OSSOFF, T. JONATHAN",
+ * "OSSOFF, JON"), so a candidate is labelled with the most common one, not whichever row came first.
+ */
+export function mostCommon(values: readonly (string | null | undefined)[]): string | null {
+  const n = new Map<string, number>();
+  for (const v of values) if (v) n.set(v, (n.get(v) ?? 0) + 1);
+  let best: string | null = null, bn = 0;
+  for (const [v, c] of n) if (c > bn || (c === bn && best != null && v < best)) { best = v; bn = c; }
+  return best;
+}
 /** A row that enters a dollar total: counted, with an amount and a side. */
-export const inTotals = (r: Expenditure): boolean => r.counted && r.amount != null && r.side != null;
+export const inTotals = (r: Expenditure): boolean => r.counted && r.amount != null && r.side != null && !amountOutOfRange(r.amount);
 
 export interface SideTotals { support: number; oppose: number; supportRows: number; opposeRows: number; supportSpenders: number; opposeSpenders: number; spenders: number }
 export function sideTotals(rows: readonly Expenditure[]): SideTotals {
@@ -72,7 +94,7 @@ export function sideTotals(rows: readonly Expenditure[]): SideTotals {
     const k = r.committeeId ?? `name:${r.committeeName}`;
     all.add(k);
     if (!inTotals(r)) continue;
-    if (r.side === "S") { t.support += r.amount!; t.supportRows++; s.add(k); } else { t.oppose += r.amount!; t.opposeRows++; o.add(k); }
+    if (r.side === "S") { t.support = addCents(t.support, r.amount!); t.supportRows++; s.add(k); } else { t.oppose = addCents(t.oppose, r.amount!); t.opposeRows++; o.add(k); }
   }
   t.supportSpenders = s.size; t.opposeSpenders = o.size; t.spenders = all.size;
   return t;
@@ -85,7 +107,7 @@ export function bySpender(rows: readonly Expenditure[], side: Side, limit = OUTS
     if (!inTotals(r) || r.side !== side) continue;
     const k = r.committeeId ?? `name:${r.committeeName}`;
     const c = m.get(k);
-    if (c) { c.amount += r.amount!; c.rows++; } else m.set(k, { committeeId: r.committeeId, name: r.committeeName, side, amount: r.amount!, rows: 1 });
+    if (c) { c.amount = addCents(c.amount, r.amount!); c.rows++; } else m.set(k, { committeeId: r.committeeId, name: r.committeeName, side, amount: r.amount!, rows: 1 });
   }
   return [...m.values()].sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name)).slice(0, limit);
 }
@@ -96,18 +118,20 @@ export function newestCounted(rows: readonly Expenditure[], limit: number): Expe
 
 export interface CandidateRow { key: string; name: string; personId: number | null; office: string | null; state: string | null; district: string | null; party: string | null; support: number; oppose: number; rows: number; spenders: number }
 export function byCandidate(rows: readonly Expenditure[], min = CANDIDATE_MIN_ROWS, max = CANDIDATE_MAX): CandidateRow[] {
-  const m = new Map<string, CandidateRow & { s: Set<string> }>();
+  const m = new Map<string, CandidateRow & { s: Set<string>; v: { name: string[]; office: (string | null)[]; state: (string | null)[]; district: (string | null)[]; party: (string | null)[] } }>();
   for (const r of rows) {
     if (!r.counted) continue;
     const key = r.candidateId ?? (r.candidateName ? `name:${r.candidateName}` : null);
     if (!key) continue;
     let c = m.get(key);
-    if (!c) { c = { key, name: r.candidateName ?? key, personId: r.personId, office: r.office, state: r.state, district: r.district, party: r.party, support: 0, oppose: 0, rows: 0, spenders: 0, s: new Set() }; m.set(key, c); }
+    if (!c) { c = { key, name: key, personId: r.personId, office: null, state: null, district: null, party: null, support: 0, oppose: 0, rows: 0, spenders: 0, s: new Set(), v: { name: [], office: [], state: [], district: [], party: [] } }; m.set(key, c); }
     c.rows++; c.s.add(r.committeeId ?? `name:${r.committeeName}`);
+    if (r.candidateName) c.v.name.push(r.candidateName);
+    c.v.office.push(r.office); c.v.state.push(r.state); c.v.district.push(r.district); c.v.party.push(r.party);
     if (c.personId == null && r.personId != null) c.personId = r.personId;
-    if (inTotals(r)) { if (r.side === "S") c.support += r.amount!; else c.oppose += r.amount!; }
+    if (inTotals(r)) { if (r.side === "S") c.support = addCents(c.support, r.amount!); else c.oppose = addCents(c.oppose, r.amount!); }
   }
-  return [...m.values()].filter((c) => c.rows >= min).map(({ s, ...c }) => ({ ...c, spenders: s.size }))
+  return [...m.values()].filter((c) => c.rows >= min).map(({ s, v, ...c }) => ({ ...c, name: mostCommon(v.name) ?? c.key, office: mostCommon(v.office), state: mostCommon(v.state), district: mostCommon(v.district), party: mostCommon(v.party), spenders: s.size }))
     .sort((a, b) => b.support + b.oppose - (a.support + a.oppose) || a.name.localeCompare(b.name)).slice(0, max);
 }
 export interface SpenderTotal { committeeId: string | null; name: string; support: number; oppose: number; candidates: number; rows: number }
@@ -119,7 +143,7 @@ export function largestSpenders(rows: readonly Expenditure[], limit = SPENDER_RO
     let s = m.get(k);
     if (!s) { s = { committeeId: r.committeeId, name: r.committeeName, support: 0, oppose: 0, candidates: 0, rows: 0, c: new Set() }; m.set(k, s); }
     s.rows++; const ck = r.candidateId ?? r.candidateName; if (ck) s.c.add(ck);
-    if (inTotals(r)) { if (r.side === "S") s.support += r.amount!; else s.oppose += r.amount!; }
+    if (inTotals(r)) { if (r.side === "S") s.support = addCents(s.support, r.amount!); else s.oppose = addCents(s.oppose, r.amount!); }
   }
   return [...m.values()].map(({ c, ...s }) => ({ ...s, candidates: c.size }))
     .sort((a, b) => b.support + b.oppose - (a.support + a.oppose) || a.name.localeCompare(b.name)).slice(0, limit);
@@ -185,6 +209,7 @@ export const CSV_COLUMNS = (pageOf: (personId: number) => string | null): Column
   { key: "counted", about: "true when the row counts under the rule on the Methodology page. Rows that are not counted are repeat reports of the same spending.", get: (r) => r.counted },
   { key: "member_page_url", about: "The page on this site for the member the row names, when there is one.", get: (r) => (r.personId != null ? pageOf(r.personId) : null) },
   { key: "source_url", about: "The FEC filing image.", get: (r) => r.url },
+  { key: "amount_out_of_range", about: `true when the amount is above $${OUTSIDE_AMOUNT_MAX.toLocaleString("en-US")}: kept as filed here and in the row tables, but left out of every total on the site, because no single expenditure on record comes near it except filings that are plainly mistyped.`, get: (r) => amountOutOfRange(r.amount) },
 ];
 
 export function outsideLog(o: OutsideData): string {
@@ -193,5 +218,5 @@ export function outsideLog(o: OutsideData): string {
   for (const r of o.rows) if (r.personId != null) withPerson++;
   memberPages = o.byPerson.size;
   const dates = o.rows.map((r) => r.spentAt).filter(Boolean).sort() as string[];
-  return `outside spending: ${o.totalRows} rows (${o.countedRows} counted, ${o.totalRows - o.countedRows} not), cycle ${o.cycle}, ${dates[0] ?? "no date"} to ${dates.at(-1) ?? "no date"}; ${o.spenderCount} spending committees, ${o.candidateCount} candidates named, ${o.candidates.length} in the candidate table; ${withPerson} rows name a person, ${memberPages} members with a page; ${o.sqlMismatch} rows where SQL and the rule disagree`;
+  return `outside spending: ${o.totalRows} rows (${o.countedRows} counted, ${o.totalRows - o.countedRows} not), cycle ${o.cycle}, ${dates[0] ?? "no date"} to ${dates.at(-1) ?? "no date"}; ${o.spenderCount} spending committees, ${o.candidateCount} candidates named, ${o.candidates.length} in the candidate table; ${withPerson} rows name a person, ${memberPages} members with a page; ${o.sqlMismatch} rows where SQL and the rule disagree; ${o.rows.filter((r) => amountOutOfRange(r.amount)).length} rows over ${OUTSIDE_AMOUNT_MAX} dollars left out of totals`;
 }

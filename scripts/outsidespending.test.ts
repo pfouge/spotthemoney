@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  countedFlags, sideTotals, bySpender, byCandidate, largestSpenders, newestCounted, cycleOf, memberOutside, memberOutsideSentence, cleanOutsideText, fecCommitteeUrl, CSV_COLUMNS, OUTSIDE_CAVEAT, COUNT_RULE,
+  countedFlags, sideTotals, addCents, mostCommon, amountOutOfRange, inTotals, OUTSIDE_AMOUNT_MAX, bySpender, byCandidate, largestSpenders, newestCounted, cycleOf, memberOutside, memberOutsideSentence, cleanOutsideText, fecCommitteeUrl, CSV_COLUMNS, OUTSIDE_CAVEAT, COUNT_RULE,
   type Expenditure,
 } from "../web/src/lib/outsidespending";
 
@@ -67,8 +67,27 @@ test("text, links, CSV columns, wording", () => {
   assert.equal(fecCommitteeUrl("C00123456"), "https://www.fec.gov/data/committee/C00123456/");
   assert.equal(fecCommitteeUrl("x"), null);
   const keys = CSV_COLUMNS(() => null).map((c) => c.key);
-  assert.deepEqual(keys, ["sub_id", "spender", "spender_fec_id", "candidate", "candidate_fec_id", "office", "state", "district", "party", "support_oppose", "amount", "date", "disseminated", "purpose", "is_notice", "counted", "member_page_url", "source_url"]);
+  assert.deepEqual(keys, ["sub_id", "spender", "spender_fec_id", "candidate", "candidate_fec_id", "office", "state", "district", "party", "support_oppose", "amount", "date", "disseminated", "purpose", "is_notice", "counted", "member_page_url", "source_url", "amount_out_of_range"]);
   assert.ok(!keys.includes("payee_name") && !keys.includes("payee"));
   assert.match(OUTSIDE_CAVEAT, /The member did not receive this money/);
   assert.match(COUNT_RULE, /counted once/);
+});
+
+test("an amount over the limit is listed but in no total; totals add in cents; labels are the most common value", () => {
+  const rows = [ex("C1", "2026-06-01", false, { amount: 9_000_000_000, counted: true }), ex("C1", "2026-06-02", false, { amount: 500, counted: true })];
+  assert.equal(amountOutOfRange(OUTSIDE_AMOUNT_MAX), false);
+  assert.equal(amountOutOfRange(OUTSIDE_AMOUNT_MAX + 1), true);
+  assert.equal(inTotals(rows[0]!), false);
+  assert.equal(sideTotals(rows).support, 500);
+  assert.equal(sideTotals(rows).supportRows, 1);
+  // 0.1 + 0.2 in cents is exactly 0.3, whatever the order
+  assert.equal(addCents(0.1, 0.2), 0.3);
+  const a = [0.105, 1000.005, 2.675, 0.335].reduce(addCents, 0), b = [0.335, 2.675, 1000.005, 0.105].reduce(addCents, 0);
+  assert.equal(Math.round(a * 100), Math.round(b * 100));
+  assert.equal(mostCommon(["OSSOFF, JON", "OSSOFF, T. JONATHAN", "OSSOFF, JON", null]), "OSSOFF, JON");
+  assert.equal(mostCommon(["B", "A"]), "A");
+  assert.equal(mostCommon([null, ""]), null);
+  const cands = byCandidate([0, 1, 2, 3, 4, 5].map((i) => ex("C1", "2026-06-01", false, { counted: true, candidateName: i < 2 ? "DOE, JANE" : "DOE, JANE M", state: i === 0 ? null : "TX" })), 5, 10);
+  assert.equal(cands[0]!.name, "DOE, JANE M");
+  assert.equal(cands[0]!.state, "TX");
 });

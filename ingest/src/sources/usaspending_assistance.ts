@@ -22,6 +22,11 @@
 // window runs when the last complete one is over ASSISTANCE_FULL_EVERY_DAYS (7) days old. The run
 // ends as "partial" at ASSISTANCE_MAX_MINUTES (30). An unfinished FULL sweep is resumed by the
 // next run at the slice (or company) where it stopped (stats.next_slice / next_company).
+// The TRACKED COMPANIES pass runs in FULL sweeps only (whole window, weekly): measured on
+// production 2026-11-22 to 27, it found awards for 6 of about 400 companies over 400 days and
+// none in five daily passes, while costing about 1,150 requests (the whole 30-minute budget) a
+// day and never reaching the last ~110 companies in name order. ASSISTANCE_RECENT_COMPANIES=1
+// puts it back in the daily pass (stats.company_pass says which ran).
 //
 // REQUEST SHAPE IS NEGOTIATED, NEVER ASSUMED. Written from the API contract; the F-prefixed
 // award type codes, date_type and the optional fields could not be confirmed against the live
@@ -88,6 +93,7 @@ export async function ingestUsaspendingAssistance(): Promise<IngestRunResult> {
   const maxMinutes = num("ASSISTANCE_MAX_MINUTES", 30);
   const pagesPerSlice = num("ASSISTANCE_PAGES_PER_SLICE", 2);
   const companyCap = num("ASSISTANCE_MAX_COMPANIES", 400);
+  const companiesInRecent = optionalEnv("ASSISTANCE_RECENT_COMPANIES") === "1";
 
   // Mode: a forced mode, else resume an unfinished full sweep, else full when due, else recent.
   const forcedMode = optionalEnv("ASSISTANCE_MODE");
@@ -272,7 +278,8 @@ export async function ingestUsaspendingAssistance(): Promise<IngestRunResult> {
     `;
     companyTotal = companyRows.length;
     const wholeWindow: Slice = { start: windowStart, end: windowEnd };
-    if (!stopped) {
+    const runCompanies = mode === "full" || companiesInRecent;
+    if (!stopped && runCompanies) {
       for (let ci = nextSlice >= slices.length ? startCompany : 0; ci < companyRows.length; ci++) {
         if (outOfTime()) { stopped = "time budget reached"; break; }
         nextCompany = ci;
@@ -312,7 +319,7 @@ export async function ingestUsaspendingAssistance(): Promise<IngestRunResult> {
           }
         }
       }
-    } else {
+    } else if (stopped) {
       nextCompany = startCompany;
     }
   } catch (err) {
@@ -351,6 +358,7 @@ export async function ingestUsaspendingAssistance(): Promise<IngestRunResult> {
   ctx.extra["rows_outside_window"] = outsideWindow;
   ctx.extra["future_start_dates_skipped"] = futureStartDates;
   ctx.extra["masked_recipients"] = masked;
+  ctx.extra["company_pass"] = mode === "full" || companiesInRecent ? "run" : "full sweeps only";
   ctx.extra["companies_total"] = companyTotal;
   ctx.extra["companies_searched"] = companiesSearched;
   ctx.extra["companies_with_awards"] = companiesWithAwards;
