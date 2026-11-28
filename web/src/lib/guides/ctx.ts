@@ -11,6 +11,7 @@ import { sitePayHub } from "../execpay-build";
 import { INST_TOP, INST_MIN_MANAGERS, INST_SHOWN_DAYS, quarterDate as instQuarterDate } from "../inst13f";
 import { instHubShown } from "../inst13f-hub";
 import { ASSISTANCE_WINDOW_DAYS } from "../assistance";
+import { OUTSIDE_AMOUNT_MAX } from "../outsidespending";
 import { DLA_WINDOW_DAYS, windowLabel } from "../dla";
 import { feedDef } from "../feeds";
 import { ALERTS_ENABLED, ALERT_BODY_DAYS, ALERT_MAX_AGE_DAYS, ALERT_PENDING_DAYS, FEED_NEW_MAX_AGE_DAYS } from "../account";
@@ -39,7 +40,7 @@ export interface GuideCtx {
   /** Days a member of Congress has to report a trade (the site's late rule). */
   congressDeadlineDays: number;
   /** Days of trades counted in the watchlist cards (lib/watchcards.ts). */
-  watchWindowDays: number; feedNewMaxAgeDays: number;
+  watchWindowDays: number; feedNewMaxAgeDays: number; outsideAmountMax: number;
   /** Email digests: the site switch (lib/account.ts) and the two retention periods. */
   alertsEnabled: boolean; alertPendingDays: number; alertBodyDays: number; alertMaxAgeDays: number;
   /** Item limits of the RSS feeds (lib/feeds.ts). */
@@ -114,7 +115,7 @@ async function build(): Promise<GuideCtx> {
   return {
     facts: FACTS,
     congressDeadlineDays: CONGRESS_DEADLINE_DAYS,
-    watchWindowDays: WATCH_WINDOW_DAYS, feedNewMaxAgeDays: FEED_NEW_MAX_AGE_DAYS,
+    watchWindowDays: WATCH_WINDOW_DAYS, feedNewMaxAgeDays: FEED_NEW_MAX_AGE_DAYS, outsideAmountMax: OUTSIDE_AMOUNT_MAX,
     alertsEnabled: ALERTS_ENABLED, alertPendingDays: ALERT_PENDING_DAYS, alertBodyDays: ALERT_BODY_DAYS, alertMaxAgeDays: ALERT_MAX_AGE_DAYS,
     feedCongressItems: feedDef("congress-trades").limit, feedPurchaseItems: feedDef("insider-purchases").limit, feedInsiderItems: feedDef("insider-trades").limit,
     committeeTradeRows: COMMITTEE_TRADE_ROWS,

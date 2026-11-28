@@ -94,6 +94,18 @@ const roster = new Map(); // slug -> full name, from the member pages named in t
 const dir = parseCsv((await get("/downloads/congress-members.csv")).text);
 const members = dir.map((m) => ({ slug: new URL(m.page_url ?? m.member_page_url ?? "http://x/").pathname.split("/").filter(Boolean).pop(), name: m.member ?? m.name ?? m.full_name })).filter((m) => m.slug && m.name);
 const byName = new Map(); for (const m of members) { const k = nameKey(m.name); byName.set(k, byName.has(k) ? null : m.slug); }
+// The site also matches first name plus last name when one member has that pair ("Katherine Clark"
+// for "Katherine M. Clark"). The roster's first and last name are not in the CSV, so this script
+// only uses its own pair keys to EXPLAIN a match the page made, never to demand one: the name
+// without middle initials and suffixes, and its first and last word.
+const SUFFIX = new Set(["jr", "sr", "ii", "iii", "iv", "v"]);
+const pairKeys = new Map(); // slug -> Set of keys
+for (const m of members) {
+  const t = nameKey(m.name).split(" ").filter((w) => w && !SUFFIX.has(w));
+  if (t.length < 2) continue;
+  const keys = new Set([`${t[0]} ${t.at(-1)}`, [t[0], ...t.slice(1).filter((w) => w.length > 1)].join(" ")]);
+  pairKeys.set(m.slug, keys);
+}
 const ccRes = await get("/downloads/campaign-committees.csv");
 const ccRows = ccRes.status === 200 ? parseCsv(ccRes.text) : [];
 const lastSeg = (u) => new URL(u).pathname.split("/").filter(Boolean).pop();
@@ -106,14 +118,14 @@ for (const r of rows) {
   const want = hon || pay;
   const got = r.member_page_url ? lastSeg(r.member_page_url) : null;
   if (hon) derived++; else if (pay) byPayee++;
-  if (got && !want && !(h && got.startsWith(nameKey(h).replace(/ /g, "-")))) { mismatched++; console.log(`  unexpected match: ${r.honoree} / ${r.payee} -> ${got}`); }
+  if (got && !want && !(h && (got.startsWith(nameKey(h).replace(/ /g, "-")) || pairKeys.get(got)?.has(nameKey(h))))) { mismatched++; console.log(`  unexpected match: ${r.honoree} / ${r.payee} -> ${got}`); }
   if (want && got !== want) { mismatched++; console.log(`  missed match: ${r.honoree} / ${r.payee} (want ${want}, got ${got})`); }
 }
 ok(mismatched === 0, `member matches agree with the script's own rules (${derived} by full name, ${byPayee} by committee payee)`);
 ok(rows.every((r) => !r.member_page_url || r.honoree || (r.payee && payeeBy.get(normOrg(r.payee)))), "an item with no honoree is tied to a member only through an exact committee payee");
 ok(!rows.some((r) => r.member_page_url && !r.honoree && r.payee && /victory fund/i.test(r.payee)), "a near-miss payee name matches nobody");
 ok(!rows.some((r) => /^(whitfield|marsh)$/i.test(r.honoree) && r.member_page_url), "a surname alone matches nobody");
-ok(!rows.some((r) => / and /i.test(r.honoree) && r.member_page_url), "two people in one field match nobody");
+ok(!rows.some((r) => / and /i.test(r.honoree) && r.member_page_url && !(r.payee && payeeBy.get(normOrg(r.payee)) === lastSeg(r.member_page_url))), "two people in one field match nobody by name (an exact committee payee still can)");
 const hubMain = text(/data-lc-hub[\s\S]*?<\/main>/.exec(hub.text)?.[0] ?? "");
 ok(/payee/i.test(hubMain) && /campaign committee/i.test(hubMain) && !/is not applied/.test(hubMain), "hub states the payee rule (and no longer says it is not applied)");
 ok(/cannot vouch/.test(hubMain), "hub carries the Senate notice");

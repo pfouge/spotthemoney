@@ -59,7 +59,7 @@ if (files.length === 0) {
 let csv = [];
 for (const f of files) csv.push(...parseCsv((await get(f.path)).text));
 ok(csv.length === files.reduce((a, f) => a + f.rows, 0), "the CSV rows add up to the catalogue's row counts");
-const COLS = ["sub_id", "spender", "spender_fec_id", "candidate", "candidate_fec_id", "office", "state", "district", "party", "support_oppose", "amount", "date", "disseminated", "purpose", "is_notice", "counted", "member_page_url", "source_url"];
+const COLS = ["sub_id", "spender", "spender_fec_id", "candidate", "candidate_fec_id", "office", "state", "district", "party", "support_oppose", "amount", "date", "disseminated", "purpose", "is_notice", "counted", "member_page_url", "source_url", "amount_out_of_range"];
 ok(Object.keys(csv[0]).join(",") === COLS.join(","), "the CSV has the documented columns in order");
 ok(!Object.keys(csv[0]).some((k) => /payee/i.test(k)), "the CSV has no payee column");
 ok(new Set(csv.map((r) => r.sub_id)).size === csv.length, "sub_id is unique");
@@ -75,7 +75,16 @@ ok(wrong === 0, `${wrong} rows have a counted column that differs from the rule`
 ok(csv.some((r) => r.counted === "false"), "(seed) at least one row does not count");
 const live = csv.filter((r) => r.counted === "true");
 const amt = (r) => (r.amount === "" ? null : Number(r.amount));
-const inTotals = (r) => r.counted === "true" && amt(r) != null && (r.support_oppose === "S" || r.support_oppose === "O");
+// Totals are added in whole cents (the site's rule), so they do not depend on the order of rows.
+const addC = (a, b) => (Math.round(a * 100) + Math.round(b * 100)) / 100;
+// A candidate's label is the name (office, state) most of its counted rows give; ties go to the
+// first in alphabetical order. This script's own copy of the site's rule.
+const common = (vals) => { const n = new Map(); for (const v of vals) if (v) n.set(v, (n.get(v) ?? 0) + 1); return [...n].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))[0]?.[0] ?? null; };
+// Over $100,000,000 a row enters no total (the site's rule; this script's own copy of the limit).
+const AMOUNT_MAX = 100_000_000;
+const outOfRange = (r) => amt(r) != null && amt(r) > AMOUNT_MAX;
+ok(csv.every((r) => (r.amount_out_of_range === "true") === outOfRange(r)), "amount_out_of_range is true exactly for amounts over $100,000,000");
+const inTotals = (r) => r.counted === "true" && amt(r) != null && (r.support_oppose === "S" || r.support_oppose === "O") && !outOfRange(r);
 ok(csv.every((r) => !r.date || r.date <= new Date().toISOString().slice(0, 10)), "no spending date is in the future");
 
 // ── the hub ───────────────────────────────────────────────────────────────────────────────────
@@ -93,11 +102,13 @@ const tbl = (name) => { const i = hub.text.indexOf(name); const j = hub.text.ind
 const cm = new Map();
 for (const r of live) {
   const k = candKey(r); if (!k) continue;
-  const c = cm.get(k) ?? { name: r.candidate || k, office: r.office, state: r.state, support: 0, oppose: 0, rows: 0, sp: new Set(), page: r.member_page_url };
+  const c = cm.get(k) ?? { key: k, names: [], offices: [], states: [], support: 0, oppose: 0, rows: 0, sp: new Set(), page: r.member_page_url };
   c.rows++; c.sp.add(ckey(r)); if (!c.page && r.member_page_url) c.page = r.member_page_url;
-  if (inTotals(r)) { if (r.support_oppose === "S") c.support += amt(r); else c.oppose += amt(r); }
+  c.names.push(r.candidate); c.offices.push(r.office); c.states.push(r.state);
+  if (inTotals(r)) { if (r.support_oppose === "S") c.support = addC(c.support, amt(r)); else c.oppose = addC(c.oppose, amt(r)); }
   cm.set(k, c);
 }
+for (const c of cm.values()) { c.name = common(c.names) ?? c.key; c.office = common(c.offices); c.state = common(c.states); }
 const expCand = [...cm.values()].filter((c) => c.rows >= CAND_MIN).sort((a, b) => b.support + b.oppose - (a.support + a.oppose) || a.name.localeCompare(b.name)).slice(0, CAND_MAX);
 const gotCand = tbl("data-os-candidates");
 ok(gotCand.length === expCand.length, `the candidate table has ${gotCand.length} rows, the CSV gives ${expCand.length}`);
@@ -112,7 +123,7 @@ const sm = new Map();
 for (const r of live) {
   const k = ckey(r); const s = sm.get(k) ?? { id: r.spender_fec_id, name: r.spender, support: 0, oppose: 0, c: new Set() };
   const ck = r.candidate_fec_id || r.candidate; if (ck) s.c.add(ck);
-  if (inTotals(r)) { if (r.support_oppose === "S") s.support += amt(r); else s.oppose += amt(r); }
+  if (inTotals(r)) { if (r.support_oppose === "S") s.support = addC(s.support, amt(r)); else s.oppose = addC(s.oppose, amt(r)); }
   sm.set(k, s);
 }
 const expSp = [...sm.values()].sort((a, b) => b.support + b.oppose - (a.support + a.oppose) || a.name.localeCompare(b.name)).slice(0, SPENDERS);
@@ -137,7 +148,7 @@ gotNew.forEach((r, i) => {
 // ── member sections ──────────────────────────────────────────────────────────────────────────
 const bySlug = new Map();
 for (const r of csv) { if (!r.member_page_url) continue; const slug = new URL(r.member_page_url).pathname.split("/").filter(Boolean).pop(); (bySlug.get(slug) ?? bySlug.set(slug, []).get(slug)).push(r); }
-const stats = [...bySlug].map(([slug, rows]) => { const l = rows.filter((r) => r.counted === "true"); let s = 0, o = 0; for (const r of l) if (inTotals(r)) { if (r.support_oppose === "S") s += amt(r); else o += amt(r); } return { slug, rows, l, s, o, noticeOnly: l.length > 0 && l.every((r) => r.is_notice === "true") }; });
+const stats = [...bySlug].map(([slug, rows]) => { const l = rows.filter((r) => r.counted === "true"); let s = 0, o = 0; for (const r of l) if (inTotals(r)) { if (r.support_oppose === "S") s = addC(s, amt(r)); else o = addC(o, amt(r)); } return { slug, rows, l, s, o, noticeOnly: l.length > 0 && l.every((r) => r.is_notice === "true") }; });
 const pick = new Map();
 const add = (m) => m && pick.set(m.slug, m);
 add([...stats].sort((a, b) => b.s + b.o - (a.s + a.o))[0]);
@@ -165,7 +176,7 @@ for (const m of pick.values()) {
   // by spender, per side
   for (const side of ["S", "O"]) {
     const g = new Map();
-    for (const r of m.l) if (inTotals(r) && r.support_oppose === side) { const k = ckey(r); const e = g.get(k) ?? { name: r.spender, amount: 0, rows: 0 }; e.amount += amt(r); e.rows++; g.set(k, e); }
+    for (const r of m.l) if (inTotals(r) && r.support_oppose === side) { const k = ckey(r); const e = g.get(k) ?? { name: r.spender, amount: 0, rows: 0 }; e.amount = addC(e.amount, amt(r)); e.rows++; g.set(k, e); }
     const exp = [...g.values()].sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name)).slice(0, SIDE_ROWS);
     const t = sec.match(new RegExp(`<table[^>]*data-side="${side}"[\\s\\S]*?</table>`));
     const got = t ? rowsOf(t[0]) : [];

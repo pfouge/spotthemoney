@@ -4806,3 +4806,24 @@ stock, fund exits), and the guide `insider-buying-vs-insider-selling` says so.
 - **Freshness.** `scripts/freshness-check.mjs` has data dates for LD-203 (`max(posted_at)`, 21 days), 8-K events
   (`max(filed)`, 6 days) and roll-call votes (`max(voted_at)`, 45 days). Outside spending and assistance are still by run.
 - Guide `how-to-cite-and-reuse` names the split (re-read, accepted); `lobbying-disclosure-reports` re-read, unchanged.
+
+### Outside spending shown in full; three fixes from its first full build; assistance budget (2026-11-28, scheduled parity run) — queue item (m1), outside-spending half
+
+- `fec_independent_expenditures` reported `catch_up_complete` at 19:31 UTC on 2026-11-27 (79,391 rows). Its first full build
+  (deploy job 140704692999) printed 58 `verify-outside` and 90 `verify-lobbycontrib` findings; read, they were three things:
+  - **A candidate's label came from whichever row came first**, so the page and the verifier (different row orders) printed
+    different spellings ("OSSOFF, T. JONATHAN" / "OSSOFF, JON"). Now `mostCommon` in `web/src/lib/outsidespending.ts`: the
+    name, office, state, district and party most counted rows give, ties alphabetical.
+  - **Totals were float sums**, so the order rows were added in moved a total by a dollar. Now `addCents` (whole cents).
+  - **Typing mistakes:** 16 notices for one candidate state $500 million to $9 billion each (largest real one on record
+    $28.3M) and put that candidate at the top with "$18,000,000,500". `OUTSIDE_AMOUNT_MAX` ($100M): such a row is listed as
+    filed and enters no total; CSV column `amount_out_of_range` added at the END; build log counts them; methodology
+    `#outside-spending` and guide `campaign-donations-fec-data` (`ctx.outsideAmountMax`) say so.
+  - `verify-lobbycontrib` lacked the page's first-name-plus-last-name rule ("Katherine Clark" for "Katherine M. Clark") and
+    flagged "two people in one field" rows the payee rule matched. Both fixed in the verifier; the page rule is unchanged.
+- `deploy.yml` warning step now prints every failed check (grep for ✗, up to 150) instead of the last 60 lines, which hid 88.
+- Freshness: `fec_independent_expenditures` has `dataDays: 30` on `max(spent_at)`. Watch it at the cycle change in January.
+- `usaspending_assistance`: the tracked-companies pass now runs in FULL sweeps only (`ASSISTANCE_RECENT_COMPANIES=1` puts it
+  back). Production: 6 of ~400 companies with awards over 400 days, none in five daily passes, yet it used the whole
+  30-minute budget daily (~1,150 requests), ended `partial` every day and never reached the last ~110 companies by name.
+  Stats `company_pass`. No web wording changed (the methodology already says the companies are matched, not how often).
